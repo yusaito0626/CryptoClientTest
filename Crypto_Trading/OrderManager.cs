@@ -8,7 +8,23 @@ namespace Crypto_Trading
 {
     public class OrderManager
     {
-        public OrderManager() { }
+        private OrderManager() { }
+
+
+        private static OrderManager _instance;
+        private static readonly object _lockObject = new object();
+
+        public static OrderManager GetInstance()
+        {
+            lock (_lockObject)
+            {
+                if (_instance == null)
+                {
+                    _instance = new OrderManager();
+                }
+                return _instance;
+            }
+        }
     }
 }
 

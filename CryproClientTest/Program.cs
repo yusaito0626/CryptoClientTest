@@ -27,7 +27,7 @@ instruments[ins.symbol_market] = ins;
 //await cl.subscribeTrades(markets,baseCcy, quoteCcy);
 //await cl.subscribeOrderBook(markets, baseCcy, quoteCcy);
 cl.readCredentials(Exchange.Coinbase, "C:\\Users\\yusai\\coinbase_viewonly.json");
-cl.readCredentials(Exchange.Bybit, "C:\\Users\\yusai\\bybit_tradable.json");
+cl.readCredentials(Exchange.Bybit, "C:\\Users\\yusai\\bybit_viewonly.json");
 //await cl.subscribeBybitOrderBook(baseCcy, quoteCcy);
 //await cl.subscribeCoinbaseOrderBook(baseCcy, quoteCcy);
 //await cl.subscribeSpotOrderUpdates([Exchange.Bybit]);
@@ -75,6 +75,20 @@ void logging()
 }
 
 System.Threading.Thread th = new Thread(logging);
+
+Crypto_Trading.QuoteManager qManager = QuoteManager.GetInstance();
+
+if(!qManager.initializeInstruments("c:\\users\\yusai\\crypto_master.csv"))
+{
+    Console.WriteLine("The file doesn't exist");
+}
+
+foreach(var item in qManager.instruments.Values)
+{
+    Console.WriteLine("Calling ToString");
+    Console.WriteLine(item.ToString());
+}
+
 th.Start();
 Thread.Sleep(2000);
 Console.WriteLine("Now sending an order to Bybit");

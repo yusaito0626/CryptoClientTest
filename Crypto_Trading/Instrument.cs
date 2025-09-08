@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System.Runtime.CompilerServices;
+using System.Threading;
 
 using Crypto_Clients;
 using CryptoExchange.Net.Objects.Options;
@@ -8,10 +9,14 @@ namespace Crypto_Trading
     public class Instrument
     {
         public string symbol;
+        public string baseCcy;
+        public string quoteCcy;
         public string market;
         public string symbol_market;
         public string master_symbol;
 
+        public DateTime? last_quote_updated_time;
+        public DateTime? last_traded_time;
 
         public volatile int quotes_lock;
         public SortedDictionary<decimal, decimal> asks;
@@ -21,18 +26,31 @@ namespace Crypto_Trading
         public ValueTuple<decimal, decimal> adjusted_bestask;
         public ValueTuple<decimal, decimal> adjusted_bestbid;
 
+        public decimal last_price;
+
+        public decimal sell_quantity;
+        public decimal buy_quantity;
+        public decimal sell_notional;
+        public decimal buy_notional;
+
         public decimal taker_fee;
         public decimal maker_fee;
+
+        public decimal price_unit;
+        public decimal quantity_unit;
 
         public decimal ToBsize;
 
         public Instrument()
         {
             this.symbol = "";
+            this.baseCcy = "";
+            this.quoteCcy = "";
             this.market = "";
             this.symbol_market = "";
             this.master_symbol = "";
 
+            this.last_quote_updated_time = null;
             this.quotes_lock = 0;
             this.asks = new SortedDictionary<decimal, decimal>();
             this.bids = new SortedDictionary<decimal, decimal>();
@@ -41,9 +59,44 @@ namespace Crypto_Trading
             this.adjusted_bestask = new ValueTuple<decimal, decimal>(0,0);
             this.adjusted_bestbid = new ValueTuple<decimal, decimal>(0,0);
 
+            this.last_price = 0;
+            this.sell_quantity = 0;
+            this.buy_quantity = 0;
+            this.sell_notional = 0;
+            this.buy_notional = 0;
+
             this.taker_fee = 0;
             this.maker_fee = 0;
+
+            this.price_unit = 0;
+            this.quantity_unit = 0;
+
             this.ToBsize = 0;
+        }
+
+        public void initialize(string line)
+        {
+            string[] items = line.Split(",");
+
+            int i = 0;
+            foreach (string item in items)
+            {
+                switch (i)
+                {
+                    case 0: this.symbol = item; break;
+                    case 1: this.baseCcy = item; break;
+                    case 2: this.quoteCcy = item; break;
+                    case 3: this.market = item; break;
+                    case 4: this.taker_fee = decimal.Parse(item); break;
+                    case 5: this.maker_fee = decimal.Parse(item); break;
+                    case 6: this.price_unit = decimal.Parse(item); break;
+                    case 7: this.quantity_unit = decimal.Parse(item); break;
+                    default: break;
+                }
+                i++;
+            }
+            this.master_symbol = this.baseCcy + this.quoteCcy;
+            this.setSymbolMarket(symbol, market);
         }
 
         public void setSymbolMarket(string symbol, string market)
@@ -53,10 +106,11 @@ namespace Crypto_Trading
             this.symbol_market = symbol + "@" + market;
         }
 
-        public void updateQuotes(Crypto_Clients.DataOrderBook update)
+        public void updateQuotes(DataOrderBook update)
         {
             int desired = 1;
             int expected = 0;
+            this.last_quote_updated_time = update.timestamp;
             switch (update.updateType)
             {
                 case CryptoExchange.Net.Objects.SocketUpdateType.Snapshot:
@@ -109,6 +163,22 @@ namespace Crypto_Trading
                     break;
             }
             this.updateBeskAskBid(this.ToBsize);
+        }
+        public void updateTrade(DataTrade update)
+        {
+            this.last_traded_time = update.timestamp;
+            this.last_price = update.price;
+            switch (update.side)
+            {
+                case CryptoExchange.Net.SharedApis.SharedOrderSide.Buy:
+                    this.buy_quantity += update.quantity;
+                    this.buy_notional += update.quantity * update.price;
+                    break;
+                case CryptoExchange.Net.SharedApis.SharedOrderSide.Sell:
+                    this.sell_quantity += update.quantity;
+                    this.sell_notional += update.quantity * update.price;
+                    break;
+            }
         }
 
         public void updateBeskAskBid(decimal quantity)
@@ -166,11 +236,21 @@ namespace Crypto_Trading
 
         public string ToString(string content = "")
         {
+            int desired = 1;
+            int expected = 0;
             string output = this.symbol_market + " " + content + "\n";
-            if(content == "Quote5")
+            if(content == "" || content == "General")
+            {
+                output = this.symbol + "," + this.baseCcy + "," + this.quoteCcy + "," + this.market + "," + this.taker_fee.ToString() + "," + this.maker_fee + "," + this.price_unit + "," + this.quantity_unit;
+            }
+            else if(content == "Quote5")
             {
                 int i = 4;
                 int priceStrLength = 0;
+                while (Interlocked.CompareExchange(ref this.quotes_lock, 1, 0) != 0)
+                {
+
+                }
                 if (i >= this.asks.Count)
                 {
                     i = this.asks.Count - 1;
@@ -214,6 +294,7 @@ namespace Crypto_Trading
                     }
                         ++i;
                 }
+                Volatile.Write(ref this.quotes_lock, 0);
             }
             return output;
         }

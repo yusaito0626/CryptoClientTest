@@ -387,11 +387,10 @@ namespace Crypto_Clients
 
         CryptoClients.Net.Models.ExchangeCredentials creds;
 
-
         const int STACK_SIZE = 100000;
 
         public ConcurrentQueue<DataOrderBook> ordBookQueue;
-        private ConcurrentStack<DataOrderBook> ordBookStack;
+        public ConcurrentStack<DataOrderBook> ordBookStack;
 
         public ConcurrentQueue<DataSpotOrderUpdate> ordUpdateQueue;
         public ConcurrentStack<DataSpotOrderUpdate> ordUpdateStack;
@@ -400,6 +399,8 @@ namespace Crypto_Clients
         public ConcurrentStack<DataTrade> tradeStack;
 
         public ConcurrentQueue<string> strQueue;
+
+        public Action<string> addLog;
         public Crypto_Clients()
         {
             this._client = new ExchangeSocketClient();
