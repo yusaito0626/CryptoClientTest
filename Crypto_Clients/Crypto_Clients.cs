@@ -15,6 +15,248 @@ using System.ComponentModel.Design;
 
 namespace Crypto_Clients
 {
+    public class Crypto_Clients
+    {
+        ExchangeSocketClient _client;
+        ExchangeRestClient _rest_client;
+        Bybit.Net.Clients.BybitSocketClient BybitSocketClient;
+        Coinbase.Net.Clients.CoinbaseSocketClient CoinbaseSocketClient;
+
+        CryptoClients.Net.Models.ExchangeCredentials creds;
+
+        const int STACK_SIZE = 100000;
+
+        public ConcurrentQueue<DataOrderBook> ordBookQueue;
+        public ConcurrentStack<DataOrderBook> ordBookStack;
+
+        public ConcurrentQueue<DataTrade> tradeQueue;
+        public ConcurrentStack<DataTrade> tradeStack;
+
+        public ConcurrentQueue<DataSpotOrderUpdate> ordUpdateQueue;
+        public ConcurrentStack<DataSpotOrderUpdate> ordUpdateStack;
+
+        public ConcurrentQueue<string> strQueue;
+
+        public Action<string> addLog;
+        public Crypto_Clients()
+        {
+            this._client = new ExchangeSocketClient();
+            this.BybitSocketClient = new Bybit.Net.Clients.BybitSocketClient();
+            this.CoinbaseSocketClient = new Coinbase.Net.Clients.CoinbaseSocketClient();
+            this._rest_client = new ExchangeRestClient();
+
+            this.creds = new CryptoClients.Net.Models.ExchangeCredentials();
+
+            this.ordBookQueue = new ConcurrentQueue<DataOrderBook>();
+            this.ordBookStack = new ConcurrentStack<DataOrderBook>();
+
+            this.ordUpdateQueue = new ConcurrentQueue<DataSpotOrderUpdate>();
+            this.ordUpdateStack = new ConcurrentStack<DataSpotOrderUpdate>();
+
+            this.tradeQueue = new ConcurrentQueue<DataTrade>();
+            this.tradeStack = new ConcurrentStack<DataTrade>();
+
+            this.strQueue = new ConcurrentQueue<string>();
+
+            this.addLog = Console.WriteLine;
+
+            int i = 0;
+
+            while (i < STACK_SIZE)
+            {
+                this.ordBookStack.Push(new DataOrderBook());
+                this.ordUpdateStack.Push(new DataSpotOrderUpdate());
+                this.tradeStack.Push(new DataTrade());
+                ++i;
+            }
+        }
+
+        public void pushToOrderBookStack(DataOrderBook msg)
+        {
+            msg.init();
+            this.ordBookStack.Push(msg);
+        }
+        public void pushToTradeStack(DataTrade msg)
+        {
+            msg.init();
+            this.tradeStack.Push(msg);
+        }
+        public void pushToOrderUpdateStack(DataSpotOrderUpdate msg)
+        {
+            msg.init();
+            this.ordUpdateStack.Push(msg);
+        }
+
+        public void readCredentials(string market, string jsonfilename)
+        {
+            string fileContent = File.ReadAllText(jsonfilename);
+
+            using JsonDocument doc = JsonDocument.Parse(fileContent);
+            var root = doc.RootElement;
+
+            switch (market)
+            {
+                case string value when value == Exchange.Bybit:
+                    this.creds.Bybit = new CryptoExchange.Net.Authentication.ApiCredentials(root.GetProperty("name").ToString(), root.GetProperty("privateKey").ToString());
+                    break;
+                case string value when value == Exchange.Coinbase:
+                    this.creds.Coinbase = new CryptoExchange.Net.Authentication.ApiCredentials(root.GetProperty("name").ToString(), root.GetProperty("privateKey").ToString());
+                    break;
+            }
+            this._rest_client.SetApiCredentials(this.creds);
+            this._client.SetApiCredentials(this.creds);
+        }
+
+        //REST API
+        async public Task getBalance(IEnumerable<string>? markets)
+        {
+            GetBalancesRequest req = new GetBalancesRequest(TradingMode.Spot);
+            foreach (var subResult in await this._rest_client.GetBalancesAsync(req, markets))
+            {
+                if (subResult.Success)
+                {
+                    foreach (var data in subResult.Data)
+                    {
+                        this.strQueue.Enqueue(subResult.Exchange + " " + data.ToString());
+                    }
+
+                }
+                else
+                {
+                    this.strQueue.Enqueue("ERROR");
+                }
+            }
+        }
+        async public Task<string> placeNewSpotOrder(string market, string baseCcy, string quoteCcy, SharedOrderSide side, SharedOrderType ordtype, decimal quantity, decimal price, SharedTimeInForce? timeinforce = null, string? clordId = null, ExchangeParameters? param = null)
+        {
+            SharedSymbol symbol = new SharedSymbol(TradingMode.Spot, baseCcy, quoteCcy);
+            SharedQuantity qty = new SharedQuantity();
+            qty.QuantityInBaseAsset = quantity;
+            PlaceSpotOrderRequest req = new PlaceSpotOrderRequest(symbol, side, ordtype, qty, price, timeinforce, clordId, param);
+
+            var result = await this._rest_client.PlaceSpotOrderAsync(market, req);
+            if (result.Success)
+            {
+                return result.Data.Id;
+            }
+            else
+            {
+                this.addLog("[ERROR] New Order Failed.");
+                this.addLog(result.Error.ToString());
+                return "";
+            }
+        }
+        async public Task<string> placeCancelSpotOrder(string market, string baseCcy, string quoteCcy, string orderId, ExchangeParameters? param = null)
+        {
+            SharedSymbol symbol = new SharedSymbol(TradingMode.Spot, baseCcy, quoteCcy);
+            CancelOrderRequest req = new CancelOrderRequest(symbol, orderId, param);
+            var result = await this._rest_client.CancelSpotOrderAsync(market, req);
+            if (result.Success)
+            {
+                return result.Data.Id;
+            }
+            else
+            {
+                this.addLog("[ERROR] Cancel Order Failed.");
+                this.addLog(result.Error.ToString());
+                return "";
+            }
+        }
+        //Websocket
+        async public Task subscribeSpotOrderUpdates(IEnumerable<string>? markets)
+        {
+            SubscribeSpotOrderRequest request = new SubscribeSpotOrderRequest();
+            foreach (var subResult in await this._client.SubscribeToSpotOrderUpdatesAsync(request, LogOrderUpdates, markets))
+                this.addLog($"{subResult.Exchange} subscribe spot order updates result: {subResult.Success} {subResult.Error}");
+        }
+        void LogOrderUpdates(ExchangeEvent<SharedSpotOrder[]> update)
+        {
+            DataSpotOrderUpdate obj;
+            foreach (var ord in update.Data)
+            {
+                while (!this.ordUpdateStack.TryPop(out obj))
+                {
+
+                }
+                obj.setSharedSpotOrder(ord, update.Exchange, update.DataTime);
+                this.ordUpdateQueue.Enqueue(obj);
+            }
+        }
+        async public Task subscribeTrades(IEnumerable<string>? markets, string baseCcy, string quoteCcy)
+        {
+            var symbol = new SharedSymbol(TradingMode.Spot, baseCcy, quoteCcy);
+
+            // Subscribe to trade updates for the specified exchange
+            foreach (var subResult in await this._client.SubscribeToTradeUpdatesAsync(new SubscribeTradeRequest(symbol), LogTrades, markets))
+                this.addLog($"{subResult.Exchange} subscribe trades result: {subResult.Success} {subResult.Error}");
+        }
+        void LogTrades(ExchangeEvent<SharedTrade[]> update)
+        {
+            DataTrade trd;
+            foreach (var item in update.Data)
+            {
+                while (!this.tradeStack.TryPop(out trd))
+                {
+
+                }
+                trd.setSharedTrade(item, update.Exchange, update.Symbol, update.DataTime);
+                this.tradeQueue.Enqueue(trd);
+            }
+        }
+        async public Task subscribeOrderBook(IEnumerable<string>? markets, string baseCcy, string quoteCcy)
+        {
+            var symbol = new SharedSymbol(TradingMode.Spot, baseCcy, quoteCcy);
+            var req = new SubscribeOrderBookRequest(symbol);
+            foreach (var subResult in await this._client.SubscribeToOrderBookUpdatesAsync(req, LogOrderBook, markets, default))
+            {
+                this.addLog($"{subResult.Exchange} subscribe orderbook result: {subResult.Success} {subResult.Error}");
+            }
+
+        }
+        void LogOrderBook(ExchangeEvent<SharedOrderBook> update)
+        {
+            //this.orderBookQueue.Enqueue(update);
+            DataOrderBook msg;
+            while (!this.ordBookStack.TryPop(out msg))
+            {
+
+            }
+            msg.setSharedOrderBook(update);
+            this.ordBookQueue.Enqueue(msg);
+        }
+        async public Task subscribeCoinbaseOrderBook(string baseCcy, string quoteCcy)
+        {
+            var subResult = await this.CoinbaseSocketClient.AdvancedTradeApi.SubscribeToOrderBookUpdatesAsync(baseCcy + "-" + quoteCcy, LogCoinbaseOrderBook);
+            this.addLog($"Coinbase subscribe orderbook result: {subResult.Success} {subResult.Error}");
+        }
+        void LogCoinbaseOrderBook(DataEvent<Coinbase.Net.Objects.Models.CoinbaseOrderBookUpdate> update)
+        {
+            DataOrderBook msg;
+
+            while (!this.ordBookStack.TryPop(out msg))
+            {
+
+            }
+            msg.setCoinbaseOrderBook(update);
+            this.ordBookQueue.Enqueue(msg);
+
+        }
+        async public Task subscribeBybitOrderBook(string baseCcy, string quoteCcy)
+        {
+            var subResult = await this.BybitSocketClient.V5SpotApi.SubscribeToOrderbookUpdatesAsync(baseCcy + quoteCcy, 50, LogBybitOrderBook);
+            this.addLog($"Bybit subscribe orderbook result: {subResult.Success} {subResult.Error}");
+        }
+        void LogBybitOrderBook(DataEvent<Bybit.Net.Objects.Models.V5.BybitOrderbook> update)
+        {
+            DataOrderBook msg;
+            while (!this.ordBookStack.TryPop(out msg))
+            {
+
+            }
+            msg.setBybitOrderBook(update);
+            this.ordBookQueue.Enqueue(msg);
+        }
+    }
     public class DataOrderBook
     {
         public DateTime? timestamp;
@@ -335,7 +577,38 @@ namespace Crypto_Clients
             this.trigger_price = 0;
             this.is_trigger_order = false;
         }
+        public string ToString()
+        {
+            string line;
+            if(this.timestamp != null)
+            {
+                line = ((DateTime)this.timestamp).ToString("yyyy-MM-dd HH:mm:ss.fff");
+            }
+            else
+            {
+                line = "";
+            }
+            line += "," + this.order_id + "," + this.market + "," + this.symbol + "," + this.order_type.ToString() + "," + this.side.ToString() + "," + this.status.ToString() + "," + this.time_in_force.ToString() + "," + this.order_price.ToString() + "," + this.order_quantity.ToString() + "," + this.filled_quantity.ToString() + "," + this.average_price.ToString() + "," + this.client_order_id + "," + this.fee_asset + "," + this.fee.ToString();
+            if (this.create_time != null)
+            {
+                line += "," + ((DateTime)this.create_time).ToString("yyyy-MM-dd HH:mm:ss.fff");
+            }
+            else
+            {
+                line += ",";
+            }
+            if (this.update_time != null)
+            {
+                line += "," + ((DateTime)this.update_time).ToString("yyyy-MM-dd HH:mm:ss.fff");
+            }
+            else
+            {
+                line += ",";
+            }
+            line += "," + this.last_trade + "," + this.trigger_price.ToString() + "," + this.is_trigger_order.ToString();
 
+            return line;
+        }
     }
     public class DataTrade
     {
@@ -376,243 +649,6 @@ namespace Crypto_Clients
             this.side = null;
             this.price = 0;
             this.quantity = 0;
-        }
-    }
-    public class Crypto_Clients
-    {
-        ExchangeSocketClient _client;
-        ExchangeRestClient _rest_client;
-        Bybit.Net.Clients.BybitSocketClient BybitSocketClient;
-        Coinbase.Net.Clients.CoinbaseSocketClient CoinbaseSocketClient;
-
-        CryptoClients.Net.Models.ExchangeCredentials creds;
-
-        const int STACK_SIZE = 100000;
-
-        public ConcurrentQueue<DataOrderBook> ordBookQueue;
-        public ConcurrentStack<DataOrderBook> ordBookStack;
-
-        public ConcurrentQueue<DataSpotOrderUpdate> ordUpdateQueue;
-        public ConcurrentStack<DataSpotOrderUpdate> ordUpdateStack;
-
-        public ConcurrentQueue<DataTrade> tradeQueue;
-        public ConcurrentStack<DataTrade> tradeStack;
-
-        public ConcurrentQueue<string> strQueue;
-
-        public Action<string> addLog;
-        public Crypto_Clients()
-        {
-            this._client = new ExchangeSocketClient();
-            this.BybitSocketClient = new Bybit.Net.Clients.BybitSocketClient();
-            this.CoinbaseSocketClient = new Coinbase.Net.Clients.CoinbaseSocketClient();
-            this._rest_client = new ExchangeRestClient();
-
-            this.creds = new CryptoClients.Net.Models.ExchangeCredentials();
-
-            this.ordBookQueue = new ConcurrentQueue<DataOrderBook>();
-            this.ordBookStack = new ConcurrentStack<DataOrderBook>();
-
-            this.ordUpdateQueue = new ConcurrentQueue<DataSpotOrderUpdate>();
-            this.ordUpdateStack = new ConcurrentStack<DataSpotOrderUpdate>();
-
-            this.tradeQueue = new ConcurrentQueue<DataTrade>();
-            this.tradeStack = new ConcurrentStack<DataTrade>();
-
-            this.strQueue = new ConcurrentQueue<string> ();
-
-            int i = 0;
-
-            while(i < STACK_SIZE)
-            {
-                this.ordBookStack.Push(new DataOrderBook());
-                this.ordUpdateStack.Push(new DataSpotOrderUpdate());
-                this.tradeStack.Push(new DataTrade());
-                ++i;
-            }
-        }
-
-        public void pushToOrderBookStack(DataOrderBook msg)
-        {
-            msg.init();
-            this.ordBookStack.Push(msg);
-        }
-        public void pushToTradeStack(DataTrade msg)
-        {
-            msg.init();
-            this.tradeStack.Push(msg);
-        }
-        public void pushToOrderUpdateStack(DataSpotOrderUpdate msg)
-        {
-            msg.init();
-            this.ordUpdateStack.Push(msg);
-        }
-
-        public void readCredentials(string market, string jsonfilename)
-        {
-            string fileContent = File.ReadAllText(jsonfilename);
-
-            using JsonDocument doc = JsonDocument.Parse(fileContent);
-            var root = doc.RootElement;
-
-            switch(market)
-            {
-                case string value when value == Exchange.Bybit:
-                    this.creds.Bybit = new CryptoExchange.Net.Authentication.ApiCredentials(root.GetProperty("name").ToString(), root.GetProperty("privateKey").ToString());
-                    break;
-                case string value when value == Exchange.Coinbase:
-                    this.creds.Coinbase = new CryptoExchange.Net.Authentication.ApiCredentials(root.GetProperty("name").ToString(), root.GetProperty("privateKey").ToString());
-                    break;
-            }
-            this._rest_client.SetApiCredentials(this.creds);
-            this._client.SetApiCredentials(this.creds);
-        }
-
-//REST API
-        async public Task getBalance(IEnumerable<string>? markets)
-        {
-            GetBalancesRequest req = new GetBalancesRequest(TradingMode.Spot);
-            foreach (var subResult in await this._rest_client.GetBalancesAsync(req, markets))
-            {
-                if(subResult.Success)
-                {
-                    foreach(var data in subResult.Data)
-                    {
-                        this.strQueue.Enqueue(subResult.Exchange + " " + data.ToString()); 
-                    }
-                    
-                }
-                else
-                {
-                    this.strQueue.Enqueue("ERROR");
-                }
-            }
-        }
-        async public Task<string> placeNewSpotOrder(string market,string baseCcy,string quoteCcy,SharedOrderSide side,SharedOrderType ordtype,decimal quantity,decimal price,SharedTimeInForce? timeinforce = null,string? clordId = null,ExchangeParameters? param = null)
-        {
-            SharedSymbol symbol = new SharedSymbol(TradingMode.Spot, baseCcy, quoteCcy);
-            SharedQuantity qty = new SharedQuantity();
-            qty.QuantityInBaseAsset = quantity;
-            PlaceSpotOrderRequest req = new PlaceSpotOrderRequest(symbol,side,ordtype,qty,price,timeinforce,clordId,param);
-
-            var result = await this._rest_client.PlaceSpotOrderAsync(market, req);
-            if(result.Success)
-            {
-                return result.Data.Id;
-            }
-            else
-            {
-                
-                return result.Error.ToString();
-            }
-        }
-        async public Task<string> placeCancelSpotOrder(string market,string baseCcy,string quoteCcy,string orderId,ExchangeParameters? param = null)
-        {
-            SharedSymbol symbol = new SharedSymbol(TradingMode.Spot, baseCcy, quoteCcy);
-            CancelOrderRequest req = new CancelOrderRequest(symbol, orderId, param);
-            var result = await this._rest_client.CancelSpotOrderAsync(market, req);
-            if (result.Success)
-            {
-                return result.Data.Id;
-            }
-            else
-            {
-                return result.Error.ToString();
-            }
-        }
-//Websocket
-        async public Task subscribeSpotOrderUpdates(IEnumerable<string>? markets)
-        {
-            SubscribeSpotOrderRequest request = new SubscribeSpotOrderRequest();
-            foreach(var subResult in await this._client.SubscribeToSpotOrderUpdatesAsync(request, LogOrderUpdates, markets))
-                Console.WriteLine($"{subResult.Exchange} subscribe spot order updates result: {subResult.Success} {subResult.Error}");
-        }
-        void LogOrderUpdates(ExchangeEvent<SharedSpotOrder[]> update)
-        {
-            DataSpotOrderUpdate obj;
-            foreach(var ord in update.Data)
-            {
-                while(!this.ordUpdateStack.TryPop(out obj))
-                {
-
-                }
-                obj.setSharedSpotOrder(ord,update.Exchange,update.DataTime);
-                this.ordUpdateQueue.Enqueue(obj);
-            }
-        }       
-        async public Task subscribeTrades(IEnumerable<string>? markets,string baseCcy,string quoteCcy)
-        {
-            var symbol = new SharedSymbol(TradingMode.Spot, baseCcy, quoteCcy);
-
-            // Subscribe to trade updates for the specified exchange
-            foreach (var subResult in await this._client.SubscribeToTradeUpdatesAsync(new SubscribeTradeRequest(symbol), LogTrades, markets))
-                Console.WriteLine($"{subResult.Exchange} subscribe trades result: {subResult.Success} {subResult.Error}");
-        }
-        void LogTrades(ExchangeEvent<SharedTrade[]> update)
-        {
-            DataTrade trd;
-            foreach(var item in update.Data)
-            {
-                while(!this.tradeStack.TryPop(out trd))
-                {
-
-                }
-                trd.setSharedTrade(item,update.Exchange,update.Symbol,update.DataTime);
-                this.tradeQueue.Enqueue(trd);
-            }
-        }
-        async public Task subscribeOrderBook(IEnumerable<string>? markets, string baseCcy, string quoteCcy)
-        {
-            var symbol = new SharedSymbol(TradingMode.Spot, baseCcy, quoteCcy);
-            var req = new SubscribeOrderBookRequest(symbol);
-            foreach (var subResult in await this._client.SubscribeToOrderBookUpdatesAsync(req, LogOrderBook, markets, default))
-            {
-                Console.WriteLine($"{subResult.Exchange} subscribe orderbook result: {subResult.Success} {subResult.Error}");
-            }
-                
-        }
-        void LogOrderBook(ExchangeEvent<SharedOrderBook> update)
-        {
-            //this.orderBookQueue.Enqueue(update);
-            DataOrderBook msg;
-            while (!this.ordBookStack.TryPop(out msg))
-            {
-
-            }
-            msg.setSharedOrderBook(update);
-            this.ordBookQueue.Enqueue(msg);
-        }
-        async public Task subscribeCoinbaseOrderBook(string baseCcy, string quoteCcy)
-        {
-            var subResult = await this.CoinbaseSocketClient.AdvancedTradeApi.SubscribeToOrderBookUpdatesAsync(baseCcy + "-" + quoteCcy, LogCoinbaseOrderBook);
-            Console.WriteLine($"Coinbase subscribe orderbook result: {subResult.Success} {subResult.Error}");
-        }
-        void LogCoinbaseOrderBook(DataEvent<Coinbase.Net.Objects.Models.CoinbaseOrderBookUpdate> update)
-        {
-            DataOrderBook msg;
-
-            while (!this.ordBookStack.TryPop(out msg))
-            {
-
-            }
-            msg.setCoinbaseOrderBook(update);
-            this.ordBookQueue.Enqueue(msg);
-
-        }
-        async public Task subscribeBybitOrderBook(string baseCcy, string quoteCcy)
-        {
-            var subResult = await this.BybitSocketClient.V5SpotApi.SubscribeToOrderbookUpdatesAsync(baseCcy + quoteCcy, 50, LogBybitOrderBook);
-            Console.WriteLine($"Bybit subscribe orderbook result: {subResult.Success} {subResult.Error}");
-        }
-        void LogBybitOrderBook(DataEvent<Bybit.Net.Objects.Models.V5.BybitOrderbook> update)
-        {
-            DataOrderBook msg;
-            while (!this.ordBookStack.TryPop(out msg))
-            {
-
-            }
-            msg.setBybitOrderBook(update);
-            this.ordBookQueue.Enqueue(msg);
         }
     }
 }

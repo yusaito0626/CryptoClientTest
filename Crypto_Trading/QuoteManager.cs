@@ -23,6 +23,8 @@ namespace Crypto_Trading
         private ConcurrentStack<DataTrade> tradeStack;
 
         public Action<string> addLog;
+
+        public const int NUM_OF_QUOTES = 5;
         QuoteManager() 
         {
             this.instruments = new Dictionary<string, Instrument>();

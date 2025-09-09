@@ -22,11 +22,15 @@ namespace Crypto_Trading
         public SortedDictionary<decimal, decimal> asks;
         public SortedDictionary<decimal, decimal> bids;
 
+        public ValueTuple<decimal, decimal> bestask;
+        public ValueTuple<decimal, decimal> bestbid;
         //Amount Weighted Best Ask/Bid +/- fee
         public ValueTuple<decimal, decimal> adjusted_bestask;
         public ValueTuple<decimal, decimal> adjusted_bestbid;
 
         public decimal last_price;
+        public decimal mid;
+        public decimal prev_mid;
 
         public decimal sell_quantity;
         public decimal buy_quantity;
@@ -55,6 +59,8 @@ namespace Crypto_Trading
             this.asks = new SortedDictionary<decimal, decimal>();
             this.bids = new SortedDictionary<decimal, decimal>();
 
+            this.bestask = new ValueTuple<decimal, decimal>(0, 0);
+            this.bestbid = new ValueTuple<decimal, decimal>(0, 0);
             //Amount Weighted Best Ask/Bid +/- fee
             this.adjusted_bestask = new ValueTuple<decimal, decimal>(0,0);
             this.adjusted_bestbid = new ValueTuple<decimal, decimal>(0,0);
@@ -232,6 +238,12 @@ namespace Crypto_Trading
                 this.adjusted_bestbid.Item1 = this.bids.Last().Key * (1 - this.taker_fee);
                 this.adjusted_bestbid.Item2 = this.bids.Last().Value;
             }
+            this.bestask.Item1 = this.asks.First().Key;
+            this.bestask.Item2 = this.asks.First().Value;
+            this.bestbid.Item1 = this.bids.Last().Key;
+            this.bestbid.Item2 = this.bids.Last().Value;
+            this.prev_mid = this.mid;
+            this.mid = (this.bestask.Item1 + this.bestbid.Item1) / 2;
         }
 
         public string ToString(string content = "")
