@@ -127,39 +127,79 @@ namespace Crypto_Clients
                 }
             }
         }
-        async public Task<string> placeNewSpotOrder(string market, string baseCcy, string quoteCcy, SharedOrderSide side, SharedOrderType ordtype, decimal quantity, decimal price, SharedTimeInForce? timeinforce = null, string? clordId = null, ExchangeParameters? param = null)
+        async public Task<DataSpotOrderUpdate?> placeNewSpotOrder(string market, string baseCcy, string quoteCcy, orderSide _side,orderType _ordtype, decimal quantity, decimal price, timeInForce? _timeinforce = null, string? clordId = null, ExchangeParameters? param = null)
         {
             SharedSymbol symbol = new SharedSymbol(TradingMode.Spot, baseCcy, quoteCcy);
             SharedQuantity qty = new SharedQuantity();
+            SharedOrderSide side = (SharedOrderSide)Enum.Parse(typeof(SharedOrderSide), _side.ToString());
+            SharedOrderType ordtype = (SharedOrderType)Enum.Parse(typeof(SharedOrderType),_ordtype.ToString());
+            SharedTimeInForce? timeinforce;
+            if(_timeinforce != null)
+            {
+                timeinforce = (SharedTimeInForce)Enum.Parse(typeof(SharedTimeInForce), _timeinforce.ToString());
+            }
+            else
+            {
+                timeinforce = null;
+            }
             qty.QuantityInBaseAsset = quantity;
-            PlaceSpotOrderRequest req = new PlaceSpotOrderRequest(symbol, side, ordtype, qty, price, timeinforce, clordId, param);
 
+            PlaceSpotOrderRequest req = new PlaceSpotOrderRequest(symbol, side, ordtype, qty, price, timeinforce, clordId, param);
+            
             var result = await this._rest_client.PlaceSpotOrderAsync(market, req);
             if (result.Success)
             {
-                return result.Data.Id;
+                DataSpotOrderUpdate ord;
+                while (!this.ordUpdateStack.TryPop(out ord))
+                {
+
+                }
+                ord.order_id = result.Data.Id;
+                ord.timestamp = DateTime.UtcNow;
+                ord.side = _side;
+                ord.order_price = price;
+                ord.order_quantity = quantity;
+                ord.market = market;
+                ord.symbol = symbol.SymbolName;
+                ord.filled_quantity = 0;
+                ord.order_type = _ordtype;
+                ord.status = orderStatus.WaitOpen;
+                return ord;
             }
             else
             {
                 this.addLog("[ERROR] New Order Failed.");
                 this.addLog(result.Error.ToString());
-                return "";
+                return null;
             }
         }
-        async public Task<string> placeCancelSpotOrder(string market, string baseCcy, string quoteCcy, string orderId, ExchangeParameters? param = null)
+        async public Task<DataSpotOrderUpdate?> placeCancelSpotOrder(string market, string baseCcy, string quoteCcy, string orderId, ExchangeParameters? param = null)
         {
             SharedSymbol symbol = new SharedSymbol(TradingMode.Spot, baseCcy, quoteCcy);
             CancelOrderRequest req = new CancelOrderRequest(symbol, orderId, param);
             var result = await this._rest_client.CancelSpotOrderAsync(market, req);
             if (result.Success)
             {
-                return result.Data.Id;
+                DataSpotOrderUpdate ord;
+                while (!this.ordUpdateStack.TryPop(out ord))
+                {
+
+                }
+                ord.order_id = result.Data.Id;
+                ord.timestamp = DateTime.UtcNow;
+                ord.order_price = -1;
+                ord.order_quantity = 0;
+                ord.market = market;
+                ord.symbol = symbol.SymbolName;
+                ord.filled_quantity = 0;
+                ord.status = orderStatus.WaitCancel;
+                return ord;
             }
             else
             {
                 this.addLog("[ERROR] Cancel Order Failed.");
                 this.addLog(result.Error.ToString());
-                return "";
+                return null;
             }
         }
         //Websocket
@@ -388,11 +428,10 @@ namespace Crypto_Clients
         public string market;
         public string order_id;
         public string symbol;
-        public SharedOrderType order_type;
-
-        public SharedOrderSide side;
-        public SharedOrderStatus status;
-        public SharedTimeInForce? time_in_force;
+        public orderType order_type;
+        public orderSide side;
+        public orderStatus status;
+        public timeInForce time_in_force;
 
         public decimal order_quantity;
         public decimal filled_quantity;
@@ -417,10 +456,10 @@ namespace Crypto_Clients
             this.market = "";
             this.order_id = "";
             this.symbol = "";
-            this.order_type = SharedOrderType.Other;
-            this.side = SharedOrderSide.Buy;
-            this.status = SharedOrderStatus.Canceled;
-            this.time_in_force = null;
+            this.order_type = orderType.NONE;
+            this.side = orderSide.NONE;
+            this.status = orderStatus.NONE;
+            this.time_in_force = timeInForce.NONE;
             this.order_quantity = 0;
             this.filled_quantity = 0;
             this.order_price = -1;
@@ -437,14 +476,15 @@ namespace Crypto_Clients
 
         public void setSharedSpotOrder(SharedSpotOrder update, string market,DateTime? timestamp)
         {
-            this.timestamp = timestamp;
+            this.timestamp = DateTime.UtcNow;
             this.market = market;
             this.order_id = update.OrderId;
             this.symbol = update.Symbol;
-            this.order_type = update.OrderType;
-            this.side = update.Side;
-            this.status = update.Status;
-            this.time_in_force = update.TimeInForce;
+            this.order_type = (orderType)Enum.Parse(typeof(orderType), update.OrderType.ToString());
+            this.side = (orderSide)Enum.Parse(typeof(orderSide), update.Side.ToString());
+            this.status = (orderStatus)Enum.Parse(typeof(orderStatus), update.Status.ToString());
+            this.time_in_force = (timeInForce)Enum.Parse(typeof(timeInForce), update.TimeInForce.ToString());
+            
             if(update.OrderQuantity != null)
             {
                 if (update.OrderQuantity.QuantityInBaseAsset != null)
@@ -560,10 +600,10 @@ namespace Crypto_Clients
             this.market = "";
             this.order_id = "";
             this.symbol = "";
-            this.order_type = SharedOrderType.Other;
-            this.side = SharedOrderSide.Buy;
-            this.status = SharedOrderStatus.Canceled;
-            this.time_in_force = null;
+            this.order_type = orderType.NONE;
+            this.side = orderSide.NONE;
+            this.status = orderStatus.NONE;
+            this.time_in_force = timeInForce.NONE;
             this.order_quantity = 0;
             this.filled_quantity = 0;
             this.order_price = -1;
@@ -650,5 +690,38 @@ namespace Crypto_Clients
             this.price = 0;
             this.quantity = 0;
         }
+    }
+
+    public enum orderType
+    {
+        NONE = -1,
+        Limit = 1,
+        LimitMaker = 2,
+        Market = 3,
+        Other = 4
+    }
+    public enum orderSide
+    {
+        NONE = -1,
+        Buy = 1,
+        Sell = 2
+    }
+    public enum orderStatus
+    {
+        NONE = -1,
+        Open = 1,
+        Filled = 2,
+        PartialFill = 3,
+        Canceled = 4,
+        WaitOpen = 5,
+        WaitMod = 6,
+        WaitCancel = 7
+    }
+    public enum timeInForce
+    {
+        NONE = -1,
+        GoodTillCanceled = 1,
+        ImmediateOrCancel = 2,
+        FillOrKill = 3
     }
 }

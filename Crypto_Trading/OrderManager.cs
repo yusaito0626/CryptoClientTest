@@ -1,4 +1,5 @@
-﻿using Crypto_Clients;
+﻿using Coinbase.Net.Objects.Models;
+using Crypto_Clients;
 using CryptoClients.Net;
 using CryptoClients.Net.Enums;
 using CryptoExchange.Net.Objects;
@@ -28,19 +29,27 @@ namespace Crypto_Trading
         public Dictionary<string, modifingOrd> modifingOrders;
         public ConcurrentStack<modifingOrd> modifingOrdStack;
 
+        public ConcurrentQueue<string> ordLogQueue;
+        public Thread ordLoggingTh;
+
         const int MOD_STACK_SIZE = 100;
 
         Dictionary<string, Instrument> Instruments;
 
         public Action<string> addLog;
 
+        public bool aborting;
+
         private OrderManager() 
         {
+            this.aborting = false;
             this.orders = new Dictionary<string, DataSpotOrderUpdate>();
             this.live_orders = new Dictionary<string, DataSpotOrderUpdate>();
 
             this.modifingOrders = new Dictionary<string, modifingOrd>();
             this.modifingOrdStack = new ConcurrentStack<modifingOrd>();
+
+            this.ordLogQueue = new ConcurrentQueue<string>();
 
             int i = 0;
             while (i < MOD_STACK_SIZE)
@@ -50,6 +59,12 @@ namespace Crypto_Trading
             }
 
             this.addLog = Console.WriteLine;
+            string ordlogpath = "c:\\users\\yusai";
+            this.ordLoggingTh = new Thread(() =>
+            {
+                this.ordLogging(ordlogpath);
+            });
+            this.ordLoggingTh.Start();
         }
         public void setOrderClient(Crypto_Clients.Crypto_Clients cl)
         {
@@ -60,32 +75,34 @@ namespace Crypto_Trading
             this.Instruments = dic;
         }
 
-        async public Task<string> placeNewSpotOrder(Instrument ins, SharedOrderSide side, SharedOrderType ordtype, decimal quantity, decimal price, SharedTimeInForce? timeinforce = null)
+        async public Task<DataSpotOrderUpdate?> placeNewSpotOrder(Instrument ins, orderSide side, orderType ordtype, decimal quantity, decimal price, timeInForce? timeinforce = null)
         {
-            string output = await this.ord_client.placeNewSpotOrder(ins.market, ins.baseCcy, ins.quoteCcy, side, ordtype, quantity, price, timeinforce);
+            DataSpotOrderUpdate? output = await this.ord_client.placeNewSpotOrder(ins.market, ins.baseCcy, ins.quoteCcy, side, ordtype, quantity, price, timeinforce);
+            if(output != null)
+            {
+                this.ord_client.ordUpdateQueue.Enqueue(output);
+            }
             return output;
         }
-        async public Task<string> placeCancelSpotOrder(Instrument ins, string orderId)
+        async public Task<DataSpotOrderUpdate?> placeCancelSpotOrder(Instrument ins, string orderId)
         {
-            string output = await this.ord_client.placeCancelSpotOrder(ins.market, ins.baseCcy, ins.quoteCcy, orderId);
+            DataSpotOrderUpdate? output = await this.ord_client.placeCancelSpotOrder(ins.market, ins.baseCcy, ins.quoteCcy, orderId);
+            if (output != null)
+            {
+                this.ord_client.ordUpdateQueue.Enqueue(output);
+            }
             return output;
         }
-        async public Task<string> placeModSpotOrder(Instrument ins, string orderId, decimal quantity, decimal price,bool waitCancel)
+        async public Task<DataSpotOrderUpdate?> placeModSpotOrder(Instrument ins, string orderId, decimal quantity, decimal price,bool waitCancel)
         {
             DataSpotOrderUpdate ord;
-            SharedOrderSide side;
-            SharedOrderType ordtype;
-            SharedTimeInForce? timeinforce;
             modifingOrd mod;
-            string ordId;
+            DataSpotOrderUpdate? output;
             if (waitCancel)
             {
                 if (this.live_orders.ContainsKey(orderId))
                 {
                     ord = this.live_orders[orderId];
-                    side = ord.side;
-                    ordtype = ord.order_type;
-                    timeinforce = ord.time_in_force;
                     while (!this.modifingOrdStack.TryPop(out mod))
                     {
 
@@ -93,15 +110,19 @@ namespace Crypto_Trading
                     mod.ordId = orderId;
                     mod.newPrice = price;
                     mod.newQuantity = quantity;
+                    mod.side = ord.side;
+                    mod.order_type = ord.order_type;
+                    mod.time_in_force = ord.time_in_force;
                     mod.ins = ins;
                     this.modifingOrders[orderId] = mod;
-                    ordId = await this.placeCancelSpotOrder(ins, orderId);
+                    output = await this.placeCancelSpotOrder(ins, orderId);
 
-                    return ordId;
+                    return output;
                 }
                 else
                 {
-                    return "";
+                    this.addLog("[ERROR] Order not found. Id:" + orderId);
+                    return null;
                 }
             }
             else
@@ -109,16 +130,14 @@ namespace Crypto_Trading
                 if (this.live_orders.ContainsKey(orderId))
                 {
                     ord = this.live_orders[orderId];
-                    side = ord.side;
-                    ordtype = ord.order_type;
-                    timeinforce = ord.time_in_force;
                     this.placeCancelSpotOrder(ins, orderId);
-                    ordId = await this.placeNewSpotOrder(ins, side, ordtype, quantity, price, timeinforce);
-                    return ordId;
+                    output = await this.placeNewSpotOrder(ins, ord.side, ord.order_type, quantity, price, ord.time_in_force);
+                    return output;
                 }
                 else
                 {
-                    return "";
+                    this.addLog("[ERROR] Order not found. Id:" + orderId);
+                    return null;
                 }
             }
         }
@@ -135,41 +154,84 @@ namespace Crypto_Trading
             {
                 if(this.ord_client.ordUpdateQueue.TryDequeue(out ord))
                 {
-
-
-                    if (this.orders.ContainsKey(ord.order_id))
+                    this.ordLogQueue.Enqueue(ord.ToString());
+                    if (ord.status == orderStatus.WaitOpen)
                     {
-                        prevord = this.orders[ord.order_id];
-                        this.orders[ord.order_id] = ord;
-                        if(ord.status == SharedOrderStatus.Open)
+                        if(!this.orders.ContainsKey(ord.order_id))
                         {
-                            this.live_orders[ord.order_id] = ord;
+
+                            this.orders[ord.order_id] = ord;
                         }
-                        else if(this.live_orders.ContainsKey(ord.order_id))
+                        else
                         {
-                            this.live_orders.Remove(ord.order_id);
+                            ord.init();
+                            this.ord_client.ordUpdateStack.Push(ord);
                         }
-                        if(this.modifingOrders.ContainsKey(ord.order_id))
+                    }
+                    else if(ord.status == orderStatus.WaitCancel)
+                    {
+                        if(this.orders.ContainsKey(ord.order_id))
                         {
-                            mod = this.modifingOrders[ord.order_id];
-                            
-                            if(ord.status == SharedOrderStatus.Canceled)
+                            prevord = this.orders[ord.order_id];
+                            if(prevord.status != orderStatus.Canceled)
                             {
-                                this.placeNewSpotOrder(mod.ins, prevord.side, prevord.order_type, mod.newQuantity, mod.newPrice);
+                                this.orders[ord.order_id] = ord;
+                                if (this.live_orders.ContainsKey(ord.order_id))
+                                {
+                                    this.live_orders[ord.order_id] = ord;
+                                }
                             }
-                            this.modifingOrders.Remove(ord.order_id);
-                            mod.init();
-                            this.modifingOrdStack.Push(mod);
+                            prevord.init();
+                            this.ord_client.ordUpdateStack.Push(prevord);
                         }
-                        prevord.init();
-                        this.ord_client.ordUpdateStack.Push(prevord);
+                        else
+                        {
+                            ord.init();
+                            this.ord_client.ordUpdateStack.Push(ord);
+                        }
                     }
                     else
                     {
-                        this.orders[ord.order_id] = ord;
-                        if (ord.status == SharedOrderStatus.Open)
+                        if (this.orders.ContainsKey(ord.order_id))
                         {
-                            this.live_orders[ord.order_id] = ord;
+                            prevord = this.orders[ord.order_id];
+                            this.orders[ord.order_id] = ord;
+                            if (ord.status == orderStatus.Open)
+                            {
+                                this.live_orders[ord.order_id] = ord;
+                            }
+                            else if (this.live_orders.ContainsKey(ord.order_id))
+                            {
+                                this.live_orders.Remove(ord.order_id);
+                            }
+                            if (this.modifingOrders.ContainsKey(ord.order_id))
+                            {
+                                mod = this.modifingOrders[ord.order_id];
+
+                                if (ord.status == orderStatus.Canceled)
+                                {
+                                    this.placeNewSpotOrder(mod.ins, mod.side, mod.order_type, mod.newQuantity, mod.newPrice, mod.time_in_force);
+                                    this.modifingOrders.Remove(ord.order_id);
+                                    mod.init();
+                                    this.modifingOrdStack.Push(mod);
+                                }
+                                else if (ord.status == orderStatus.Filled)
+                                {
+                                    this.modifingOrders.Remove(ord.order_id);
+                                    mod.init();
+                                    this.modifingOrdStack.Push(mod);
+                                }
+                            }
+                            prevord.init();
+                            this.ord_client.ordUpdateStack.Push(prevord);
+                        }
+                        else
+                        {
+                            this.orders[ord.order_id] = ord;
+                            if (ord.status == orderStatus.Open)
+                            {
+                                this.live_orders[ord.order_id] = ord;
+                            }
                         }
                     }
                     i = 0;
@@ -186,6 +248,50 @@ namespace Crypto_Trading
             }
 
             this.addLog("updateOrders exited");
+        }
+
+        private void ordLogging(string logPath)
+        {
+            string filename = logPath + "\\orderlog_" + DateTime.UtcNow.ToString("yyyy-MM-dd_HHmmss") + ".csv";
+            using (FileStream f = new FileStream(filename, FileMode.Create, FileAccess.Write))
+            {
+                using (StreamWriter s = new StreamWriter(f))
+                {
+                    int i = 0;
+                    string line;
+                    while (true)
+                    {
+                        if (this.ordLogQueue.TryDequeue(out line))
+                        {
+                            s.WriteLine(line);
+                            ++i;
+                        }
+                        else
+                        {
+                            ++i;
+                            if (i > 100000)
+                            {
+                                s.Flush();
+                                i = 0;
+                            }
+                        }
+                        if (aborting)
+                        {
+                            while (this.ordLogQueue.Count > 0)
+                            {
+                                if (this.ordLogQueue.TryDequeue(out line))
+                                {
+                                    s.WriteLine(line);
+                                }
+                            }
+                            s.Flush();
+                            s.Close();
+                            break;
+                        }
+                    }
+                }
+            }
+            this.aborting = false;
         }
 
 
@@ -208,6 +314,9 @@ namespace Crypto_Trading
     public class modifingOrd
     {
         public string ordId;
+        public orderSide side;
+        public orderType order_type;
+        public timeInForce time_in_force;
         public decimal newPrice;
         public decimal newQuantity;
         public Instrument? ins;
@@ -216,6 +325,9 @@ namespace Crypto_Trading
         public void init()
         {
             this.ordId = "";
+            this.side = orderSide.NONE;
+            this.order_type = orderType.NONE;
+            this.time_in_force = timeInForce.NONE;
             this.newPrice = 0;
             this.newQuantity = 0;
             this.ins = null;

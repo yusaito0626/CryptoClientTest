@@ -95,54 +95,6 @@ namespace Crypto_GUI
             {
                 this.Invoke(this._update);
             }
-            string filepath = "C:\\Users\\yusai\\log.csv";
-            string symbol_market = "";
-            Instrument ins;
-            using (FileStream f = new FileStream(filepath, FileMode.Create, FileAccess.Write))
-            {
-                using (StreamWriter s = new StreamWriter(f))
-                {
-                    //while (true)
-                    //{
-                    //    DataOrderBook msg;
-                    //    string strMsg;
-                    //    string bestbidask;
-                    //    while (cl.ordBookQueue.TryDequeue(out msg))
-                    //    {
-                    //        symbol_market = msg.symbol.ToUpper() + "@" + msg.market;
-                    //        if (instruments.ContainsKey(symbol_market))
-                    //        {
-                    //            ins = instruments[symbol_market];
-                    //            ins.updateQuotes(msg);
-                    //            strMsg = ins.ToString("Quote5");
-                    //            if (ins.market == Exchange.Bybit)
-                    //            {
-                    //                bestbidask = "Ask:" + ins.adjusted_bestask.Item1.ToString("N2") + " Bid:" + ins.adjusted_bestbid.Item1.ToString("N2") + "\n";
-                    //                bestbidask += "Spread:" + (ins.adjusted_bestask.Item1 - ins.adjusted_bestbid.Item1).ToString("N2");
-                    //            }
-                    //            else if (ins.market == Exchange.Coinbase)
-                    //            {
-                    //                this.BeginInvoke(updatetext1, strMsg);
-                    //            }
-                    //        }
-                    //        else
-                    //        {
-                    //            strMsg = "[ERROR] The symbol market did not found. " + symbol_market;
-                    //        }
-                    //        Console.WriteLine(strMsg);
-                    //        s.WriteLine(strMsg);
-                    //        //Console.WriteLine(msg.ToString());
-                    //        //s.WriteLine(msg.ToString());
-                    //        cl.pushToOrderBookStack(msg);
-                    //    }
-                    //    while (cl.strQueue.TryDequeue(out strMsg))
-                    //    {
-                    //        Console.WriteLine(strMsg);
-                    //        s.WriteLine(strMsg);
-                    //    }
-                    //}
-                }
-            }
         }
 
         private void _update()
@@ -231,6 +183,18 @@ namespace Crypto_GUI
             }
         }
 
+        private void comboSymbols_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (this.qManager.instruments.ContainsKey(this.comboSymbols.Text))
+            {
+                this.selected_ins = this.qManager.instruments[this.comboSymbols.Text];
+            }
+            else
+            {
+                this.selected_ins = null;
+            }
+        }
+
         private async void button1_Click(object sender, EventArgs e)
         {
             foreach (var ins in this.qManager.instruments.Values)
@@ -259,40 +223,60 @@ namespace Crypto_GUI
             this.orderUpdateTh.Start();
         }
 
-        private void comboSymbols_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if (this.qManager.instruments.ContainsKey(this.comboSymbols.Text))
-            {
-                this.selected_ins = this.qManager.instruments[this.comboSymbols.Text];
-            }
-            else
-            {
-                this.selected_ins = null;
-            }
-        }
-
         private async void button2_Click(object sender, EventArgs e)
         {
-            string ordId;
+            DataSpotOrderUpdate ord;
             Instrument ins = this.qManager.instruments["ETHUSDT@Bybit"];
            
             this.addLog("Testing orderManager");
             Thread.Sleep(3000);
             this.addLog("Placing a new order");
-            ordId = await this.oManager.placeNewSpotOrder(ins, CryptoExchange.Net.SharedApis.SharedOrderSide.Buy, CryptoExchange.Net.SharedApis.SharedOrderType.Limit, (decimal)0.001, 4000);
-            this.addLog(ordId);
+            string ordid;
+            ord = await this.oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Limit, (decimal)0.001, 4000);
+            if (ord != null)
+            {
+                ordid = ord.order_id;
+                this.addLog(ord.ToString());
+            }
+            else
+            {
+                this.addLog("Failed to place a new order");
+                return;
+            }
             Thread.Sleep(1000);
             this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
             Thread.Sleep(3000);
             this.addLog("modifing a order");
-            ordId = await this.oManager.placeModSpotOrder(ins, ordId, (decimal)0.001, 3900, true);
-            this.addLog(ordId);
+            ord = await this.oManager.placeModSpotOrder(ins, ordid, (decimal)0.001, 3900, true);
+            if (ord != null)
+            {
+                ordid = ord.order_id;
+                this.addLog(ord.ToString());
+            }
+            else
+            {
+                this.addLog("Failed to place a mod order");
+                return;
+            }
             Thread.Sleep(1000);
             this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
-            this.addLog("Cancelling a order");
-            ordId = this.oManager.live_orders.Values.First().order_id;
-            ordId = await this.oManager.placeCancelSpotOrder(ins, ordId);
-            this.addLog(ordId);
+            if (this.oManager.live_orders.Count > 0)
+            {
+                this.addLog("Cancelling a order");
+                ord = this.oManager.live_orders.Values.First();
+                this.addLog(ord.ToString());
+                ord = await this.oManager.placeCancelSpotOrder(ins, ord.order_id);
+                if (ord != null)
+                {
+                    ordid = ord.order_id;
+                    this.addLog(ord.ToString());
+                }
+                else
+                {
+                    this.addLog("Failed to place a can order");
+                    return;
+                }
+            }
             Thread.Sleep(1000);
             this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
         }
