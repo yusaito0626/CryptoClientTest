@@ -37,6 +37,13 @@ namespace Crypto_Trading
         public decimal sell_notional;
         public decimal buy_notional;
 
+        public decimal my_sell_quantity;
+        public decimal my_buy_quantity;
+        public decimal my_sell_notional;
+        public decimal my_buy_notional;
+
+        public decimal unknown_fee;
+
         public Balance baseBalance;
         public Balance quoteBalance;
 
@@ -45,6 +52,8 @@ namespace Crypto_Trading
 
         public decimal price_unit;
         public decimal quantity_unit;
+        public string price_scale;
+        public string quantity_scale;
 
         public decimal ToBsize;
 
@@ -73,6 +82,13 @@ namespace Crypto_Trading
             this.buy_quantity = 0;
             this.sell_notional = 0;
             this.buy_notional = 0;
+
+            this.my_sell_quantity = 0;
+            this.my_buy_quantity = 0;
+            this.my_sell_notional = 0;
+            this.my_buy_notional = 0;
+
+            this.unknown_fee = 0;
 
             this.baseBalance = new Balance();
             this.quoteBalance = new Balance();
@@ -107,12 +123,22 @@ namespace Crypto_Trading
                 }
                 i++;
             }
+
+            this.price_scale = Instrument.GetDecimalScale(this.price_unit).ToString();
+            this.quantity_scale = Instrument.GetDecimalScale(this.quantity_unit).ToString();
+
             this.master_symbol = this.baseCcy + this.quoteCcy;
             this.baseBalance.market = this.market;
             this.baseBalance.ccy = this.baseCcy;
             this.quoteBalance.market = this.market;
             this.quoteBalance.ccy = this.quoteCcy;
             this.setSymbolMarket(symbol, market);
+        }
+        static int GetDecimalScale(decimal value)
+        {
+            int[] bits = decimal.GetBits(value);
+            byte scale = (byte)((bits[3] >> 16) & 0x7F);
+            return scale;
         }
 
         public void setSymbolMarket(string symbol, string market)
@@ -255,7 +281,46 @@ namespace Crypto_Trading
             this.prev_mid = this.mid;
             this.mid = (this.bestask.Item1 + this.bestbid.Item1) / 2;
         }
+        public void updateFills(DataSpotOrderUpdate prev_ord,DataSpotOrderUpdate new_ord)
+        {
+            decimal filledQuantity = new_ord.filled_quantity - prev_ord.filled_quantity;
+            decimal filledPrice = (new_ord.filled_quantity * new_ord.average_price - prev_ord.filled_quantity * prev_ord.average_price) / filledQuantity;
+            decimal fee = new_ord.fee - prev_ord.fee;
 
+            if(filledQuantity == 0)
+            {
+                filledQuantity = new_ord.filled_quantity;
+                filledPrice = new_ord.average_price;
+                fee = new_ord.fee;
+            }
+
+            if(new_ord.side == orderSide.Sell)
+            {
+                this.my_sell_quantity += filledQuantity;
+                this.my_sell_notional += filledQuantity * filledPrice;
+                filledQuantity *= -1;
+            }
+            else
+            {
+                this.my_buy_quantity += filledQuantity;
+                this.my_buy_notional += filledQuantity * filledPrice;
+            }
+            this.baseBalance.balance += filledQuantity;
+            this.quoteBalance.balance -= filledQuantity * filledPrice;
+
+            if(new_ord.fee_asset == this.baseCcy)
+            {
+                this.baseBalance.balance -= fee;
+            }
+            else if(new_ord.fee_asset == this.quoteCcy)
+            {
+                this.quoteBalance.balance -= fee;
+            }
+            else
+            {
+                this.unknown_fee += fee;
+            }
+        }
         public string ToString(string content = "")
         {
             int desired = 1;

@@ -1,4 +1,5 @@
 ﻿using Crypto_Clients;
+using CryptoExchange.Net;
 using CryptoExchange.Net.SharedApis;
 using System;
 using System.Collections.Concurrent;
@@ -16,6 +17,7 @@ namespace Crypto_Trading
     public class QuoteManager
     {
         public Dictionary<string, Instrument> instruments;
+        public Dictionary<string, Instrument> ins_bymaster;
         public Dictionary<string, Balance> balances;
 
         public List<string> markets;
@@ -26,12 +28,15 @@ namespace Crypto_Trading
         public ConcurrentQueue<DataTrade> tradeQueue;
         private ConcurrentStack<DataTrade> tradeStack;
 
+        public Strategy? stg;
+
         public Action<string> addLog;
 
         public const int NUM_OF_QUOTES = 5;
         QuoteManager() 
         {
             this.instruments = new Dictionary<string, Instrument>();
+            this.ins_bymaster = new Dictionary<string, Instrument>();
             this.balances = new Dictionary<string, Balance>();
             this.markets = new List<string>(); 
             this.addLog = Console.WriteLine;
@@ -60,6 +65,7 @@ namespace Crypto_Trading
                         ins = new Instrument();
                         ins.initialize(line);
                         this.instruments[ins.symbol_market] = ins;
+                        this.ins_bymaster[ins.master_symbol + "@" + ins.market] = ins;
                         if(!this.markets.Contains(ins.market))
                         {
                             this.markets.Add(ins.market);
@@ -121,8 +127,37 @@ namespace Crypto_Trading
             }
             return output;
         }
+        public bool setFees(ExchangeWebResult<SharedFee>[] results,string master_symbol)
+        {
+            bool output = true;
+            string key;
+            Instrument ins;
+            foreach(var subResult in results)
+            {
+                if(subResult.Success)
+                {
+                    key = master_symbol + "@" + subResult.Exchange;
+                    if(this.ins_bymaster.ContainsKey(key))
+                    {
+                        ins = this.ins_bymaster[key];
+                        ins.taker_fee = subResult.Data.TakerFee / 100;
+                        ins.maker_fee = subResult.Data.MakerFee / 100;
+                    }
+                    else
+                    {
+                        this.addLog("[WARNING] Unknown Symbol.  " + key);
+                    }
+                }
+                else
+                {
+                    this.addLog("[ERROR] Failed to receive fee information.  Exchange:" + subResult.Exchange);
+                    output = false;
+                }
+            }
+            return output;
+        }
 
-        public void updateQuotes()
+        public async void updateQuotes()
         {
             int i = 0;
             Instrument ins;
@@ -137,7 +172,10 @@ namespace Crypto_Trading
                     {
                         ins = instruments[symbol_market];
                         ins.updateQuotes(msg);
-
+                        if(symbol_market == this.stg.taker.symbol_market)
+                        {
+                            await this.stg.updateOrders();
+                        }
                     }
                     else
                     {

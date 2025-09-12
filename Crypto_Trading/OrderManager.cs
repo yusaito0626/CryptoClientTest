@@ -80,6 +80,7 @@ namespace Crypto_Trading
             DataSpotOrderUpdate? output = await this.ord_client.placeNewSpotOrder(ins.market, ins.baseCcy, ins.quoteCcy, side, ordtype, quantity, price, timeinforce);
             if(output != null)
             {
+                output.symbol_market = ins.symbol_market;
                 this.ord_client.ordUpdateQueue.Enqueue(output);
             }
             return output;
@@ -89,6 +90,7 @@ namespace Crypto_Trading
             DataSpotOrderUpdate? output = await this.ord_client.placeCancelSpotOrder(ins.market, ins.baseCcy, ins.quoteCcy, orderId);
             if (output != null)
             {
+                output.symbol_market = ins.symbol_market;
                 this.ord_client.ordUpdateQueue.Enqueue(output);
             }
             return output;
@@ -144,7 +146,6 @@ namespace Crypto_Trading
 
         public void updateOrders()
         {
-            this.addLog("updateOrders called");
             int i = 0;
             DataSpotOrderUpdate ord;
             DataSpotOrderUpdate prevord;
@@ -168,12 +169,16 @@ namespace Crypto_Trading
                             this.ord_client.ordUpdateStack.Push(ord);
                         }
                     }
-                    else if(ord.status == orderStatus.WaitCancel)
+                    else if(ord.status == orderStatus.WaitMod)
                     {
-                        if(this.orders.ContainsKey(ord.order_id))
+                        //Undefined
+                    }
+                    else if (ord.status == orderStatus.WaitCancel)
+                    {
+                        if (this.orders.ContainsKey(ord.order_id))
                         {
                             prevord = this.orders[ord.order_id];
-                            if(prevord.status != orderStatus.Canceled)
+                            if (prevord.status != orderStatus.Canceled)
                             {
                                 this.orders[ord.order_id] = ord;
                                 if (this.live_orders.ContainsKey(ord.order_id))
@@ -222,6 +227,12 @@ namespace Crypto_Trading
                                     this.modifingOrdStack.Push(mod);
                                 }
                             }
+                            decimal filledQuantity = ord.filled_quantity - prevord.filled_quantity;
+                            if(filledQuantity > 0)
+                            {
+                                ins = this.Instruments[ord.symbol_market];
+                                ins.updateFills(prevord, ord);
+                            }
                             prevord.init();
                             this.ord_client.ordUpdateStack.Push(prevord);
                         }
@@ -231,6 +242,11 @@ namespace Crypto_Trading
                             if (ord.status == orderStatus.Open)
                             {
                                 this.live_orders[ord.order_id] = ord;
+                            }
+                            if(ord.filled_quantity > 0)
+                            {
+                                ins = this.Instruments[ord.symbol_market];
+                                ins.updateFills(ord, ord);
                             }
                         }
                     }

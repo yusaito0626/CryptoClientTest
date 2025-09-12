@@ -57,7 +57,7 @@ namespace Crypto_Clients
             this.tradeStack = new ConcurrentStack<DataTrade>();
 
             this.strQueue = new ConcurrentQueue<string>();
-
+            
             this.addLog = Console.WriteLine;
 
             int i = 0;
@@ -112,6 +112,12 @@ namespace Crypto_Clients
         {
             GetBalancesRequest req = new GetBalancesRequest(TradingMode.Spot);
             return await this._rest_client.GetBalancesAsync(req, markets);
+        }
+        async public Task<ExchangeWebResult<SharedFee>[]> getFees(IEnumerable<string>? markets,string baseCcy,string quoteCcy)
+        {
+            SharedSymbol symbol = new SharedSymbol(TradingMode.Spot, baseCcy, quoteCcy);
+            GetFeeRequest req = new GetFeeRequest(symbol);
+            return await this._rest_client.GetFeesAsync(req, markets);
         }
         async public Task<DataSpotOrderUpdate?> placeNewSpotOrder(string market, string baseCcy, string quoteCcy, orderSide _side,orderType _ordtype, decimal quantity, decimal price, timeInForce? _timeinforce = null, string? clordId = null, ExchangeParameters? param = null)
         {
@@ -411,6 +417,7 @@ namespace Crypto_Clients
     public class DataSpotOrderUpdate
     {
         public DateTime? timestamp;
+        public string symbol_market;
         public string market;
         public string order_id;
         public string symbol;
@@ -439,6 +446,7 @@ namespace Crypto_Clients
         public DataSpotOrderUpdate()
         {
             this.timestamp = null;
+            this.symbol_market = "";
             this.market = "";
             this.order_id = "";
             this.symbol = "";
@@ -466,6 +474,7 @@ namespace Crypto_Clients
             this.market = market;
             this.order_id = update.OrderId;
             this.symbol = update.Symbol;
+            this.symbol_market = update.Symbol + "@" + market;
             this.order_type = (orderType)Enum.Parse(typeof(orderType), update.OrderType.ToString());
             this.side = (orderSide)Enum.Parse(typeof(orderSide), update.Side.ToString());
             this.status = (orderStatus)Enum.Parse(typeof(orderStatus), update.Status.ToString());
@@ -583,6 +592,7 @@ namespace Crypto_Clients
         public void init()
         {
             this.timestamp = null;
+            this.symbol_market = "";
             this.market = "";
             this.order_id = "";
             this.symbol = "";
