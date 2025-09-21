@@ -25,6 +25,9 @@ namespace Crypto_GUI
         System.Threading.Thread quoteupdateTh;
         System.Threading.Thread tradeupdateTh;
         System.Threading.Thread orderUpdateTh;
+        System.Threading.Thread bitBankTh;
+
+        StreamWriter logFile;
 
         Font font_gridView;
         Font font_gridView_Bold;
@@ -34,6 +37,8 @@ namespace Crypto_GUI
 
             this.logQueue = new ConcurrentQueue<string>();
             this.filledOrderQueue = new ConcurrentQueue<string>();
+
+            this.logFile = new StreamWriter(new FileStream("C:\\Users\\yusai\\Crypto.log", FileMode.Create));
 
             this.qManager.addLog = this.addLog;
             this.oManager.addLog = this.addLog;
@@ -83,7 +88,7 @@ namespace Crypto_GUI
 
             int i = 0;
             int numOfRow = QuoteManager.NUM_OF_QUOTES * 2 + 1;
-            while(i < numOfRow)
+            while (i < numOfRow)
             {
                 this.gridView_Taker.Rows.Add();
                 this.gridView_Maker.Rows.Add();
@@ -91,7 +96,7 @@ namespace Crypto_GUI
                 ++i;
             }
 
-            this.font_gridView = new("Calibri",9);
+            this.font_gridView = new("Calibri", 9);
             this.font_gridView_Bold = new Font(this.font_gridView, FontStyle.Bold);
 
             updatingTh = new Thread(update);
@@ -108,6 +113,8 @@ namespace Crypto_GUI
             while (this.logQueue.TryDequeue(out line))
             {
                 this.textBoxMainLog.Text += line;
+                this.logFile.WriteLine(line);
+                this.logFile.Flush();
             }
         }
 
@@ -124,6 +131,9 @@ namespace Crypto_GUI
         {
             switch (this.tabControl.SelectedTab.Text)
             {
+                case "Main":
+                    this.update_main();
+                    break;
                 case "Instrument":
                     this.update_Instrument();
                     break;
@@ -135,7 +145,29 @@ namespace Crypto_GUI
             }
             this.updateLog();
         }
+        private void update_main()
+        {
+            decimal volume = 0;
+            decimal tradingPL = 0;
+            decimal fee = 0;
+            decimal total = 0;
 
+            if(this.stg.maker != null && this.stg.taker != null)
+            {
+                volume = this.stg.maker.my_buy_notional + this.stg.taker.my_sell_notional;
+                tradingPL = (this.stg.taker.my_sell_notional - this.stg.taker.my_sell_quantity * this.stg.taker.mid) + (this.stg.taker.my_buy_quantity * this.stg.taker.mid - this.stg.taker.my_buy_notional);
+                tradingPL += (this.stg.maker.my_sell_notional - this.stg.maker.my_sell_quantity * this.stg.maker.mid) + (this.stg.maker.my_buy_quantity * this.stg.maker.mid - this.stg.maker.my_buy_notional);
+                fee = this.stg.taker.total_fee + this.stg.maker.total_fee;
+                volume *= 1000;
+                tradingPL *= 1000;
+                fee *= 1000;                            
+                total = tradingPL - fee;
+                this.gridView_PnL.Rows[0].Cells[0].Value = volume.ToString("N2");
+                this.gridView_PnL.Rows[0].Cells[1].Value = tradingPL.ToString("N2");
+                this.gridView_PnL.Rows[0].Cells[2].Value = fee.ToString("N2");
+                this.gridView_PnL.Rows[0].Cells[3].Value = total.ToString("N2");
+            }
+        }
         private void update_Instrument()
         {
             if (this.selected_ins != null)
@@ -146,7 +178,7 @@ namespace Crypto_GUI
                 this.lbl_notional.Text = (this.selected_ins.buy_notional + this.selected_ins.sell_notional).ToString("N2");
                 this.lbl_baseBalance.Text = this.selected_ins.baseBalance.balance.ToString("N" + this.selected_ins.quantity_scale);
                 this.lbl_quoteBalance.Text = this.selected_ins.quoteBalance.balance.ToString("N" + this.selected_ins.quantity_scale);
-                this.updateQuotesView(this.gridView_Ins,this.selected_ins);
+                this.updateQuotesView(this.gridView_Ins, this.selected_ins);
             }
         }
 
@@ -162,7 +194,7 @@ namespace Crypto_GUI
                 this.lbl_adjustedask.Text = this.stg.taker.adjusted_bestask.Item1.ToString("N" + this.stg.taker.price_scale);
                 this.lbl_adjustedbid.Text = this.stg.taker.adjusted_bestbid.Item1.ToString("N" + this.stg.taker.price_scale);
             }
-            if(this.stg.maker != null)
+            if (this.stg.maker != null)
             {
                 this.lbl_baseCcy_maker.Text = this.stg.maker.baseBalance.balance.ToString("N5");
                 this.lbl_quoteCcy_maker.Text = this.stg.maker.quoteBalance.balance.ToString("N5");
@@ -185,7 +217,7 @@ namespace Crypto_GUI
                     this.gridView_orders.Rows[0].Cells[1].Value = ord.market;
                     this.gridView_orders.Rows[0].Cells[2].Value = ord.symbol;
                     this.gridView_orders.Rows[0].Cells[3].Value = ord.side.ToString();
-                    if(ord.symbol_market == this.stg.maker_symbol_market)
+                    if (ord.symbol_market == this.stg.maker_symbol_market)
                     {
                         this.gridView_orders.Rows[0].Cells[4].Value = ord.average_price.ToString("N" + this.stg.maker.price_scale);
                         this.gridView_orders.Rows[0].Cells[5].Value = ord.filled_quantity.ToString("N" + this.stg.maker.quantity_scale);
@@ -202,7 +234,7 @@ namespace Crypto_GUI
             }
         }
 
-        private void updateQuotesView(DataGridView view,Instrument ins)
+        private void updateQuotesView(DataGridView view, Instrument ins)
         {
             int i = 0;
             while (Interlocked.CompareExchange(ref ins.quotes_lock, 1, 0) != 0)
@@ -262,9 +294,13 @@ namespace Crypto_GUI
 
         private async void button1_Click(object sender, EventArgs e)
         {
+            await this.cl.connectAsync();
+            this.bitBankTh = new System.Threading.Thread(this.cl.logBitbank);
+            this.bitBankTh.Start();
+
             this.qManager.setBalance(await this.cl.getBalance(this.qManager.markets));
             //this.qManager.setFees(await this.cl.getFees([Exchange.Bybit, Exchange.Coinbase], this.stg.baseCcy, this.stg.quoteCcy),this.stg.baseCcy + this.stg.quoteCcy);
-            
+
             foreach (var ins in this.qManager.instruments.Values)
             {
                 string[] markets = [ins.market];
@@ -282,6 +318,7 @@ namespace Crypto_GUI
                 }
                 await cl.subscribeTrades(markets, ins.baseCcy, ins.quoteCcy);
             }
+
             await cl.subscribeSpotOrderUpdates(this.qManager.markets);
 
             this.quoteupdateTh = new System.Threading.Thread(this.qManager.updateQuotes);
@@ -296,7 +333,7 @@ namespace Crypto_GUI
         {
             DataSpotOrderUpdate ord;
             Instrument ins = this.qManager.instruments["ETHUSDT@Bybit"];
-           
+
             this.addLog("Testing orderManager");
             Thread.Sleep(3000);
             this.addLog("Placing a new order");
@@ -361,6 +398,12 @@ namespace Crypto_GUI
             Thread.Sleep(1000);
             this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
 
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            this.addLog("[INFO] Strategy enabled");
+            this.stg.enabled = true;
         }
     }
 }

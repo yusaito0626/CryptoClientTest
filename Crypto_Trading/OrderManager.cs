@@ -250,7 +250,7 @@ namespace Crypto_Trading
                 }
                 else
                 {
-                    this.addLog("[ERROR] Order not found. Id:" + orderId);
+                    //this.addLog("[ERROR] Order not found. Id:" + orderId);
                     return null;
                 }
             }
@@ -268,7 +268,7 @@ namespace Crypto_Trading
                 }
                 else
                 {
-                    this.addLog("[ERROR] Order not found. Id:" + orderId);
+                    //this.addLog("[ERROR] Order not found. Id:" + orderId);
                     return null;
                 }
             }

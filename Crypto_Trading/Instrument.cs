@@ -42,6 +42,7 @@ namespace Crypto_Trading
         public decimal my_sell_notional;
         public decimal my_buy_notional;
 
+        public decimal total_fee;
         public decimal unknown_fee;
 
         public Balance baseBalance;
@@ -88,6 +89,7 @@ namespace Crypto_Trading
             this.my_sell_notional = 0;
             this.my_buy_notional = 0;
 
+            this.total_fee = 0;
             this.unknown_fee = 0;
 
             this.baseBalance = new Balance();
@@ -318,10 +320,12 @@ namespace Crypto_Trading
             if(new_ord.fee_asset == this.baseCcy)
             {
                 this.baseBalance.balance -= fee;
+                this.total_fee += fee * filledPrice;
             }
             else if(new_ord.fee_asset == this.quoteCcy)
             {
                 this.quoteBalance.balance -= fee;
+                this.total_fee += fee;
             }
             else
             {

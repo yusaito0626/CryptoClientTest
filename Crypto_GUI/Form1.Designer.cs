@@ -28,12 +28,20 @@
         /// </summary>
         private void InitializeComponent()
         {
+            DataGridViewCellStyle dataGridViewCellStyle1 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle2 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle3 = new DataGridViewCellStyle();
             DataGridViewCellStyle dataGridViewCellStyle4 = new DataGridViewCellStyle();
             DataGridViewCellStyle dataGridViewCellStyle5 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle6 = new DataGridViewCellStyle();
             button1 = new Button();
             tabControl = new TabControl();
             tabPage1 = new TabPage();
+            gridView_PnL = new DataGridView();
+            col_volume = new DataGridViewTextBoxColumn();
+            col_tradingPL = new DataGridViewTextBoxColumn();
+            col_feeAmount = new DataGridViewTextBoxColumn();
+            col_totalPnL = new DataGridViewTextBoxColumn();
+            button3 = new Button();
             textBoxMainLog = new RichTextBox();
             button2 = new Button();
             tabPage3 = new TabPage();
@@ -118,6 +126,7 @@
             label8 = new Label();
             tabControl.SuspendLayout();
             tabPage1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)gridView_PnL).BeginInit();
             tabPage3.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridView_orders).BeginInit();
             ((System.ComponentModel.ISupportInitialize)gridView_Maker).BeginInit();
@@ -130,9 +139,9 @@
             // 
             // button1
             // 
-            button1.Location = new Point(1125, 53);
+            button1.Location = new Point(1194, 339);
             button1.Name = "button1";
-            button1.Size = new Size(343, 78);
+            button1.Size = new Size(274, 68);
             button1.TabIndex = 0;
             button1.Text = "ReceiveFeed";
             button1.UseVisualStyleBackColor = true;
@@ -153,6 +162,8 @@
             // tabPage1
             // 
             tabPage1.BackColor = Color.WhiteSmoke;
+            tabPage1.Controls.Add(gridView_PnL);
+            tabPage1.Controls.Add(button3);
             tabPage1.Controls.Add(textBoxMainLog);
             tabPage1.Controls.Add(button2);
             tabPage1.Controls.Add(button1);
@@ -162,6 +173,73 @@
             tabPage1.Size = new Size(1539, 1232);
             tabPage1.TabIndex = 0;
             tabPage1.Text = "Main";
+            // 
+            // gridView_PnL
+            // 
+            dataGridViewCellStyle1.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle1.BackColor = SystemColors.Control;
+            dataGridViewCellStyle1.Font = new Font("Calibri", 10.875F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            dataGridViewCellStyle1.ForeColor = SystemColors.WindowText;
+            dataGridViewCellStyle1.SelectionBackColor = SystemColors.Highlight;
+            dataGridViewCellStyle1.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle1.WrapMode = DataGridViewTriState.True;
+            gridView_PnL.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
+            gridView_PnL.ColumnHeadersHeight = 50;
+            gridView_PnL.Columns.AddRange(new DataGridViewColumn[] { col_volume, col_tradingPL, col_feeAmount, col_totalPnL });
+            gridView_PnL.GridColor = SystemColors.Menu;
+            gridView_PnL.Location = new Point(57, 69);
+            gridView_PnL.Name = "gridView_PnL";
+            gridView_PnL.RowHeadersBorderStyle = DataGridViewHeaderBorderStyle.Sunken;
+            dataGridViewCellStyle2.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle2.BackColor = SystemColors.Control;
+            dataGridViewCellStyle2.Font = new Font("Calibri", 10.875F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            dataGridViewCellStyle2.ForeColor = SystemColors.WindowText;
+            dataGridViewCellStyle2.SelectionBackColor = SystemColors.Highlight;
+            dataGridViewCellStyle2.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle2.WrapMode = DataGridViewTriState.True;
+            gridView_PnL.RowHeadersDefaultCellStyle = dataGridViewCellStyle2;
+            gridView_PnL.RowHeadersVisible = false;
+            gridView_PnL.RowHeadersWidth = 82;
+            gridView_PnL.Size = new Size(1087, 107);
+            gridView_PnL.TabIndex = 5;
+            // 
+            // col_volume
+            // 
+            col_volume.HeaderText = "Notional Volume";
+            col_volume.MinimumWidth = 10;
+            col_volume.Name = "col_volume";
+            col_volume.Width = 300;
+            // 
+            // col_tradingPL
+            // 
+            col_tradingPL.HeaderText = "Trading PnL";
+            col_tradingPL.MinimumWidth = 10;
+            col_tradingPL.Name = "col_tradingPL";
+            col_tradingPL.Width = 250;
+            // 
+            // col_feeAmount
+            // 
+            col_feeAmount.HeaderText = "Fee";
+            col_feeAmount.MinimumWidth = 10;
+            col_feeAmount.Name = "col_feeAmount";
+            col_feeAmount.Width = 250;
+            // 
+            // col_totalPnL
+            // 
+            col_totalPnL.HeaderText = "Total PnL";
+            col_totalPnL.MinimumWidth = 10;
+            col_totalPnL.Name = "col_totalPnL";
+            col_totalPnL.Width = 250;
+            // 
+            // button3
+            // 
+            button3.Location = new Point(1194, 428);
+            button3.Name = "button3";
+            button3.Size = new Size(274, 68);
+            button3.TabIndex = 4;
+            button3.Text = "Start Trading";
+            button3.UseVisualStyleBackColor = true;
+            button3.Click += button3_Click;
             // 
             // textBoxMainLog
             // 
@@ -175,9 +253,9 @@
             // 
             // button2
             // 
-            button2.Location = new Point(1125, 159);
+            button2.Location = new Point(1194, 515);
             button2.Name = "button2";
-            button2.Size = new Size(343, 78);
+            button2.Size = new Size(274, 65);
             button2.TabIndex = 2;
             button2.Text = "Test Order";
             button2.UseVisualStyleBackColor = true;
@@ -549,14 +627,14 @@
             gridView_Maker.AllowUserToAddRows = false;
             gridView_Maker.AllowUserToDeleteRows = false;
             gridView_Maker.BackgroundColor = Color.White;
-            dataGridViewCellStyle4.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle4.BackColor = SystemColors.Control;
-            dataGridViewCellStyle4.Font = new Font("Segoe UI", 9F);
-            dataGridViewCellStyle4.ForeColor = SystemColors.WindowText;
-            dataGridViewCellStyle4.SelectionBackColor = SystemColors.Highlight;
-            dataGridViewCellStyle4.SelectionForeColor = SystemColors.HighlightText;
-            dataGridViewCellStyle4.WrapMode = DataGridViewTriState.True;
-            gridView_Maker.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle4;
+            dataGridViewCellStyle3.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle3.BackColor = SystemColors.Control;
+            dataGridViewCellStyle3.Font = new Font("Segoe UI", 9F);
+            dataGridViewCellStyle3.ForeColor = SystemColors.WindowText;
+            dataGridViewCellStyle3.SelectionBackColor = SystemColors.Highlight;
+            dataGridViewCellStyle3.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle3.WrapMode = DataGridViewTriState.True;
+            gridView_Maker.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle3;
             gridView_Maker.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             gridView_Maker.Columns.AddRange(new DataGridViewColumn[] { dataGridViewTextBoxColumn1, dataGridViewTextBoxColumn2, dataGridViewTextBoxColumn3 });
             gridView_Maker.Location = new Point(45, 133);
@@ -592,14 +670,14 @@
             gridView_Taker.AllowUserToAddRows = false;
             gridView_Taker.AllowUserToDeleteRows = false;
             gridView_Taker.BackgroundColor = Color.White;
-            dataGridViewCellStyle5.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle5.BackColor = SystemColors.Control;
-            dataGridViewCellStyle5.Font = new Font("Segoe UI", 9F);
-            dataGridViewCellStyle5.ForeColor = SystemColors.WindowText;
-            dataGridViewCellStyle5.SelectionBackColor = SystemColors.Highlight;
-            dataGridViewCellStyle5.SelectionForeColor = SystemColors.HighlightText;
-            dataGridViewCellStyle5.WrapMode = DataGridViewTriState.True;
-            gridView_Taker.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle5;
+            dataGridViewCellStyle4.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle4.BackColor = SystemColors.Control;
+            dataGridViewCellStyle4.Font = new Font("Segoe UI", 9F);
+            dataGridViewCellStyle4.ForeColor = SystemColors.WindowText;
+            dataGridViewCellStyle4.SelectionBackColor = SystemColors.Highlight;
+            dataGridViewCellStyle4.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle4.WrapMode = DataGridViewTriState.True;
+            gridView_Taker.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle4;
             gridView_Taker.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             gridView_Taker.Columns.AddRange(new DataGridViewColumn[] { col_Ask, col_price, col_Bid });
             gridView_Taker.Location = new Point(809, 133);
@@ -695,14 +773,14 @@
             gridView_Ins.AllowUserToAddRows = false;
             gridView_Ins.AllowUserToDeleteRows = false;
             gridView_Ins.BackgroundColor = Color.White;
-            dataGridViewCellStyle6.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle6.BackColor = SystemColors.Control;
-            dataGridViewCellStyle6.Font = new Font("Segoe UI", 9F);
-            dataGridViewCellStyle6.ForeColor = SystemColors.WindowText;
-            dataGridViewCellStyle6.SelectionBackColor = SystemColors.Highlight;
-            dataGridViewCellStyle6.SelectionForeColor = SystemColors.HighlightText;
-            dataGridViewCellStyle6.WrapMode = DataGridViewTriState.True;
-            gridView_Ins.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle6;
+            dataGridViewCellStyle5.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle5.BackColor = SystemColors.Control;
+            dataGridViewCellStyle5.Font = new Font("Segoe UI", 9F);
+            dataGridViewCellStyle5.ForeColor = SystemColors.WindowText;
+            dataGridViewCellStyle5.SelectionBackColor = SystemColors.Highlight;
+            dataGridViewCellStyle5.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle5.WrapMode = DataGridViewTriState.True;
+            gridView_Ins.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle5;
             gridView_Ins.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             gridView_Ins.Columns.AddRange(new DataGridViewColumn[] { dataGridViewTextBoxColumn4, dataGridViewTextBoxColumn5, dataGridViewTextBoxColumn6 });
             gridView_Ins.Location = new Point(831, 81);
@@ -984,6 +1062,7 @@
             Text = "Form1";
             tabControl.ResumeLayout(false);
             tabPage1.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)gridView_PnL).EndInit();
             tabPage3.ResumeLayout(false);
             tabPage3.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)gridView_orders).EndInit();
@@ -1086,5 +1165,11 @@
         private DataGridViewTextBoxColumn col_quantity;
         private DataGridViewTextBoxColumn col_feeCcy;
         private DataGridViewTextBoxColumn col_fee;
+        private Button button3;
+        private DataGridView gridView_PnL;
+        private DataGridViewTextBoxColumn col_volume;
+        private DataGridViewTextBoxColumn col_tradingPL;
+        private DataGridViewTextBoxColumn col_feeAmount;
+        private DataGridViewTextBoxColumn col_totalPnL;
     }
 }

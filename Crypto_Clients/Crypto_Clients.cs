@@ -1,17 +1,21 @@
 ﻿using CryptoClients.Net;
 using CryptoClients.Net.Enums;
-using CryptoExchange.Net.Objects.Sockets;
 using CryptoExchange.Net.Objects;
+using CryptoExchange.Net.Objects.Sockets;
 using CryptoExchange.Net.Requests;
 using CryptoExchange.Net.SharedApis;
 using HTX.Net.Enums;
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
-using System.Runtime.CompilerServices;
-using System.Text.Json;
-using System.Net;
-using System.Text;
 using System.ComponentModel.Design;
+using System.Net;
+using System.Net.Sockets;
+using System.Net.WebSockets;
+using System.Runtime.CompilerServices;
+using System.Text;
+using System.Text.Json;
+using System.Xml.Linq;
+
 
 namespace Crypto_Clients
 {
@@ -21,6 +25,7 @@ namespace Crypto_Clients
         ExchangeRestClient _rest_client;
         Bybit.Net.Clients.BybitSocketClient BybitSocketClient;
         Coinbase.Net.Clients.CoinbaseSocketClient CoinbaseSocketClient;
+        ClientWebSocket bitbank_client;
 
         CryptoClients.Net.Models.ExchangeCredentials creds;
 
@@ -45,6 +50,9 @@ namespace Crypto_Clients
             this.CoinbaseSocketClient = new Coinbase.Net.Clients.CoinbaseSocketClient();
             this._rest_client = new ExchangeRestClient();
 
+
+            this.bitbank_client = new ClientWebSocket();
+
             this.creds = new CryptoClients.Net.Models.ExchangeCredentials();
 
             this.ordBookQueue = new ConcurrentQueue<DataOrderBook>();
@@ -68,6 +76,26 @@ namespace Crypto_Clients
                 this.ordUpdateStack.Push(new DataSpotOrderUpdate());
                 this.tradeStack.Push(new DataTrade());
                 ++i;
+            }
+        }
+
+        public async Task connectAsync()
+        {
+            this.addLog("Connecting to bitbank");
+            var uri = new Uri("wss://stream.bitbank.cc/socket.io/?EIO=4&transport=websocket");
+            try
+            {
+
+                await this.bitbank_client.ConnectAsync(uri, CancellationToken.None);
+                this.addLog("[INFO] Connected to bitbank.");
+            }
+            catch (WebSocketException wse)
+            {
+                this.addLog($"WebSocketException: {wse.Message}");
+            }
+            catch (Exception ex)
+            {
+                this.addLog($"Connection failed: {ex.Message}");
             }
         }
 
@@ -217,10 +245,28 @@ namespace Crypto_Clients
         async public Task subscribeTrades(IEnumerable<string>? markets, string baseCcy, string quoteCcy)
         {
             var symbol = new SharedSymbol(TradingMode.Spot, baseCcy, quoteCcy);
-
+            
             // Subscribe to trade updates for the specified exchange
-            foreach (var subResult in await this._client.SubscribeToTradeUpdatesAsync(new SubscribeTradeRequest(symbol), LogTrades, markets))
-                this.addLog($"{subResult.Exchange} subscribe trades result: {subResult.Success} {subResult.Error}");
+            foreach (string m in markets)
+            {
+                switch (m)
+                {
+                    case "bitbank":
+                        string event_name = "transactions_" + baseCcy.ToLower() + "_" + quoteCcy.ToLower();
+                        var subscribeJson = @"42[""join-room"",""" + event_name + @"""]";
+                        this.addLog(subscribeJson);
+                        var bytes = Encoding.UTF8.GetBytes(subscribeJson);
+                        await this.bitbank_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                        break;
+                    default:
+                        var subResult = await this._client.SubscribeToTradeUpdatesAsync(m, new SubscribeTradeRequest(symbol), LogTrades);
+                        this.addLog($"{subResult.Exchange} subscribe trades result: {subResult.Success} {subResult.Error}");
+                        break;
+                }
+                
+            }
+            //foreach (var subResult in await this._client.SubscribeToTradeUpdatesAsync(new SubscribeTradeRequest(symbol), LogTrades, markets))
+            //    this.addLog($"{subResult.Exchange} subscribe trades result: {subResult.Success} {subResult.Error}");
         }
         void LogTrades(ExchangeEvent<SharedTrade[]> update)
         {
@@ -239,11 +285,33 @@ namespace Crypto_Clients
         {
             var symbol = new SharedSymbol(TradingMode.Spot, baseCcy, quoteCcy);
             var req = new SubscribeOrderBookRequest(symbol);
-            foreach (var subResult in await this._client.SubscribeToOrderBookUpdatesAsync(req, LogOrderBook, markets, default))
+            foreach (string m in markets)
             {
-                this.addLog($"{subResult.Exchange} subscribe orderbook result: {subResult.Success} {subResult.Error}");
-            }
+                switch(m)
+                {
+                    case "bitbank":
+                        string event_name = "depth_diff_" + baseCcy.ToLower() + "_" + quoteCcy.ToLower();
+                        var subscribeJson = @"42[""join-room"",""" + event_name + @"""]";
+                        this.addLog(subscribeJson);
+                        var bytes = Encoding.UTF8.GetBytes(subscribeJson);
+                        await this.bitbank_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
 
+                        event_name = "depth_whole_" + baseCcy.ToLower() + "_" + quoteCcy.ToLower();
+                        subscribeJson = @"42[""join-room"",""" + event_name + @"""]";
+                        this.addLog(subscribeJson);
+                        bytes = Encoding.UTF8.GetBytes(subscribeJson);
+                        await this.bitbank_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                        break;
+                    default:
+                        var subResult = await this._client.SubscribeToOrderBookUpdatesAsync(m, req, LogOrderBook);
+                        this.addLog($"{subResult.Exchange} subscribe trades result: {subResult.Success} {subResult.Error}");
+                        break;
+                }
+            }
+            //foreach (var subResult in await this._client.SubscribeToOrderBookUpdatesAsync(req, LogOrderBook, markets, default))
+            //{
+            //    this.addLog($"{subResult.Exchange} subscribe orderbook result: {subResult.Success} {subResult.Error}");
+            //}
         }
         void LogOrderBook(ExchangeEvent<SharedOrderBook> update)
         {
@@ -288,10 +356,117 @@ namespace Crypto_Clients
             msg.setBybitOrderBook(update);
             this.ordBookQueue.Enqueue(msg);
         }
+
+        public async void logBitbank()
+        {
+            var buffer = new byte[16384];
+            while (this.bitbank_client.State == WebSocketState.Open)
+            {
+                var result = await this.bitbank_client.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                if (result.MessageType == WebSocketMessageType.Text)
+                {
+
+                    var msg = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    int idx = msg.IndexOf("{");
+                    int idx_temp = msg.IndexOf("[");
+                    if (idx_temp != -1 && idx_temp < idx)
+                    {
+                        idx = idx_temp;
+                    }
+                    if (idx != -1)
+                    {
+                        string num = msg.Substring(0, idx);
+                        switch (num)
+                        {
+                            case "0":
+                                this.bitbank_client.SendAsync(Encoding.UTF8.GetBytes("40"), WebSocketMessageType.Text, true, CancellationToken.None);
+                                break;
+                            case "2":
+                                this.bitbank_client.SendAsync(Encoding.UTF8.GetBytes("3"), WebSocketMessageType.Text, true, CancellationToken.None);
+                                break;
+                            case "40":
+                                this.addLog("Hand shake completed");
+                                break;
+                            case "42"://Actual Message
+                                if (result.EndOfMessage)
+                                {
+                                    string msg_body = msg.Substring(idx);
+                                    JsonDocument doc = JsonDocument.Parse(msg_body);
+
+                                    string eventName = doc.RootElement[0].GetString();
+                                    JsonElement payload = doc.RootElement[1];
+                                    string roomName = payload.GetProperty("room_name").GetString();
+                                    if (roomName.StartsWith("ticker"))
+                                    {
+
+                                    }
+                                    else if (roomName.StartsWith("depth_diff"))
+                                    {
+                                        string symbol = roomName.Substring("depth_diff_".Length);
+                                        DataOrderBook ord;
+                                        while (!this.ordBookStack.TryPop(out ord))
+                                        {
+
+                                        }
+                                        ord.setBitbankOrderBook(payload.GetProperty("message").GetProperty("data"), symbol, false);
+                                        this.ordBookQueue.Enqueue(ord);
+                                    }
+                                    else if (roomName.StartsWith("depth_whole"))
+                                    {
+                                        string symbol = roomName.Substring("depth_whole_".Length);
+                                        DataOrderBook ord;
+                                        while (!this.ordBookStack.TryPop(out ord))
+                                        {
+
+                                        }
+                                        ord.setBitbankOrderBook(payload.GetProperty("message").GetProperty("data"), symbol, true);
+                                        this.ordBookQueue.Enqueue(ord);
+
+                                    }
+                                    else if (roomName.StartsWith("transactions"))
+                                    {
+                                        string symbol = roomName.Substring("transactions_".Length);
+                                        foreach (var element in payload.GetProperty("message").GetProperty("data").GetProperty("transactions").EnumerateArray())
+                                        {
+                                            DataTrade trd;
+                                            while (!this.tradeStack.TryPop(out trd))
+                                            {
+
+                                            }
+                                            trd.setBitBankObj(element, "bitbank", symbol);
+                                            this.tradeQueue.Enqueue(trd);
+                                        }
+
+                                    }
+                                }
+                                else
+                                {
+                                    this.addLog("[ERROR] The message is too large");
+                                }
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        if (msg == "2")
+                        {
+                            this.bitbank_client.SendAsync(Encoding.UTF8.GetBytes("3"), WebSocketMessageType.Text, true, CancellationToken.None);
+                        }
+                    }
+                    //this.addLog(msg);
+                }
+                else if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    this.addLog("Closed by server");
+                    await this.bitbank_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                }
+            }
+        }
     }
     public class DataOrderBook
     {
         public DateTime? timestamp;
+        public DateTime? orderbookTime;
         public string market;
         public string? streamId;
         public string? symbol;
@@ -300,20 +475,25 @@ namespace Crypto_Clients
         public Dictionary<decimal, decimal> asks;
         public Dictionary<decimal, decimal> bids;
 
+        public long seqNo;
+
         public DataOrderBook()
         {
             this.timestamp = null;
+            this.orderbookTime = null;
             this.market = "";
             this.streamId = "";
             this.symbol = "";
             this.updateType = null;
             this.asks = new Dictionary<decimal, decimal>();
             this.bids = new Dictionary<decimal, decimal>();
+            this.seqNo = -1;
         }
 
         public void setSharedOrderBook(ExchangeEvent<SharedOrderBook> update)
         {
-            this.timestamp = update.DataTime;
+            this.timestamp = DateTime.UtcNow;
+            this.orderbookTime = update.DataTime;
             this.updateType = update.UpdateType;
             this.market = update.Exchange;
             this.streamId = update.StreamId;
@@ -338,7 +518,8 @@ namespace Crypto_Clients
 
         public void setBybitOrderBook(DataEvent<Bybit.Net.Objects.Models.V5.BybitOrderbook> update)
         {
-            this.timestamp = update.DataTime;
+            this.timestamp = DateTime.UtcNow;
+            this.orderbookTime = update.DataTime;
             this.updateType = update.UpdateType;
             this.market = "Bybit";
             this.streamId = update.StreamId;
@@ -363,8 +544,8 @@ namespace Crypto_Clients
 
         public void setCoinbaseOrderBook(DataEvent<Coinbase.Net.Objects.Models.CoinbaseOrderBookUpdate> update)
         {
-            this.timestamp = update.DataTime;
-            this.updateType = update.UpdateType;
+            this.timestamp = DateTime.UtcNow;
+            this.orderbookTime = update.DataTime; this.updateType = update.UpdateType;
             this.market = "Coinbase";
             this.streamId = update.StreamId;
             this.symbol = update.Symbol;
@@ -384,6 +565,50 @@ namespace Crypto_Clients
                 this.bids[update.Data.Bids[i].Price] = update.Data.Bids[i].Quantity;
                 ++i;
             }
+        }
+
+        public void setBitbankOrderBook(JsonElement js,string symbol,bool snapshot)
+        {
+            this.timestamp = DateTime.UtcNow;
+            this.market = "bitbank";
+            this.symbol = symbol;
+
+            if (snapshot)
+            {
+                this.updateType = SocketUpdateType.Snapshot;
+                this.orderbookTime = DateTimeOffset.FromUnixTimeMilliseconds(js.GetProperty("timestamp").GetInt64()).UtcDateTime;
+                this.streamId = js.GetProperty("sequenceId").GetString();
+                this.seqNo = Int64.Parse(this.streamId);
+                var data = js.GetProperty("asks").EnumerateArray();
+                foreach (var item in data)
+                {
+                    this.asks[decimal.Parse(item[0].GetString())] = decimal.Parse(item[1].GetString());
+                }
+                data = js.GetProperty("bids").EnumerateArray();
+                foreach (var item in data)
+                {
+                    this.bids[decimal.Parse(item[0].GetString())] = decimal.Parse(item[1].GetString());
+                }
+            }
+            else
+            {
+                this.updateType = SocketUpdateType.Update;
+                this.orderbookTime = DateTimeOffset.FromUnixTimeMilliseconds(js.GetProperty("t").GetInt64()).UtcDateTime;
+                this.streamId = js.GetProperty("s").GetString();
+                this.seqNo = Int64.Parse(this.streamId);
+                var data = js.GetProperty("a").EnumerateArray();
+                foreach (var item in data)
+                {
+                    this.asks[decimal.Parse(item[0].GetString())] = decimal.Parse(item[1].GetString());
+                }
+                data = js.GetProperty("b").EnumerateArray();
+                foreach (var item in data)
+                {
+                    this.bids[decimal.Parse(item[0].GetString())] = decimal.Parse(item[1].GetString());
+                }
+            }
+
+            
         }
 
         public string ToString()
@@ -406,12 +631,14 @@ namespace Crypto_Clients
         public void init()
         {
             this.timestamp = null;
+            this.orderbookTime = null;
             this.market = "";
             this.streamId = "";
             this.symbol = "";
             this.updateType = null;
             this.asks.Clear();
             this.bids.Clear();
+            this.seqNo = -1;
         }
     }
     public class DataSpotOrderUpdate
@@ -670,11 +897,29 @@ namespace Crypto_Clients
         {
             this.market = market;
             this.symbol = symbol;
-            this.timestamp = time;
+            this.timestamp = DateTime.UtcNow;
             this.filled_time = trd.Timestamp;
             this.side = trd.Side;
             this.price = trd.Price;
             this.quantity = trd.Quantity;
+        }
+        public void setBitBankObj(JsonElement js, string? market, string? symbol)
+        {   
+            this.market = market;
+            this.symbol = symbol;
+            this.timestamp = DateTime.UtcNow;
+            this.filled_time = DateTimeOffset.FromUnixTimeMilliseconds(js.GetProperty("executed_at").GetInt64()).UtcDateTime;
+            string str_side = js.GetProperty("side").GetString();
+            if (str_side == "buy")
+            {
+                this.side = SharedOrderSide.Buy;
+            }
+            else if(str_side == "sell")
+            {
+                this.side = SharedOrderSide.Sell;
+            }
+            this.price = decimal.Parse(js.GetProperty("price").GetString());
+            this.quantity = decimal.Parse(js.GetProperty("amount").GetString());
         }
         public void init()
         {
@@ -685,6 +930,11 @@ namespace Crypto_Clients
             this.side = null;
             this.price = 0;
             this.quantity = 0;
+        }
+
+        public string ToString()
+        {
+            return this.market + "," + this.symbol + "," + ((DateTime)this.timestamp).ToString("yyyy-MM-dd HH:mm:ss.fff") + "," + ((DateTime)this.filled_time).ToString("yyyy-MM-dd HH:mm:ss.fff") + "," + this.side.ToString() + "," + this.price.ToString() + "," + this.quantity.ToString();
         }
     }
 
