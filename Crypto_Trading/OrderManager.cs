@@ -279,6 +279,7 @@ namespace Crypto_Trading
             int i = 0;
             DataSpotOrderUpdate ord;
             DataSpotOrderUpdate prevord;
+            DataFill fill;
             Instrument ins;
             modifingOrd mod;
             while (true)
@@ -387,10 +388,21 @@ namespace Crypto_Trading
                     }
                     i = 0;
                 }
+                else if(this.ord_client.fillQueue.TryDequeue(out fill))
+                {
+                    this.ordLogQueue.Enqueue(fill.ToString());
+                    if(this.Instruments.ContainsKey(fill.symbol_market))
+                    {
+                        ins = this.Instruments[fill.symbol_market];
+                        ins.updateFills(fill);
+                        fill.init();
+                        this.ord_client.fillStack.Push(fill);
+                    }
+                }
                 else
                 {
                     ++i;
-                    if(i > 100000)
+                    if (i > 100000)
                     {
                         i = 0;
                         Thread.Sleep(0);

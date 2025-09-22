@@ -42,12 +42,11 @@ namespace Crypto_GUI
 
             this.qManager.addLog = this.addLog;
             this.oManager.addLog = this.addLog;
-            this.cl.addLog = this.addLog;
-
+            this.cl.setAddLog(this.addLog);
 
             cl.readCredentials(Exchange.Coinbase, "C:\\Users\\yusai\\coinbase_viewonly.json");
             cl.readCredentials(Exchange.Bybit, "C:\\Users\\yusai\\bybit_viewonly.json");
-
+            cl.readCredentials("bitbank", "C:\\Users\\yusai\\bitbank_viewonly.json");
 
             string master_file = "C:\\Users\\yusai\\crypto_master.csv";
 

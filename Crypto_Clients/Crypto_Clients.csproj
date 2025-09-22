@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="CryptoClients.Net" Version="3.9.0" />
+    <PackageReference Include="Pubnub" Version="7.5.0" />
   </ItemGroup>
 
 </Project>

@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Pubnub" Version="7.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Crypto_Clients\Crypto_Clients.csproj" />
     <ProjectReference Include="..\Crypto_Trading\Crypto_Trading.csproj" />
   </ItemGroup>

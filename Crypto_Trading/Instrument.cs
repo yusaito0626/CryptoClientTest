@@ -291,7 +291,13 @@ namespace Crypto_Trading
 
             filledQuantity = new_ord.filled_quantity - prev_ord.filled_quantity;
 
-            if (filledQuantity == 0)
+            if(new_ord.market == "bitbank")//Update fill with fill object.
+            {
+                filledQuantity = 0;
+                fee = 0;
+                filledPrice = 0;
+            }
+            else if (filledQuantity == 0)
             {
                 filledQuantity = new_ord.filled_quantity;
                 filledPrice = new_ord.average_price;
@@ -331,6 +337,29 @@ namespace Crypto_Trading
             {
                 this.unknown_fee += fee;
             }
+        }
+
+        public void updateFills(DataFill fill)
+        {
+            if(fill.side == orderSide.Buy)
+            {
+                this.my_buy_quantity += fill.quantity;
+                this.my_buy_notional += fill.quantity * fill.price;
+                this.baseBalance.balance += fill.quantity;
+                this.quoteBalance.balance -= fill.quantity * fill.price;
+            }
+            else if(fill.side == orderSide.Sell)
+            {
+
+                this.my_sell_quantity += fill.quantity;
+                this.my_sell_notional += fill.quantity * fill.price;
+                this.baseBalance.balance -= fill.quantity;
+                this.quoteBalance.balance += fill.quantity * fill.price;
+            }
+            this.baseBalance.balance -= fill.fee_base;
+            this.quoteBalance.balance -= fill.fee_quote;
+            this.total_fee += fill.fee_quote;
+            this.total_fee += fill.fee_base * fill.price;
         }
         public string ToString(string content = "")
         {

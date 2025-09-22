@@ -15,6 +15,8 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
+using PubnubApi;
+
 
 
 namespace Crypto_Clients
@@ -25,6 +27,7 @@ namespace Crypto_Clients
         ExchangeRestClient _rest_client;
         Bybit.Net.Clients.BybitSocketClient BybitSocketClient;
         Coinbase.Net.Clients.CoinbaseSocketClient CoinbaseSocketClient;
+        bitbank_connection bitbank_private;
         ClientWebSocket bitbank_client;
 
         CryptoClients.Net.Models.ExchangeCredentials creds;
@@ -40,6 +43,9 @@ namespace Crypto_Clients
         public ConcurrentQueue<DataSpotOrderUpdate> ordUpdateQueue;
         public ConcurrentStack<DataSpotOrderUpdate> ordUpdateStack;
 
+        public ConcurrentQueue<DataFill> fillQueue;
+        public ConcurrentStack<DataFill> fillStack;
+
         public ConcurrentQueue<string> strQueue;
 
         public Action<string> addLog;
@@ -50,7 +56,7 @@ namespace Crypto_Clients
             this.CoinbaseSocketClient = new Coinbase.Net.Clients.CoinbaseSocketClient();
             this._rest_client = new ExchangeRestClient();
 
-
+            this.bitbank_private = new bitbank_connection();
             this.bitbank_client = new ClientWebSocket();
 
             this.creds = new CryptoClients.Net.Models.ExchangeCredentials();
@@ -64,6 +70,9 @@ namespace Crypto_Clients
             this.tradeQueue = new ConcurrentQueue<DataTrade>();
             this.tradeStack = new ConcurrentStack<DataTrade>();
 
+            this.fillQueue = new ConcurrentQueue<DataFill>();
+            this.fillStack = new ConcurrentStack<DataFill>();
+
             this.strQueue = new ConcurrentQueue<string>();
             
             this.addLog = Console.WriteLine;
@@ -75,8 +84,15 @@ namespace Crypto_Clients
                 this.ordBookStack.Push(new DataOrderBook());
                 this.ordUpdateStack.Push(new DataSpotOrderUpdate());
                 this.tradeStack.Push(new DataTrade());
+                this.fillStack.Push(new DataFill());
                 ++i;
             }
+        }
+
+        public void setAddLog(Action<string> act)
+        {
+            this.addLog = act;
+            this.bitbank_private.addLog = act;
         }
 
         public async Task connectAsync()
@@ -114,7 +130,6 @@ namespace Crypto_Clients
             msg.init();
             this.ordUpdateStack.Push(msg);
         }
-
         public void readCredentials(string market, string jsonfilename)
         {
             string fileContent = File.ReadAllText(jsonfilename);
@@ -129,6 +144,9 @@ namespace Crypto_Clients
                     break;
                 case string value when value == Exchange.Coinbase:
                     this.creds.Coinbase = new CryptoExchange.Net.Authentication.ApiCredentials(root.GetProperty("name").ToString(), root.GetProperty("privateKey").ToString());
+                    break;
+                case "bitbank":
+                    this.bitbank_private.SetApiCredentials(root.GetProperty("name").ToString(), root.GetProperty("privateKey").ToString());
                     break;
             }
             this._rest_client.SetApiCredentials(this.creds);
@@ -226,8 +244,21 @@ namespace Crypto_Clients
         async public Task subscribeSpotOrderUpdates(IEnumerable<string>? markets)
         {
             SubscribeSpotOrderRequest request = new SubscribeSpotOrderRequest();
-            foreach (var subResult in await this._client.SubscribeToSpotOrderUpdatesAsync(request, LogOrderUpdates, markets))
-                this.addLog($"{subResult.Exchange} subscribe spot order updates result: {subResult.Success} {subResult.Error}");
+            foreach(string m in markets)
+            {
+                switch(m)
+                {
+                    case "bitbank":
+                        await this.bitbank_private.connect();
+                        break;
+                    default:
+                        var subResult = await this._client.SubscribeToSpotOrderUpdatesAsync(m, request, LogOrderUpdates);
+                        this.addLog($"{subResult.Exchange} subscribe spot order updates result: {subResult.Success} {subResult.Error}");
+                        break;
+                }
+            }
+            //foreach (var subResult in await this._client.SubscribeToSpotOrderUpdatesAsync(request, LogOrderUpdates, markets))
+            //    this.addLog($"{subResult.Exchange} subscribe spot order updates result: {subResult.Success} {subResult.Error}");
         }
         void LogOrderUpdates(ExchangeEvent<SharedSpotOrder[]> update)
         {
@@ -240,6 +271,46 @@ namespace Crypto_Clients
                 }
                 obj.setSharedSpotOrder(ord, update.Exchange, update.DataTime);
                 this.ordUpdateQueue.Enqueue(obj);
+            }
+        }
+
+        public void bitbankOrderUpdates()
+        {
+            int i = 0;
+            JsonElement js;
+            DataSpotOrderUpdate ord;
+            DataFill fill;
+            while(true)
+            {
+                if(this.bitbank_private.orderQueue.TryDequeue(out js))
+                {
+                    while(!this.ordUpdateStack.TryPop(out ord))
+                    {
+
+                    }
+                    ord.setBitbankSpotOrder(js);
+                    this.ordUpdateQueue.Enqueue(ord);
+                    i = 0;
+                }
+                else if(this.bitbank_private.fillQueue.TryDequeue(out js))
+                {
+                    while(!this.fillStack.TryPop(out fill))
+                    {
+
+                    }
+                    fill.setBitBankFill(js);
+                    this.fillQueue.Enqueue(fill);
+                    i = 0;
+                }
+                else
+                {
+                    ++i;
+                    if (i > 100000)
+                    {
+                        Thread.Sleep(0);
+                        i = 0;
+                    }
+                }
             }
         }
         async public Task subscribeTrades(IEnumerable<string>? markets, string baseCcy, string quoteCcy)
@@ -641,6 +712,128 @@ namespace Crypto_Clients
             this.seqNo = -1;
         }
     }
+    public class DataFill
+    {
+        public DateTime? timestamp;
+        public string symbol_market;
+        public string market;
+        public decimal quantity;
+        public DateTime? filled_time;
+        public decimal fee_base;
+        public decimal fee_quote;
+        public string maker_taker;
+        public string order_id;
+        public string symbol;
+        public decimal price;
+        public orderSide side;
+        public string trade_id;
+        public orderType order_type;
+        public decimal profit_loss;
+        public decimal interest;
+
+        public DataFill()
+        {
+            this.timestamp = null;
+            this.symbol_market = "";
+            this.market = "";
+            this.quantity = 0;
+            this.filled_time = null;
+            this.fee_base = 0;
+            this.fee_quote = 0;
+            this.maker_taker = "";
+            this.order_id = "";
+            this.symbol = "";
+            this.price = 0;
+            this.side = orderSide.NONE;
+            this.trade_id = "";
+            this.order_type = orderType.NONE;
+            this.profit_loss = 0;
+            this.interest = 0;
+        }
+
+        public void setBitBankFill(JsonElement js)
+        {
+            this.timestamp = DateTime.UtcNow;
+            this.quantity = decimal.Parse(js.GetProperty("amount").GetString());
+            this.filled_time = DateTimeOffset.FromUnixTimeMilliseconds(js.GetProperty("executed_at").GetInt64()).UtcDateTime;
+            this.fee_base = decimal.Parse(js.GetProperty("fee_amount_base").GetString());
+            this.fee_quote = decimal.Parse(js.GetProperty("fee_amount_quote").GetString());
+            this.maker_taker = js.GetProperty("maker_taker").GetString();
+            this.order_id = js.GetProperty("order_id").GetInt64().ToString();
+            this.symbol = js.GetProperty("pair").GetString();
+            this.market = "bitbank";
+            this.symbol_market = this.symbol_market + "@" + this.market;
+            this.price = decimal.Parse(js.GetProperty("price").GetString());
+            string side = js.GetProperty("side").GetString();
+            if(side == "buy")
+            {
+                this.side = orderSide.Buy;
+            }
+            else if(side == "sell")
+            {
+                this.side = orderSide.Sell;
+            }
+            this.trade_id = js.GetProperty("trade_id").GetInt64().ToString();
+            string _type = js.GetProperty("type").GetString();
+            switch(_type)
+            {
+                case "limit":
+                    this.order_type = orderType.Limit;
+                    break;
+                case "market":
+                    this.order_type = orderType.Market;
+                    break;
+                default:
+                    this.order_type = orderType.Other;
+                    break;
+            }
+            //this.profit_loss = decimal.Parse(js.GetProperty("profit_loss").GetString());
+            //this.interest = decimal.Parse(js.GetProperty("interest").GetString());
+        }
+
+        public string ToString()
+        {
+            string line;
+            if (this.timestamp != null)
+            {
+                line = ((DateTime)this.timestamp).ToString("yyyy-MM-dd HH:mm:ss.fff");
+            }
+            else
+            {
+                line = "";
+            }
+            line += "," + this.trade_id + "," + this.order_id + "," + this.market + "," + this.symbol + "," + this.order_type.ToString() + "," + this.side.ToString() + "," + this.price.ToString() + "," + this.quantity.ToString() + "," + this.maker_taker + "," + this.fee_base.ToString() + "," + this.fee_quote.ToString() + "," + this.profit_loss.ToString() + "," + this.interest + ",";
+            if (this.filled_time != null)
+            {
+                line = ((DateTime)this.filled_time).ToString("yyyy-MM-dd HH:mm:ss.fff");
+            }
+            else
+            {
+                line = "";
+            }
+            return line;
+        }
+
+        public void init()
+        {
+            this.timestamp = null;
+            this.symbol_market = "";
+            this.market = "";
+            this.quantity = 0;
+            this.filled_time = null;
+            this.fee_base = 0;
+            this.fee_quote = 0;
+            this.maker_taker = "";
+            this.order_id = "";
+            this.symbol = "";
+            this.price = 0;
+            this.side = orderSide.NONE;
+            this.trade_id = "";
+            this.order_type = orderType.NONE;
+            this.profit_loss = 0;
+            this.interest = 0;
+        }
+    }
     public class DataSpotOrderUpdate
     {
         public DateTime? timestamp;
@@ -690,6 +883,81 @@ namespace Crypto_Clients
             this.fee = 0;
             this.create_time = null;
             this.update_time = null;
+            this.last_trade = "";
+            this.trigger_price = 0;
+            this.is_trigger_order = false;
+        }
+
+        public void setBitbankSpotOrder(JsonElement js)
+        {
+            this.timestamp = DateTime.UtcNow;
+            this.symbol = js.GetProperty("pair").GetString();
+            this.symbol_market = this.symbol + "@bitbank";
+            this.market = "bitbank";
+            this.order_id = js.GetProperty("order_id").GetInt64().ToString();
+            string _type = js.GetProperty("type").GetString();
+            switch (_type)
+            {
+                case "limit":
+                    this.order_type = orderType.Limit;
+                    break;
+                case "market":
+                    this.order_type = orderType.Market;
+                    break;
+                default:
+                    this.order_type = orderType.Other;
+                    break;
+            }
+            string side = js.GetProperty("side").GetString();
+            if (side == "buy")
+            {
+                this.side = orderSide.Buy;
+            }
+            else if (side == "sell")
+            {
+                this.side = orderSide.Sell;
+            }
+            string str_status = js.GetProperty("status").GetString();
+            switch(str_status)
+            {
+                case "UNFILLED":
+                case "PARTIALLY_FILLED":
+                    this.status = orderStatus.Open;
+                    this.update_time = DateTimeOffset.FromUnixTimeMilliseconds(js.GetProperty("executed_at").GetInt64()).UtcDateTime;
+                    break;
+                case "FULLY_FILLED":
+                    this.status = orderStatus.Filled;
+                    this.update_time = DateTimeOffset.FromUnixTimeMilliseconds(js.GetProperty("executed_at").GetInt64()).UtcDateTime;
+                    break;
+                case "CANCELED_PARTIALLY_FILLED":
+                    this.status = orderStatus.Filled;
+                    this.update_time = DateTimeOffset.FromUnixTimeMilliseconds(js.GetProperty("canceled_at").GetInt64()).UtcDateTime;
+                    break;
+                case "CANCELED_UNFILLED":
+                    this.status = orderStatus.Canceled;
+                    this.update_time = DateTimeOffset.FromUnixTimeMilliseconds(js.GetProperty("canceled_at").GetInt64()).UtcDateTime;
+                    break;
+                default:
+                    this.status = orderStatus.INVALID;
+                    break;
+            }
+            Int64 expire_at = js.GetProperty("order_id").GetInt64();
+            if(expire_at == 0)
+            {
+                this.time_in_force = timeInForce.GoodTillCanceled;
+            }
+            else
+            {
+                this.time_in_force = timeInForce.NONE;
+            }
+            this.order_quantity = decimal.Parse(js.GetProperty("start_amount").GetString());
+            this.filled_quantity = decimal.Parse(js.GetProperty("executed_amount").GetString());
+            this.order_price = decimal.Parse(js.GetProperty("price").GetString());
+            this.average_price = decimal.Parse(js.GetProperty("average_price").GetString());
+            this.client_order_id = "";
+            this.fee_asset = "";
+            this.fee = 0;
+            this.create_time = DateTimeOffset.FromUnixTimeMilliseconds(js.GetProperty("triggered_at").GetInt64()).UtcDateTime;
             this.last_trade = "";
             this.trigger_price = 0;
             this.is_trigger_order = false;
@@ -961,7 +1229,8 @@ namespace Crypto_Clients
         Canceled = 4,
         WaitOpen = 5,
         WaitMod = 6,
-        WaitCancel = 7
+        WaitCancel = 7,
+        INVALID = 99
     }
     public enum timeInForce
     {
