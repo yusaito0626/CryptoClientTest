@@ -115,6 +115,7 @@ namespace Crypto_Clients
                 this.coincheck_client.startListen(this.onCoincheckMessage);
             });
             this.coincheckPublicChannelsTh.Start();
+            await this.coincheck_client.connectPrivateAsync();
         }
 
         public void pushToOrderBookStack(DataOrderBook msg)
@@ -149,6 +150,9 @@ namespace Crypto_Clients
                     break;
                 case "bitbank":
                     this.bitbank_client.SetApiCredentials(root.GetProperty("name").ToString(), root.GetProperty("privateKey").ToString());
+                    break;
+                case "coincheck":
+                    this.coincheck_client.SetApiCredentials(root.GetProperty("name").ToString(), root.GetProperty("privateKey").ToString());
                     break;
             }
             this._rest_client.SetApiCredentials(this.creds);

@@ -47,6 +47,7 @@ namespace Crypto_GUI
             cl.readCredentials(Exchange.Coinbase, "C:\\Users\\yusai\\coinbase_viewonly.json");
             cl.readCredentials(Exchange.Bybit, "C:\\Users\\yusai\\bybit_viewonly.json");
             cl.readCredentials("bitbank", "C:\\Users\\yusai\\bitbank_tradable.json");
+            cl.readCredentials("coincheck", "C:\\Users\\yusai\\coincheck_viewonly.json");
 
             string master_file = "C:\\Users\\yusai\\crypto_master.csv";
 

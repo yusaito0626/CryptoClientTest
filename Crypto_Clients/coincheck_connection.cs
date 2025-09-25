@@ -1,13 +1,11 @@
 ﻿using PubnubApi;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
+using System.Drawing;
 using System.Net.WebSockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
+using XT.Net.Objects.Models;
 
 namespace Crypto_Clients
 {
@@ -17,14 +15,18 @@ namespace Crypto_Clients
         private string secretKey;
 
         private const string publicKey = "sub-c-ecebae8e-dd60-11e6-b6b1-02ee2ddab7fe";
-        private const string URL = "wss://ws-api.coincheck.com";
+        private const string URL = "";
+        private const string ws_URL = "wss://ws-api.coincheck.com";
+        private const string private_URL = "wss://stream.coincheck.com";
 
         public ConcurrentQueue<JsonElement> orderQueue;
         public ConcurrentQueue<JsonElement> fillQueue;
 
         ClientWebSocket websocket_client;
+        ClientWebSocket private_client;
 
         public Action<string> onMessage;
+        public Action<string> onPrivateMessage;
         public Action<string> addLog;
 
         private coincheck_connection()
@@ -33,6 +35,7 @@ namespace Crypto_Clients
             this.secretKey = "";
 
             this.websocket_client = new ClientWebSocket();
+            this.private_client = new ClientWebSocket();
 
             this.orderQueue = new ConcurrentQueue<JsonElement>();
             this.fillQueue = new ConcurrentQueue<JsonElement>();
@@ -56,7 +59,7 @@ namespace Crypto_Clients
         public async Task connectPublicAsync()
         {
             this.addLog("Connecting to coincehck");
-            var uri = new Uri("wss://ws-api.coincheck.com");
+            var uri = new Uri(coincheck_connection.ws_URL);
             try
             {
                 await this.websocket_client.ConnectAsync(uri, CancellationToken.None);
@@ -70,6 +73,45 @@ namespace Crypto_Clients
             {
                 this.addLog($"Connection failed: {ex.Message}");
             }
+        }
+        public async Task connectPrivateAsync()
+        {
+            this.addLog("Connecting to private channel of coincheck");
+            var nonce = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var uri = new Uri(coincheck_connection.private_URL);
+            string msg = nonce.ToString() + coincheck_connection.private_URL + "/private"; 
+            var body = new
+            {
+                type = "login",
+                access_key = this.apiName,
+                access_nonce = nonce.ToString(),
+                access_signature = this.ToSha256(this.secretKey,msg)
+
+            };
+            var jsonBody = JsonSerializer.Serialize(body);
+            var bytes = Encoding.UTF8.GetBytes(jsonBody);
+            try
+            {
+                await this.private_client.ConnectAsync(uri, CancellationToken.None);
+                await this.private_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                var buffer = new byte[16384];
+                var res = await this.private_client.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                if(res.MessageType == WebSocketMessageType.Text)
+                {
+                    this.addLog(Encoding.UTF8.GetString(buffer, 0, res.Count));
+                }
+            }
+            catch (WebSocketException wse)
+            {
+                this.addLog($"WebSocketException: {wse.Message}");
+            }
+            catch (Exception ex)
+            {
+                this.addLog($"Connection failed: {ex.Message}");
+            }
+            //var (channel, token) = await this.GetChannelAndToken();
+            //var pubnub = this.GetPubNubAndAddListener(channel, token);
+            //this.subscribePrivateChannels(pubnub, channel, token);
         }
 
         public async Task subscribeTrades(string baseCcy, string quoteCcy)
@@ -111,6 +153,29 @@ namespace Crypto_Clients
                 }
             }
             this.addLog("Check websocket state. State:" +  this.websocket_client.State.ToString());
+        }
+
+        public async void startListenPrivate(Action<string> onMsg)
+        {
+            this.addLog("[coincheck_connection]startListenPrivate Called");
+            this.onPrivateMessage = onMsg;
+            var buffer = new byte[16384];
+            while (this.private_client.State == WebSocketState.Open)
+            {
+                var result = await this.private_client.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                if (result.MessageType == WebSocketMessageType.Text)
+                {
+
+                    var msg = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    this.onMessage(msg);
+                }
+                else if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    this.addLog("Closed by server");
+                    await this.private_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                }
+            }
+            this.addLog("Check websocket state. State:" + this.private_client.State.ToString());
         }
 
         private async Task<string> getAsync(string endpoint)
@@ -282,12 +347,7 @@ namespace Crypto_Clients
 
         //    return pubnub;
         //}
-        public async Task connectPrivateAsync()
-        {
-            //var (channel, token) = await this.GetChannelAndToken();
-            //var pubnub = this.GetPubNubAndAddListener(channel, token);
-            //this.subscribePrivateChannels(pubnub, channel, token);
-        }
+ 
         private string ToSha256(string key, string value)
         {
             using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(key));

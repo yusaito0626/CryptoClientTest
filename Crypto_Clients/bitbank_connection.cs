@@ -22,6 +22,7 @@ namespace Crypto_Clients
 
         private const string publicKey = "sub-c-ecebae8e-dd60-11e6-b6b1-02ee2ddab7fe";
         private const string URL = "https://api.bitbank.cc";
+        private const string ws_URL = "wss://stream.bitbank.cc/socket.io/?EIO=4&transport=websocket";
 
         public ConcurrentQueue<JsonElement> orderQueue;
         public ConcurrentQueue<JsonElement> fillQueue;
@@ -60,7 +61,7 @@ namespace Crypto_Clients
         public async Task connectPublicAsync()
         {
             this.addLog("Connecting to bitbank");
-            var uri = new Uri("wss://stream.bitbank.cc/socket.io/?EIO=4&transport=websocket");
+            var uri = new Uri(bitbank_connection.ws_URL);
             try
             {
                 await this.websocket_client.ConnectAsync(uri, CancellationToken.None);
