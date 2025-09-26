@@ -32,9 +32,11 @@ namespace Crypto_Trading
 
         private OrderManager oManager;
 
-        public Action<string> addLog;
+        public Action<string> _addLog;
 
         public const int NUM_OF_QUOTES = 5;
+
+        public bool aborting;
         QuoteManager() 
         {
             this.instruments = new Dictionary<string, Instrument>();
@@ -42,7 +44,8 @@ namespace Crypto_Trading
             this.balances = new Dictionary<string, Balance>();
             this.markets = new List<string>(); 
             this.oManager = OrderManager.GetInstance();
-            this.addLog = Console.WriteLine;
+            this._addLog = Console.WriteLine;
+            this.aborting = false;
         }
         public void setQueues(Crypto_Clients.Crypto_Clients client)
         {
@@ -79,7 +82,7 @@ namespace Crypto_Trading
             }
             else
             {
-                this.addLog("[ERROR] The master file doesn't exist. Filename:" + masterfile);
+                this.addLog("ERROR","The master file doesn't exist. Filename:" + masterfile);
                 return false;
             }
         }
@@ -178,12 +181,12 @@ namespace Crypto_Trading
                     }
                     else
                     {
-                        this.addLog("[WARNING] Unknown Symbol.  " + key);
+                        this.addLog("WARNING", "Unknown Symbol.  " + key);
                     }
                 }
                 else
                 {
-                    this.addLog("[ERROR] Failed to receive fee information.  Exchange:" + subResult.Exchange);
+                    this.addLog("ERROR","Failed to receive fee information.  Exchange:" + subResult.Exchange);
                     output = false;
                 }
             }
@@ -213,7 +216,7 @@ namespace Crypto_Trading
                     }
                     else
                     {
-                        this.addLog("[WARNING] The symbol doesn't exist. Instrument:" + symbol_market);
+                        this.addLog("WARNING","The symbol doesn't exist. Instrument:" + symbol_market);
                     }
                     msg.init();
                     this.ordBookStack.Push(msg);
@@ -227,6 +230,10 @@ namespace Crypto_Trading
                         i = 0;
                         Thread.Sleep(0);
                     }
+                }
+                if(this.aborting)
+                {
+                    break;
                 }
             }
         }
@@ -250,7 +257,7 @@ namespace Crypto_Trading
                     }
                     else
                     {
-                        this.addLog("[WARNING] The symbol doesn't exist. Instrument:" + symbol_market);
+                        this.addLog("WARNING","The symbol doesn't exist. Instrument:" + symbol_market);
                     }
                     msg.init();
                     this.tradeStack.Push(msg);
@@ -265,7 +272,16 @@ namespace Crypto_Trading
                         Thread.Sleep(0);
                     }
                 }
+                if(this.aborting)
+                {
+                    break;
+                }
             }
+        }
+
+        public void addLog(string logtype, string line)
+        {
+            this._addLog("[" + logtype + ":QuoteManager]" + line);
         }
 
         private static QuoteManager _instance;

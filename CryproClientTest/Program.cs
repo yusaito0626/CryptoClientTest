@@ -26,8 +26,8 @@ instruments[ins.symbol_market] = ins;
 
 //await cl.subscribeTrades(markets,baseCcy, quoteCcy);
 //await cl.subscribeOrderBook(markets, baseCcy, quoteCcy);
-cl.readCredentials(Exchange.Coinbase, "C:\\Users\\yusai\\coinbase_viewonly.json");
-cl.readCredentials(Exchange.Bybit, "C:\\Users\\yusai\\bybit_viewonly.json");
+//cl.readCredentials(Exchange.Coinbase, "C:\\Users\\yusai\\coinbase_viewonly.json");
+//cl.readCredentials(Exchange.Bybit, "C:\\Users\\yusai\\bybit_viewonly.json");
 //await cl.subscribeBybitOrderBook(baseCcy, quoteCcy);
 //await cl.subscribeCoinbaseOrderBook(baseCcy, quoteCcy);
 //await cl.subscribeSpotOrderUpdates([Exchange.Bybit]);

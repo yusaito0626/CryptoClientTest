@@ -55,7 +55,7 @@ namespace Crypto_Clients
         Thread coincheckPublicChannelsTh;
         Thread coincheckPrivateChannelsTh;
 
-        public Action<string> addLog;
+        public Action<string> _addLog;
         public Crypto_Clients()
         {
             this._client = new ExchangeSocketClient();
@@ -82,7 +82,7 @@ namespace Crypto_Clients
 
             this.strQueue = new ConcurrentQueue<string>();
             
-            this.addLog = Console.WriteLine;
+            this._addLog = Console.WriteLine;
 
             int i = 0;
 
@@ -98,9 +98,9 @@ namespace Crypto_Clients
 
         public void setAddLog(Action<string> act)
         {
-            this.addLog = act;
-            this.bitbank_client.addLog = act;
-            this.coincheck_client.addLog = act;
+            this._addLog = act;
+            this.bitbank_client._addLog = act;
+            this.coincheck_client._addLog = act;
         }
 
         public async Task connectAsync()
@@ -166,6 +166,33 @@ namespace Crypto_Clients
             this._rest_client.SetApiCredentials(this.creds);
             this._client.SetApiCredentials(this.creds);
         }
+        public void readCredentials(string jsonfilename)
+        {
+            string fileContent = File.ReadAllText(jsonfilename);
+
+            using JsonDocument doc = JsonDocument.Parse(fileContent);
+            var root = doc.RootElement;
+
+            string market = root.GetProperty("market").GetString();
+
+            switch (market)
+            {
+                case string value when value == Exchange.Bybit:
+                    this.creds.Bybit = new CryptoExchange.Net.Authentication.ApiCredentials(root.GetProperty("name").ToString(), root.GetProperty("privateKey").ToString());
+                    break;
+                case string value when value == Exchange.Coinbase:
+                    this.creds.Coinbase = new CryptoExchange.Net.Authentication.ApiCredentials(root.GetProperty("name").ToString(), root.GetProperty("privateKey").ToString());
+                    break;
+                case "bitbank":
+                    this.bitbank_client.SetApiCredentials(root.GetProperty("name").ToString(), root.GetProperty("privateKey").ToString());
+                    break;
+                case "coincheck":
+                    this.coincheck_client.SetApiCredentials(root.GetProperty("name").ToString(), root.GetProperty("privateKey").ToString());
+                    break;
+            }
+            this._rest_client.SetApiCredentials(this.creds);
+            this._client.SetApiCredentials(this.creds);
+        }
 
         //REST API
         async public Task<DataBalance[]> getBalance(IEnumerable<string>? markets)
@@ -194,7 +221,7 @@ namespace Crypto_Clients
                         }
                         else
                         {
-                            this.addLog("Failed to get the balance information. Exchange:" + m);
+                            this.addLog("ERROR", "Failed to get the balance information. Exchange:" + m);
                         }
                         break;
                     case "coincheck":
@@ -249,7 +276,7 @@ namespace Crypto_Clients
                         }
                         else
                         {
-                            this.addLog("Failed to get the balance information. Exchange:" + m);
+                            this.addLog("ERROR","Failed to get the balance information. Exchange:" + m);
                         }
                         break;
                     default:
@@ -268,7 +295,7 @@ namespace Crypto_Clients
                         }
                         else
                         {
-                            this.addLog("Failed to get the balance information. Exchange:" + m);
+                            this.addLog("ERROR", "Failed to get the balance information. Exchange:" + m);
                         }
                         break;
                 }
@@ -322,8 +349,8 @@ namespace Crypto_Clients
             }
             else
             {
-                this.addLog("[ERROR] New Order Failed.");
-                this.addLog(result.Error.ToString());
+                this.addLog("ERROR","New Order Failed.");
+                this.addLog("ERROR", result.Error.ToString());
                 return null;
             }
         }
@@ -351,8 +378,6 @@ namespace Crypto_Clients
             }
             else
             {
-                this.addLog("[ERROR] Cancel Order Failed.");
-                this.addLog(result.Error.ToString());
                 return null;
             }
         }
@@ -375,7 +400,7 @@ namespace Crypto_Clients
                         break;
                     default:
                         var subResult = await this._client.SubscribeToSpotOrderUpdatesAsync(m, request, LogOrderUpdates);
-                        this.addLog($"{subResult.Exchange} subscribe spot order updates result: {subResult.Success} {subResult.Error}");
+                        this.addLog("INFO",$"{subResult.Exchange} subscribe spot order updates result: {subResult.Success} {subResult.Error}");
                         break;
                 }
             }
@@ -452,7 +477,7 @@ namespace Crypto_Clients
                         break;
                     default:
                         var subResult = await this._client.SubscribeToTradeUpdatesAsync(m, new SubscribeTradeRequest(symbol), LogTrades);
-                        this.addLog($"{subResult.Exchange} subscribe trades result: {subResult.Success} {subResult.Error}");
+                        this.addLog("INFO",$"{subResult.Exchange} subscribe trades result: {subResult.Success} {subResult.Error}");
                         break;
                 }
                 
@@ -487,7 +512,7 @@ namespace Crypto_Clients
                         break;
                     default:
                         var subResult = await this._client.SubscribeToOrderBookUpdatesAsync(m, req, LogOrderBook);
-                        this.addLog($"{subResult.Exchange} subscribe trades result: {subResult.Success} {subResult.Error}");
+                        this.addLog("INFO",$"{subResult.Exchange} subscribe trades result: {subResult.Success} {subResult.Error}");
                         break;
                 }
             }
@@ -510,7 +535,7 @@ namespace Crypto_Clients
         async public Task subscribeCoinbaseOrderBook(string baseCcy, string quoteCcy)
         {
             var subResult = await this.CoinbaseSocketClient.AdvancedTradeApi.SubscribeToOrderBookUpdatesAsync(baseCcy + "-" + quoteCcy, LogCoinbaseOrderBook);
-            this.addLog($"Coinbase subscribe orderbook result: {subResult.Success} {subResult.Error}");
+            this.addLog("INFO",$"Coinbase subscribe orderbook result: {subResult.Success} {subResult.Error}");
         }
         void LogCoinbaseOrderBook(DataEvent<Coinbase.Net.Objects.Models.CoinbaseOrderBookUpdate> update)
         {
@@ -527,7 +552,7 @@ namespace Crypto_Clients
         async public Task subscribeBybitOrderBook(string baseCcy, string quoteCcy)
         {
             var subResult = await this.BybitSocketClient.V5SpotApi.SubscribeToOrderbookUpdatesAsync(baseCcy + quoteCcy, 50, LogBybitOrderBook);
-            this.addLog($"Bybit subscribe orderbook result: {subResult.Success} {subResult.Error}");
+            this.addLog("INFO",$"Bybit subscribe orderbook result: {subResult.Success} {subResult.Error}");
         }
         void LogBybitOrderBook(DataEvent<Bybit.Net.Objects.Models.V5.BybitOrderbook> update)
         {
@@ -623,7 +648,6 @@ namespace Crypto_Clients
         }
         public void onConcheckPrivateMessage(string msg_body)
         {
-            this.addLog(msg_body);
             DataSpotOrderUpdate ord;
             DataFill fill;
             JsonElement js = JsonDocument.Parse(msg_body).RootElement;
@@ -647,6 +671,11 @@ namespace Crypto_Clients
                     this.fillQueue.Enqueue(fill);
                     break;
             }
+        }
+
+        public void addLog(string logtype, string line)
+        {
+            this._addLog("[" + logtype + ":Crypto_Client]" + line);
         }
 
     }

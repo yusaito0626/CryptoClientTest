@@ -2,14 +2,24 @@ using Crypto_Clients;
 using Crypto_Trading;
 using CryptoClients.Net.Enums;
 using System.Collections.Concurrent;
+using System.IO;
 using System.Net;
+using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Threading;
 
 namespace Crypto_GUI
 {
     public partial class Form1 : Form
     {
+        string configPath = AppContext.BaseDirectory + "\\config.json";
+        string logPath = AppContext.BaseDirectory + "\\crypto.log";
+        string outputPath = AppContext.BaseDirectory;
+        string APIsPath;
+        string masterFile;
+        string strategyFile;
+
         Crypto_Clients.Crypto_Clients cl = new Crypto_Clients.Crypto_Clients();
         QuoteManager qManager = QuoteManager.GetInstance();
         OrderManager oManager = OrderManager.GetInstance();
@@ -21,6 +31,7 @@ namespace Crypto_GUI
 
         Instrument selected_ins;
 
+        private bool updating;
         System.Threading.Thread updatingTh;
         System.Threading.Thread quoteupdateTh;
         System.Threading.Thread tradeupdateTh;
@@ -31,35 +42,50 @@ namespace Crypto_GUI
 
         Font font_gridView;
         Font font_gridView_Bold;
+
+        private bool threadsStarted;
+        private bool aborting;
+
         public Form1()
         {
+            this.aborting = false;
+            this.threadsStarted = false;
+
             InitializeComponent();
+
+            this.button_receiveFeed.Enabled = false;
+            this.button_startTrading.Enabled = false;
+            this.button_orderTest.Enabled = false;
+
+            if (!this.readConfig())
+            {
+                this.addLog("[ERROR]Failed to read config.");
+                updatingTh = new Thread(update);
+                updatingTh.Start();
+                return;
+            }
 
             this.logQueue = new ConcurrentQueue<string>();
             this.filledOrderQueue = new ConcurrentQueue<string>();
 
-            this.logFile = new StreamWriter(new FileStream("C:\\Users\\yusai\\Crypto.log", FileMode.Create));
+            this.logFile = new StreamWriter(new FileStream(this.logPath, FileMode.Create));
 
-            this.qManager.addLog = this.addLog;
-            this.oManager.addLog = this.addLog;
+            this.qManager._addLog = this.addLog;
+            this.oManager._addLog = this.addLog;
             this.cl.setAddLog(this.addLog);
 
-            cl.readCredentials(Exchange.Coinbase, "C:\\Users\\yusai\\coinbase_viewonly.json");
-            cl.readCredentials(Exchange.Bybit, "C:\\Users\\yusai\\bybit_viewonly.json");
-            cl.readCredentials("bitbank", "C:\\Users\\yusai\\bitbank_tradable.json");
-            cl.readCredentials("coincheck", "C:\\Users\\yusai\\coincheck_viewonly.json");
+            this.readAPIFiles(this.APIsPath);
 
-            string master_file = "C:\\Users\\yusai\\crypto_master.csv";
-
-            this.qManager.initializeInstruments(master_file);
+            this.qManager.initializeInstruments(this.masterFile);
             this.qManager.setQueues(this.cl);
 
+            this.oManager.outputPath = this.outputPath;
             this.oManager.setInstruments(this.qManager.instruments);
             this.oManager.setOrderClient(this.cl);
             this.oManager.filledOrderQueue = this.filledOrderQueue;
 
             this.stg = new Strategy();
-            this.stg.readStrategyFile("C:\\Users\\yusai\\strategy.json");
+            this.stg.readStrategyFile(this.strategyFile);
 
             this.stg.maker = this.qManager.instruments[this.stg.maker_symbol_market];
             this.stg.taker = this.qManager.instruments[this.stg.taker_symbol_market];
@@ -99,8 +125,82 @@ namespace Crypto_GUI
             this.font_gridView = new("Calibri", 9);
             this.font_gridView_Bold = new Font(this.font_gridView, FontStyle.Bold);
 
-            updatingTh = new Thread(update);
-            updatingTh.Start();
+            this.updatingTh = new Thread(update);
+            this.updatingTh.Start();
+
+            this.button_receiveFeed.Enabled = true;
+        }
+        private bool readConfig()
+        {
+            if (File.Exists(this.configPath))
+            {
+                string fileContent = File.ReadAllText(this.configPath);
+
+                using JsonDocument doc = JsonDocument.Parse(fileContent);
+                var root = doc.RootElement;
+                JsonElement elem;
+                if (root.TryGetProperty("APIsPath", out elem))
+                {
+                    this.APIsPath = elem.GetString();
+                }
+                else
+                {
+                    this.addLog("[ERROR] API path is not configured.");
+                    return false;
+                }
+                if (root.TryGetProperty("masterFile", out elem))
+                {
+                    this.masterFile = elem.GetString();
+                }
+                else
+                {
+                    this.addLog("[ERROR] Master file path is not configured.");
+                    return false;
+                }
+                if (root.TryGetProperty("outputPath", out elem))
+                {
+                    this.outputPath = elem.GetString();
+                }
+                else
+                {
+                    this.addLog("[WARNING] Output path is not configured.");
+                    this.addLog("[WARNING] The output files will be exported to the current path.");
+                }
+                if (root.TryGetProperty("logFile", out elem))
+                {
+                    this.logPath = elem.GetString();
+                }
+                if (root.TryGetProperty("strategyFile", out elem))
+                {
+                    this.strategyFile = elem.GetString();
+                }
+                else
+                {
+                    this.addLog("[WARNING] strategyFile is not configured.");
+                    this.addLog("[WARNING] Any strategies won't be run.");
+                }
+                return true;
+            }
+            else
+            {
+                this.addLog("[ERROR] Config file doesn't exist. path:" + this.configPath);
+                return false;
+            }
+
+        }
+        private void readAPIFiles(string path)
+        {
+            if (Directory.Exists(path))
+            {
+                // ƒtƒ@ƒCƒ‹ˆê——‚ðŽæ“¾
+                string[] files = Directory.GetFiles(path, "*.json");
+
+                foreach (string file in files)
+                {
+                    this.addLog("[INFO:Form] API File:" + file);
+                    this.cl.readCredentials(file);
+                }
+            }
         }
 
         private void addLog(string line)
@@ -113,18 +213,28 @@ namespace Crypto_GUI
             while (this.logQueue.TryDequeue(out line))
             {
                 this.textBoxMainLog.Text += line;
-                this.logFile.WriteLine(line);
-                this.logFile.Flush();
+                if (this.logFile != null)
+                {
+                    this.logFile.WriteLine(line);
+                    this.logFile.Flush();
+                }
             }
         }
 
         private void update()
         {
             Thread.Sleep(1000);
-            while (true)
+            this.updating = false;
+            while (!this.aborting)
             {
-                this.Invoke(this._update);
+                if(!this.updating)
+                {
+                    this.updating = true;
+                    this.BeginInvoke(this._update);
+                    Thread.Sleep(1);
+                }
             }
+            this.BeginInvoke(this.updateLog);
         }
 
         private void _update()
@@ -144,6 +254,7 @@ namespace Crypto_GUI
                     break;
             }
             this.updateLog();
+            this.updating = false;
         }
         private void update_main()
         {
@@ -152,7 +263,7 @@ namespace Crypto_GUI
             decimal fee = 0;
             decimal total = 0;
 
-            if(this.stg.maker != null && this.stg.taker != null)
+            if (this.stg.maker != null && this.stg.taker != null)
             {
                 volume = this.stg.maker.my_buy_notional + this.stg.taker.my_sell_notional;
                 tradingPL = (this.stg.taker.my_sell_notional - this.stg.taker.my_sell_quantity * this.stg.taker.mid) + (this.stg.taker.my_buy_quantity * this.stg.taker.mid - this.stg.taker.my_buy_notional);
@@ -160,7 +271,7 @@ namespace Crypto_GUI
                 fee = this.stg.taker.total_fee + this.stg.maker.total_fee;
                 volume *= 1000;
                 tradingPL *= 1000;
-                fee *= 1000;                            
+                fee *= 1000;
                 total = tradingPL - fee;
                 this.gridView_PnL.Rows[0].Cells[0].Value = volume.ToString("N2");
                 this.gridView_PnL.Rows[0].Cells[1].Value = tradingPL.ToString("N2");
@@ -292,7 +403,7 @@ namespace Crypto_GUI
             }
         }
 
-        private async void button1_Click(object sender, EventArgs e)
+        private async void receiveFeed_clicked(object sender, EventArgs e)
         {
             await this.cl.connectAsync();
 
@@ -325,6 +436,7 @@ namespace Crypto_GUI
             this.quoteupdateTh.Start();
             this.tradeupdateTh.Start();
             this.orderUpdateTh.Start();
+            this.threadsStarted = true;
         }
 
         private async void button2_Click(object sender, EventArgs e)
@@ -400,10 +512,37 @@ namespace Crypto_GUI
 
         }
 
-        private void button3_Click(object sender, EventArgs e)
+        private void startTrading_clicked(object sender, EventArgs e)
         {
             this.addLog("[INFO] Strategy enabled");
             this.stg.enabled = true;
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            //Stop strategy -> cancel all orders -> update all orders -> stop threads
+            this.stg.enabled = false;
+
+            Thread.Sleep(1000);
+            if(this.threadsStarted)
+            {
+                this.oManager.cancelAllOrders();
+                this.oManager.aborting = true;
+
+                while (this.oManager.aborting)
+                {
+                    Thread.Sleep(100);
+                }
+                this.qManager.aborting = true;
+
+            }
+            this.aborting = true;
+            Thread.Sleep(1000);
+
+            if (this.updatingTh != null && this.updatingTh.IsAlive)
+            {
+                this.updatingTh.Join(2000);
+            }
         }
     }
 }

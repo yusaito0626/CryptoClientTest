@@ -37,6 +37,7 @@ namespace Crypto_Trading
         public Dictionary<string, modifingOrd> modifingOrders;
         public ConcurrentStack<modifingOrd> modifingOrdStack;
 
+        public string outputPath;
         public ConcurrentQueue<string> ordLogQueue;
         public Thread ordLoggingTh;
 
@@ -51,13 +52,15 @@ namespace Crypto_Trading
         private bool virtualMode;
         public volatile int id_number;
 
-        public Action<string> addLog;
+        public Action<string> _addLog;
 
         public bool aborting;
+        public bool updateOrderStopped;
 
         private OrderManager() 
         {
             this.aborting = false;
+            this.updateOrderStopped = false;
             this.virtualMode = true;
             this.orders = new Dictionary<string, DataSpotOrderUpdate>();
             this.live_orders = new Dictionary<string, DataSpotOrderUpdate>();
@@ -77,11 +80,15 @@ namespace Crypto_Trading
                 ++i;
             }
 
-            this.addLog = Console.WriteLine;
-            string ordlogpath = "c:\\users\\yusai";
+            this._addLog = Console.WriteLine;
+            
+        }
+
+        public void startOrderLogging()
+        {
             this.ordLoggingTh = new Thread(() =>
             {
-                this.ordLogging(ordlogpath);
+                this.ordLogging();
             });
             this.ordLoggingTh.Start();
         }
@@ -217,13 +224,12 @@ namespace Crypto_Trading
                     output.fee_asset = "";
                     output.is_trigger_order = true;
                     output.last_trade = "";
-                    this.addLog(output.ToString());
                     this.ord_client.ordUpdateQueue.Enqueue(output);
                 }
                 else
                 {
-                    this.addLog("New Order Failed");
-                    this.addLog(js.RootElement.GetRawText());
+                    this.addLog("ERROR","New Order Failed");
+                    this.addLog("ERROR",js.RootElement.GetRawText());
                     output = null;
                 }
             }
@@ -281,13 +287,12 @@ namespace Crypto_Trading
                     output.fee_asset = "";
                     output.is_trigger_order = true;
                     output.last_trade = "";
-                    this.addLog(output.ToString());
                     this.ord_client.ordUpdateQueue.Enqueue(output);
                 }
                 else
                 {
                     string msg = JsonSerializer.Serialize(js);
-                    this.addLog(msg);
+                    this.addLog("ERROR", msg);
                 }
             }
             else
@@ -365,11 +370,6 @@ namespace Crypto_Trading
                     output.status = orderStatus.WaitCancel;
                     this.ord_client.ordUpdateQueue.Enqueue(output);
                 }
-                else
-                {
-                    this.addLog("Cancel Order Failed");
-                    this.addLog(js.RootElement.GetRawText());
-                }
             }
             else if (ins.market == "coincheck")
             {
@@ -389,11 +389,6 @@ namespace Crypto_Trading
                     output.filled_quantity = 0;
                     output.status = orderStatus.WaitCancel;
                     this.ord_client.ordUpdateQueue.Enqueue(output);
-                }
-                else
-                {
-                    this.addLog("Cancel Order Failed");
-                    this.addLog(js.RootElement.GetRawText());
                 }
             }
             else
@@ -436,7 +431,6 @@ namespace Crypto_Trading
                 }
                 else
                 {
-                    this.addLog("[ERROR] Order not found. Id:" + orderId);
                     return null;
                 }
             }
@@ -454,14 +448,24 @@ namespace Crypto_Trading
                 }
                 else
                 {
-                    this.addLog("[ERROR] Order not found. Id:" + orderId);
                     return null;
                 }
             }
         }
 
+        public void cancelAllOrders()
+        {
+            Instrument ins;
+            foreach(var ord in this.live_orders.Values)
+            {
+                ins = this.Instruments[ord.symbol_market];
+                this.placeCancelSpotOrder(ins, ord.order_id);
+            }
+        }
+
         public void updateOrders()
         {
+            this.startOrderLogging();
             int i = 0;
             DataSpotOrderUpdate ord;
             DataSpotOrderUpdate prevord;
@@ -594,6 +598,11 @@ namespace Crypto_Trading
                         Thread.Sleep(0);
                     }
                 }
+                if(this.aborting && this.ord_client.ordUpdateQueue.Count == 0 && this.ord_client.fillQueue.Count == 0)
+                {
+                    this.updateOrderStopped = true;
+                    break;
+                }
             }
         }
 
@@ -679,9 +688,14 @@ namespace Crypto_Trading
             }
         }
 
-        private void ordLogging(string logPath)
+        private void ordLogging(string logPath = "")
         {
-            string filename = logPath + "\\orderlog_" + DateTime.UtcNow.ToString("yyyy-MM-dd_HHmmss") + ".csv";
+            bool logged = false;
+            if(logPath != "")
+            {
+                this.outputPath = logPath;
+            }
+            string filename = this.outputPath + "\\orderlog_" + DateTime.UtcNow.ToString("yyyy-MM-dd_HHmmss") + ".csv";
             using (FileStream f = new FileStream(filename, FileMode.Create, FileAccess.Write))
             {
                 using (StreamWriter s = new StreamWriter(f))
@@ -693,6 +707,7 @@ namespace Crypto_Trading
                         if (this.ordLogQueue.TryDequeue(out line))
                         {
                             s.WriteLine(line);
+                            logged = true;
                             ++i;
                         }
                         else
@@ -704,35 +719,40 @@ namespace Crypto_Trading
                                 i = 0;
                             }
                         }
-                        if (aborting)
+                        if (this.aborting && this.updateOrderStopped)
                         {
                             while (this.ordLogQueue.Count > 0)
                             {
                                 if (this.ordLogQueue.TryDequeue(out line))
                                 {
                                     s.WriteLine(line);
+                                    logged = true;
                                 }
                             }
                             s.Flush();
                             s.Close();
+                            if(!logged)
+                            {
+                                File.Delete(filename);
+                            }
+                            this.aborting = false;
                             break;
                         }
                     }
                 }
             }
-            this.aborting = false;
         }
 
         public bool setVirtualMode(bool newValue)
         {
             if(newValue)
             {
-                this.addLog("[INFO] The virtual mode turned on.");
+                this.addLog("INFO","The virtual mode turned on.");
                 this.virtualMode = newValue;
             }
             else
             {
-                this.addLog("[INFO] The virtual mode turned off. Orders will go to real markets");
+                this.addLog("INFO","The virtual mode turned off. Orders will go to real markets");
                 this.virtualMode = newValue;
             }
             return this.virtualMode;
@@ -748,6 +768,11 @@ namespace Crypto_Trading
             this.id_number = Interlocked.Increment(ref this.id_number);
             ordid += id_number.ToString("D8");
             return ordid;   
+        }
+
+        public void addLog(string logtype,string line)
+        {
+            this._addLog("[" + logtype + ":OrderManager]" + line);
         }
 
 

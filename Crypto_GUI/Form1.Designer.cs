@@ -36,7 +36,7 @@
             DataGridViewCellStyle dataGridViewCellStyle6 = new DataGridViewCellStyle();
             DataGridViewCellStyle dataGridViewCellStyle7 = new DataGridViewCellStyle();
             DataGridViewCellStyle dataGridViewCellStyle8 = new DataGridViewCellStyle();
-            button1 = new Button();
+            button_receiveFeed = new Button();
             tabControl = new TabControl();
             tabPage1 = new TabPage();
             gridView_PnL = new DataGridView();
@@ -44,9 +44,9 @@
             col_tradingPL = new DataGridViewTextBoxColumn();
             col_feeAmount = new DataGridViewTextBoxColumn();
             col_totalPnL = new DataGridViewTextBoxColumn();
-            button3 = new Button();
+            button_startTrading = new Button();
             textBoxMainLog = new RichTextBox();
-            button2 = new Button();
+            button_orderTest = new Button();
             tabPage3 = new TabPage();
             gridView_orders = new DataGridView();
             col_time = new DataGridViewTextBoxColumn();
@@ -140,16 +140,16 @@
             groupBox1.SuspendLayout();
             SuspendLayout();
             // 
-            // button1
+            // button_receiveFeed
             // 
-            button1.Location = new Point(735, 212);
-            button1.Margin = new Padding(2);
-            button1.Name = "button1";
-            button1.Size = new Size(169, 42);
-            button1.TabIndex = 0;
-            button1.Text = "ReceiveFeed";
-            button1.UseVisualStyleBackColor = true;
-            button1.Click += button1_Click;
+            button_receiveFeed.Location = new Point(735, 212);
+            button_receiveFeed.Margin = new Padding(2);
+            button_receiveFeed.Name = "button_receiveFeed";
+            button_receiveFeed.Size = new Size(169, 42);
+            button_receiveFeed.TabIndex = 0;
+            button_receiveFeed.Text = "ReceiveFeed";
+            button_receiveFeed.UseVisualStyleBackColor = true;
+            button_receiveFeed.Click += receiveFeed_clicked;
             // 
             // tabControl
             // 
@@ -168,10 +168,10 @@
             // 
             tabPage1.BackColor = Color.WhiteSmoke;
             tabPage1.Controls.Add(gridView_PnL);
-            tabPage1.Controls.Add(button3);
+            tabPage1.Controls.Add(button_startTrading);
             tabPage1.Controls.Add(textBoxMainLog);
-            tabPage1.Controls.Add(button2);
-            tabPage1.Controls.Add(button1);
+            tabPage1.Controls.Add(button_orderTest);
+            tabPage1.Controls.Add(button_receiveFeed);
             tabPage1.Location = new Point(4, 29);
             tabPage1.Margin = new Padding(2);
             tabPage1.Name = "tabPage1";
@@ -240,16 +240,16 @@
             col_totalPnL.Name = "col_totalPnL";
             col_totalPnL.Width = 150;
             // 
-            // button3
+            // button_startTrading
             // 
-            button3.Location = new Point(735, 268);
-            button3.Margin = new Padding(2);
-            button3.Name = "button3";
-            button3.Size = new Size(169, 42);
-            button3.TabIndex = 4;
-            button3.Text = "Start Trading";
-            button3.UseVisualStyleBackColor = true;
-            button3.Click += button3_Click;
+            button_startTrading.Location = new Point(735, 268);
+            button_startTrading.Margin = new Padding(2);
+            button_startTrading.Name = "button_startTrading";
+            button_startTrading.Size = new Size(169, 42);
+            button_startTrading.TabIndex = 4;
+            button_startTrading.Text = "Start Trading";
+            button_startTrading.UseVisualStyleBackColor = true;
+            button_startTrading.Click += startTrading_clicked;
             // 
             // textBoxMainLog
             // 
@@ -262,16 +262,16 @@
             textBoxMainLog.TabIndex = 3;
             textBoxMainLog.Text = "";
             // 
-            // button2
+            // button_orderTest
             // 
-            button2.Location = new Point(735, 322);
-            button2.Margin = new Padding(2);
-            button2.Name = "button2";
-            button2.Size = new Size(169, 41);
-            button2.TabIndex = 2;
-            button2.Text = "Test Order";
-            button2.UseVisualStyleBackColor = true;
-            button2.Click += button2_Click;
+            button_orderTest.Location = new Point(735, 322);
+            button_orderTest.Margin = new Padding(2);
+            button_orderTest.Name = "button_orderTest";
+            button_orderTest.Size = new Size(169, 41);
+            button_orderTest.TabIndex = 2;
+            button_orderTest.Text = "Test Order";
+            button_orderTest.UseVisualStyleBackColor = true;
+            button_orderTest.Click += button2_Click;
             // 
             // tabPage3
             // 
@@ -1148,6 +1148,7 @@
             Margin = new Padding(2);
             Name = "Form1";
             Text = "Form1";
+            FormClosing += Form1_FormClosing;
             tabControl.ResumeLayout(false);
             tabPage1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)gridView_PnL).EndInit();
@@ -1167,7 +1168,7 @@
 
         #endregion
 
-        private Button button1;
+        private Button button_receiveFeed;
         private TabControl tabControl;
         private TabPage tabPage1;
         private TabPage tabPage2;
@@ -1182,7 +1183,7 @@
         private Label lbl_notional;
         private Label lbl_lastprice;
         private TabPage tabPage3;
-        private Button button2;
+        private Button button_orderTest;
         private RichTextBox textBoxMainLog;
         private DataGridView gridView_Taker;
         private DataGridViewTextBoxColumn col_Ask;
@@ -1245,7 +1246,7 @@
         private Label label13;
         private Label label11;
         private Label label8;
-        private Button button3;
+        private Button button_startTrading;
         private DataGridView gridView_PnL;
         private DataGridViewTextBoxColumn col_volume;
         private DataGridViewTextBoxColumn col_tradingPL;

@@ -30,7 +30,7 @@ namespace Crypto_Clients
         ClientWebSocket websocket_client;
 
         public Action<string> onMessage;
-        public Action<string> addLog;
+        public Action<string> _addLog;
 
         private bitbank_connection()
         {
@@ -42,7 +42,7 @@ namespace Crypto_Clients
             this.orderQueue = new ConcurrentQueue<JsonElement>();
             this.fillQueue = new ConcurrentQueue<JsonElement>();
 
-            this.addLog = Console.WriteLine;
+            this._addLog = Console.WriteLine;
         }
         public void SetApiCredentials(string name, string key)
         {
@@ -60,20 +60,20 @@ namespace Crypto_Clients
 
         public async Task connectPublicAsync()
         {
-            this.addLog("Connecting to bitbank");
+            this.addLog("INFO","Connecting to bitbank");
             var uri = new Uri(bitbank_connection.ws_URL);
             try
             {
                 await this.websocket_client.ConnectAsync(uri, CancellationToken.None);
-                this.addLog("[INFO] Connected to bitbank.");
+                this.addLog("INFO", "Connected to bitbank.");
             }
             catch (WebSocketException wse)
             {
-                this.addLog($"WebSocketException: {wse.Message}");
+                this.addLog("ERROR", $"WebSocketException: {wse.Message}");
             }
             catch (Exception ex)
             {
-                this.addLog($"Connection failed: {ex.Message}");
+                this.addLog("ERROR", $"Connection failed: {ex.Message}");
             }
         }
 
@@ -81,7 +81,6 @@ namespace Crypto_Clients
         {
             string event_name = "transactions_" + baseCcy.ToLower() + "_" + quoteCcy.ToLower();
             var subscribeJson = @"42[""join-room"",""" + event_name + @"""]";
-            this.addLog(subscribeJson);
             var bytes = Encoding.UTF8.GetBytes(subscribeJson);
             await this.websocket_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
         }
@@ -90,13 +89,11 @@ namespace Crypto_Clients
         {
             string event_name = "depth_diff_" + baseCcy.ToLower() + "_" + quoteCcy.ToLower();
             var subscribeJson = @"42[""join-room"",""" + event_name + @"""]";
-            this.addLog(subscribeJson);
             var bytes = Encoding.UTF8.GetBytes(subscribeJson);
             await this.websocket_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
 
             event_name = "depth_whole_" + baseCcy.ToLower() + "_" + quoteCcy.ToLower();
             subscribeJson = @"42[""join-room"",""" + event_name + @"""]";
-            this.addLog(subscribeJson);
             bytes = Encoding.UTF8.GetBytes(subscribeJson);
             await this.websocket_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
         }
@@ -130,7 +127,7 @@ namespace Crypto_Clients
                                 this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("3"), WebSocketMessageType.Text, true, CancellationToken.None);
                                 break;
                             case "40":
-                                this.addLog("Hand shake completed");
+                                this.addLog("INFO", "Hand shake completed");
                                 break;
                             case "42"://Actual Message
                                 if (result.EndOfMessage)
@@ -140,7 +137,7 @@ namespace Crypto_Clients
                                 }
                                 else
                                 {
-                                    this.addLog("[ERROR] The message is too large");
+                                    this.addLog("ERROR", "The message is too large");
                                 }
                                 break;
                         }
@@ -155,7 +152,7 @@ namespace Crypto_Clients
                 }
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {
-                    this.addLog("Closed by server");
+                    this.addLog("INFO", "Closed by server");
                     await this.websocket_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
                 }
             }
@@ -270,7 +267,6 @@ namespace Crypto_Clients
                 {
                     if (messageResult != null && messageResult.Message != null)
                     {
-                        this.addLog("message received: " + messageResult.Message.ToString());
                         var json = JsonDocument.Parse(messageResult.Message.ToString());
                         if (json.RootElement.TryGetProperty("method", out var method))
                         {
@@ -305,32 +301,32 @@ namespace Crypto_Clients
                 },
                 (pubnubObj, presenceResult) =>
                 {
-                    this.addLog("presence: " + presenceResult.Event);
+                    this.addLog("INFO", "presence: " + presenceResult.Event);
                 },
                 async (pubnubObj, status) =>
                 {
-                    this.addLog("status: " + status.Category);
+                    this.addLog("INFO", "status: " + status.Category);
 
                     switch (status.Category)
                     {
                         case PNStatusCategory.PNConnectedCategory:
-                            this.addLog("pubnub connection established");
+                            this.addLog("INFO", "pubnub connection established");
                             break;
 
                         case PNStatusCategory.PNReconnectedCategory:
-                            this.addLog("pubnub connection restored");
+                            this.addLog("INFO", "pubnub connection restored");
                             this.subscribePrivateChannels(pubnubObj, channel, token);
                             break;
 
                         case PNStatusCategory.PNTimeoutCategory:
                         case PNStatusCategory.PNNetworkIssuesCategory:
                         case PNStatusCategory.PNAccessDeniedCategory:
-                            this.addLog("pubnub reconnecting...");
+                            this.addLog("INFO", "pubnub reconnecting...");
                             await connectPrivateAsync();
                             break;
 
                         default:
-                            this.addLog("status default");
+                            this.addLog("INFO", "status default");
                             break;
                     }
                 }));
@@ -348,6 +344,11 @@ namespace Crypto_Clients
             using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(key));
             var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(value));
             return BitConverter.ToString(hash).Replace("-", "").ToLower();
+        }
+
+        public void addLog(string logtype, string line)
+        {
+            this._addLog("[" + logtype + ":bitbank_connection]" + line);
         }
 
         private static bitbank_connection _instance;

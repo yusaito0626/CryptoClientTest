@@ -92,22 +92,24 @@ namespace Crypto_Trading
 
         public void readStrategyFile(string jsonfilename)
         {
-            string fileContent = File.ReadAllText(jsonfilename);
-            using JsonDocument doc = JsonDocument.Parse(fileContent);
-            var root = doc.RootElement;
+            if(File.Exists(jsonfilename))
+            {
+                string fileContent = File.ReadAllText(jsonfilename);
+                using JsonDocument doc = JsonDocument.Parse(fileContent);
+                var root = doc.RootElement;
 
-            this.baseCcy = root.GetProperty("baseCcy").ToString();
-            this.quoteCcy = root.GetProperty("quoteCcy").ToString();
-            this.markup = root.GetProperty("markup").GetDecimal();
-            this.baseCcyQuantity = root.GetProperty("baseCcyQuantity").GetDecimal();
-            this.ToBsize = root.GetProperty("ToBsize").GetDecimal();
-            this.intervalAfterFill = root.GetProperty("intervalAfterFill").GetDecimal();
-            this.modThreshold = root.GetProperty("modThreshold").GetDecimal();
-            this.skewThreshold = root.GetProperty("skewThreshold").GetDecimal();
-            this.oneSideThreshold = root.GetProperty("oneSideThreshold").GetDecimal();
-            this.taker_symbol_market = root.GetProperty("taker_symbol_market").ToString();
-            this.maker_symbol_market = root.GetProperty("maker_symbol_market").ToString();
-
+                this.baseCcy = root.GetProperty("baseCcy").ToString();
+                this.quoteCcy = root.GetProperty("quoteCcy").ToString();
+                this.markup = root.GetProperty("markup").GetDecimal();
+                this.baseCcyQuantity = root.GetProperty("baseCcyQuantity").GetDecimal();
+                this.ToBsize = root.GetProperty("ToBsize").GetDecimal();
+                this.intervalAfterFill = root.GetProperty("intervalAfterFill").GetDecimal();
+                this.modThreshold = root.GetProperty("modThreshold").GetDecimal();
+                this.skewThreshold = root.GetProperty("skewThreshold").GetDecimal();
+                this.oneSideThreshold = root.GetProperty("oneSideThreshold").GetDecimal();
+                this.taker_symbol_market = root.GetProperty("taker_symbol_market").ToString();
+                this.maker_symbol_market = root.GetProperty("maker_symbol_market").ToString();
+            }
         }
 
         public async Task updateOrders()
