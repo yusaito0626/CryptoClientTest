@@ -17,6 +17,7 @@ namespace Crypto_Trading
         public bool enabled;
 
         public decimal markup;
+        public decimal min_markup;
         public decimal baseCcyQuantity;
         public decimal ToBsize;
 
@@ -50,13 +51,15 @@ namespace Crypto_Trading
         public decimal live_bidprice;
         public decimal skew_point;
 
-        public decimal last_updated_mid;
+        public decimal taker_last_updated_mid;
+        public decimal maker_last_updated_mid;
 
         public DateTime? last_filled_time;
         public Strategy() 
         {
             this.enabled = false;
             this.markup = 0;
+            this.min_markup = 0;
             this.baseCcyQuantity = 0;
             this.ToBsize = 0;
             this.intervalAfterFill = 0;
@@ -85,7 +88,8 @@ namespace Crypto_Trading
             this.live_bidprice = 0;
             this.skew_point = 0;
 
-            this.last_updated_mid = 0;
+            this.taker_last_updated_mid = 0;
+            this.maker_last_updated_mid = 0;
 
             this.oManager = OrderManager.GetInstance();
         }
@@ -101,6 +105,7 @@ namespace Crypto_Trading
                 this.baseCcy = root.GetProperty("baseCcy").ToString();
                 this.quoteCcy = root.GetProperty("quoteCcy").ToString();
                 this.markup = root.GetProperty("markup").GetDecimal();
+                this.min_markup = root.GetProperty("min_markup").GetDecimal();
                 this.baseCcyQuantity = root.GetProperty("baseCcyQuantity").GetDecimal();
                 this.ToBsize = root.GetProperty("ToBsize").GetDecimal();
                 this.intervalAfterFill = root.GetProperty("intervalAfterFill").GetDecimal();
@@ -123,14 +128,45 @@ namespace Crypto_Trading
                 decimal bid_price = this.taker.adjusted_bestbid.Item1 * (1 - (this.markup + this.skew_point) / 1000000);
                 decimal ask_price = this.taker.adjusted_bestask.Item1 * (1 + (this.markup + this.skew_point) / 1000000);
 
-                bid_price = Math.Round(bid_price / this.maker.price_unit) * this.maker.price_unit;
-                ask_price = Math.Round(ask_price / this.maker.price_unit) * this.maker.price_unit;
+                decimal min_markup_bid = this.taker.adjusted_bestbid.Item1 * (1 - this.min_markup / 1000000);
+                decimal min_markup_ask = this.taker.adjusted_bestask.Item1 * (1 + this.min_markup / 1000000);
+
+                if (bid_price >= this.maker.bestask.Item1)
+                {
+                    bid_price = this.maker.bestbid.Item1 + this.maker.price_unit;
+                    if(bid_price >= this.maker.bestask.Item1)
+                    {
+                        bid_price = this.maker.bestbid.Item1;
+                    }
+                }
+
+                if (ask_price <= this.maker.bestbid.Item1)
+                {
+                    ask_price = this.maker.bestask.Item1 - this.maker.price_unit;
+                    if (ask_price <= this.maker.bestbid.Item1)
+                    {
+                        ask_price = this.maker.bestask.Item1;
+                    }
+                }
+
+                if(bid_price > min_markup_bid)
+                {
+                    bid_price = min_markup_bid;
+                }
+                if(ask_price < min_markup_ask)
+                {
+                    ask_price = min_markup_ask;
+                }
+
+                bid_price = Math.Floor(bid_price / this.maker.price_unit) * this.maker.price_unit;
+                ask_price = Math.Ceiling(ask_price / this.maker.price_unit) * this.maker.price_unit;
 
                 bool isPriceChanged = this.checkPriceChange();
 
                 if (isPriceChanged)
                 {
-                    this.last_updated_mid = this.taker.mid;
+                    this.taker_last_updated_mid = this.taker.mid;
+                    this.maker_last_updated_mid = this.maker.mid;
                 }
 
                 while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
@@ -196,8 +232,9 @@ namespace Crypto_Trading
 
         public bool checkPriceChange()
         {
-            bool output = (this.last_updated_mid == 0 || this.taker.mid / this.last_updated_mid > 1 + this.modThreshold || this.taker.mid / this.last_updated_mid < 1 - this.modThreshold);
-            return output;
+            bool taker_check = (this.taker_last_updated_mid == 0 || this.taker.mid / this.taker_last_updated_mid > 1 + this.modThreshold || this.taker.mid / this.taker_last_updated_mid < 1 - this.modThreshold);
+            bool maker_check = (this.maker_last_updated_mid == 0 || this.maker.mid / this.maker_last_updated_mid > 1 + this.modThreshold || this.maker.mid / this.maker_last_updated_mid < 1 - this.modThreshold);
+            return (taker_check || maker_check);
         }
         public decimal skew()
         {
@@ -205,18 +242,18 @@ namespace Crypto_Trading
             if(this.maker.baseBalance.balance > this.baseCcyQuantity * ((decimal)0.5 + this.skewThreshold / 200))
             {
                 skew_point = - this.markup * (this.maker.baseBalance.balance - this.baseCcyQuantity * ((decimal)0.5 + this.skewThreshold / 200)) / (this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200) - this.baseCcyQuantity * ((decimal)0.5 + this.skewThreshold / 200));
-                if(skew_point < - this.markup)
-                {
-                    skew_point = - this.markup;
-                }
+                //if(skew_point < - this.markup)
+                //{
+                //    skew_point = - this.markup;
+                //}
             }
             else if(this.maker.baseBalance.balance < this.baseCcyQuantity * ((decimal)0.5 - this.skewThreshold / 200))
             {
                 skew_point = this.markup * (this.baseCcyQuantity * ((decimal)0.5 - this.skewThreshold / 200) - this.maker.baseBalance.balance) / (this.baseCcyQuantity * ((decimal)0.5 - this.skewThreshold / 200) - this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200));
-                if (skew_point > this.markup)
-                {
-                    skew_point = this.markup;
-                }
+                //if (skew_point > this.markup)
+                //{
+                //    skew_point = this.markup;
+                //}
             }
             return skew_point;
         }

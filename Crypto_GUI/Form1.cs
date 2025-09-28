@@ -46,16 +46,20 @@ namespace Crypto_GUI
         private bool threadsStarted;
         private bool aborting;
 
+        private decimal multiplier = 1000;
+
         public Form1()
         {
             this.aborting = false;
             this.threadsStarted = false;
 
             InitializeComponent();
+            
+            this.lbl_multiplier.Text = this.multiplier.ToString("N0");
 
             this.button_receiveFeed.Enabled = false;
             this.button_startTrading.Enabled = false;
-            this.button_orderTest.Enabled = false;
+            //this.button_orderTest.Enabled = false;
 
             if (!this.readConfig())
             {
@@ -265,13 +269,13 @@ namespace Crypto_GUI
 
             if (this.stg.maker != null && this.stg.taker != null)
             {
-                volume = this.stg.maker.my_buy_notional + this.stg.taker.my_sell_notional;
+                volume = this.stg.maker.my_buy_notional + this.stg.maker.my_sell_notional;
                 tradingPL = (this.stg.taker.my_sell_notional - this.stg.taker.my_sell_quantity * this.stg.taker.mid) + (this.stg.taker.my_buy_quantity * this.stg.taker.mid - this.stg.taker.my_buy_notional);
-                tradingPL += (this.stg.maker.my_sell_notional - this.stg.maker.my_sell_quantity * this.stg.maker.mid) + (this.stg.maker.my_buy_quantity * this.stg.maker.mid - this.stg.maker.my_buy_notional);
+                tradingPL += (this.stg.maker.my_sell_notional - this.stg.maker.my_sell_quantity * this.stg.taker.mid) + (this.stg.maker.my_buy_quantity * this.stg.taker.mid - this.stg.maker.my_buy_notional);
                 fee = this.stg.taker.total_fee + this.stg.maker.total_fee;
-                volume *= 1000;
-                tradingPL *= 1000;
-                fee *= 1000;
+                volume *= this.multiplier;
+                tradingPL *= this.multiplier;
+                fee *= this.multiplier;
                 total = tradingPL - fee;
                 this.gridView_PnL.Rows[0].Cells[0].Value = volume.ToString("N2");
                 this.gridView_PnL.Rows[0].Cells[1].Value = tradingPL.ToString("N2");
@@ -405,7 +409,7 @@ namespace Crypto_GUI
 
         private async void receiveFeed_clicked(object sender, EventArgs e)
         {
-            await this.cl.connectAsync();
+            await this.cl.connectAsync(this.qManager.markets);
 
             this.qManager.setBalance(await this.cl.getBalance(this.qManager.markets));
             //this.qManager.setFees(await this.cl.getFees([Exchange.Bybit, Exchange.Coinbase], this.stg.baseCcy, this.stg.quoteCcy),this.stg.baseCcy + this.stg.quoteCcy);
@@ -437,78 +441,88 @@ namespace Crypto_GUI
             this.tradeupdateTh.Start();
             this.orderUpdateTh.Start();
             this.threadsStarted = true;
+            this.button_startTrading.Enabled = true;
         }
 
         private async void button2_Click(object sender, EventArgs e)
         {
-            DataSpotOrderUpdate ord;
-            Instrument ins = this.qManager.instruments["eth_jpy@coincheck"];
+            await this.cl.connectAsync(this.qManager.markets);
+            await this.cl.subscribeOrderBook(["bittrade"], "eth", "jpy");
+            await this.cl.subscribeTrades(["bittrade"], "eth", "jpy");
+            this.quoteupdateTh = new System.Threading.Thread(this.qManager.updateQuotes);
+            this.tradeupdateTh = new System.Threading.Thread(this.qManager.updateTrades);
+            this.orderUpdateTh = new System.Threading.Thread(this.oManager.updateOrders);
+            this.quoteupdateTh.Start();
+            this.tradeupdateTh.Start();
+            this.orderUpdateTh.Start();
+            //DataSpotOrderUpdate ord;
+            //Instrument ins = this.qManager.instruments["eth_jpy@coincheck"];
 
-            this.oManager.setVirtualMode(false);
+            //this.oManager.setVirtualMode(false);
 
-            this.addLog("Testing orderManager");
-            Thread.Sleep(3000);
-            this.addLog("Placing a new order");
-            string ordid;
-            ord = await this.oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Limit, (decimal)0.01, 580000);
-            if (ord != null)
-            {
-                ordid = ord.order_id;
-                this.addLog(ord.ToString());
-            }
-            else
-            {
-                this.addLog("Failed to place a new order");
-                return;
-            }
-            Thread.Sleep(1000);
-            this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
-            Thread.Sleep(3000);
-            this.addLog("modifing a order");
-            ord = await this.oManager.placeModSpotOrder(ins, ordid, (decimal)0.01, 570000, false);
-            if (ord != null)
-            {
-                ordid = ord.order_id;
-                this.addLog(ord.ToString());
-            }
-            else
-            {
-                this.addLog("Failed to place a mod order");
-                return;
-            }
-            Thread.Sleep(1000);
-            this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
-            if (this.oManager.live_orders.Count > 0)
-            {
-                this.addLog("Cancelling a order");
-                ord = this.oManager.live_orders.Values.First();
-                this.addLog(ord.ToString());
-                ord = await this.oManager.placeCancelSpotOrder(ins, ord.order_id);
-                if (ord != null)
-                {
-                    ordid = ord.order_id;
-                    this.addLog(ord.ToString());
-                }
-                else
-                {
-                    this.addLog("Failed to place a can order");
-                    return;
-                }
-            }
-            Thread.Sleep(1000);
-            this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
+            //this.addLog("Testing orderManager");
+            //Thread.Sleep(3000);
+            //this.addLog("Placing a new order");
+            //string ordid;
+            //ord = await this.oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Limit, (decimal)0.01, 580000);
+            //if (ord != null)
+            //{
+            //    ordid = ord.order_id;
+            //    this.addLog(ord.ToString());
+            //}
+            //else
+            //{
+            //    this.addLog("Failed to place a new order");
+            //    return;
+            //}
+            //Thread.Sleep(1000);
+            //this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
+            //Thread.Sleep(3000);
+            //this.addLog("modifing a order");
+            //ord = await this.oManager.placeModSpotOrder(ins, ordid, (decimal)0.01, 570000, false);
+            //if (ord != null)
+            //{
+            //    ordid = ord.order_id;
+            //    this.addLog(ord.ToString());
+            //}
+            //else
+            //{
+            //    this.addLog("Failed to place a mod order");
+            //    return;
+            //}
+            //Thread.Sleep(1000);
+            //this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
+            //if (this.oManager.live_orders.Count > 0)
+            //{
+            //    this.addLog("Cancelling a order");
+            //    ord = this.oManager.live_orders.Values.First();
+            //    this.addLog(ord.ToString());
+            //    ord = await this.oManager.placeCancelSpotOrder(ins, ord.order_id);
+            //    if (ord != null)
+            //    {
+            //        ordid = ord.order_id;
+            //        this.addLog(ord.ToString());
+            //    }
+            //    else
+            //    {
+            //        this.addLog("Failed to place a can order");
+            //        return;
+            //    }
+            //}
+            //Thread.Sleep(1000);
+            //this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
 
-            this.addLog("Fill Check");
-            //ord = await this.oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Limit, (decimal)0.001, 620000);
-            this.addLog(ord.ToString());
-            Thread.Sleep(1000);
-            this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
+            //this.addLog("Fill Check");
+            ////ord = await this.oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Limit, (decimal)0.001, 620000);
+            //this.addLog(ord.ToString());
+            //Thread.Sleep(1000);
+            //this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
 
-            this.addLog("Market Order");
-            //ord = await this.oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Market, (decimal)0.001, 620000);
-            this.addLog(ord.ToString());
-            Thread.Sleep(1000);
-            this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
+            //this.addLog("Market Order");
+            ////ord = await this.oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Market, (decimal)0.001, 620000);
+            //this.addLog(ord.ToString());
+            //Thread.Sleep(1000);
+            //this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
 
         }
 

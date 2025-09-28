@@ -111,6 +111,7 @@ namespace Crypto_Trading
                 {
 
                 }
+                output.isVirtual = true;
                 output.order_id = this.getVirtualOrdId();
                 output.symbol = ins.symbol;
                 output.market = ins.market;
@@ -317,6 +318,7 @@ namespace Crypto_Trading
 
                 }
                 DataSpotOrderUpdate prev = this.orders[orderId];
+                output.isVirtual = true;
                 output.order_id = orderId;
                 output.symbol = ins.symbol;
                 output.market = ins.market;
@@ -623,6 +625,7 @@ namespace Crypto_Trading
                                 {
 
                                 }
+                                output.isVirtual = true;
                                 output.order_id = ord.order_id;
                                 output.symbol = ins.symbol;
                                 output.market = ins.market;
@@ -655,6 +658,7 @@ namespace Crypto_Trading
                                 {
 
                                 }
+                                output.isVirtual = true;
                                 output.order_id = ord.order_id;
                                 output.symbol = ins.symbol;
                                 output.market = ins.market;

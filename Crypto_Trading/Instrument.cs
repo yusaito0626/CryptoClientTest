@@ -322,7 +322,7 @@ namespace Crypto_Trading
 
             filledQuantity = new_ord.filled_quantity - prev_ord.filled_quantity;
 
-            if(new_ord.market == "bitbank")//Update fill with fill object.
+            if(new_ord.isVirtual == false && new_ord.market == "bitbank")//Update fill with fill object.
             {
                 filledQuantity = 0;
                 fee = 0;

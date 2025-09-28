@@ -31,6 +31,7 @@ namespace Crypto_Clients
         Coinbase.Net.Clients.CoinbaseSocketClient CoinbaseSocketClient;
         bitbank_connection bitbank_client;
         coincheck_connection coincheck_client;
+        bittrade_connection bittrade_client;
 
         CryptoClients.Net.Models.ExchangeCredentials creds;
 
@@ -54,6 +55,7 @@ namespace Crypto_Clients
         Thread bitbankPublicChannelTh;
         Thread coincheckPublicChannelsTh;
         Thread coincheckPrivateChannelsTh;
+        Thread bittradePublicChannelTh;
 
         public Action<string> _addLog;
         public Crypto_Clients()
@@ -65,6 +67,7 @@ namespace Crypto_Clients
 
             this.bitbank_client = bitbank_connection.GetInstance();
             this.coincheck_client = coincheck_connection.GetInstance();
+            this.bittrade_client = bittrade_connection.GetInstance();
 
             this.creds = new CryptoClients.Net.Models.ExchangeCredentials();
 
@@ -101,29 +104,49 @@ namespace Crypto_Clients
             this._addLog = act;
             this.bitbank_client._addLog = act;
             this.coincheck_client._addLog = act;
+            this.bittrade_client._addLog = act;
         }
 
-        public async Task connectAsync()
+        public async Task connectAsync(IEnumerable<string> markets)
         {
-            await this.bitbank_client.connectPublicAsync();
-            this.bitbankPublicChannelTh = new Thread(() =>
+            foreach (string market in markets)
             {
-                this.bitbank_client.startListen(this.onBitbankMessage);
-            });
-            this.bitbankPublicChannelTh.Start();
+                switch(market)
+                {
+                    case "bitbank":
+                        await this.bitbank_client.connectPublicAsync();
+                        this.bitbankPublicChannelTh = new Thread(() =>
+                        {
+                            this.bitbank_client.startListen(this.onBitbankMessage);
+                        });
+                        this.bitbankPublicChannelTh.Start();
+                        break;
+                    case "coincheck":
+                        await this.coincheck_client.connectPublicAsync();
+                        this.coincheckPublicChannelsTh = new Thread(() =>
+                        {
+                            this.coincheck_client.startListen(this.onCoincheckMessage);
+                        });
+                        this.coincheckPublicChannelsTh.Start();
+                        await this.coincheck_client.connectPrivateAsync();
+                        this.coincheckPrivateChannelsTh = new Thread(() =>
+                        {
+                            this.coincheck_client.startListenPrivate(this.onConcheckPrivateMessage);
+                        });
+                        this.coincheckPrivateChannelsTh.Start();
+                        break;
+                    case "bittrade":
+                        await this.bittrade_client.connectPublicAsync();
+                        this.bittradePublicChannelTh = new Thread(() =>
+                        {
+                            this.bittrade_client.startListen(this.onBitTradeMessage);
+                        });
+                        this.bittradePublicChannelTh.Start();
+                        break;
+                }
+            }
 
-            await this.coincheck_client.connectPublicAsync();
-            this.coincheckPublicChannelsTh = new Thread(() =>
-            {
-                this.coincheck_client.startListen(this.onCoincheckMessage);
-            });
-            this.coincheckPublicChannelsTh.Start();
-            await this.coincheck_client.connectPrivateAsync();
-            this.coincheckPrivateChannelsTh = new Thread(() =>
-            {
-                this.coincheck_client.startListenPrivate(this.onConcheckPrivateMessage);
-            });
-            this.coincheckPrivateChannelsTh.Start();
+
         }
 
         public void pushToOrderBookStack(DataOrderBook msg)
@@ -475,6 +498,9 @@ namespace Crypto_Clients
                     case "coincheck":
                         await this.coincheck_client.subscribeTrades(baseCcy, quoteCcy);
                         break;
+                    case "bittrade":
+                        await this.bittrade_client.subscribeTrades(baseCcy, quoteCcy);
+                        break;
                     default:
                         var subResult = await this._client.SubscribeToTradeUpdatesAsync(m, new SubscribeTradeRequest(symbol), LogTrades);
                         this.addLog("INFO",$"{subResult.Exchange} subscribe trades result: {subResult.Success} {subResult.Error}");
@@ -509,6 +535,9 @@ namespace Crypto_Clients
                         break;
                     case "coincheck":
                         await this.coincheck_client.subscribeOrderBook(baseCcy, quoteCcy);
+                        break;
+                    case "bittrade":
+                        await this.bittrade_client.subscribeOrderBook(baseCcy, quoteCcy);
                         break;
                     default:
                         var subResult = await this._client.SubscribeToOrderBookUpdatesAsync(m, req, LogOrderBook);
@@ -670,6 +699,58 @@ namespace Crypto_Clients
                     fill.setCoincheckFill(js);
                     this.fillQueue.Enqueue(fill);
                     break;
+            }
+        }
+        public void onBitTradeMessage(string msg_body)
+        {
+            //this.addLog("INFO",msg_body);
+            JsonElement js = JsonDocument.Parse(msg_body).RootElement;
+            JsonElement subElement;
+            Int64 pong_no;
+            if (js.TryGetProperty("ch", out subElement))
+            {
+                string[] channel = subElement.GetString().Split(".");
+                //0:market,1:symbol,2:channel,3:additional info
+                if(channel.Length > 2)
+                {
+                    switch (channel[2])
+                    {
+                        case "depth":
+                            var data = js.GetProperty("tick");
+                            DataOrderBook ord;
+                            while (!this.ordBookStack.TryPop(out ord))
+                            {
+
+                            }
+                            ord.setBitTradeOrderBook(data, channel[1],js.GetProperty("ts").GetInt64());
+                            this.ordBookQueue.Enqueue(ord);
+                            break;
+                        case "trade":
+                            var tick = js.GetProperty("tick");
+                            var root = tick.GetProperty("data");
+                            foreach (var item in root.EnumerateArray())
+                            {
+                                DataTrade trd;
+                                while (!this.tradeStack.TryPop(out trd))
+                                {
+
+                                }
+                                trd.setBitTradeTrade(item, channel[1]);
+                                this.tradeQueue.Enqueue(trd);
+                            }
+                            break;
+                        case "kline":
+                        case "bbo":
+                        case "detail":
+                        default:
+                            break;
+                    }
+                }
+                
+            }
+            else if (js.TryGetProperty("ping", out subElement))
+            {
+                this.bittrade_client.sendPong(subElement.GetInt64());
             }
         }
 
@@ -844,6 +925,24 @@ namespace Crypto_Clients
                 {
                     this.bids[decimal.Parse(item[0].GetString())] = decimal.Parse(item[1].GetString());
                 }
+            }
+        }
+        public void setBitTradeOrderBook(JsonElement js, string symbol, Int64 unixTime)
+        {
+            this.timestamp = DateTime.UtcNow;
+            this.market = "bittrade";
+            this.symbol = symbol;
+            this.updateType = SocketUpdateType.Snapshot;
+            this.orderbookTime = DateTimeOffset.FromUnixTimeMilliseconds(unixTime).UtcDateTime;
+            var data = js.GetProperty("asks").EnumerateArray();
+            foreach (var item in data)
+            {
+                this.asks[item[0].GetDecimal()] = item[1].GetDecimal();
+            }
+            data = js.GetProperty("bids").EnumerateArray();
+            foreach (var item in data)
+            {
+                this.bids[item[0].GetDecimal()] = item[1].GetDecimal();
             }
         }
         public void setCoincheckOrderBook(JsonElement js,string symbol)
@@ -1094,6 +1193,8 @@ namespace Crypto_Clients
         public decimal trigger_price;
         public bool is_trigger_order;
 
+        public bool isVirtual;
+
         public DataSpotOrderUpdate()
         {
             this.timestamp = null;
@@ -1117,6 +1218,7 @@ namespace Crypto_Clients
             this.last_trade = "";
             this.trigger_price = 0;
             this.is_trigger_order = false;
+            this.isVirtual = false; 
         }
 
         public void setCoincheckSpotOrder(JsonElement js)
@@ -1422,6 +1524,7 @@ namespace Crypto_Clients
             this.last_trade = "";
             this.trigger_price = 0;
             this.is_trigger_order = false;
+            this.isVirtual = false;
         }
         public string ToString()
         {
@@ -1503,6 +1606,25 @@ namespace Crypto_Clients
             }
             this.price = decimal.Parse(js.GetProperty("price").GetString());
             this.quantity = decimal.Parse(js.GetProperty("amount").GetString());
+        }
+        public void setBitTradeTrade(JsonElement js,string symbol)
+        {
+            int i = 0;
+            this.timestamp = DateTime.UtcNow;
+            this.market = "bittrade";
+            this.symbol = symbol;
+            this.filled_time = DateTimeOffset.FromUnixTimeMilliseconds(js.GetProperty("ts").GetInt64()).UtcDateTime;
+            this.price = js.GetProperty("price").GetDecimal();
+            this.quantity = js.GetProperty("amount").GetDecimal();
+            string str_side = js.GetProperty("direction").GetString();
+            if (str_side == "buy")
+            {
+                this.side = SharedOrderSide.Buy;
+            }
+            else if (str_side == "sell")
+            {
+                this.side = SharedOrderSide.Sell;
+            }
         }
         public void setCoincheckTrade(JsonElement js)
         {

@@ -43,6 +43,7 @@ namespace Crypto_Clients
             this.fillQueue = new ConcurrentQueue<JsonElement>();
 
             this._addLog = Console.WriteLine;
+            this.onMessage = Console.WriteLine;
         }
         public void SetApiCredentials(string name, string key)
         {
@@ -82,7 +83,10 @@ namespace Crypto_Clients
             string event_name = "transactions_" + baseCcy.ToLower() + "_" + quoteCcy.ToLower();
             var subscribeJson = @"42[""join-room"",""" + event_name + @"""]";
             var bytes = Encoding.UTF8.GetBytes(subscribeJson);
-            await this.websocket_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+            if (this.websocket_client.State == WebSocketState.Open)
+            {
+                await this.websocket_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+            }
         }
 
         public async Task subscribeOrderBook(string baseCcy, string quoteCcy)
@@ -90,12 +94,17 @@ namespace Crypto_Clients
             string event_name = "depth_diff_" + baseCcy.ToLower() + "_" + quoteCcy.ToLower();
             var subscribeJson = @"42[""join-room"",""" + event_name + @"""]";
             var bytes = Encoding.UTF8.GetBytes(subscribeJson);
-            await this.websocket_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
-
+            if (this.websocket_client.State == WebSocketState.Open)
+            {
+                await this.websocket_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+            }
             event_name = "depth_whole_" + baseCcy.ToLower() + "_" + quoteCcy.ToLower();
             subscribeJson = @"42[""join-room"",""" + event_name + @"""]";
             bytes = Encoding.UTF8.GetBytes(subscribeJson);
-            await this.websocket_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+            if (this.websocket_client.State == WebSocketState.Open)
+            {
+                await this.websocket_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+            }
         }
 
         public async void startListen(Action<string> onMsg)
