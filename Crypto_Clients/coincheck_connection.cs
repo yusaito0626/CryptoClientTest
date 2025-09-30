@@ -1,6 +1,7 @@
 ﻿using PubnubApi;
 using System.Collections.Concurrent;
 using System.Drawing;
+using System.IO.Compression;
 using System.Net.WebSockets;
 using System.Security.Cryptography;
 using System.Text;
@@ -29,6 +30,17 @@ namespace Crypto_Clients
         public Action<string> onPrivateMessage;
         public Action<string> _addLog;
 
+        byte[] ws_buffer = new byte[16384];
+        MemoryStream ws_memory = new MemoryStream();
+        MemoryStream result_memory = new MemoryStream();
+
+        byte[] pv_buffer = new byte[16384];
+        MemoryStream pv_memory = new MemoryStream();
+        MemoryStream pv_result_memory = new MemoryStream();
+
+        public bool autoReconnecting;
+        private List<string> subscribingChannels;
+
         private coincheck_connection()
         {
             this.apiName = "";
@@ -39,6 +51,9 @@ namespace Crypto_Clients
 
             this.orderQueue = new ConcurrentQueue<JsonElement>();
             this.fillQueue = new ConcurrentQueue<JsonElement>();
+
+            this.autoReconnecting = true;
+            this.subscribingChannels = new List<string>();
 
             this._addLog = Console.WriteLine;
         }
@@ -118,6 +133,11 @@ namespace Crypto_Clients
             {
                 await this.websocket_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
             }
+            string channel_name = "trade_" + baseCcy + "_" + quoteCcy;
+            if (!this.subscribingChannels.Contains(channel_name))
+            {
+                this.subscribingChannels.Add(channel_name);
+            }
         }
 
         public async Task subscribeOrderBook(string baseCcy, string quoteCcy)
@@ -128,6 +148,11 @@ namespace Crypto_Clients
             if (this.websocket_client.State == WebSocketState.Open)
             {
                 await this.websocket_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+            }
+            string channel_name = "orderbook_" + baseCcy + "_" + quoteCcy;
+            if (!this.subscribingChannels.Contains(channel_name))
+            {
+                this.subscribingChannels.Add(channel_name);
             }
         }
 
@@ -151,6 +176,88 @@ namespace Crypto_Clients
                 }
             }
             this.addLog("INFO", "Check websocket state. State:" +  this.websocket_client.State.ToString());
+        }
+        public async Task onListen(Action<string> onMsg)
+        {
+            WebSocketReceiveResult result;
+            if (this.websocket_client.State == WebSocketState.Open)
+            {
+                do
+                {
+                    result = await this.websocket_client.ReceiveAsync(new ArraySegment<byte>(this.ws_buffer), CancellationToken.None);
+                    this.ws_memory.Write(this.ws_buffer, 0, result.Count);
+
+                } while (!result.EndOfMessage);
+                if (result.MessageType == WebSocketMessageType.Text)
+                {
+                    this.ws_memory.Position = 0;
+                    var msg = Encoding.UTF8.GetString(this.ws_memory.ToArray());
+                    onMsg(msg);
+                }
+                else if (result.MessageType == WebSocketMessageType.Binary)
+                {
+                    this.ws_memory.Position = 0;
+                    using var gzipStream = new GZipStream(this.ws_memory, CompressionMode.Decompress, leaveOpen: true);
+                    gzipStream.CopyTo(this.result_memory);
+                    var msg = Encoding.UTF8.GetString(this.result_memory.ToArray());
+                    onMsg(msg);
+                    this.result_memory.SetLength(0);
+                    this.result_memory.Position = 0;
+                }
+                else if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    this.addLog("INFO", "Closed by server");
+                    await this.websocket_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                    if (this.autoReconnecting)
+                    {
+                        this.addLog("INFO", "Reconnecting...");
+                        await this.connectPublicAsync();
+                        foreach (string ch in this.subscribingChannels)
+                        {
+                            string[] channel_details = ch.Split("_");
+
+                            switch (channel_details[0])
+                            {
+                                case "trade":
+                                    await this.subscribeTrades(channel_details[1], channel_details[2]);
+                                    break;
+                                case "orderbook":
+                                    await this.subscribeOrderBook(channel_details[1], channel_details[2]);
+                                    break;
+                            }
+                        }
+                    }
+                }
+                this.ws_memory.SetLength(0);
+                this.ws_memory.Position = 0;
+            }
+            else
+            {
+                this.addLog("ERROR", "Private channel is closed. Check the status. State:" + this.websocket_client.State.ToString());
+                if (this.autoReconnecting)
+                {
+                    this.addLog("INFO", "Reconnecting...");
+                    await this.connectPublicAsync();
+                    foreach (string ch in this.subscribingChannels)
+                    {
+                        string[] channel_details = ch.Split("_");
+
+                        switch (channel_details[0])
+                        {
+                            case "trade":
+                                await this.subscribeTrades(channel_details[1], channel_details[2]);
+                                break;
+                            case "orderbook":
+                                await this.subscribeOrderBook(channel_details[1], channel_details[2]);
+                                break;
+                        }
+                    }
+                }
+                else
+                {
+                    Thread.Sleep(10000);
+                }
+            }
         }
 
         public async Task subscribeOrderEvent()
@@ -192,10 +299,51 @@ namespace Crypto_Clients
             }
             this.addLog("INFO", "Check websocket state. State:" + this.private_client.State.ToString());
         }
+        public async void onListenPrivate(Action<string> onMsg)
+        {
+            WebSocketReceiveResult result;
+            if (this.private_client.State == WebSocketState.Open)
+            {
+                do
+                {
+                    result = await this.private_client.ReceiveAsync(new ArraySegment<byte>(this.pv_buffer), CancellationToken.None);
+                    this.pv_memory.Write(this.pv_buffer, 0, result.Count);
+
+                } while (!result.EndOfMessage);
+                if (result.MessageType == WebSocketMessageType.Text)
+                {
+                    this.pv_memory.Position = 0;
+                    var msg = Encoding.UTF8.GetString(this.pv_memory.ToArray());
+                    onMsg(msg);
+                }
+                else if (result.MessageType == WebSocketMessageType.Binary)
+                {
+                    this.pv_memory.Position = 0;
+                    using var gzipStream = new GZipStream(this.pv_memory, CompressionMode.Decompress, leaveOpen: true);
+                    gzipStream.CopyTo(this.pv_result_memory);
+                    var msg = Encoding.UTF8.GetString(this.pv_result_memory.ToArray());
+                    onMsg(msg);
+                    this.pv_result_memory.SetLength(0);
+                    this.pv_result_memory.Position = 0;
+                }
+                else if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    this.addLog("INFO", "Closed by server");
+                    await this.private_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                }
+                this.pv_memory.SetLength(0);
+                this.pv_memory.Position = 0;
+            }
+            else
+            {
+                this.addLog("ERROR", "Private channel is closed. Check the status. State:" + this.private_client.State.ToString());
+                Thread.Sleep(60000);
+            }
+        }
 
         private async Task<string> getAsync(string endpoint)
         {
-            var nonce = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var nonce = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var message = $"{nonce}{coincheck_connection.URL}{endpoint}";
 
             using var client = new HttpClient();

@@ -255,9 +255,17 @@ namespace Crypto_Trading
                         break;
                     }
                 }
-                weightedPrice /= cumQuantity;
-                this.adjusted_bestask.Item1 = weightedPrice * (1 + this.taker_fee);
-                this.adjusted_bestask.Item2 = cumQuantity;
+                if (cumQuantity > 0)
+                {
+                    weightedPrice /= cumQuantity;
+                    this.adjusted_bestask.Item1 = weightedPrice * (1 + this.taker_fee);
+                    this.adjusted_bestask.Item2 = cumQuantity;
+                }
+                else
+                {
+                    this.adjusted_bestask.Item1 = 0;
+                    this.adjusted_bestask.Item2 = 0;
+                }
 
                 cumQuantity = 0;
                 weightedPrice = 0;
@@ -275,9 +283,18 @@ namespace Crypto_Trading
                         break;
                     }
                 }
-                weightedPrice /= cumQuantity;
-                this.adjusted_bestbid.Item1 = weightedPrice * (1 - this.taker_fee);
-                this.adjusted_bestbid.Item2 = cumQuantity;
+                if(cumQuantity > 0)
+                {
+                    weightedPrice /= cumQuantity;
+                    this.adjusted_bestbid.Item1 = weightedPrice * (1 - this.taker_fee);
+                    this.adjusted_bestbid.Item2 = cumQuantity;
+                }
+                else
+                {
+                    this.adjusted_bestbid.Item1 = 0;
+                    this.adjusted_bestbid.Item2 = 0;
+                }
+                
             }
             else
             {

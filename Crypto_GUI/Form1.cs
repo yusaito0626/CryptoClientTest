@@ -21,9 +21,10 @@ namespace Crypto_GUI
         string virtualBalanceFile = "";
         string strategyFile = "";
 
-        Crypto_Clients.Crypto_Clients cl = new Crypto_Clients.Crypto_Clients();
+        Crypto_Clients.Crypto_Clients crypto_client = Crypto_Clients.Crypto_Clients.GetInstance();
         QuoteManager qManager = QuoteManager.GetInstance();
         OrderManager oManager = OrderManager.GetInstance();
+        ThreadManager thManager = ThreadManager.GetInstance();
 
         Strategy stg;
 
@@ -78,16 +79,15 @@ namespace Crypto_GUI
 
             this.qManager._addLog = this.addLog;
             this.oManager._addLog = this.addLog;
-            this.cl.setAddLog(this.addLog);
+            this.crypto_client.setAddLog(this.addLog);
 
             this.readAPIFiles(this.APIsPath);
 
             this.qManager.initializeInstruments(this.masterFile);
-            this.qManager.setQueues(this.cl);
+            this.qManager.setQueues(this.crypto_client);
 
-            this.oManager.outputPath = this.outputPath;
+            this.oManager.setOrdLogPath(this.outputPath);
             this.oManager.setInstruments(this.qManager.instruments);
-            this.oManager.setOrderClient(this.cl);
             this.oManager.filledOrderQueue = this.filledOrderQueue;
 
             this.stg = new Strategy();
@@ -215,7 +215,7 @@ namespace Crypto_GUI
                 foreach (string file in files)
                 {
                     this.addLog("[INFO:Form] API File:" + file);
-                    this.cl.readCredentials(file);
+                    this.crypto_client.readCredentials(file);
                 }
             }
         }
@@ -422,15 +422,20 @@ namespace Crypto_GUI
 
         private async void receiveFeed_clicked(object sender, EventArgs e)
         {
-            await this.cl.connectAsync(this.qManager.markets);
+            await this.crypto_client.connectAsync(this.qManager.markets);
+            foreach (var mkt in this.qManager.markets)
+            {
+                await this.qManager.connectPublicChannel(mkt);
+                await this.oManager.connectPrivateChannel(mkt);
+            }
 
-            if(this.oManager.getVirtualMode())
+            if (this.oManager.getVirtualMode())
             {
                 this.qManager.setVirtualBalance(this.virtualBalanceFile);
             }
             else
             {
-                this.qManager.setBalance(await this.cl.getBalance(this.qManager.markets));
+                this.qManager.setBalance(await this.crypto_client.getBalance(this.qManager.markets));
             }
             //this.qManager.setFees(await this.cl.getFees([Exchange.Bybit, Exchange.Coinbase], this.stg.baseCcy, this.stg.quoteCcy),this.stg.baseCcy + this.stg.quoteCcy);
 
@@ -439,36 +444,34 @@ namespace Crypto_GUI
                 string[] markets = [ins.market];
                 if (ins.market == Exchange.Bybit)
                 {
-                    await cl.subscribeBybitOrderBook(ins.baseCcy, ins.quoteCcy);
+                    await crypto_client.subscribeBybitOrderBook(ins.baseCcy, ins.quoteCcy);
                 }
                 else if (ins.market == Exchange.Coinbase)
                 {
-                    await cl.subscribeCoinbaseOrderBook(ins.baseCcy, ins.quoteCcy);
+                    await crypto_client.subscribeCoinbaseOrderBook(ins.baseCcy, ins.quoteCcy);
                 }
                 else
                 {
-                    await cl.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
+                    await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
                 }
-                await cl.subscribeTrades(markets, ins.baseCcy, ins.quoteCcy);
+                await crypto_client.subscribeTrades(markets, ins.baseCcy, ins.quoteCcy);
             }
 
-            await cl.subscribeSpotOrderUpdates(this.qManager.markets);
+            await crypto_client.subscribeSpotOrderUpdates(this.qManager.markets);
 
-            this.quoteupdateTh = new System.Threading.Thread(this.qManager.updateQuotes);
-            this.tradeupdateTh = new System.Threading.Thread(this.qManager.updateTrades);
-            this.orderUpdateTh = new System.Threading.Thread(this.oManager.updateOrders);
-            this.quoteupdateTh.Start();
-            this.tradeupdateTh.Start();
-            this.orderUpdateTh.Start();
+            this.thManager.addThread("updateQuotes", this.qManager._updateQuotes);
+            this.thManager.addThread("updateTrades", this.qManager._updateTrades);
+            this.thManager.addThread("updateOrders", this.oManager._updateOrders);
+            this.thManager.addThread("orderLogging", this.oManager._orderLogging,this.oManager.onLoggingStopped);
             this.threadsStarted = true;
             this.button_startTrading.Enabled = true;
         }
 
         private async void test_Click(object sender, EventArgs e)
         {
-            await this.cl.connectAsync(this.qManager.markets);
-            await this.cl.subscribeOrderBook(["bittrade"], "eth", "jpy");
-            await this.cl.subscribeTrades(["bittrade"], "eth", "jpy");
+            await this.crypto_client.connectAsync(this.qManager.markets);
+            await this.crypto_client.subscribeOrderBook(["bittrade"], "eth", "jpy");
+            await this.crypto_client.subscribeTrades(["bittrade"], "eth", "jpy");
             this.quoteupdateTh = new System.Threading.Thread(this.qManager.updateQuotes);
             this.tradeupdateTh = new System.Threading.Thread(this.qManager.updateTrades);
             this.orderUpdateTh = new System.Threading.Thread(this.oManager.updateOrders);

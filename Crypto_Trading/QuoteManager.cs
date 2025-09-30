@@ -16,6 +16,7 @@ namespace Crypto_Trading
 {
     public class QuoteManager
     {
+        private Crypto_Clients.Crypto_Clients crypto_client = Crypto_Clients.Crypto_Clients.GetInstance();
         public Dictionary<string, Instrument> instruments;
         public Dictionary<string, Instrument> ins_bymaster;
         public Dictionary<string, Balance> balances;
@@ -46,6 +47,40 @@ namespace Crypto_Trading
             this.oManager = OrderManager.GetInstance();
             this._addLog = Console.WriteLine;
             this.aborting = false;
+        }
+
+        public async Task connectPublicChannel(string market)
+        {
+            ThreadManager thManager = ThreadManager.GetInstance();
+            Func<Task> onMsg;
+            Action onClosing;
+            switch (market)
+            {
+                case "bitbank":
+                    await this.crypto_client.bitbank_client.connectPublicAsync();
+                    onMsg = async () =>
+                    {
+                        await this.crypto_client.bitbank_client.onListen(this.crypto_client.onBitbankMessage);
+                    };
+                    thManager.addThread(market + "Public", onMsg);
+                    break;
+                case "coincheck":
+                    await this.crypto_client.coincheck_client.connectPublicAsync();
+                    onMsg = async () =>
+                    {
+                        await this.crypto_client.coincheck_client.onListen(this.crypto_client.onCoincheckMessage);
+                    };
+                    thManager.addThread(market + "Public", onMsg);
+                    break;
+                case "bittrade":
+                    await this.crypto_client.bittrade_client.connectPublicAsync();
+                    onMsg = async () =>
+                    {
+                        await this.crypto_client.bittrade_client.onListen(this.crypto_client.onBitTradeMessage);
+                    };
+                    thManager.addThread(market + "Public", onMsg);
+                    break;
+            }
         }
         public void setQueues(Crypto_Clients.Crypto_Clients client)
         {
@@ -290,6 +325,33 @@ namespace Crypto_Trading
                 }
             }
         }
+
+        public async Task _updateQuotes()
+        {
+            Instrument ins;
+            DataOrderBook msg;
+            string symbol_market;
+            if (this.ordBookQueue.TryDequeue(out msg))
+            {
+                symbol_market = msg.symbol + "@" + msg.market;
+                if (this.instruments.ContainsKey(symbol_market))
+                {
+                    ins = instruments[symbol_market];
+                    ins.updateQuotes(msg);
+                    if (symbol_market == this.stg.taker.symbol_market)
+                    {
+                        await this.stg.updateOrders();
+                    }
+                    this.oManager.checkVirtualOrders(ins);
+                }
+                else
+                {
+                    this.addLog("WARNING", "The symbol doesn't exist. Instrument:" + symbol_market);
+                }
+                msg.init();
+                this.ordBookStack.Push(msg);
+            }
+        }
         public void updateTrades()
         {
             int i = 0;
@@ -329,6 +391,29 @@ namespace Crypto_Trading
                 {
                     break;
                 }
+            }
+        }
+        public async Task _updateTrades()
+        {
+            Instrument ins;
+            DataTrade msg;
+            string symbol_market;
+            if (this.tradeQueue.TryDequeue(out msg))
+            {
+                symbol_market = msg.symbol + "@" + msg.market;
+                if (this.instruments.ContainsKey(symbol_market))
+                {
+                    ins = instruments[symbol_market];
+                    ins.updateTrade(msg);
+
+                    this.oManager.checkVirtualOrders(ins, msg);
+                }
+                else
+                {
+                    this.addLog("WARNING", "The symbol doesn't exist. Instrument:" + symbol_market);
+                }
+                msg.init();
+                this.tradeStack.Push(msg);
             }
         }
 

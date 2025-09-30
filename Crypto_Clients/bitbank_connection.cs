@@ -4,6 +4,7 @@ using PubnubApi;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO.Compression;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Runtime.CompilerServices;
@@ -32,6 +33,13 @@ namespace Crypto_Clients
         public Action<string> onMessage;
         public Action<string> _addLog;
 
+        byte[] ws_buffer = new byte[16384];
+        MemoryStream ws_memory = new MemoryStream();
+        MemoryStream result_memory = new MemoryStream();
+
+        public bool autoReconnecting;
+        private List<string> subscribingChannels;
+
         private bitbank_connection()
         {
             this.apiName = "";
@@ -41,6 +49,9 @@ namespace Crypto_Clients
 
             this.orderQueue = new ConcurrentQueue<JsonElement>();
             this.fillQueue = new ConcurrentQueue<JsonElement>();
+
+            this.autoReconnecting = true;
+            this.subscribingChannels = new List<string>();
 
             this._addLog = Console.WriteLine;
             this.onMessage = Console.WriteLine;
@@ -87,6 +98,11 @@ namespace Crypto_Clients
             {
                 await this.websocket_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
             }
+            string channel_name = "trade_" + baseCcy + "_" + quoteCcy;
+            if (!this.subscribingChannels.Contains(channel_name))
+            {
+                this.subscribingChannels.Add(channel_name);
+            }
         }
 
         public async Task subscribeOrderBook(string baseCcy, string quoteCcy)
@@ -104,6 +120,11 @@ namespace Crypto_Clients
             if (this.websocket_client.State == WebSocketState.Open)
             {
                 await this.websocket_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+            }
+            string channel_name = "orderbook_" + baseCcy + "_" + quoteCcy;
+            if (!this.subscribingChannels.Contains(channel_name))
+            {
+                this.subscribingChannels.Add(channel_name);
             }
         }
 
@@ -167,6 +188,129 @@ namespace Crypto_Clients
             }
         }
 
+        public async Task onListen(Action<string> onMsg)
+        {
+            WebSocketReceiveResult result;
+            if (this.websocket_client.State == WebSocketState.Open)
+            {
+                
+                this.ws_memory.SetLength(0);
+                this.ws_memory.Position = 0;
+                do
+                {
+                    result = await this.websocket_client.ReceiveAsync(new ArraySegment<byte>(this.ws_buffer), CancellationToken.None);
+                    this.ws_memory.Write(this.ws_buffer, 0, result.Count);
+                } while (!result.EndOfMessage);
+
+                if (result.MessageType == WebSocketMessageType.Text)
+                {
+                    var msg = Encoding.UTF8.GetString(this.ws_memory.ToArray());
+                    //Array.Clear(this.ws_buffer, 0, this.ws_buffer.Length);
+                    int idx = msg.IndexOf("{");
+                    int idx_temp = msg.IndexOf("[");
+                    if (idx_temp != -1 && idx_temp < idx)
+                    {
+                        idx = idx_temp;
+                    }
+                    if (idx != -1)
+                    {
+                        string num = msg.Substring(0, idx);
+                        switch (num)
+                        {
+                            case "0":
+                                this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("40"), WebSocketMessageType.Text, true, CancellationToken.None);
+                                break;
+                            case "2":
+                                this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("3"), WebSocketMessageType.Text, true, CancellationToken.None);
+                                break;
+                            case "40":
+                                this.addLog("INFO", "Hand shake completed");
+                                break;
+                            case "42"://Actual Message
+                                if (result.EndOfMessage)
+                                {
+                                    string msg_body = msg.Substring(idx);
+                                    onMsg(msg_body);
+                                }
+                                else
+                                {
+                                    this.addLog("ERROR", "The message is too large");
+                                }
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        if (msg == "2")
+                        {
+                            this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("3"), WebSocketMessageType.Text, true, CancellationToken.None);
+                        }
+                    }
+                }
+                else if (result.MessageType == WebSocketMessageType.Binary)
+                {
+                    this.ws_memory.Position = 0;
+                    using var gzipStream = new GZipStream(this.ws_memory, CompressionMode.Decompress, leaveOpen: true);
+                    gzipStream.CopyTo(this.result_memory);
+                    var msg = Encoding.UTF8.GetString(this.result_memory.ToArray());
+                    this.result_memory.SetLength(0);
+                    this.result_memory.Position = 0;
+                    onMsg(msg);
+                }
+                else if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    this.addLog("INFO", "Closed by server");
+                    await this.websocket_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                    if(this.autoReconnecting)
+                    {
+                        this.addLog("INFO", "Reconnecting...");
+                        await this.connectPublicAsync();
+                        foreach(string ch in this.subscribingChannels)
+                        {
+                            string[] channel_details = ch.Split("_");
+
+                            switch (channel_details[0])
+                            {
+                                case "trade":
+                                    await this.subscribeTrades(channel_details[1], channel_details[2]);
+                                    break;
+                                case "orderbook":
+                                    await this.subscribeOrderBook(channel_details[1], channel_details[2]);
+                                    break;
+                            }
+                        }
+                    }
+                    
+                }
+            }
+            else
+            {
+                this.addLog("ERROR", "Public channel is closed. Check the status. State:" + this.websocket_client.State.ToString());
+                if (this.autoReconnecting)
+                {
+                    this.addLog("INFO", "Reconnecting...");
+                    await this.connectPublicAsync();
+                    foreach (string ch in this.subscribingChannels)
+                    {
+                        string[] channel_details = ch.Split("_");
+
+                        switch (channel_details[0])
+                        {
+                            case "trade":
+                                await this.subscribeTrades(channel_details[1], channel_details[2]);
+                                break;
+                            case "orderbook":
+                                await this.subscribeOrderBook(channel_details[1], channel_details[2]);
+                                break;
+                        }
+                    }
+                }
+                else
+                {
+                    Thread.Sleep(10000);
+                }
+            }
+        }
         private async Task<string> getAsync(string endpoint)
         {
             var nonce = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();

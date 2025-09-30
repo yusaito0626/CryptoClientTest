@@ -6,7 +6,7 @@ using System.Threading;
 
 Console.WriteLine("Hello, World!");
 
-Crypto_Clients.Crypto_Clients cl = new Crypto_Clients.Crypto_Clients();
+Crypto_Clients.Crypto_Clients cl = Crypto_Clients.Crypto_Clients.GetInstance();
 
 string baseCcy = "BTC";
 string quoteCcy = "USDT";

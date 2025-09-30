@@ -29,9 +29,9 @@ namespace Crypto_Clients
         ExchangeRestClient _rest_client;
         Bybit.Net.Clients.BybitSocketClient BybitSocketClient;
         Coinbase.Net.Clients.CoinbaseSocketClient CoinbaseSocketClient;
-        bitbank_connection bitbank_client;
-        coincheck_connection coincheck_client;
-        bittrade_connection bittrade_client;
+        public bitbank_connection bitbank_client;
+        public coincheck_connection coincheck_client;
+        public bittrade_connection bittrade_client;
 
         CryptoClients.Net.Models.ExchangeCredentials creds;
 
@@ -59,7 +59,7 @@ namespace Crypto_Clients
         Thread bittradePrivateChannelTh;
 
         public Action<string> _addLog;
-        public Crypto_Clients()
+        private Crypto_Clients()
         {
             this._client = new ExchangeSocketClient();
             this.BybitSocketClient = new Bybit.Net.Clients.BybitSocketClient();
@@ -129,12 +129,12 @@ namespace Crypto_Clients
                             this.coincheck_client.startListen(this.onCoincheckMessage);
                         });
                         this.coincheckPublicChannelsTh.Start();
-                        await this.coincheck_client.connectPrivateAsync();
-                        this.coincheckPrivateChannelsTh = new Thread(() =>
-                        {
-                            this.coincheck_client.startListenPrivate(this.onConcheckPrivateMessage);
-                        });
-                        this.coincheckPrivateChannelsTh.Start();
+                        //await this.coincheck_client.connectPrivateAsync();
+                        //this.coincheckPrivateChannelsTh = new Thread(() =>
+                        //{
+                        //    this.coincheck_client.startListenPrivate(this.onConcheckPrivateMessage);
+                        //});
+                        //this.coincheckPrivateChannelsTh.Start();
                         break;
                     case "bittrade":
                         await this.bittrade_client.connectPublicAsync();
@@ -144,17 +144,15 @@ namespace Crypto_Clients
                         });
                         this.bittradePublicChannelTh.Start();
 
-                        await this.bittrade_client.connectPrivateAsync();
-                        this.bittradePrivateChannelTh = new Thread(() =>
-                        {
-                            this.bittrade_client.startListenPrivate(this.onBitTradePrivateMessage);
-                        });
-                        this.bittradePrivateChannelTh.Start();
+                        //await this.bittrade_client.connectPrivateAsync();
+                        //this.bittradePrivateChannelTh = new Thread(() =>
+                        //{
+                        //    this.bittrade_client.startListenPrivate(this.onBitTradePrivateMessage);
+                        //});
+                        //this.bittradePrivateChannelTh.Start();
                         break;
                 }
             }
-
-
         }
 
         public void pushToOrderBookStack(DataOrderBook msg)
@@ -424,7 +422,7 @@ namespace Crypto_Clients
                 switch(m)
                 {
                     case "bitbank":
-                        await this.bitbank_client.connectPrivateAsync();
+                        //await this.bitbank_client.connectPrivateAsync();
                         this.bitbankOrderUpdateTh = new Thread(this.bitbankOrderUpdates);
                         this.bitbankOrderUpdateTh.Start();
                         break;
@@ -607,53 +605,63 @@ namespace Crypto_Clients
 
         public void onBitbankMessage(string msg_body)
         {
-            JsonDocument doc = JsonDocument.Parse(msg_body);
 
-            string eventName = doc.RootElement[0].GetString();
-            JsonElement payload = doc.RootElement[1];
-            string roomName = payload.GetProperty("room_name").GetString();
-            if (roomName.StartsWith("ticker"))
+            try
             {
+                JsonDocument doc = JsonDocument.Parse(msg_body);
 
-            }
-            else if (roomName.StartsWith("depth_diff"))
-            {
-                string symbol = roomName.Substring("depth_diff_".Length);
-                DataOrderBook ord;
-                while (!this.ordBookStack.TryPop(out ord))
+                string eventName = doc.RootElement[0].GetString();
+                JsonElement payload = doc.RootElement[1];
+                string roomName = payload.GetProperty("room_name").GetString();
+                if (roomName.StartsWith("ticker"))
                 {
 
                 }
-                ord.setBitbankOrderBook(payload.GetProperty("message").GetProperty("data"), symbol, false);
-                this.ordBookQueue.Enqueue(ord);
-            }
-            else if (roomName.StartsWith("depth_whole"))
-            {
-                string symbol = roomName.Substring("depth_whole_".Length);
-                DataOrderBook ord;
-                while (!this.ordBookStack.TryPop(out ord))
+                else if (roomName.StartsWith("depth_diff"))
                 {
-
-                }
-                ord.setBitbankOrderBook(payload.GetProperty("message").GetProperty("data"), symbol, true);
-                this.ordBookQueue.Enqueue(ord);
-
-            }
-            else if (roomName.StartsWith("transactions"))
-            {
-                string symbol = roomName.Substring("transactions_".Length);
-                foreach (var element in payload.GetProperty("message").GetProperty("data").GetProperty("transactions").EnumerateArray())
-                {
-                    DataTrade trd;
-                    while (!this.tradeStack.TryPop(out trd))
+                    string symbol = roomName.Substring("depth_diff_".Length);
+                    DataOrderBook ord;
+                    while (!this.ordBookStack.TryPop(out ord))
                     {
 
                     }
-                    trd.setBitbankTrade(element, "bitbank", symbol);
-                    this.tradeQueue.Enqueue(trd);
+                    ord.setBitbankOrderBook(payload.GetProperty("message").GetProperty("data"), symbol, false);
+                    this.ordBookQueue.Enqueue(ord);
                 }
+                else if (roomName.StartsWith("depth_whole"))
+                {
+                    string symbol = roomName.Substring("depth_whole_".Length);
+                    DataOrderBook ord;
+                    while (!this.ordBookStack.TryPop(out ord))
+                    {
 
+                    }
+                    ord.setBitbankOrderBook(payload.GetProperty("message").GetProperty("data"), symbol, true);
+                    this.ordBookQueue.Enqueue(ord);
+
+                }
+                else if (roomName.StartsWith("transactions"))
+                {
+                    string symbol = roomName.Substring("transactions_".Length);
+                    foreach (var element in payload.GetProperty("message").GetProperty("data").GetProperty("transactions").EnumerateArray())
+                    {
+                        DataTrade trd;
+                        while (!this.tradeStack.TryPop(out trd))
+                        {
+
+                        }
+                        trd.setBitbankTrade(element, "bitbank", symbol);
+                        this.tradeQueue.Enqueue(trd);
+                    }
+
+                }
             }
+            catch (Exception e)
+            {
+                this.addLog("INFO", e.Message);
+                this.addLog("INFO", msg_body);
+            }
+            
         }
         public void onCoincheckMessage(string msg_body)
         {
@@ -714,7 +722,6 @@ namespace Crypto_Clients
         }
         public void onBitTradeMessage(string msg_body)
         {
-            //this.addLog("INFO",msg_body);
             JsonElement js = JsonDocument.Parse(msg_body).RootElement;
             JsonElement subElement;
             Int64 pong_no;
@@ -722,7 +729,7 @@ namespace Crypto_Clients
             {
                 string[] channel = subElement.GetString().Split(".");
                 //0:market,1:symbol,2:channel,3:additional info
-                if(channel.Length > 2)
+                if (channel.Length > 2)
                 {
                     switch (channel[2])
                     {
@@ -733,7 +740,7 @@ namespace Crypto_Clients
                             {
 
                             }
-                            ord.setBitTradeOrderBook(data, channel[1],js.GetProperty("ts").GetInt64());
+                            ord.setBitTradeOrderBook(data, channel[1], js.GetProperty("ts").GetInt64());
                             this.ordBookQueue.Enqueue(ord);
                             break;
                         case "trade":
@@ -757,7 +764,7 @@ namespace Crypto_Clients
                             break;
                     }
                 }
-                
+
             }
             else if (js.TryGetProperty("ping", out subElement))
             {
@@ -768,7 +775,6 @@ namespace Crypto_Clients
 
         public void onBitTradePrivateMessage(string msg_body)
         {
-            this.addLog("INFO", msg_body);
             JsonElement js = JsonDocument.Parse(msg_body).RootElement;
             JsonElement subElement;
             DataSpotOrderUpdate ord;
@@ -782,6 +788,7 @@ namespace Crypto_Clients
                         this.bittrade_client.sendPong(data.GetProperty("ts").GetInt64(),true);
                         break;
                     case "push":
+                        this.addLog("INFO", msg_body);
                         //while (!this.ordUpdateStack.TryPop(out ord))
                         //{
 
@@ -816,6 +823,20 @@ namespace Crypto_Clients
             this._addLog("[" + logtype + ":Crypto_Client]" + line);
         }
 
+        private static Crypto_Clients _instance;
+        private static readonly object _lockObject = new object();
+
+        public static Crypto_Clients GetInstance()
+        {
+            lock (_lockObject)
+            {
+                if (_instance == null)
+                {
+                    _instance = new Crypto_Clients();
+                }
+                return _instance;
+            }
+        }
     }
     public class DataBalance
     {

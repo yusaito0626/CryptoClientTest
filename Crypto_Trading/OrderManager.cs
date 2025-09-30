@@ -25,9 +25,7 @@ namespace Crypto_Trading
     public class OrderManager
     {
 
-        Crypto_Clients.Crypto_Clients ord_client;
-        bitbank_connection bitbank_client = bitbank_connection.GetInstance();
-        coincheck_connection coincheck_client = coincheck_connection.GetInstance();
+        Crypto_Clients.Crypto_Clients ord_client = Crypto_Clients.Crypto_Clients.GetInstance();
 
         public Dictionary<string, DataSpotOrderUpdate> orders;
         public Dictionary<string, DataSpotOrderUpdate> live_orders;
@@ -38,6 +36,9 @@ namespace Crypto_Trading
         public ConcurrentStack<modifingOrd> modifingOrdStack;
 
         public string outputPath;
+        FileStream f;
+        StreamWriter sw;
+        private bool ord_logged;
         public ConcurrentQueue<string> ordLogQueue;
         public Thread ordLoggingTh;
 
@@ -71,6 +72,8 @@ namespace Crypto_Trading
 
             this.ordLogQueue = new ConcurrentQueue<string>();
 
+            this.ord_logged = false;
+
             this.id_number = 0;
 
             int i = 0;
@@ -84,6 +87,34 @@ namespace Crypto_Trading
             
         }
 
+        public async Task connectPrivateChannel(string market)
+        {
+            ThreadManager thManager = ThreadManager.GetInstance();
+            Func<Task> onMsg;
+            Action onClosing;
+            switch (market)
+            {
+                case "bitbank":
+                    await this.ord_client.bitbank_client.connectPrivateAsync();//This call includes creation of pubnub
+                    break;
+                case "coincheck":
+                    await this.ord_client.coincheck_client.connectPrivateAsync();
+                    onMsg = async () =>
+                    {
+                        this.ord_client.coincheck_client.onListenPrivate(this.ord_client.onConcheckPrivateMessage);
+                    };
+                    thManager.addThread(market + "Private", onMsg);
+                    break;
+                case "bittrade":
+                    await this.ord_client.bittrade_client.connectPrivateAsync();
+                    onMsg = async () =>
+                    {
+                        this.ord_client.bittrade_client.onListenPrivate(this.ord_client.onBitTradePrivateMessage);
+                    };
+                    thManager.addThread(market + "Private", onMsg);
+                    break;
+            }
+        }
         public void startOrderLogging()
         {
             this.ordLoggingTh = new Thread(() =>
@@ -91,10 +122,6 @@ namespace Crypto_Trading
                 this.ordLogging();
             });
             this.ordLoggingTh.Start();
-        }
-        public void setOrderClient(Crypto_Clients.Crypto_Clients cl)
-        {
-            this.ord_client = cl;
         }
         public void setInstruments(Dictionary<string, Instrument> dic)
         {
@@ -172,11 +199,11 @@ namespace Crypto_Trading
             {
                 if(ordtype == orderType.Limit)
                 {
-                    js = await this.bitbank_client.placeNewOrder(ins.symbol, ordtype.ToString().ToLower(), side.ToString().ToLower(), price, quantity, true);
+                    js = await this.ord_client.bitbank_client.placeNewOrder(ins.symbol, ordtype.ToString().ToLower(), side.ToString().ToLower(), price, quantity, true);
                 }
                 else
                 {
-                    js = await this.bitbank_client.placeNewOrder(ins.symbol, ordtype.ToString().ToLower(), side.ToString().ToLower(), price, quantity, false);
+                    js = await this.ord_client.bitbank_client.placeNewOrder(ins.symbol, ordtype.ToString().ToLower(), side.ToString().ToLower(), price, quantity, false);
                 }
 
                 if(js.RootElement.GetProperty("success").GetUInt16() == 1)
@@ -238,7 +265,7 @@ namespace Crypto_Trading
             {
                 if(ordtype == orderType.Limit)
                 {
-                    js = await this.coincheck_client.placeNewOrder(ins.symbol, side.ToString().ToLower(), price, quantity, "post_only");
+                    js = await this.ord_client.coincheck_client.placeNewOrder(ins.symbol, side.ToString().ToLower(), price, quantity, "post_only");
                 }
                 else
                 {
@@ -252,7 +279,7 @@ namespace Crypto_Trading
                         order_price = ins.price_unit;
                     }
                     //Market Order
-                    js = await this.coincheck_client.placeNewOrder(ins.symbol, side.ToString().ToLower(), order_price, quantity);
+                    js = await this.ord_client.coincheck_client.placeNewOrder(ins.symbol, side.ToString().ToLower(), order_price, quantity);
                 }
                 if (js.RootElement.GetProperty("success").GetBoolean())
                 {
@@ -355,7 +382,7 @@ namespace Crypto_Trading
             }
             else if(ins.market == "bitbank")
             {
-                js = await this.bitbank_client.placeCanOrder(ins.symbol, orderId);
+                js = await this.ord_client.bitbank_client.placeCanOrder(ins.symbol, orderId);
                 if (js.RootElement.GetProperty("success").GetUInt16() == 1)
                 {
                     var ord_obj = js.RootElement.GetProperty("data");
@@ -375,7 +402,7 @@ namespace Crypto_Trading
             }
             else if (ins.market == "coincheck")
             {
-                js = await this.coincheck_client.placeCanOrder(orderId);
+                js = await this.ord_client.coincheck_client.placeCanOrder(orderId);
                 if (js.RootElement.GetProperty("success").GetBoolean())
                 {
                     var ord_obj = js.RootElement;
@@ -608,6 +635,129 @@ namespace Crypto_Trading
             }
         }
 
+        public async Task _updateOrders()
+        {
+            DataSpotOrderUpdate ord;
+            DataSpotOrderUpdate prevord;
+            DataFill fill;
+            Instrument ins;
+            modifingOrd mod;
+            if (this.ord_client.ordUpdateQueue.TryDequeue(out ord))
+            {
+                this.ordLogQueue.Enqueue(ord.ToString());
+                if (ord.status == orderStatus.WaitOpen)
+                {
+                    if (!this.orders.ContainsKey(ord.order_id))
+                    {
+
+                        this.orders[ord.order_id] = ord;
+                    }
+                    else
+                    {
+                        ord.init();
+                        this.ord_client.ordUpdateStack.Push(ord);
+                    }
+                }
+                else if (ord.status == orderStatus.WaitMod)
+                {
+                    //Undefined
+                }
+                else if (ord.status == orderStatus.WaitCancel)
+                {
+                    if (this.orders.ContainsKey(ord.order_id))
+                    {
+                        prevord = this.orders[ord.order_id];
+                        if (prevord.status != orderStatus.Canceled)
+                        {
+                            this.orders[ord.order_id] = ord;
+                            if (this.live_orders.ContainsKey(ord.order_id))
+                            {
+                                this.live_orders[ord.order_id] = ord;
+                            }
+                        }
+                        prevord.init();
+                        this.ord_client.ordUpdateStack.Push(prevord);
+                    }
+                    else
+                    {
+                        ord.init();
+                        this.ord_client.ordUpdateStack.Push(ord);
+                    }
+                }
+                else
+                {
+                    if (this.orders.ContainsKey(ord.order_id))
+                    {
+                        prevord = this.orders[ord.order_id];
+                        this.orders[ord.order_id] = ord;
+                        if (ord.status == orderStatus.Open)
+                        {
+                            this.live_orders[ord.order_id] = ord;
+                        }
+                        else if (this.live_orders.ContainsKey(ord.order_id))
+                        {
+                            this.live_orders.Remove(ord.order_id);
+                        }
+                        if (this.modifingOrders.ContainsKey(ord.order_id))
+                        {
+                            mod = this.modifingOrders[ord.order_id];
+
+                            if (ord.status == orderStatus.Canceled)
+                            {
+                                this.placeNewSpotOrder(mod.ins, mod.side, mod.order_type, mod.newQuantity, mod.newPrice, mod.time_in_force);
+                                this.modifingOrders.Remove(ord.order_id);
+                                mod.init();
+                                this.modifingOrdStack.Push(mod);
+                            }
+                            else if (ord.status == orderStatus.Filled)
+                            {
+                                this.modifingOrders.Remove(ord.order_id);
+                                mod.init();
+                                this.modifingOrdStack.Push(mod);
+                            }
+                        }
+                        decimal filledQuantity = ord.filled_quantity - prevord.filled_quantity;
+                        if (filledQuantity > 0)
+                        {
+                            ins = this.Instruments[ord.symbol_market];
+                            ins.updateFills(prevord, ord);
+                            this.filledOrderQueue.Enqueue(ord.order_id);
+                        }
+                        this.stg.on_Message(prevord, ord);
+
+                        prevord.init();
+                        this.ord_client.ordUpdateStack.Push(prevord);
+                    }
+                    else
+                    {
+                        this.orders[ord.order_id] = ord;
+                        if (ord.status == orderStatus.Open)
+                        {
+                            this.live_orders[ord.order_id] = ord;
+                        }
+                        if (ord.filled_quantity > 0)
+                        {
+                            ins = this.Instruments[ord.symbol_market];
+                            ins.updateFills(ord, ord);
+                            this.filledOrderQueue.Enqueue(ord.order_id);
+                        }
+                        this.stg.on_Message(ord, ord);
+                    }
+                }
+            }
+            else if (this.ord_client.fillQueue.TryDequeue(out fill))
+            {
+                this.ordLogQueue.Enqueue(fill.ToString());
+                if (this.Instruments.ContainsKey(fill.symbol_market))
+                {
+                    ins = this.Instruments[fill.symbol_market];
+                    ins.updateFills(fill);
+                    fill.init();
+                    this.ord_client.fillStack.Push(fill);
+                }
+            }
+        }
+
         public void checkVirtualOrders(Instrument ins,DataTrade? last_trade = null)
         {
             List<string> removing = new List<string>();
@@ -692,9 +842,17 @@ namespace Crypto_Trading
             }
         }
 
-        private void ordLogging(string logPath = "")
+        public void setOrdLogPath(string logPath)
         {
-            bool logged = false;
+            this.outputPath = logPath;
+            string filename = this.outputPath + "\\orderlog_" + DateTime.UtcNow.ToString("yyyy-MM-dd_HHmmss") + ".csv";
+            this.f = new FileStream(filename, FileMode.Create, FileAccess.Write);
+            this.sw = new StreamWriter(f);
+        }
+
+        public void ordLogging(string logPath = "")
+        {
+            this.ord_logged = false;
             if(logPath != "")
             {
                 this.outputPath = logPath;
@@ -711,7 +869,7 @@ namespace Crypto_Trading
                         if (this.ordLogQueue.TryDequeue(out line))
                         {
                             s.WriteLine(line);
-                            logged = true;
+                            this.ord_logged = true;
                             ++i;
                         }
                         else
@@ -730,12 +888,12 @@ namespace Crypto_Trading
                                 if (this.ordLogQueue.TryDequeue(out line))
                                 {
                                     s.WriteLine(line);
-                                    logged = true;
+                                    this.ord_logged = true;
                                 }
                             }
                             s.Flush();
                             s.Close();
-                            if(!logged)
+                            if(!this.ord_logged)
                             {
                                 File.Delete(filename);
                             }
@@ -744,6 +902,38 @@ namespace Crypto_Trading
                         }
                     }
                 }
+            }
+        }
+
+        public async Task _orderLogging()
+        {
+            string line;
+            if (this.ordLogQueue.TryDequeue(out line))
+            {
+                this.sw.WriteLine(line);
+                this.ord_logged = true;
+            }
+        }
+        public void onLoggingStopped()
+        {
+            string line;
+            while (this.ordLogQueue.Count > 0)
+            {
+                if (this.ordLogQueue.TryDequeue(out line))
+                {
+                    this.sw.WriteLine(line);
+                    this.ord_logged = true;
+                }
+            }
+            this.sw.Flush();
+            this.sw.Close();
+            if (this.ord_logged)
+            {
+                this.ord_logged = false;
+            }
+            else
+            {
+                File.Delete(this.f.Name);
             }
         }
 
