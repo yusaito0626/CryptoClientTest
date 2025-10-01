@@ -473,6 +473,10 @@ namespace Crypto_GUI
 
         private async void test_Click(object sender, EventArgs e)
         {
+            foreach(var mkt in this.qManager._markets)
+            {
+                await this.crypto_client.getActiveOrders(mkt.Key);
+            }
             DataSpotOrderUpdate ord;
             Instrument ins = this.qManager.instruments["ethjpy@bittrade"];
 
@@ -490,7 +494,7 @@ namespace Crypto_GUI
             Thread.Sleep(3000);
             this.addLog("Placing a new order");
             string ordid;
-            ord = await this.oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Limit, (decimal)0.01, 580000);
+            ord = await this.oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Limit, (decimal)0.01, 600000);
             if (ord != null)
             {
                 ordid = ord.order_id;

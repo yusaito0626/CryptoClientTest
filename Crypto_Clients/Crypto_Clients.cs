@@ -389,6 +389,154 @@ namespace Crypto_Clients
             }
             return temp.ToArray();
         }
+
+        public async Task<List<DataSpotOrderUpdate>> getActiveOrders(string market)
+        {
+            DataSpotOrderUpdate ord;
+            List<DataSpotOrderUpdate> l = new List<DataSpotOrderUpdate>();
+            JsonDocument js;
+            switch (market)
+            {
+                case "bitbank":
+                    js = await this.bitbank_client.getActiveOrders();
+                    this.addLog(market, JsonSerializer.Serialize(js));
+                    if(js.RootElement.GetProperty("success").GetInt16() == 1)
+                    {
+                        var data = js.RootElement.GetProperty("data").GetProperty("orders");
+                        foreach(var item in data.EnumerateArray())
+                        {
+                            while (!this.ordUpdateStack.TryPop(out ord))
+                            {
+
+                            }
+                            ord.setBitbankSpotOrder(item);
+                            l.Add(ord);
+                            this.ordUpdateQueue.Enqueue(ord);
+                        }
+                    }
+                    break;
+                case "coincheck":
+                    js = await this.coincheck_client.getActiveOrders();
+                    this.addLog(market, JsonSerializer.Serialize(js));
+                    if (js.RootElement.GetProperty("success").GetBoolean())
+                    {
+                        var data = js.RootElement.GetProperty("orders");
+                        foreach (var item in data.EnumerateArray())
+                        {
+                            while (!this.ordUpdateStack.TryPop(out ord))
+                            {
+
+                            }
+                            ord.symbol = item.GetProperty("pair").GetString();
+                            ord.market = "coincheck";
+                            string ord_type = item.GetProperty("order_type").GetString();
+                            switch(ord_type)
+                            {
+                                case "buy":
+                                    ord.side = orderSide.Buy;
+                                    break;
+                                case "sell":
+                                    ord.side = orderSide.Sell;
+                                    break;
+                                default:
+                                    ord.side = orderSide.NONE;
+                                    break;
+                            }
+                            ord.order_type = orderType.Limit;
+                            ord.status = orderStatus.Open;
+                            ord.symbol_market = ord.symbol + "@" + ord.market;
+                            ord.order_id = item.GetProperty("id").GetInt64().ToString();
+                            ord.order_price = decimal.Parse(item.GetProperty("rate").GetString());
+                            ord.order_quantity = decimal.Parse(item.GetProperty("pending_amount").GetString());
+                            ord.create_time = DateTime.Parse(item.GetProperty("created_at").GetString(), null, System.Globalization.DateTimeStyles.RoundtripKind); 
+                            l.Add(ord);
+                            this.ordUpdateQueue.Enqueue(ord);
+                        }
+                    }
+                    break;
+                case "bittrade":
+                    js = await this.bittrade_client.getActiveOrders();
+                    this.addLog(market, JsonSerializer.Serialize(js));
+                    if (js.RootElement.GetProperty("status").GetString() == "ok")
+                    {
+                        var data = js.RootElement.GetProperty("data");
+                        foreach (var item in data.EnumerateArray())
+                        {
+                            while (!this.ordUpdateStack.TryPop(out ord))
+                            {
+
+                            }
+                            ord.symbol = item.GetProperty("symbol").GetString();
+                            ord.create_time = DateTimeOffset.FromUnixTimeMilliseconds(item.GetProperty("created-at").GetInt64()).UtcDateTime;
+                            ord.order_quantity = decimal.Parse(item.GetProperty("amount").GetString());
+                            ord.filled_quantity = decimal.Parse(item.GetProperty("filled-amount").GetString());
+                            ord.fee = decimal.Parse(item.GetProperty("filled-fees").GetString());
+                            ord.order_id = item.GetProperty("id").GetInt64().ToString();
+                            string str_status = item.GetProperty("state").GetString();
+                            switch (str_status)
+                            {
+                                case "created":
+                                    ord.status = orderStatus.WaitOpen;
+                                    break;
+                                case "submitted":
+                                    ord.status = orderStatus.Open;
+                                    break;
+                                case "partial-filled":
+                                case "partial-canceled":
+                                    ord.status = orderStatus.Open;
+                                    break;
+                                case "filled":
+                                    ord.status = orderStatus.Filled;
+                                    break;
+                                case "canceling":
+                                    ord.status = orderStatus.WaitCancel;
+                                    break;
+                                case "canceled":
+                                    ord.status = orderStatus.Canceled;
+                                    break;
+                                default:
+                                    ord.status = orderStatus.INVALID;
+                                    break;
+                            }
+                            string _type = item.GetProperty("type").GetString();
+                            switch (_type)
+                            {
+                                case "sell-limit":
+                                case "sell-limit_maker":
+                                    ord.order_type = orderType.Limit;
+                                    ord.side = orderSide.Sell;
+                                    ord.order_price = decimal.Parse(item.GetProperty("price").GetString());
+                                    break;
+                                case "buy-limit":
+                                case "buy-limit_maker":
+                                    ord.order_type = orderType.Limit;
+                                    ord.side = orderSide.Buy;
+                                    ord.order_price = decimal.Parse(item.GetProperty("price").GetString());
+                                    break;
+                                case "sell-market":
+                                    ord.order_type = orderType.Market;
+                                    ord.side = orderSide.Sell;
+                                    ord.order_price = 0;
+                                    break;
+                                case "buy-market":
+                                    ord.order_type = orderType.Market;
+                                    ord.side = orderSide.Buy;
+                                    ord.order_price = 0;
+                                    break;
+                                case "sell-ioc":
+                                case "buy-ioc":
+                                default:
+                                    ord.order_type = orderType.Other;
+                                    break;
+                            }
+                            l.Add(ord);
+                            this.ordUpdateQueue.Enqueue(ord);
+                        }
+                    }
+                    break;
+            }
+            return l;
+        }
         async public Task<ExchangeWebResult<SharedFee>[]> getFees(IEnumerable<string>? markets,string baseCcy,string quoteCcy)
         {
             SharedSymbol symbol = new SharedSymbol(TradingMode.Spot, baseCcy, quoteCcy);
@@ -1511,7 +1659,7 @@ namespace Crypto_Clients
                     this.status = orderStatus.INVALID;
                     break;
             }
-            Int64 expire_at = js.GetProperty("order_id").GetInt64();
+            Int64 expire_at = js.GetProperty("expire_at").GetInt64();
             if(expire_at == 0)
             {
                 this.time_in_force = timeInForce.GoodTillCanceled;

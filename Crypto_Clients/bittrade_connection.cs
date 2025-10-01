@@ -549,6 +549,8 @@ namespace Crypto_Clients
         {
             string url = BuildSignedUrl("POST", endpoint, null);
 
+            this.addLog("INFO", url);
+
             using var request = new HttpRequestMessage(HttpMethod.Post, url);
             request.Headers.Add("Accept", "application/json");
             request.Content = new StringContent(body, Encoding.UTF8, "application/json");
@@ -643,6 +645,12 @@ namespace Crypto_Clients
         public async Task<JsonDocument> getBalance()
         {
             var resString = await this.getAsync("/v1/account/accounts/" + this.accountId.ToString() + "/balance");
+            var json = JsonDocument.Parse(resString);
+            return json;
+        }
+        public async Task<JsonDocument> getActiveOrders()
+        {
+            var resString = await this.getAsync("/v1/order/openOrders");
             var json = JsonDocument.Parse(resString);
             return json;
         }

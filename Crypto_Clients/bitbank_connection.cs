@@ -376,6 +376,24 @@ namespace Crypto_Clients
             var json = JsonDocument.Parse(resString);
             return json;
         }
+        public async Task<JsonDocument> getActiveOrders()
+        {
+            var resString = await this.getAsync("/v1/user/spot/active_orders");
+            var json = JsonDocument.Parse(resString);
+            return json;
+        }
+        public async Task<JsonDocument> getStatus()
+        {
+            var resString = await this.getAsync("/spot/status");
+            var json = JsonDocument.Parse(resString);
+            return json;
+        }
+        public async Task<JsonDocument> getSpotDetails()
+        {
+            var resString = await this.getAsync("/spot/pairs");
+            var json = JsonDocument.Parse(resString);
+            return json;
+        }
 
 
         public async Task<JsonDocument> placeNewOrder(string symbol,string ord_type,string side,decimal price = 0,decimal quantity = 0,bool postonly = false)

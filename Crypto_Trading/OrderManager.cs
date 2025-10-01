@@ -584,6 +584,7 @@ namespace Crypto_Trading
             }
         }
 
+
         public void cancelAllOrders()
         {
             Instrument ins;
