@@ -254,6 +254,7 @@ namespace Crypto_Clients
                         else
                         {
                             this.addLog("ERROR", "Failed to get the balance information. Exchange:" + m);
+                            this.addLog("ERROR", JsonSerializer.Serialize(js));
                         }
                         break;
                     case "coincheck":
@@ -309,6 +310,60 @@ namespace Crypto_Clients
                         else
                         {
                             this.addLog("ERROR","Failed to get the balance information. Exchange:" + m);
+                            this.addLog("ERROR", JsonSerializer.Serialize(js));
+                        }
+                        break;
+                    case "bittrade":
+                        js = await this.bittrade_client.getBalance();
+                        if(js.RootElement.GetProperty("status").GetString()=="ok")
+                        {
+                            Dictionary<string, DataBalance> cc_balance = new Dictionary<string, DataBalance>();
+                            var data = js.RootElement.GetProperty("data").GetProperty("list");
+                            foreach(var item in data.EnumerateArray())
+                            {
+                                string _type = item.GetProperty("type").GetString();
+                                string ccy = item.GetProperty("currency").GetString();
+                                decimal amount = decimal.Parse(item.GetProperty("balance").GetString());
+                                if (_type == "trade")
+                                {
+                                    if (cc_balance.ContainsKey(ccy))
+                                    {
+                                        cc_balance[ccy].total += amount;
+                                        cc_balance[ccy].available = amount;
+                                    }
+                                    else
+                                    {
+                                        DataBalance balance = new DataBalance();
+                                        balance.market = m;
+                                        balance.asset = ccy;
+                                        balance.total = amount;
+                                        balance.available = amount;
+                                        cc_balance[balance.asset] = balance;
+                                    }
+                                }
+                                else if(_type == "frozen")
+                                {
+                                    if (cc_balance.ContainsKey(ccy))
+                                    {
+                                        cc_balance[ccy].total += amount;
+                                    }
+                                    else
+                                    {
+                                        DataBalance balance = new DataBalance();
+                                        balance.market = m;
+                                        balance.asset = ccy;
+                                        balance.total = amount;
+                                        balance.available = 0;
+                                        cc_balance[balance.asset] = balance;
+                                    }
+                                }
+                            }
+                            temp.AddRange(cc_balance.Values);
+                        }
+                        else
+                        {
+                            this.addLog("ERROR", "Failed to get the balance information. Exchange:" + m);
+                            this.addLog("ERROR", JsonSerializer.Serialize(js));
                         }
                         break;
                     default:
@@ -429,6 +484,10 @@ namespace Crypto_Clients
                     case "coincheck":
                         await this.coincheck_client.subscribeOrderEvent();
                         await this.coincheck_client.subscribeExecutionEvent();
+                        break;
+                    case "bittrade":
+                        await this.bittrade_client.subscribeOrderEvent();
+                        await this.bittrade_client.subscribeExecutionEvent();
                         break;
                     default:
                         var subResult = await this._client.SubscribeToSpotOrderUpdatesAsync(m, request, LogOrderUpdates);
@@ -653,7 +712,6 @@ namespace Crypto_Clients
                         trd.setBitbankTrade(element, "bitbank", symbol);
                         this.tradeQueue.Enqueue(trd);
                     }
-
                 }
             }
             catch (Exception e)
@@ -781,6 +839,7 @@ namespace Crypto_Clients
             if (js.TryGetProperty("action", out subElement))
             {
                 string act = subElement.GetString();
+                JsonElement ch;
                 switch (act)
                 {
                     case "ping":
@@ -789,13 +848,28 @@ namespace Crypto_Clients
                         break;
                     case "push":
                         this.addLog("INFO", msg_body);
-                        //while (!this.ordUpdateStack.TryPop(out ord))
-                        //{
+                        if(js.TryGetProperty("ch",out ch))
+                        {
+                            while (!this.ordUpdateStack.TryPop(out ord))
+                            {
 
-                        //}
-                        //var obj = js.GetProperty("data");
-                        //ord.setBitTradeOrder(obj);
-                        //this.ordUpdateQueue.Enqueue(ord);
+                            }
+                            var obj = js.GetProperty("data");
+                            if(ch.GetString().StartsWith("orders"))
+                            {
+                                ord.setBitTradeOrder(obj);
+                                this.ordUpdateQueue.Enqueue(ord);
+                            }
+                            else if(ch.GetString().StartsWith("trade.clearing"))
+                            {
+                                ord.setBitTradeTrade(obj);
+                                this.ordUpdateQueue.Enqueue(ord);
+                            }
+                            else
+                            {
+                                this.ordUpdateStack.Push(ord);
+                            }
+                        }
                         break;
                     default:
                         this.addLog("INFO", msg_body);
@@ -1466,7 +1540,7 @@ namespace Crypto_Clients
             this.symbol = js.GetProperty("symbol").GetString();
             this.symbol_market = this.symbol + "@bittrade";
             this.market = "bittrade";
-            this.order_id = js.GetProperty("order_id").GetInt64().ToString();
+            this.order_id = js.GetProperty("orderId").GetInt64().ToString();
             string eventType = js.GetProperty("eventType").GetString();
             switch (eventType)
             {
@@ -1474,30 +1548,30 @@ namespace Crypto_Clients
                     _type = js.GetProperty("type").GetString();
                     switch (_type)
                     {
-                        case "sell_limit":
-                        case "sell_limit_maker":
+                        case "sell-limit":
+                        case "sell-limit_maker":
                             this.order_type = orderType.Limit;
                             this.side = orderSide.Sell;
                             this.order_price = decimal.Parse(js.GetProperty("orderPrice").GetString());
                             break;
-                        case "buy_limit":
-                        case "buy_limit_maker":
+                        case "buy-limit":
+                        case "buy-limit_maker":
                             this.order_type = orderType.Limit;
                             this.side = orderSide.Buy;
                             this.order_price = decimal.Parse(js.GetProperty("orderPrice").GetString());
                             break;
-                        case "sell_market":
+                        case "sell-market":
                             this.order_type = orderType.Market;
                             this.side = orderSide.Sell;
                             this.order_price = 0;
                             break;
-                        case "buy_market":
+                        case "buy-market":
                             this.order_type = orderType.Market;
                             this.side = orderSide.Buy;
                             this.order_price = 0;
                             break;
-                        case "sell_ioc":
-                        case "buy_ioc":
+                        case "sell-ioc":
+                        case "buy-ioc":
                         default:
                             this.order_type = orderType.Other;
                             break;
@@ -1534,15 +1608,37 @@ namespace Crypto_Clients
                     }
                     this.order_quantity = decimal.Parse(js.GetProperty("orderSize").GetString());
                     break;
-                case "deletion":
-                    string side = js.GetProperty("orderSide").GetString();
-                    if (side == "buy")
+                case "cancellation":
+                    _type = js.GetProperty("type").GetString();
+                    switch (_type)
                     {
-                        this.side = orderSide.Buy;
-                    }
-                    else if (side == "sell")
-                    {
-                        this.side = orderSide.Sell;
+                        case "sell-limit":
+                        case "sell-limit_maker":
+                            this.order_type = orderType.Limit;
+                            this.side = orderSide.Sell;
+                            this.order_price = decimal.Parse(js.GetProperty("orderPrice").GetString());
+                            break;
+                        case "buy-limit":
+                        case "buy-limit_maker":
+                            this.order_type = orderType.Limit;
+                            this.side = orderSide.Buy;
+                            this.order_price = decimal.Parse(js.GetProperty("orderPrice").GetString());
+                            break;
+                        case "sell-market":
+                            this.order_type = orderType.Market;
+                            this.side = orderSide.Sell;
+                            this.order_price = 0;
+                            break;
+                        case "buy-market":
+                            this.order_type = orderType.Market;
+                            this.side = orderSide.Buy;
+                            this.order_price = 0;
+                            break;
+                        case "sell-ioc":
+                        case "buy-ioc":
+                        default:
+                            this.order_type = orderType.Other;
+                            break;
                     }
                     this.update_time = DateTimeOffset.FromUnixTimeMilliseconds(js.GetProperty("lastActTime").GetInt64()).UtcDateTime;
                     str_status = js.GetProperty("orderStatus").GetString();
@@ -1588,10 +1684,8 @@ namespace Crypto_Clients
             this.symbol = js.GetProperty("symbol").GetString();
             this.symbol_market = this.symbol + "@bittrade";
             this.market = "bittrade";
-            this.order_id = js.GetProperty("order_id").GetInt64().ToString();
+            this.order_id = js.GetProperty("orderId").GetInt64().ToString();
 
-            this.average_price = decimal.Parse(js.GetProperty("tradePrice").GetString());
-            this.filled_quantity = decimal.Parse(js.GetProperty("tradeVolume").GetString());
             string side = js.GetProperty("orderSide").GetString();
             if (side == "buy")
             {
@@ -1664,6 +1758,8 @@ namespace Crypto_Clients
             switch (eventType)
             {
                 case "trade":
+                    this.average_price = decimal.Parse(js.GetProperty("tradePrice").GetString());
+                    this.filled_quantity = decimal.Parse(js.GetProperty("tradeVolume").GetString());
                     this.update_time = DateTimeOffset.FromUnixTimeMilliseconds(js.GetProperty("tradeTime").GetInt64()).UtcDateTime;
                     this.fee = decimal.Parse(js.GetProperty("transactFee").GetString());
                     this.fee_asset = js.GetProperty("feeCurrency").GetString().ToUpper();

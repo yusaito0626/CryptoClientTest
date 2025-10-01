@@ -12,6 +12,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Net.WebSockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -34,6 +35,8 @@ namespace Crypto_Trading
 
         public Dictionary<string, modifingOrd> modifingOrders;
         public ConcurrentStack<modifingOrd> modifingOrdStack;
+
+        public Dictionary<string, WebSocketState> connections;
 
         public string outputPath;
         FileStream f;
@@ -67,6 +70,8 @@ namespace Crypto_Trading
             this.live_orders = new Dictionary<string, DataSpotOrderUpdate>();
             this.virtual_liveorders = new Dictionary<string, DataSpotOrderUpdate>();
 
+            this.connections = new Dictionary<string, WebSocketState>();
+
             this.modifingOrders = new Dictionary<string, modifingOrd>();
             this.modifingOrdStack = new ConcurrentStack<modifingOrd>();
 
@@ -90,29 +95,53 @@ namespace Crypto_Trading
         public async Task connectPrivateChannel(string market)
         {
             ThreadManager thManager = ThreadManager.GetInstance();
-            Func<Task> onMsg;
+            Func<Task<bool>> onMsg;
             Action onClosing;
             switch (market)
             {
                 case "bitbank":
                     await this.ord_client.bitbank_client.connectPrivateAsync();//This call includes creation of pubnub
+                    this.connections[market] = this.ord_client.bitbank_client.GetSocketStatePrivate();
                     break;
                 case "coincheck":
                     await this.ord_client.coincheck_client.connectPrivateAsync();
                     onMsg = async () =>
                     {
-                        this.ord_client.coincheck_client.onListenPrivate(this.ord_client.onConcheckPrivateMessage);
+                        return await this.ord_client.coincheck_client.onListenPrivate(this.ord_client.onConcheckPrivateMessage);
                     };
                     thManager.addThread(market + "Private", onMsg);
+                    this.connections[market] = this.ord_client.coincheck_client.GetSocketStatePrivate();
                     break;
                 case "bittrade":
                     await this.ord_client.bittrade_client.connectPrivateAsync();
                     onMsg = async () =>
                     {
-                        this.ord_client.bittrade_client.onListenPrivate(this.ord_client.onBitTradePrivateMessage);
+                        return await this.ord_client.bittrade_client.onListenPrivate(this.ord_client.onBitTradePrivateMessage);
                     };
                     thManager.addThread(market + "Private", onMsg);
+                    this.connections[market] = this.ord_client.bittrade_client.GetSocketStatePrivate();
                     break;
+            }
+        }
+
+        public void checkConnections()
+        {
+            foreach (var market in this.connections)
+            {
+                switch (market.Key)
+                {
+                    case "bitbank":
+                        this.connections[market.Key] = this.ord_client.bitbank_client.GetSocketStatePrivate();
+                        break;
+                    case "coincheck":
+                        this.connections[market.Key] = this.ord_client.coincheck_client.GetSocketStatePrivate();
+                        break;
+                    case "bittrade":
+                        this.connections[market.Key] = this.ord_client.bittrade_client.GetSocketStatePrivate();
+                        break;
+                    default:
+                        break;
+                }
             }
         }
         public void startOrderLogging()
@@ -323,6 +352,60 @@ namespace Crypto_Trading
                     this.addLog("ERROR", msg);
                 }
             }
+            else if (ins.market == "bittrade")
+            {
+                decimal order_price = price;
+                if (ordtype == orderType.Limit)
+                {
+                    js = await this.ord_client.bittrade_client.placeNewOrder(ins.symbol, side.ToString().ToLower(), price, quantity, true);
+                }
+                else
+                {
+                    if (side == orderSide.Buy)
+                    {
+                        order_price = Math.Round(ins.bestask.Item1 * (decimal)1.1 / ins.price_unit) * ins.price_unit;
+                    }
+                    else
+                    {
+                        order_price = ins.price_unit;
+                    }
+                    //Market Order
+                    js = await this.ord_client.bittrade_client.placeNewOrder(ins.symbol, side.ToString().ToLower(), order_price, quantity,false);
+                }
+
+                if(js.RootElement.GetProperty("status").GetString() == "ok")
+                {
+                    while (!this.ord_client.ordUpdateStack.TryPop(out output))
+                    {
+
+                    }
+                    output.timestamp = DateTime.UtcNow;
+                    output.order_id = js.RootElement.GetProperty("data").GetInt64().ToString();
+                    output.symbol = ins.symbol;
+                    output.market = ins.market;
+                    output.symbol_market = ins.symbol_market;
+                    output.side = side;
+                    output.order_type = ordtype;
+                    output.order_price = order_price;
+                    output.order_quantity = quantity;
+                    output.filled_quantity = 0;//Even if an executed order is passed, output 0 executed quantity as the execution will be streamed anyway.
+                    output.average_price = 0;
+                    output.create_time = DateTime.UtcNow;
+                    output.update_time = output.create_time;
+
+                    output.status = orderStatus.WaitOpen;
+                    output.fee = 0;
+                    output.fee_asset = "";
+                    output.is_trigger_order = true;
+                    output.last_trade = "";
+                    this.ord_client.ordUpdateQueue.Enqueue(output);
+                }
+                else
+                {
+                    string msg = JsonSerializer.Serialize(js);
+                    this.addLog("ERROR", msg);
+                }
+            }
             else
             {
                 output = await this.ord_client.placeNewSpotOrder(ins.market, ins.baseCcy, ins.quoteCcy, side, ordtype, quantity, price, timeinforce);
@@ -410,6 +493,25 @@ namespace Crypto_Trading
                     {
                     }
                     output.order_id = ord_obj.GetProperty("id").GetInt64().ToString();
+                    output.timestamp = DateTime.UtcNow;
+                    output.order_price = -1;
+                    output.order_quantity = 0;
+                    output.market = ins.market;
+                    output.symbol = ins.symbol;
+                    output.filled_quantity = 0;
+                    output.status = orderStatus.WaitCancel;
+                    this.ord_client.ordUpdateQueue.Enqueue(output);
+                }
+            }
+            else if (ins.market == "bittrade")
+            {
+                js = await this.ord_client.bittrade_client.placeCanOrder(orderId);
+                if (js.RootElement.GetProperty("status").GetString() == "ok")
+                {
+                    while (!this.ord_client.ordUpdateStack.TryPop(out output))
+                    {
+                    }
+                    output.order_id = js.RootElement.GetProperty("data").GetInt64().ToString();
                     output.timestamp = DateTime.UtcNow;
                     output.order_price = -1;
                     output.order_quantity = 0;
@@ -635,7 +737,7 @@ namespace Crypto_Trading
             }
         }
 
-        public async Task _updateOrders()
+        public async Task<bool> _updateOrders()
         {
             DataSpotOrderUpdate ord;
             DataSpotOrderUpdate prevord;
@@ -756,6 +858,7 @@ namespace Crypto_Trading
                     this.ord_client.fillStack.Push(fill);
                 }
             }
+            return true;
         }
 
         public void checkVirtualOrders(Instrument ins,DataTrade? last_trade = null)
@@ -905,14 +1008,16 @@ namespace Crypto_Trading
             }
         }
 
-        public async Task _orderLogging()
+        public async Task<bool> _orderLogging()
         {
             string line;
             if (this.ordLogQueue.TryDequeue(out line))
             {
                 this.sw.WriteLine(line);
+                this.sw.Flush();
                 this.ord_logged = true;
             }
+            return true;
         }
         public void onLoggingStopped()
         {

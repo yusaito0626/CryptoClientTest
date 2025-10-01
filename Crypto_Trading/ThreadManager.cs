@@ -19,7 +19,7 @@ namespace Crypto_Trading
             this._addLog = Console.WriteLine;
         }
 
-        public void addThread(string name, Func<Task> action, Action onClosing = null)
+        public void addThread(string name, Func<Task<bool>> action, Action onClosing = null)
         {
             if(this.threads.ContainsKey(name))
             {
@@ -28,6 +28,7 @@ namespace Crypto_Trading
             else
             {
                 thread t = new thread(name, action, onClosing);
+                t.addLog = this.addLog;
                 this.threads[name] = t;
                 t.start();
                 this.addLog("INFO", "The thread started. name:" + name);
@@ -76,6 +77,20 @@ namespace Crypto_Trading
             }
         }
 
+        public bool detectStopped(ref List<string> stoppedTh)
+        {
+            bool output = true;
+            foreach(var item in this.threads)
+            {
+                if(item.Value.isRunning == false)
+                {
+                    output = false;
+                    stoppedTh.Add(item.Key);
+                }
+            }
+            return output;
+        }
+
         public void addLog(string logtype, string line)
         {
             this._addLog("[" + logtype + ":ThreadManager]" + line);
@@ -104,10 +119,12 @@ namespace Crypto_Trading
         public bool isRunning;
         public string name;
 
-        public Func<Task> action;
+        public Func<Task<bool>> action;
         public Action onClosing;
 
-        public thread(string name, Func<Task> action, Action onClosing = null)
+        public Action<string, string> addLog;
+
+        public thread(string name, Func<Task<bool>> action, Action onClosing = null)
         {
             this.name = name;
             this.action = action;
@@ -127,14 +144,29 @@ namespace Crypto_Trading
 
         private async void loop()
         {
-           while(true)
+            try
             {
-                await this.action();
-                if(!isRunning)
+                while (true)
                 {
-                    this.onClosing();
+                    if(!await this.action())
+                    {
+                        this.isRunning=false;
+                    }
+                    if (!this.isRunning)
+                    {
+                        this.onClosing();
+                        this.addLog("INFO", "Thread closing. name:" + this.name);
+                        break;
+                    }
                 }
             }
+            catch (Exception e)
+            {
+                this.addLog("ERROR", "An error thrown within the thread:" + this.name);
+                this.addLog("ERROR", e.Message);
+                this.isRunning = false;
+            }
+           
         }
         public void stop()
         {

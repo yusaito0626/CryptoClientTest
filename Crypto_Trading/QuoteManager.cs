@@ -3,6 +3,7 @@ using CryptoExchange.Net;
 using CryptoExchange.Net.SharedApis;
 using System;
 using System.Collections.Concurrent;
+using System.Net.WebSockets;
 using System.Collections.Generic;
 using System.Diagnostics.Metrics;
 using System.IO;
@@ -21,7 +22,7 @@ namespace Crypto_Trading
         public Dictionary<string, Instrument> ins_bymaster;
         public Dictionary<string, Balance> balances;
 
-        public List<string> markets;
+        public Dictionary<string, WebSocketState> _markets;
 
         public ConcurrentQueue<DataOrderBook> ordBookQueue;
         private ConcurrentStack<DataOrderBook> ordBookStack;
@@ -43,7 +44,7 @@ namespace Crypto_Trading
             this.instruments = new Dictionary<string, Instrument>();
             this.ins_bymaster = new Dictionary<string, Instrument>();
             this.balances = new Dictionary<string, Balance>();
-            this.markets = new List<string>(); 
+            this._markets = new Dictionary<string, WebSocketState>();
             this.oManager = OrderManager.GetInstance();
             this._addLog = Console.WriteLine;
             this.aborting = false;
@@ -52,7 +53,7 @@ namespace Crypto_Trading
         public async Task connectPublicChannel(string market)
         {
             ThreadManager thManager = ThreadManager.GetInstance();
-            Func<Task> onMsg;
+            Func<Task<bool>> onMsg;
             Action onClosing;
             switch (market)
             {
@@ -60,26 +61,49 @@ namespace Crypto_Trading
                     await this.crypto_client.bitbank_client.connectPublicAsync();
                     onMsg = async () =>
                     {
-                        await this.crypto_client.bitbank_client.onListen(this.crypto_client.onBitbankMessage);
+                        return await this.crypto_client.bitbank_client.onListen(this.crypto_client.onBitbankMessage);
                     };
                     thManager.addThread(market + "Public", onMsg);
+                    this._markets[market] = this.crypto_client.bitbank_client.GetSocketStatePublic();
                     break;
                 case "coincheck":
                     await this.crypto_client.coincheck_client.connectPublicAsync();
                     onMsg = async () =>
                     {
-                        await this.crypto_client.coincheck_client.onListen(this.crypto_client.onCoincheckMessage);
+                        return await this.crypto_client.coincheck_client.onListen(this.crypto_client.onCoincheckMessage);
                     };
                     thManager.addThread(market + "Public", onMsg);
+                    this._markets[market] = this.crypto_client.coincheck_client.GetSocketStatePublic();
                     break;
                 case "bittrade":
                     await this.crypto_client.bittrade_client.connectPublicAsync();
                     onMsg = async () =>
                     {
-                        await this.crypto_client.bittrade_client.onListen(this.crypto_client.onBitTradeMessage);
+                        return await this.crypto_client.bittrade_client.onListen(this.crypto_client.onBitTradeMessage);
                     };
                     thManager.addThread(market + "Public", onMsg);
+                    this._markets[market] = this.crypto_client.bittrade_client.GetSocketStatePublic();
                     break;
+            }
+        }
+        public void checkConnections()
+        {
+            foreach (var market in this._markets)
+            {
+                switch (market.Key)
+                {
+                    case "bitbank":
+                        this._markets[market.Key] = this.crypto_client.bitbank_client.GetSocketStatePublic();
+                        break;
+                    case "coincheck":
+                        this._markets[market.Key] = this.crypto_client.coincheck_client.GetSocketStatePublic();
+                        break;
+                    case "bittrade":
+                        this._markets[market.Key] = this.crypto_client.bittrade_client.GetSocketStatePublic();
+                        break;
+                    default:
+                        break;
+                }
             }
         }
         public void setQueues(Crypto_Clients.Crypto_Clients client)
@@ -107,9 +131,9 @@ namespace Crypto_Trading
                         ins.initialize(line);
                         this.instruments[ins.symbol_market] = ins;
                         this.ins_bymaster[ins.master_symbol + "@" + ins.market] = ins;
-                        if(!this.markets.Contains(ins.market))
+                        if(!this._markets.ContainsKey(ins.market))
                         {
-                            this.markets.Add(ins.market);
+                            this._markets[ins.market] = WebSocketState.None;
                         }
                     }
                 }
@@ -326,7 +350,7 @@ namespace Crypto_Trading
             }
         }
 
-        public async Task _updateQuotes()
+        public async Task<bool> _updateQuotes()
         {
             Instrument ins;
             DataOrderBook msg;
@@ -351,6 +375,7 @@ namespace Crypto_Trading
                 msg.init();
                 this.ordBookStack.Push(msg);
             }
+            return true;
         }
         public void updateTrades()
         {
@@ -393,7 +418,7 @@ namespace Crypto_Trading
                 }
             }
         }
-        public async Task _updateTrades()
+        public async Task<bool> _updateTrades()
         {
             Instrument ins;
             DataTrade msg;
@@ -415,6 +440,7 @@ namespace Crypto_Trading
                 msg.init();
                 this.tradeStack.Push(msg);
             }
+            return true;
         }
 
         public void addLog(string logtype, string line)

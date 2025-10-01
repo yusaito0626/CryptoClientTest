@@ -30,6 +30,8 @@ namespace Crypto_Clients
 
         ClientWebSocket websocket_client;
 
+        WebSocketState pubnub_state;
+
         public Action<string> onMessage;
         public Action<string> _addLog;
 
@@ -37,7 +39,8 @@ namespace Crypto_Clients
         MemoryStream ws_memory = new MemoryStream();
         MemoryStream result_memory = new MemoryStream();
 
-        public bool autoReconnecting;
+        bool closeSent;
+
         private List<string> subscribingChannels;
 
         private bitbank_connection()
@@ -50,7 +53,9 @@ namespace Crypto_Clients
             this.orderQueue = new ConcurrentQueue<JsonElement>();
             this.fillQueue = new ConcurrentQueue<JsonElement>();
 
-            this.autoReconnecting = true;
+            this.closeSent = false;
+            this.pubnub_state = WebSocketState.None;
+
             this.subscribingChannels = new List<string>();
 
             this._addLog = Console.WriteLine;
@@ -78,6 +83,7 @@ namespace Crypto_Clients
             {
                 await this.websocket_client.ConnectAsync(uri, CancellationToken.None);
                 this.addLog("INFO", "Connected to bitbank.");
+                this.closeSent = false;
             }
             catch (WebSocketException wse)
             {
@@ -86,6 +92,47 @@ namespace Crypto_Clients
             catch (Exception ex)
             {
                 this.addLog("ERROR", $"Connection failed: {ex.Message}");
+            }
+        }
+
+        public async Task reconnectPublic()
+        {
+            this.addLog("INFO", "Reconnecting...");
+
+            Thread.Sleep(1000);
+
+            this.websocket_client.Dispose();
+            this.websocket_client = new ClientWebSocket();
+
+            Thread.Sleep(1000);
+
+            await this.connectPublicAsync();
+            foreach (string ch in this.subscribingChannels)
+            {
+                string[] channel_details = ch.Split("_");
+
+                switch (channel_details[0])
+                {
+                    case "trade":
+                        await this.subscribeTrades(channel_details[1], channel_details[2]);
+                        break;
+                    case "orderbook":
+                        await this.subscribeOrderBook(channel_details[1], channel_details[2]);
+                        break;
+                }
+            }
+        }
+
+        public async Task disconnectPublic()
+        {
+            if(this.closeSent)
+            {
+                this.addLog("WARNING", "closeAsnyc is already called.");
+            }
+            else
+            {
+                await this.websocket_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                this.closeSent = true;
             }
         }
 
@@ -188,7 +235,7 @@ namespace Crypto_Clients
             }
         }
 
-        public async Task onListen(Action<string> onMsg)
+        public async Task<bool> onListen(Action<string> onMsg)
         {
             WebSocketReceiveResult result;
             if (this.websocket_client.State == WebSocketState.Open)
@@ -235,6 +282,8 @@ namespace Crypto_Clients
                                 else
                                 {
                                     this.addLog("ERROR", "The message is too large");
+                                    await this.disconnectPublic();
+                                    return false;
                                 }
                                 break;
                         }
@@ -260,56 +309,23 @@ namespace Crypto_Clients
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {
                     this.addLog("INFO", "Closed by server");
-                    await this.websocket_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
-                    if(this.autoReconnecting)
+                    if (this.websocket_client.State == WebSocketState.Open || this.websocket_client.State == WebSocketState.CloseReceived)
                     {
-                        this.addLog("INFO", "Reconnecting...");
-                        await this.connectPublicAsync();
-                        foreach(string ch in this.subscribingChannels)
-                        {
-                            string[] channel_details = ch.Split("_");
-
-                            switch (channel_details[0])
-                            {
-                                case "trade":
-                                    await this.subscribeTrades(channel_details[1], channel_details[2]);
-                                    break;
-                                case "orderbook":
-                                    await this.subscribeOrderBook(channel_details[1], channel_details[2]);
-                                    break;
-                            }
-                        }
+                        await this.disconnectPublic();
                     }
-                    
+                    return false;
                 }
             }
             else
             {
                 this.addLog("ERROR", "Public channel is closed. Check the status. State:" + this.websocket_client.State.ToString());
-                if (this.autoReconnecting)
+                if (this.websocket_client.State == WebSocketState.CloseReceived)
                 {
-                    this.addLog("INFO", "Reconnecting...");
-                    await this.connectPublicAsync();
-                    foreach (string ch in this.subscribingChannels)
-                    {
-                        string[] channel_details = ch.Split("_");
-
-                        switch (channel_details[0])
-                        {
-                            case "trade":
-                                await this.subscribeTrades(channel_details[1], channel_details[2]);
-                                break;
-                            case "orderbook":
-                                await this.subscribeOrderBook(channel_details[1], channel_details[2]);
-                                break;
-                        }
-                    }
+                    await this.disconnectPublic();
                 }
-                else
-                {
-                    Thread.Sleep(10000);
-                }
+                return false;
             }
+            return true;
         }
         private async Task<string> getAsync(string endpoint)
         {
@@ -464,22 +480,26 @@ namespace Crypto_Clients
                     {
                         case PNStatusCategory.PNConnectedCategory:
                             this.addLog("INFO", "pubnub connection established");
+                            this.pubnub_state = WebSocketState.Open;
                             break;
 
                         case PNStatusCategory.PNReconnectedCategory:
                             this.addLog("INFO", "pubnub connection restored");
                             this.subscribePrivateChannels(pubnubObj, channel, token);
+                            this.pubnub_state = WebSocketState.Open;
                             break;
 
                         case PNStatusCategory.PNTimeoutCategory:
                         case PNStatusCategory.PNNetworkIssuesCategory:
                         case PNStatusCategory.PNAccessDeniedCategory:
+                            this.pubnub_state = WebSocketState.Closed;
                             this.addLog("INFO", "pubnub reconnecting...");
                             await connectPrivateAsync();
                             break;
 
                         default:
                             this.addLog("INFO", "status default");
+                            this.pubnub_state = WebSocketState.None;
                             break;
                     }
                 }));
@@ -491,6 +511,15 @@ namespace Crypto_Clients
             var (channel, token) = await this.GetChannelAndToken();
             var pubnub = this.GetPubNubAndAddListener(channel, token);
             this.subscribePrivateChannels(pubnub, channel, token);
+        }
+
+        public WebSocketState GetSocketStatePublic()
+        {
+            return this.websocket_client.State;
+        }
+        public WebSocketState GetSocketStatePrivate()
+        {
+            return this.pubnub_state;
         }
         private string ToSha256(string key, string value)
         {

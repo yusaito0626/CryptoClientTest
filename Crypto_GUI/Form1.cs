@@ -4,10 +4,12 @@ using CryptoClients.Net.Enums;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Net;
+using System.Net.WebSockets;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
+using System.Windows.Forms;
 
 namespace Crypto_GUI
 {
@@ -59,7 +61,7 @@ namespace Crypto_GUI
             this.filledOrderQueue = new ConcurrentQueue<string>();
 
             InitializeComponent();
-            
+
             this.lbl_multiplier.Text = this.multiplier.ToString("N0");
 
             this.button_receiveFeed.Enabled = false;
@@ -80,6 +82,7 @@ namespace Crypto_GUI
             this.qManager._addLog = this.addLog;
             this.oManager._addLog = this.addLog;
             this.crypto_client.setAddLog(this.addLog);
+            this.thManager._addLog = this.addLog;
 
             this.readAPIFiles(this.APIsPath);
 
@@ -137,6 +140,7 @@ namespace Crypto_GUI
             this.updatingTh.Start();
 
             this.button_receiveFeed.Enabled = true;
+            this.timer_statusCheck.Start();
         }
         private bool readConfig()
         {
@@ -244,7 +248,7 @@ namespace Crypto_GUI
             this.updating = false;
             while (!this.aborting)
             {
-                if(!this.updating)
+                if (!this.updating)
                 {
                     this.updating = true;
                     this.BeginInvoke(this._update);
@@ -422,11 +426,10 @@ namespace Crypto_GUI
 
         private async void receiveFeed_clicked(object sender, EventArgs e)
         {
-            await this.crypto_client.connectAsync(this.qManager.markets);
-            foreach (var mkt in this.qManager.markets)
+            foreach (var mkt in this.qManager._markets)
             {
-                await this.qManager.connectPublicChannel(mkt);
-                await this.oManager.connectPrivateChannel(mkt);
+                await this.qManager.connectPublicChannel(mkt.Key);
+                await this.oManager.connectPrivateChannel(mkt.Key);
             }
 
             if (this.oManager.getVirtualMode())
@@ -435,8 +438,9 @@ namespace Crypto_GUI
             }
             else
             {
-                this.qManager.setBalance(await this.crypto_client.getBalance(this.qManager.markets));
+                this.qManager.setBalance(await this.crypto_client.getBalance(this.qManager._markets.Keys));
             }
+            this.qManager.setBalance(await this.crypto_client.getBalance(this.qManager._markets.Keys));
             //this.qManager.setFees(await this.cl.getFees([Exchange.Bybit, Exchange.Coinbase], this.stg.baseCcy, this.stg.quoteCcy),this.stg.baseCcy + this.stg.quoteCcy);
 
             foreach (var ins in this.qManager.instruments.Values)
@@ -457,83 +461,82 @@ namespace Crypto_GUI
                 await crypto_client.subscribeTrades(markets, ins.baseCcy, ins.quoteCcy);
             }
 
-            await crypto_client.subscribeSpotOrderUpdates(this.qManager.markets);
+            await crypto_client.subscribeSpotOrderUpdates(this.qManager._markets.Keys);
 
             this.thManager.addThread("updateQuotes", this.qManager._updateQuotes);
             this.thManager.addThread("updateTrades", this.qManager._updateTrades);
             this.thManager.addThread("updateOrders", this.oManager._updateOrders);
-            this.thManager.addThread("orderLogging", this.oManager._orderLogging,this.oManager.onLoggingStopped);
+            this.thManager.addThread("orderLogging", this.oManager._orderLogging, this.oManager.onLoggingStopped);
             this.threadsStarted = true;
             this.button_startTrading.Enabled = true;
         }
 
         private async void test_Click(object sender, EventArgs e)
         {
-            await this.crypto_client.connectAsync(this.qManager.markets);
-            await this.crypto_client.subscribeOrderBook(["bittrade"], "eth", "jpy");
-            await this.crypto_client.subscribeTrades(["bittrade"], "eth", "jpy");
-            this.quoteupdateTh = new System.Threading.Thread(this.qManager.updateQuotes);
-            this.tradeupdateTh = new System.Threading.Thread(this.qManager.updateTrades);
-            this.orderUpdateTh = new System.Threading.Thread(this.oManager.updateOrders);
-            this.quoteupdateTh.Start();
-            this.tradeupdateTh.Start();
-            this.orderUpdateTh.Start();
-            //DataSpotOrderUpdate ord;
-            //Instrument ins = this.qManager.instruments["eth_jpy@coincheck"];
+            DataSpotOrderUpdate ord;
+            Instrument ins = this.qManager.instruments["ethjpy@bittrade"];
 
-            //this.oManager.setVirtualMode(false);
+            this.oManager.setVirtualMode(false);
 
-            //this.addLog("Testing orderManager");
-            //Thread.Sleep(3000);
-            //this.addLog("Placing a new order");
-            //string ordid;
-            //ord = await this.oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Limit, (decimal)0.01, 580000);
-            //if (ord != null)
-            //{
-            //    ordid = ord.order_id;
-            //    this.addLog(ord.ToString());
-            //}
-            //else
-            //{
-            //    this.addLog("Failed to place a new order");
-            //    return;
-            //}
-            //Thread.Sleep(1000);
-            //this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
-            //Thread.Sleep(3000);
-            //this.addLog("modifing a order");
-            //ord = await this.oManager.placeModSpotOrder(ins, ordid, (decimal)0.01, 570000, false);
-            //if (ord != null)
-            //{
-            //    ordid = ord.order_id;
-            //    this.addLog(ord.ToString());
-            //}
-            //else
-            //{
-            //    this.addLog("Failed to place a mod order");
-            //    return;
-            //}
-            //Thread.Sleep(1000);
-            //this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
-            //if (this.oManager.live_orders.Count > 0)
-            //{
-            //    this.addLog("Cancelling a order");
-            //    ord = this.oManager.live_orders.Values.First();
-            //    this.addLog(ord.ToString());
-            //    ord = await this.oManager.placeCancelSpotOrder(ins, ord.order_id);
-            //    if (ord != null)
-            //    {
-            //        ordid = ord.order_id;
-            //        this.addLog(ord.ToString());
-            //    }
-            //    else
-            //    {
-            //        this.addLog("Failed to place a can order");
-            //        return;
-            //    }
-            //}
-            //Thread.Sleep(1000);
-            //this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
+            bittrade_connection cn = bittrade_connection.GetInstance();
+
+            this.addLog("batchCancel test");
+
+            var result = await cn.batchCancel();
+
+            this.addLog(JsonSerializer.Serialize(result));
+
+            this.addLog("Testing orderManager");
+            Thread.Sleep(3000);
+            this.addLog("Placing a new order");
+            string ordid;
+            ord = await this.oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Limit, (decimal)0.01, 580000);
+            if (ord != null)
+            {
+                ordid = ord.order_id;
+                this.addLog(ord.ToString());
+            }
+            else
+            {
+                this.addLog("Failed to place a new order");
+                return;
+            }
+            Thread.Sleep(1000);
+            this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
+            Thread.Sleep(3000);
+            this.addLog("modifing a order");
+            ord = await this.oManager.placeModSpotOrder(ins, ordid, (decimal)0.01, 570000, false);
+            if (ord != null)
+            {
+                ordid = ord.order_id;
+                this.addLog(ord.ToString());
+            }
+            else
+            {
+                this.addLog("Failed to place a mod order");
+                return;
+            }
+            Thread.Sleep(1000);
+            this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
+            if (this.oManager.live_orders.Count > 0)
+            {
+                this.addLog("Cancelling a order");
+                ord = this.oManager.live_orders.Values.First();
+                this.addLog(ord.ToString());
+                ord = await this.oManager.placeCancelSpotOrder(ins, ord.order_id);
+                if (ord != null)
+                {
+                    ordid = ord.order_id;
+                    this.addLog(ord.ToString());
+                }
+                else
+                {
+                    this.addLog("Failed to place a can order");
+                    return;
+                }
+            }
+            Thread.Sleep(1000);
+            this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
 
             //this.addLog("Fill Check");
             ////ord = await this.oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Limit, (decimal)0.001, 620000);
@@ -561,16 +564,16 @@ namespace Crypto_GUI
             this.stg.enabled = false;
 
             Thread.Sleep(1000);
-            if(this.threadsStarted)
+            if (this.threadsStarted)
             {
                 this.oManager.cancelAllOrders();
-                this.oManager.aborting = true;
+                Thread.Sleep(1000);
 
-                while (this.oManager.aborting)
+                foreach (var th in this.thManager.threads)
                 {
-                    Thread.Sleep(100);
+                    th.Value.isRunning = false;
                 }
-                this.qManager.aborting = true;
+                Thread.Sleep(1000);
 
             }
             this.aborting = true;
@@ -580,6 +583,91 @@ namespace Crypto_GUI
             {
                 this.updatingTh.Join(2000);
             }
+        }
+
+        private void timer_statusCheck_Tick(object sender, EventArgs e)
+        {
+            //Connection
+            this.qManager.checkConnections();
+            this.oManager.checkConnections();
+            foreach(var mkt in this.qManager._markets)
+            {
+                bool found = false;
+                foreach(DataGridViewRow row in this.gridView_Connection.Rows)
+                {
+                    if(row.IsNewRow)
+                    {
+                        continue;
+                    }
+                    if (row.Cells[0] != null && row.Cells[0].Value.ToString() == mkt.Key)
+                    {
+                        row.Cells[1].Value = mkt.Value.ToString();
+                        found = true;
+                        break;
+                    }
+                }
+                if(!found)
+                {
+                    this.gridView_Connection.Rows.Add(mkt.Key, mkt.Value.ToString(),WebSocketState.None.ToString());
+                }
+            }
+
+            foreach(var mkt in this.oManager.connections)
+            {
+                bool found = false;
+                foreach (DataGridViewRow row in this.gridView_Connection.Rows)
+                {
+                    if (row.IsNewRow)
+                    {
+                        continue;
+                    }
+                    if (row.Cells[0] != null && row.Cells[0].Value.ToString() == mkt.Key)
+                    {
+                        row.Cells[2].Value = mkt.Value.ToString();
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    this.gridView_Connection.Rows.Add(mkt.Key, WebSocketState.None.ToString(), mkt.Value.ToString());
+                }
+            }
+
+            //Thread
+            foreach (var th in this.thManager.threads)
+            {
+                bool found = false;
+                string st;
+                if (th.Value.isRunning)
+                {
+                    st = "Running";
+                }
+                else
+                {
+                    st = "Stopped";
+                }
+                foreach (DataGridViewRow row in this.gridView_ThStatus.Rows)
+                {
+                    if (row.IsNewRow)
+                    {
+                        continue;
+                    }
+                    if (row.Cells[0] != null && row.Cells[0].Value.ToString() == th.Key)
+                    {
+                        
+                        row.Cells[1].Value = st;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    this.gridView_ThStatus.Rows.Add(th.Key, st);
+                }
+            }
+
+
         }
     }
 }

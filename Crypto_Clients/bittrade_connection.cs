@@ -4,14 +4,17 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Net.Http;
 using System.Net.WebSockets;
 using System.Reflection.Metadata;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Web;
 
 namespace Crypto_Clients
 {
@@ -20,16 +23,21 @@ namespace Crypto_Clients
         private string apiName;
         private string secretKey;
 
+        private long accountId;
+
         private const string URL = "https://api-cloud.bittrade.co.jp";
         private const string ws_URL = "wss://api-cloud.bittrade.co.jp/ws";
         private const string private_URL = "wss://api-cloud.bittrade.co.jp";
         private const string private_Path = "/ws/v2";
+
+        
 
         public ConcurrentQueue<JsonElement> orderQueue;
         public ConcurrentQueue<JsonElement> fillQueue;
 
         ClientWebSocket websocket_client;
         ClientWebSocket private_client;
+        HttpClient http_client;
 
         public Action<string> onMessage;
         public Action<string> onPrivateMessage;
@@ -44,21 +52,25 @@ namespace Crypto_Clients
         MemoryStream pv_memory = new MemoryStream();
         MemoryStream pv_result_memory = new MemoryStream();
 
-        public bool autoReconnecting;
+        private bool closeSentPublic;
+        private bool closeSentPrivate;
         private List<string> subscribingChannels;
 
         private bittrade_connection()
         {
             this.apiName = "";
             this.secretKey = "";
+            this.accountId = -1;
 
             this.websocket_client = new ClientWebSocket();
             this.private_client = new ClientWebSocket();
+            this.http_client = new HttpClient();
 
             this.orderQueue = new ConcurrentQueue<JsonElement>();
             this.fillQueue = new ConcurrentQueue<JsonElement>();
 
-            this.autoReconnecting = true;
+            this.closeSentPublic = false;
+            this.closeSentPrivate = false;
             this.subscribingChannels = new List<string>();
 
             this._addLog = Console.WriteLine;
@@ -76,6 +88,7 @@ namespace Crypto_Clients
             {
                 await this.websocket_client.ConnectAsync(uri, CancellationToken.None);
                 this.addLog("INFO", "Connected to bitTrade.");
+                this.closeSentPublic = false;
             }
             catch (WebSocketException wse)
             {
@@ -89,6 +102,22 @@ namespace Crypto_Clients
         public async Task connectPrivateAsync()
         {
             this.addLog("INFO", "Connecting to private channel of bitTrade");
+
+            var acc = await this.getAccount();
+
+            if(acc.RootElement.GetProperty("status").GetString() == "ok")
+            {
+                foreach(var item in acc.RootElement.GetProperty("data").EnumerateArray())
+                {
+                    if(item.GetProperty("type").GetString() == "spot")
+                    {
+                        this.accountId = item.GetProperty("id").GetInt64();
+                        break;
+                    }
+                }
+                
+            }
+
             var _timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss");
             var uri = new Uri(bittrade_connection.private_URL + bittrade_connection.private_Path);
 
@@ -104,7 +133,7 @@ namespace Crypto_Clients
 
             string s = $"GET\n{bittrade_connection.private_URL.Replace("wss://","")}\n{bittrade_connection.private_Path}\n{query}";
 
-            string signature = this.ToHmacSha256Base64(s, this.secretKey);
+            string signature = this.ToHmacSha256Base64(this.secretKey,s);
 
             var Params = new AuthParams
             {
@@ -143,7 +172,12 @@ namespace Crypto_Clients
                     {
                         this.addLog("ERROR", "Failed to login to the private channel.");
                         this.addLog("ERROR", msg_body);
-                        await this.private_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                        this.closeSentPrivate = false;
+                        await this.disconnectPrivate();
+                    }
+                    else
+                    {
+                        this.closeSentPrivate = false;
                     }
                 }
                 else if (res.MessageType == WebSocketMessageType.Binary)
@@ -153,8 +187,18 @@ namespace Crypto_Clients
                     using var resultStream = new MemoryStream();
                     gzipStream.CopyTo(resultStream);
                     var msg = Encoding.UTF8.GetString(resultStream.ToArray());
-                    this.addLog("ERROR", "Failed to login to the private channel.");
-                    this.addLog("ERROR", msg);
+                    JsonElement js = JsonDocument.Parse(msg).RootElement;
+                    if (js.GetProperty("code").GetInt32() != 200)
+                    {
+                        this.addLog("ERROR", "Failed to login to the private channel.");
+                        this.addLog("ERROR", msg);
+                        this.closeSentPrivate = false;
+                        await this.disconnectPrivate();
+                    }
+                    else
+                    {
+                        this.closeSentPrivate = false;
+                    }
                 }
             }
             catch (WebSocketException wse)
@@ -164,6 +208,32 @@ namespace Crypto_Clients
             catch (Exception ex)
             {
                 this.addLog("ERROR", $"Connection failed: {ex.Message}");
+            }
+        }
+
+        public async Task disconnectPublic()
+        {
+            if (this.closeSentPublic)
+            {
+                this.addLog("WARNING", "closeAsnyc for public API is already called.");
+            }
+            else
+            {
+                await this.websocket_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                this.closeSentPublic = true;
+            }
+        }
+
+        public async Task disconnectPrivate()
+        {
+            if (this.closeSentPrivate)
+            {
+                this.addLog("WARNING", "closeAsnyc for private API is already called.");
+            }
+            else
+            {
+                await this.private_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                this.closeSentPrivate = true;
             }
         }
         public async Task sendPing(bool isPrivate = false)
@@ -231,7 +301,6 @@ namespace Crypto_Clients
         {
             string event_name = "market." + baseCcy.ToLower() + quoteCcy.ToLower() + ".depth.step0";
             var subscribeJson = "{\"sub\":\"" + event_name + "\", \"id\":\"idorderbook\"}";
-            this.addLog("INFO",subscribeJson);
             var bytes = Encoding.UTF8.GetBytes(subscribeJson);
             if (this.websocket_client.State == WebSocketState.Open)
             {
@@ -291,7 +360,7 @@ namespace Crypto_Clients
             }
         }
 
-        public async Task onListen(Action<string> onMsg)
+        public async Task<bool> onListen(Action<string> onMsg)
         {
             if (this.websocket_client.State == WebSocketState.Open)
             {
@@ -323,26 +392,11 @@ namespace Crypto_Clients
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {
                     this.addLog("INFO", "Closed by server");
-                    await this.websocket_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
-                    if (this.autoReconnecting)
+                    if (this.websocket_client.State == WebSocketState.Open || this.websocket_client.State == WebSocketState.CloseReceived)
                     {
-                        this.addLog("INFO", "Reconnecting...");
-                        await this.connectPublicAsync();
-                        foreach (string ch in this.subscribingChannels)
-                        {
-                            string[] channel_details = ch.Split("_");
-
-                            switch (channel_details[0])
-                            {
-                                case "trade":
-                                    await this.subscribeTrades(channel_details[1], channel_details[2]);
-                                    break;
-                                case "orderbook":
-                                    await this.subscribeOrderBook(channel_details[1], channel_details[2]);
-                                    break;
-                            }
-                        }
+                        await this.disconnectPublic();
                     }
+                    return false;
                 }
                 this.ws_memory.SetLength(0);
                 this.ws_memory.Position = 0;
@@ -350,49 +404,41 @@ namespace Crypto_Clients
             else
             {
                 this.addLog("ERROR", "Public channel is closed. Check the status. State:" + this.websocket_client.State.ToString());
-                if (this.autoReconnecting)
+                if (this.websocket_client.State == WebSocketState.CloseReceived)
                 {
-                    this.addLog("INFO", "Reconnecting...");
-                    await this.connectPublicAsync();
-                    foreach (string ch in this.subscribingChannels)
-                    {
-                        string[] channel_details = ch.Split("_");
-
-                        switch (channel_details[0])
-                        {
-                            case "trade":
-                                await this.subscribeTrades(channel_details[1], channel_details[2]);
-                                break;
-                            case "orderbook":
-                                await this.subscribeOrderBook(channel_details[1], channel_details[2]);
-                                break;
-                        }
-                    }
+                    await this.disconnectPublic();
                 }
-                else
-                {
-                    Thread.Sleep(10000);
-                }
+                return false;
             }
-
+            return true;
         }
 
-        public async Task subscribeOrderEvent(string baseCcy, string quoteCcy)
+        public async Task subscribeOrderEvent()
         {
-            var subscribeJson = "{\"action\":\"sub\", \"ch\":\"orders#" + baseCcy + quoteCcy + "\"}";
+            var subscribeJson = "{\"action\":\"sub\", \"ch\":\"orders#*\"}";
             var bytes = Encoding.UTF8.GetBytes(subscribeJson);
             if(this.private_client.State == WebSocketState.Open)
             {
                 await this.private_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
             }
+            string channel_name = "orderupdate";
+            if (!this.subscribingChannels.Contains(channel_name))
+            {
+                this.subscribingChannels.Add(channel_name);
+            }
         }
         public async Task subscribeExecutionEvent()
         {
-            var subscribeJson = "{\"type\":\"subscribe\", \"channels\":[\"execution-events\"]}";
+            var subscribeJson = "{\"action\":\"sub\", \"ch\":\"trade.clearing#*#0\"}";
             var bytes = Encoding.UTF8.GetBytes(subscribeJson);
             if (this.private_client.State == WebSocketState.Open)
             {
                 await this.private_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+            }
+            string channel_name = "execution";
+            if (!this.subscribingChannels.Contains(channel_name))
+            {
+                this.subscribingChannels.Add(channel_name);
             }
         }
         public async void startListenPrivate(Action<string> onMsg)
@@ -433,7 +479,7 @@ namespace Crypto_Clients
             this.addLog("INFO", "Check websocket state. State:" + this.private_client.State.ToString());
         }
 
-        public async void onListenPrivate(Action<string> onMsg)
+        public async Task<bool> onListenPrivate(Action<string> onMsg)
         {
             WebSocketReceiveResult result;
             if(this.private_client.State == WebSocketState.Open)
@@ -463,7 +509,12 @@ namespace Crypto_Clients
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {
                     this.addLog("INFO", "Closed by server");
-                    await this.private_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                    if (this.private_client.State == WebSocketState.Open || this.private_client.State == WebSocketState.CloseReceived)
+                    {
+                        await this.disconnectPrivate();
+                    }
+                    return false;
+
                 }
                 this.pv_memory.SetLength(0);
                 this.pv_memory.Position = 0;
@@ -471,48 +522,96 @@ namespace Crypto_Clients
             else
             {
                 this.addLog("ERROR", "Private channel is closed. Check the status. State:" + this.private_client.State.ToString());
-                Thread.Sleep(60000);
-            }           
+                if (this.private_client.State == WebSocketState.CloseReceived)
+                {
+                    await this.disconnectPrivate();
+                }
+                return false;
+            }
+            return true;
         }
 
         private async Task<string> getAsync(string endpoint)
         {
-            var nonce = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            var message = $"{nonce}{bittrade_connection.URL}{endpoint}";
 
-            using var client = new HttpClient();
-            var request = new HttpRequestMessage(HttpMethod.Get, bittrade_connection.URL + endpoint);
+            string url = BuildSignedUrl("GET", endpoint, null);
 
-            request.Headers.Add("ACCESS-KEY", this.apiName);
-            request.Headers.Add("ACCESS-NONCE", nonce.ToString());
-            request.Headers.Add("ACCESS-SIGNATURE", ToSha256(this.secretKey, message));
+            var nonce = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss");
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Add("Accept", "application/json");
 
-            request.Content = new StringContent(string.Empty, Encoding.UTF8, "application/json");
-
-            var response = await client.SendAsync(request);
-            var resString = await response.Content.ReadAsStringAsync();
-
-            return resString;
+            var response = await this.http_client.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsStringAsync();
         }
 
         private async Task<string> postAsync(string endpoint, string body)
         {
-            var nonce = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            var message = $"{nonce}{bittrade_connection.URL}{endpoint}{body}";
+            string url = BuildSignedUrl("POST", endpoint, null);
 
-            using var client = new HttpClient();
-            var request = new HttpRequestMessage(HttpMethod.Post, bittrade_connection.URL + endpoint);
-
+            using var request = new HttpRequestMessage(HttpMethod.Post, url);
+            request.Headers.Add("Accept", "application/json");
             request.Content = new StringContent(body, Encoding.UTF8, "application/json");
 
-            request.Headers.Add("ACCESS-KEY", this.apiName);
-            request.Headers.Add("ACCESS-NONCE", nonce.ToString());
-            request.Headers.Add("ACCESS-SIGNATURE", ToSha256(this.secretKey, message));
+            var response = await this.http_client.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsStringAsync();
 
-            var response = await client.SendAsync(request);
-            var resString = await response.Content.ReadAsStringAsync();
+            //var nonce = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            //var message = $"{nonce}{bittrade_connection.URL}{endpoint}{body}";
 
-            return resString;
+            //using var client = new HttpClient();
+            //var request = new HttpRequestMessage(HttpMethod.Post, bittrade_connection.URL + endpoint);
+
+            //request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+
+            //request.Headers.Add("ACCESS-KEY", this.apiName);
+            //request.Headers.Add("ACCESS-NONCE", nonce.ToString());
+            //request.Headers.Add("ACCESS-SIGNATURE", ToSha256(this.secretKey, message));
+
+            //var response = await client.SendAsync(request);
+            //var resString = await response.Content.ReadAsStringAsync();
+
+            //return resString;
+        }
+
+        private string BuildSignedUrl(string method, string endpoint, IDictionary<string, string>? extraParams)
+        {
+            var baseUri = new Uri(bittrade_connection.URL);
+            string host = baseUri.Host;
+            if (!baseUri.IsDefaultPort)
+                host += ":" + baseUri.Port;
+
+            string path = endpoint.StartsWith("/") ? endpoint : "/" + endpoint;
+
+            string timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss");
+
+            var parameters = new SortedDictionary<string, string>
+        {
+            { "AccessKeyId", this.apiName },
+            { "SignatureMethod", "HmacSHA256" },
+            { "SignatureVersion", "2" },
+            { "Timestamp", timestamp }
+        };
+
+            if (extraParams != null)
+            {
+                foreach (var kv in extraParams)
+                    parameters[kv.Key] = kv.Value;
+            }
+
+            string canonicalQuery = string.Join("&",
+                parameters.Select(kv =>
+                    $"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(kv.Value)}"));
+
+            string signPayload = $"{method}\n{host}\n{path}\n{canonicalQuery}";
+
+            string signature = this.ToHmacSha256Base64(this.secretKey, signPayload);
+
+            // RFC3986 準拠で署名をエンコード
+            string encodedSignature = Uri.EscapeDataString(signature);
+
+            return $"{bittrade_connection.URL}{path}?{canonicalQuery}&Signature={encodedSignature}";
         }
 
         private async Task<string> deleteAsync(string endpoint, string body)
@@ -534,37 +633,54 @@ namespace Crypto_Clients
 
             return resString;
         }
-        public async Task<JsonDocument> getBalance()
+
+        public async Task<JsonDocument> getAccount()
         {
-            var resString = await this.getAsync("/api/accounts/balance");
+            var resString = await this.getAsync("/v1/account/accounts");
             var json = JsonDocument.Parse(resString);
             return json;
         }
-        public async Task<JsonDocument> placeNewOrder(string symbol, string side, decimal price = 0, decimal quantity = 0, string tif = "good_til_cancelled")
+        public async Task<JsonDocument> getBalance()
         {
-            var body = new
+            var resString = await this.getAsync("/v1/account/accounts/" + this.accountId.ToString() + "/balance");
+            var json = JsonDocument.Parse(resString);
+            return json;
+        }
+        public async Task<JsonDocument> placeNewOrder(string symbol, string side, decimal price = 0, decimal quantity = 0, bool postonly = true)
+        {
+            string _type = side + "-limit";
+            if (postonly)
             {
-                pair = symbol,
-                amount = quantity.ToString(),
-                rate = price.ToString(),
-                order_type = side,
-                time_in_force = tif
-            };
-
-
-            var jsonBody = JsonSerializer.Serialize(body);
-            var resString = await this.postAsync("/api/exchange/orders", jsonBody);
+                _type += "-maker";
+            }
+            var jsonBody = "{\"account-id\":" + this.accountId.ToString() + ", \"amount\":\"" + quantity.ToString() + "\",\"price\":\"" + price.ToString() + "\",\"source\":\"api\",\"symbol\":\"" + symbol + "\",\"type\":" + _type + "\"}";
+            this.addLog("INFO",jsonBody);
+            var resString = await this.postAsync("/v1/order/orders/place", jsonBody);
 
             return JsonDocument.Parse(resString);
         }
         public async Task<JsonDocument> placeCanOrder(string order_id)
         {
-            var resString = await this.deleteAsync("/api/exchange/orders/" + order_id, "");
+            var resString = await this.postAsync("/v1/order/orders/" + order_id + "/submitcancel","");
 
             return JsonDocument.Parse(resString);
         }
 
+        public async Task<JsonDocument> batchCancel()
+        {
+            var resString = await this.postAsync("/v1/order/orders/batchcancel", "");
 
+            return JsonDocument.Parse(resString);
+        }
+
+        public WebSocketState GetSocketStatePublic()
+        {
+            return this.websocket_client.State;
+        }
+        public WebSocketState GetSocketStatePrivate()
+        {
+            return this.private_client.State;
+        }
 
         private string ToSha256(string key, string value)
         {
@@ -572,7 +688,7 @@ namespace Crypto_Clients
             var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(value));
             return BitConverter.ToString(hash).Replace("-", "").ToLower();
         }
-        private string ToHmacSha256Base64(string message, string secret)
+        private string ToHmacSha256Base64(string secret, string message)
         {
             using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret)))
             {

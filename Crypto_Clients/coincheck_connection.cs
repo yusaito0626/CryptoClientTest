@@ -38,7 +38,8 @@ namespace Crypto_Clients
         MemoryStream pv_memory = new MemoryStream();
         MemoryStream pv_result_memory = new MemoryStream();
 
-        public bool autoReconnecting;
+        private bool closeSentPublic;
+        private bool closeSentPrivate;
         private List<string> subscribingChannels;
 
         private coincheck_connection()
@@ -52,7 +53,8 @@ namespace Crypto_Clients
             this.orderQueue = new ConcurrentQueue<JsonElement>();
             this.fillQueue = new ConcurrentQueue<JsonElement>();
 
-            this.autoReconnecting = true;
+            this.closeSentPublic = false;
+            this.closeSentPrivate = false;
             this.subscribingChannels = new List<string>();
 
             this._addLog = Console.WriteLine;
@@ -70,6 +72,7 @@ namespace Crypto_Clients
             {
                 await this.websocket_client.ConnectAsync(uri, CancellationToken.None);
                 this.addLog("INFO", "Connected to coincheck.");
+                this.closeSentPublic = false;
             }
             catch (WebSocketException wse)
             {
@@ -110,7 +113,12 @@ namespace Crypto_Clients
                     {
                         this.addLog("ERROR", "Failed to login to the private channel.");
                         this.addLog("ERROR", msg_body);
-                        await this.private_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                        this.closeSentPrivate = false;
+                        await this.disconnectPrivate();
+                    }
+                    else
+                    {
+                        this.closeSentPrivate = false;
                     }
                 }
             }
@@ -121,6 +129,31 @@ namespace Crypto_Clients
             catch (Exception ex)
             {
                 this.addLog("ERROR", $"Connection failed: {ex.Message}");
+            }
+        }
+        public async Task disconnectPublic()
+        {
+            if (this.closeSentPublic)
+            {
+                this.addLog("WARNING", "closeAsnyc for public API is already called.");
+            }
+            else
+            {
+                await this.websocket_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                this.closeSentPublic = true;
+            }
+        }
+
+        public async Task disconnectPrivate()
+        {
+            if (this.closeSentPrivate)
+            {
+                this.addLog("WARNING", "closeAsnyc for private API is already called.");
+            }
+            else
+            {
+                await this.private_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                this.closeSentPrivate = true;
             }
         }
 
@@ -177,7 +210,7 @@ namespace Crypto_Clients
             }
             this.addLog("INFO", "Check websocket state. State:" +  this.websocket_client.State.ToString());
         }
-        public async Task onListen(Action<string> onMsg)
+        public async Task<bool> onListen(Action<string> onMsg)
         {
             WebSocketReceiveResult result;
             if (this.websocket_client.State == WebSocketState.Open)
@@ -207,57 +240,25 @@ namespace Crypto_Clients
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {
                     this.addLog("INFO", "Closed by server");
-                    await this.websocket_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
-                    if (this.autoReconnecting)
+                    if (this.websocket_client.State == WebSocketState.Open || this.websocket_client.State == WebSocketState.CloseReceived)
                     {
-                        this.addLog("INFO", "Reconnecting...");
-                        await this.connectPublicAsync();
-                        foreach (string ch in this.subscribingChannels)
-                        {
-                            string[] channel_details = ch.Split("_");
-
-                            switch (channel_details[0])
-                            {
-                                case "trade":
-                                    await this.subscribeTrades(channel_details[1], channel_details[2]);
-                                    break;
-                                case "orderbook":
-                                    await this.subscribeOrderBook(channel_details[1], channel_details[2]);
-                                    break;
-                            }
-                        }
+                        await this.disconnectPublic();
                     }
+                    return false;
                 }
                 this.ws_memory.SetLength(0);
                 this.ws_memory.Position = 0;
             }
             else
             {
-                this.addLog("ERROR", "Private channel is closed. Check the status. State:" + this.websocket_client.State.ToString());
-                if (this.autoReconnecting)
+                this.addLog("ERROR", "Public channel is closed. Check the status. State:" + this.websocket_client.State.ToString());
+                if (this.websocket_client.State == WebSocketState.CloseReceived)
                 {
-                    this.addLog("INFO", "Reconnecting...");
-                    await this.connectPublicAsync();
-                    foreach (string ch in this.subscribingChannels)
-                    {
-                        string[] channel_details = ch.Split("_");
-
-                        switch (channel_details[0])
-                        {
-                            case "trade":
-                                await this.subscribeTrades(channel_details[1], channel_details[2]);
-                                break;
-                            case "orderbook":
-                                await this.subscribeOrderBook(channel_details[1], channel_details[2]);
-                                break;
-                        }
-                    }
+                    await this.disconnectPublic();
                 }
-                else
-                {
-                    Thread.Sleep(10000);
-                }
+                return false;
             }
+            return true;
         }
 
         public async Task subscribeOrderEvent()
@@ -268,6 +269,11 @@ namespace Crypto_Clients
             {
                 await this.private_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
             }
+            string channel_name = "orderupdate";
+            if (!this.subscribingChannels.Contains(channel_name))
+            {
+                this.subscribingChannels.Add(channel_name);
+            }
         }
         public async Task subscribeExecutionEvent()
         {
@@ -276,6 +282,11 @@ namespace Crypto_Clients
             if (this.private_client.State == WebSocketState.Open)
             {
                 await this.private_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+            }
+            string channel_name = "execution";
+            if (!this.subscribingChannels.Contains(channel_name))
+            {
+                this.subscribingChannels.Add(channel_name);
             }
         }
         public async void startListenPrivate(Action<string> onMsg)
@@ -299,7 +310,7 @@ namespace Crypto_Clients
             }
             this.addLog("INFO", "Check websocket state. State:" + this.private_client.State.ToString());
         }
-        public async void onListenPrivate(Action<string> onMsg)
+        public async Task<bool> onListenPrivate(Action<string> onMsg)
         {
             WebSocketReceiveResult result;
             if (this.private_client.State == WebSocketState.Open)
@@ -329,7 +340,11 @@ namespace Crypto_Clients
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {
                     this.addLog("INFO", "Closed by server");
-                    await this.private_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                    if (this.private_client.State == WebSocketState.Open || this.private_client.State == WebSocketState.CloseReceived)
+                    {
+                        await this.disconnectPrivate();
+                    }
+                    return false;
                 }
                 this.pv_memory.SetLength(0);
                 this.pv_memory.Position = 0;
@@ -337,8 +352,13 @@ namespace Crypto_Clients
             else
             {
                 this.addLog("ERROR", "Private channel is closed. Check the status. State:" + this.private_client.State.ToString());
-                Thread.Sleep(60000);
+                if (this.private_client.State == WebSocketState.CloseReceived)
+                {
+                    await this.disconnectPrivate();
+                }
+                return false;
             }
+            return true;
         }
 
         private async Task<string> getAsync(string endpoint)
@@ -430,8 +450,15 @@ namespace Crypto_Clients
             return JsonDocument.Parse(resString);
         }
 
- 
- 
+        public WebSocketState GetSocketStatePublic()
+        {
+            return this.websocket_client.State;
+        }
+        public WebSocketState GetSocketStatePrivate()
+        {
+            return this.private_client.State;
+        }
+
         private string ToSha256(string key, string value)
         {
             using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(key));
