@@ -33,7 +33,7 @@ namespace Crypto_Clients
         WebSocketState pubnub_state;
 
         public Action<string> onMessage;
-        public Action<string> _addLog;
+        public Action<string,Enums.logType> _addLog;
 
         byte[] ws_buffer = new byte[16384];
         MemoryStream ws_memory = new MemoryStream();
@@ -58,7 +58,7 @@ namespace Crypto_Clients
 
             this.subscribingChannels = new List<string>();
 
-            this._addLog = Console.WriteLine;
+            //this._addLog = Console.WriteLine;
             this.onMessage = Console.WriteLine;
         }
         public void SetApiCredentials(string name, string key)
@@ -77,27 +77,27 @@ namespace Crypto_Clients
 
         public async Task connectPublicAsync()
         {
-            this.addLog("INFO","Connecting to bitbank");
+            this.addLog("Connecting to bitbank");
             var uri = new Uri(bitbank_connection.ws_URL);
             try
             {
                 await this.websocket_client.ConnectAsync(uri, CancellationToken.None);
-                this.addLog("INFO", "Connected to bitbank.");
+                this.addLog("Connected to bitbank.");
                 this.closeSent = false;
             }
             catch (WebSocketException wse)
             {
-                this.addLog("ERROR", $"WebSocketException: {wse.Message}");
+                this.addLog($"WebSocketException: {wse.Message}",Enums.logType.ERROR);
             }
             catch (Exception ex)
             {
-                this.addLog("ERROR", $"Connection failed: {ex.Message}");
+                this.addLog($"Connection failed: {ex.Message}", Enums.logType.ERROR);
             }
         }
 
         public async Task reconnectPublic()
         {
-            this.addLog("INFO", "Reconnecting...");
+            this.addLog("Reconnecting...");
 
             Thread.Sleep(1000);
 
@@ -127,7 +127,7 @@ namespace Crypto_Clients
         {
             if(this.closeSent)
             {
-                this.addLog("WARNING", "closeAsnyc is already called.");
+                this.addLog("closeAsnyc is already called.", Enums.logType.WARNING);
             }
             else
             {
@@ -204,7 +204,7 @@ namespace Crypto_Clients
                                 this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("3"), WebSocketMessageType.Text, true, CancellationToken.None);
                                 break;
                             case "40":
-                                this.addLog("INFO", "Hand shake completed");
+                                this.addLog("Hand shake completed");
                                 break;
                             case "42"://Actual Message
                                 if (result.EndOfMessage)
@@ -214,7 +214,7 @@ namespace Crypto_Clients
                                 }
                                 else
                                 {
-                                    this.addLog("ERROR", "The message is too large");
+                                    this.addLog("The message is too large",Enums.logType.ERROR);
                                 }
                                 break;
                         }
@@ -229,7 +229,7 @@ namespace Crypto_Clients
                 }
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {
-                    this.addLog("INFO", "Closed by server");
+                    this.addLog("Closed by server");
                     await this.websocket_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
                 }
             }
@@ -271,7 +271,7 @@ namespace Crypto_Clients
                                 this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("3"), WebSocketMessageType.Text, true, CancellationToken.None);
                                 break;
                             case "40":
-                                this.addLog("INFO", "Hand shake completed");
+                                this.addLog("Hand shake completed");
                                 break;
                             case "42"://Actual Message
                                 if (result.EndOfMessage)
@@ -281,7 +281,7 @@ namespace Crypto_Clients
                                 }
                                 else
                                 {
-                                    this.addLog("ERROR", "The message is too large");
+                                    this.addLog("The message is too large", Enums.logType.ERROR);
                                     await this.disconnectPublic();
                                     return false;
                                 }
@@ -308,7 +308,7 @@ namespace Crypto_Clients
                 }
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {
-                    this.addLog("INFO", "Closed by server");
+                    this.addLog("Closed by server");
                     if (this.websocket_client.State == WebSocketState.Open || this.websocket_client.State == WebSocketState.CloseReceived)
                     {
                         await this.disconnectPublic();
@@ -318,7 +318,7 @@ namespace Crypto_Clients
             }
             else
             {
-                this.addLog("ERROR", "Public channel is closed. Check the status. State:" + this.websocket_client.State.ToString());
+                this.addLog("Public channel is closed. Check the status. State:" + this.websocket_client.State.ToString(), Enums.logType.ERROR);
                 if (this.websocket_client.State == WebSocketState.CloseReceived)
                 {
                     await this.disconnectPublic();
@@ -488,21 +488,19 @@ namespace Crypto_Clients
                 },
                 (pubnubObj, presenceResult) =>
                 {
-                    this.addLog("INFO", "presence: " + presenceResult.Event);
+                    this.addLog("presence: " + presenceResult.Event);
                 },
                 async (pubnubObj, status) =>
                 {
-                    this.addLog("INFO", "status: " + status.Category);
-
                     switch (status.Category)
                     {
                         case PNStatusCategory.PNConnectedCategory:
-                            this.addLog("INFO", "pubnub connection established");
+                            this.addLog("pubnub connection established");
                             this.pubnub_state = WebSocketState.Open;
                             break;
 
                         case PNStatusCategory.PNReconnectedCategory:
-                            this.addLog("INFO", "pubnub connection restored");
+                            this.addLog("pubnub connection restored");
                             this.subscribePrivateChannels(pubnubObj, channel, token);
                             this.pubnub_state = WebSocketState.Open;
                             break;
@@ -511,12 +509,12 @@ namespace Crypto_Clients
                         case PNStatusCategory.PNNetworkIssuesCategory:
                         case PNStatusCategory.PNAccessDeniedCategory:
                             this.pubnub_state = WebSocketState.Closed;
-                            this.addLog("INFO", "pubnub reconnecting...");
+                            this.addLog("pubnub reconnecting...");
                             await connectPrivateAsync();
                             break;
 
                         default:
-                            this.addLog("INFO", "status default");
+                            this.addLog("status default");
                             this.pubnub_state = WebSocketState.None;
                             break;
                     }
@@ -546,9 +544,9 @@ namespace Crypto_Clients
             return BitConverter.ToString(hash).Replace("-", "").ToLower();
         }
 
-        public void addLog(string logtype, string line)
+        public void addLog(string line,Enums.logType logtype = Enums.logType.INFO)
         {
-            this._addLog("[" + logtype + ":bitbank_connection]" + line);
+            this._addLog("[bitbank_connection]" + line, logtype);
         }
 
         private static bitbank_connection _instance;

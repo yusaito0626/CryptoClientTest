@@ -41,7 +41,7 @@ namespace Crypto_Clients
 
         public Action<string> onMessage;
         public Action<string> onPrivateMessage;
-        public Action<string> _addLog;
+        public Action<string,Enums.logType> _addLog;
 
 
         byte[] ws_buffer = new byte[16384];
@@ -73,7 +73,7 @@ namespace Crypto_Clients
             this.closeSentPrivate = false;
             this.subscribingChannels = new List<string>();
 
-            this._addLog = Console.WriteLine;
+            //this._addLog = Console.WriteLine;
         }
         public void SetApiCredentials(string name, string key)
         {
@@ -82,26 +82,26 @@ namespace Crypto_Clients
         }
         public async Task connectPublicAsync()
         {
-            this.addLog("INFO", "Connecting to bitTrade");
+            this.addLog("Connecting to bitTrade");
             var uri = new Uri(bittrade_connection.ws_URL);
             try
             {
                 await this.websocket_client.ConnectAsync(uri, CancellationToken.None);
-                this.addLog("INFO", "Connected to bitTrade.");
+                this.addLog("Connected to bitTrade.");
                 this.closeSentPublic = false;
             }
             catch (WebSocketException wse)
             {
-                this.addLog("ERROR", $"WebSocketException: {wse.Message}");
+                this.addLog($"WebSocketException: {wse.Message}",Enums.logType.ERROR);
             }
             catch (Exception ex)
             {
-                this.addLog("ERROR", $"Connection failed: {ex.Message}");
+                this.addLog($"Connection failed: {ex.Message}",Enums.logType.ERROR);
             }
         }
         public async Task connectPrivateAsync()
         {
-            this.addLog("INFO", "Connecting to private channel of bitTrade");
+            this.addLog("Connecting to private channel of bitTrade");
 
             var acc = await this.getAccount();
 
@@ -170,8 +170,8 @@ namespace Crypto_Clients
                     JsonElement js = JsonDocument.Parse(msg_body).RootElement;
                     if (js.GetProperty("code").GetInt32() != 200)
                     {
-                        this.addLog("ERROR", "Failed to login to the private channel.");
-                        this.addLog("ERROR", msg_body);
+                        this.addLog("Failed to login to the private channel.",Enums.logType.ERROR);
+                        this.addLog(msg_body, Enums.logType.ERROR);
                         this.closeSentPrivate = false;
                         await this.disconnectPrivate();
                     }
@@ -190,8 +190,8 @@ namespace Crypto_Clients
                     JsonElement js = JsonDocument.Parse(msg).RootElement;
                     if (js.GetProperty("code").GetInt32() != 200)
                     {
-                        this.addLog("ERROR", "Failed to login to the private channel.");
-                        this.addLog("ERROR", msg);
+                        this.addLog("Failed to login to the private channel.", Enums.logType.ERROR);
+                        this.addLog(msg, Enums.logType.ERROR);
                         this.closeSentPrivate = false;
                         await this.disconnectPrivate();
                     }
@@ -203,11 +203,11 @@ namespace Crypto_Clients
             }
             catch (WebSocketException wse)
             {
-                this.addLog("ERROR", $"WebSocketException: {wse.Message}");
+                this.addLog($"WebSocketException: {wse.Message}", Enums.logType.ERROR);
             }
             catch (Exception ex)
             {
-                this.addLog("ERROR", $"Connection failed: {ex.Message}");
+                this.addLog($"Connection failed: {ex.Message}", Enums.logType.ERROR);
             }
         }
 
@@ -215,7 +215,7 @@ namespace Crypto_Clients
         {
             if (this.closeSentPublic)
             {
-                this.addLog("WARNING", "closeAsnyc for public API is already called.");
+                this.addLog("closeAsnyc for public API is already called.",Enums.logType.WARNING);
             }
             else
             {
@@ -228,7 +228,7 @@ namespace Crypto_Clients
         {
             if (this.closeSentPrivate)
             {
-                this.addLog("WARNING", "closeAsnyc for private API is already called.");
+                this.addLog("closeAsnyc for private API is already called.",Enums.logType.WARNING);
             }
             else
             {
@@ -348,14 +348,14 @@ namespace Crypto_Clients
                     }
                     else if (result.MessageType == WebSocketMessageType.Close)
                     {
-                        this.addLog("INFO", "Closed by server");
+                        this.addLog("Closed by server");
                         await this.websocket_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
                     }
                 }
                 else
                 {
-                    this.addLog("ERROR", "Public channel is closed. Check the status. State:" + this.websocket_client.State.ToString());
-                    Thread.Sleep(60000);
+                    this.addLog("Public channel is closed. Check the status. State:" + this.websocket_client.State.ToString(),Enums.logType.ERROR);
+                    //Thread.Sleep(60000);
                 }
             }
         }
@@ -391,7 +391,7 @@ namespace Crypto_Clients
                 }
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {
-                    this.addLog("INFO", "Closed by server");
+                    this.addLog("Closed by server");
                     if (this.websocket_client.State == WebSocketState.Open || this.websocket_client.State == WebSocketState.CloseReceived)
                     {
                         await this.disconnectPublic();
@@ -403,7 +403,7 @@ namespace Crypto_Clients
             }
             else
             {
-                this.addLog("ERROR", "Public channel is closed. Check the status. State:" + this.websocket_client.State.ToString());
+                this.addLog("Public channel is closed. Check the status. State:" + this.websocket_client.State.ToString(),Enums.logType.ERROR);
                 if (this.websocket_client.State == WebSocketState.CloseReceived)
                 {
                     await this.disconnectPublic();
@@ -472,11 +472,11 @@ namespace Crypto_Clients
                 }
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {
-                    this.addLog("INFO", "Closed by server");
+                    this.addLog("Closed by server");
                     await this.private_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
                 }
             }
-            this.addLog("INFO", "Check websocket state. State:" + this.private_client.State.ToString());
+            this.addLog("Check websocket state. State:" + this.private_client.State.ToString());
         }
 
         public async Task<bool> onListenPrivate(Action<string> onMsg)
@@ -508,7 +508,7 @@ namespace Crypto_Clients
                 }
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {
-                    this.addLog("INFO", "Closed by server");
+                    this.addLog("Closed by server");
                     if (this.private_client.State == WebSocketState.Open || this.private_client.State == WebSocketState.CloseReceived)
                     {
                         await this.disconnectPrivate();
@@ -521,7 +521,7 @@ namespace Crypto_Clients
             }
             else
             {
-                this.addLog("ERROR", "Private channel is closed. Check the status. State:" + this.private_client.State.ToString());
+                this.addLog("Private channel is closed. Check the status. State:" + this.private_client.State.ToString(),Enums.logType.ERROR);
                 if (this.private_client.State == WebSocketState.CloseReceived)
                 {
                     await this.disconnectPrivate();
@@ -549,7 +549,7 @@ namespace Crypto_Clients
         {
             string url = BuildSignedUrl("POST", endpoint, null);
 
-            this.addLog("INFO", url);
+            this.addLog(url);
 
             using var request = new HttpRequestMessage(HttpMethod.Post, url);
             request.Headers.Add("Accept", "application/json");
@@ -661,8 +661,7 @@ namespace Crypto_Clients
             {
                 _type += "-maker";
             }
-            var jsonBody = "{\"account-id\":" + this.accountId.ToString() + ", \"amount\":\"" + quantity.ToString() + "\",\"price\":\"" + price.ToString() + "\",\"source\":\"api\",\"symbol\":\"" + symbol + "\",\"type\":" + _type + "\"}";
-            this.addLog("INFO",jsonBody);
+            var jsonBody = "{\"account-id\":" + this.accountId.ToString() + ", \"amount\":\"" + quantity.ToString() + "\",\"price\":\"" + price.ToString() + "\",\"source\":\"api\",\"symbol\":\"" + symbol + "\",\"type\":\"" + _type + "\"}";
             var resString = await this.postAsync("/v1/order/orders/place", jsonBody);
 
             return JsonDocument.Parse(resString);
@@ -673,14 +672,6 @@ namespace Crypto_Clients
 
             return JsonDocument.Parse(resString);
         }
-
-        public async Task<JsonDocument> batchCancel()
-        {
-            var resString = await this.postAsync("/v1/order/orders/batchcancel", "");
-
-            return JsonDocument.Parse(resString);
-        }
-
         public WebSocketState GetSocketStatePublic()
         {
             return this.websocket_client.State;
@@ -704,9 +695,9 @@ namespace Crypto_Clients
                 return Convert.ToBase64String(hash); 
             }
         }
-        public void addLog(string logtype, string line)
+        public void addLog(string line,Enums.logType logtype = Enums.logType.INFO)
         {
-            this._addLog("[" + logtype + ":bittrade_connection]" + line);
+            this._addLog("[bittrade_connection]" + line,logtype);
         }
 
         private static bittrade_connection _instance;

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Enums;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,19 +12,19 @@ namespace Crypto_Trading
         public Dictionary<string, thread> threads;
 
 
-        public Action<string> _addLog;
+        public Action<string, Enums.logType> _addLog;
 
         private ThreadManager()
         {
             this.threads = new Dictionary<string, thread>();
-            this._addLog = Console.WriteLine;
+            //this._addLog = Console.WriteLine;
         }
 
         public void addThread(string name, Func<Task<bool>> action, Action onClosing = null)
         {
             if(this.threads.ContainsKey(name))
             {
-                this.addLog("ERROR", "The thread name already exists. name:" + name);
+                this.addLog("The thread name already exists. name:" + name, Enums.logType.ERROR);
             }
             else
             {
@@ -31,7 +32,7 @@ namespace Crypto_Trading
                 t.addLog = this.addLog;
                 this.threads[name] = t;
                 t.start();
-                this.addLog("INFO", "The thread started. name:" + name);
+                this.addLog("The thread started. name:" + name);
             }
         }
 
@@ -46,13 +47,13 @@ namespace Crypto_Trading
                 }
                 else
                 {
-                    this.addLog("ERROR", "The thread is already running. name:" + name);
+                    this.addLog("The thread is already running. name:" + name, Enums.logType.ERROR);
                     return false;
                 }
             }
             else
             {
-                this.addLog("ERROR", "The thread does not exist. name:" + name);
+                this.addLog("The thread does not exist. name:" + name, Enums.logType.ERROR);
                 return false;
             }
         }
@@ -65,7 +66,7 @@ namespace Crypto_Trading
             }
             else
             {
-                this.addLog("ERROR", "The thread does not exist. name:" + name);
+                this.addLog("The thread does not exist. name:" + name, Enums.logType.ERROR);
                 return false;
             }
         }
@@ -91,9 +92,9 @@ namespace Crypto_Trading
             return output;
         }
 
-        public void addLog(string logtype, string line)
+        public void addLog(string line,logType logtype = logType.INFO)
         {
-            this._addLog("[" + logtype + ":ThreadManager]" + line);
+            this._addLog("[ThreadManager]" + line,logtype);
         }
 
 
@@ -122,7 +123,7 @@ namespace Crypto_Trading
         public Func<Task<bool>> action;
         public Action onClosing;
 
-        public Action<string, string> addLog;
+        public Action<string, logType> addLog;
 
         public thread(string name, Func<Task<bool>> action, Action onClosing = null)
         {
@@ -155,15 +156,15 @@ namespace Crypto_Trading
                     if (!this.isRunning)
                     {
                         this.onClosing();
-                        this.addLog("INFO", "Thread closing. name:" + this.name);
+                        this.addLog("Thread closing. name:" + this.name,logType.INFO);
                         break;
                     }
                 }
             }
             catch (Exception e)
             {
-                this.addLog("ERROR", "An error thrown within the thread:" + this.name);
-                this.addLog("ERROR", e.Message);
+                this.addLog("An error thrown within the thread:" + this.name,logType.ERROR);
+                this.addLog(e.Message, logType.ERROR);
                 this.isRunning = false;
             }
            

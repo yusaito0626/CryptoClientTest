@@ -70,7 +70,7 @@ namespace Crypto_GUI
 
             if (!this.readConfig())
             {
-                this.addLog("[ERROR]Failed to read config.");
+                this.addLog("Failed to read config.", Enums.logType.ERROR);
                 updatingTh = new Thread(update);
                 updatingTh.Start();
                 return;
@@ -157,7 +157,7 @@ namespace Crypto_GUI
                 }
                 else
                 {
-                    this.addLog("[ERROR] API path is not configured.");
+                    this.addLog("API path is not configured.", Enums.logType.ERROR);
                     return false;
                 }
                 if (root.TryGetProperty("masterFile", out elem))
@@ -166,7 +166,7 @@ namespace Crypto_GUI
                 }
                 else
                 {
-                    this.addLog("[ERROR] Master file path is not configured.");
+                    this.addLog("Master file path is not configured.", Enums.logType.ERROR);
                     return false;
                 }
                 if (root.TryGetProperty("outputPath", out elem))
@@ -175,8 +175,8 @@ namespace Crypto_GUI
                 }
                 else
                 {
-                    this.addLog("[WARNING] Output path is not configured.");
-                    this.addLog("[WARNING] The output files will be exported to the current path.");
+                    this.addLog("Output path is not configured.", Enums.logType.WARNING);
+                    this.addLog("The output files will be exported to the current path.", Enums.logType.WARNING);
                 }
                 if (root.TryGetProperty("logFile", out elem))
                 {
@@ -188,8 +188,8 @@ namespace Crypto_GUI
                 }
                 else
                 {
-                    this.addLog("[WARNING] strategyFile is not configured.");
-                    this.addLog("[WARNING] Any strategies won't be run.");
+                    this.addLog("strategyFile is not configured.", Enums.logType.WARNING);
+                    this.addLog("Any strategies won't be run.", Enums.logType.WARNING);
                 }
                 if (root.TryGetProperty("balanceFile", out elem))
                 {
@@ -197,14 +197,14 @@ namespace Crypto_GUI
                 }
                 else
                 {
-                    this.addLog("[WARNING] Balance file is not configured.");
-                    this.addLog("[WARNING] The virtual balance will be all 0.");
+                    this.addLog("Balance file is not configured.", Enums.logType.WARNING);
+                    this.addLog("The virtual balance will be all 0.", Enums.logType.WARNING);
                 }
                 return true;
             }
             else
             {
-                this.addLog("[ERROR] Config file doesn't exist. path:" + this.configPath);
+                this.addLog("Config file doesn't exist. path:" + this.configPath, Enums.logType.ERROR);
                 return false;
             }
 
@@ -218,15 +218,15 @@ namespace Crypto_GUI
 
                 foreach (string file in files)
                 {
-                    this.addLog("[INFO:Form] API File:" + file);
+                    this.addLog("API File:" + file);
                     this.crypto_client.readCredentials(file);
                 }
             }
         }
 
-        private void addLog(string line)
+        private void addLog(string line, Enums.logType logtype = Enums.logType.INFO)
         {
-            this.logQueue.Enqueue(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + line + "\n");
+            this.logQueue.Enqueue(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   [" + logtype.ToString() + "]" + line + "\n");
         }
         private void updateLog()
         {
@@ -289,7 +289,7 @@ namespace Crypto_GUI
                 volume = this.stg.maker.my_buy_notional + this.stg.maker.my_sell_notional;
                 tradingPL = (this.stg.taker.my_sell_notional - this.stg.taker.my_sell_quantity * this.stg.taker.mid) + (this.stg.taker.my_buy_quantity * this.stg.taker.mid - this.stg.taker.my_buy_notional);
                 tradingPL += (this.stg.maker.my_sell_notional - this.stg.maker.my_sell_quantity * this.stg.taker.mid) + (this.stg.maker.my_buy_quantity * this.stg.taker.mid - this.stg.maker.my_buy_notional);
-                fee = this.stg.taker.total_fee + this.stg.maker.total_fee;
+                fee = this.stg.taker.base_fee * this.stg.taker.mid + this.stg.taker.quote_fee + this.stg.maker.base_fee * this.stg.taker.mid  + this.stg.maker.quote_fee;
                 volume *= this.multiplier;
                 tradingPL *= this.multiplier;
                 fee *= this.multiplier;
@@ -305,11 +305,35 @@ namespace Crypto_GUI
             if (this.selected_ins != null)
             {
                 this.lbl_symbol.Text = this.selected_ins.symbol;
+                this.lbl_baseCcyName.Text = this.selected_ins.baseCcy;
+                this.lbl_quoteCcyName.Text = this.selected_ins.quoteCcy;
                 this.lbl_market.Text = this.selected_ins.market;
                 this.lbl_lastprice.Text = this.selected_ins.last_price.ToString();
                 this.lbl_notional.Text = (this.selected_ins.buy_notional + this.selected_ins.sell_notional).ToString("N2");
                 this.lbl_baseBalance.Text = this.selected_ins.baseBalance.balance.ToString("N" + this.selected_ins.quantity_scale);
-                this.lbl_quoteBalance.Text = this.selected_ins.quoteBalance.balance.ToString("N" + this.selected_ins.quantity_scale);
+                this.lbl_quoteBalance.Text = this.selected_ins.quoteBalance.balance.ToString("N2");
+                this.lbl_sellQuantity.Text = this.selected_ins.my_sell_quantity.ToString("N" + this.selected_ins.quantity_scale);
+                this.lbl_buyQuantity.Text = this.selected_ins.my_buy_quantity.ToString("N" + this.selected_ins.quantity_scale);
+                this.lbl_sellNotional.Text = this.selected_ins.my_sell_notional.ToString("N2");
+                this.lbl_buyNotional.Text = this.selected_ins.my_buy_notional.ToString("N2");
+                if(this.selected_ins.my_sell_quantity > 0)
+                {
+                    this.lbl_sellAvgPrice.Text = (this.selected_ins.my_sell_notional / this.selected_ins.my_sell_quantity).ToString("N" +this.selected_ins.price_scale);
+                }
+                else
+                {
+                    this.lbl_sellAvgPrice.Text = "0";
+                }
+                if (this.selected_ins.my_buy_quantity > 0)
+                {
+                    this.lbl_buyAvgPrice.Text = (this.selected_ins.my_buy_notional / this.selected_ins.my_buy_quantity).ToString("N" + this.selected_ins.price_scale);
+                }
+                else
+                {
+                    this.lbl_buyAvgPrice.Text = "0";
+                }
+                this.lbl_baseFee.Text = this.selected_ins.base_fee.ToString("N" + this.selected_ins.quantity_scale);
+                this.lbl_quoteFee.Text = this.selected_ins.quote_fee.ToString("N" + this.selected_ins.quantity_scale);
                 this.updateQuotesView(this.gridView_Ins, this.selected_ins);
             }
         }
@@ -440,7 +464,7 @@ namespace Crypto_GUI
             {
                 this.qManager.setBalance(await this.crypto_client.getBalance(this.qManager._markets.Keys));
             }
-            this.qManager.setBalance(await this.crypto_client.getBalance(this.qManager._markets.Keys));
+            //this.qManager.setBalance(await this.crypto_client.getBalance(this.qManager._markets.Keys));
             //this.qManager.setFees(await this.cl.getFees([Exchange.Bybit, Exchange.Coinbase], this.stg.baseCcy, this.stg.quoteCcy),this.stg.baseCcy + this.stg.quoteCcy);
 
             foreach (var ins in this.qManager.instruments.Values)
@@ -485,10 +509,6 @@ namespace Crypto_GUI
             bittrade_connection cn = bittrade_connection.GetInstance();
 
             this.addLog("batchCancel test");
-
-            var result = await cn.batchCancel();
-
-            this.addLog(JsonSerializer.Serialize(result));
 
             this.addLog("Testing orderManager");
             Thread.Sleep(3000);
@@ -542,17 +562,24 @@ namespace Crypto_GUI
             Thread.Sleep(1000);
             this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
 
-            //this.addLog("Fill Check");
-            ////ord = await this.oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Limit, (decimal)0.001, 620000);
-            //this.addLog(ord.ToString());
-            //Thread.Sleep(1000);
-            //this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
+            this.addLog("Fill Check");
+            //ord = await this.oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Limit, (decimal)0.001, 620000);
+            this.addLog(ord.ToString());
+            Thread.Sleep(1000);
+            this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
 
-            //this.addLog("Market Order");
-            ////ord = await this.oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Market, (decimal)0.001, 620000);
-            //this.addLog(ord.ToString());
-            //Thread.Sleep(1000);
-            //this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
+            this.addLog("Market Order");
+            ord = await this.oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Market, (decimal)0.001, 670000);
+            if(ord != null)
+            {
+                this.addLog(ord.ToString());
+            }
+            else
+            {
+                this.addLog("Market order failed.");
+            }
+            Thread.Sleep(1000);
+            this.addLog("Live Order Count " + this.oManager.live_orders.Count.ToString());
 
         }
 

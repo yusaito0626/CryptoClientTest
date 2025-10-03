@@ -43,7 +43,8 @@ namespace Crypto_Trading
         public decimal my_sell_notional;
         public decimal my_buy_notional;
 
-        public decimal total_fee;
+        public decimal base_fee;
+        public decimal quote_fee;
         public decimal unknown_fee;
 
         public Balance baseBalance;
@@ -91,7 +92,8 @@ namespace Crypto_Trading
             this.my_sell_notional = 0;
             this.my_buy_notional = 0;
 
-            this.total_fee = 0;
+            this.base_fee = 0;
+            this.quote_fee = 0;
             this.unknown_fee = 0;
 
             this.baseBalance = new Balance();
@@ -343,29 +345,89 @@ namespace Crypto_Trading
         }
         public void updateFills(DataSpotOrderUpdate prev_ord,DataSpotOrderUpdate new_ord)
         {
-            decimal filledQuantity;
-            decimal filledPrice;
-            decimal fee;
+            decimal filledQuantity = 0;
+            decimal filledPrice = 0;
+            decimal fee = 0;
 
             filledQuantity = new_ord.filled_quantity - prev_ord.filled_quantity;
 
-            if(new_ord.isVirtual == false && new_ord.market == "bitbank")//Update fill with fill object.
+            if (!new_ord.isVirtual)
             {
-                filledQuantity = 0;
-                fee = 0;
-                filledPrice = 0;
-            }
-            else if (filledQuantity == 0)
-            {
-                filledQuantity = new_ord.filled_quantity;
-                filledPrice = new_ord.average_price;
-                fee = new_ord.fee;
+                if(new_ord.market == "bitbank")
+                {
+                    filledQuantity = 0;
+                    fee = 0;
+                    filledPrice = 0;
+                }
+                else if(new_ord.market == "bittrade")
+                {
+                    if (new_ord.current_traded_quantity > 0)
+                    {
+                        filledQuantity = new_ord.current_traded_quantity;
+                        filledPrice = new_ord.current_traded_price;
+                        fee = 0;
+                    }
+                    else if(new_ord.fee > 0)//Fee can be retrived from only trade.clearing object 
+                    {
+                        fee = new_ord.fee;
+                        filledPrice = 0;
+                        filledQuantity = 0;
+                    }
+                    else
+                    {
+                        filledQuantity = 0;
+                        fee = 0;
+                        filledPrice = 0;
+
+                    }
+                }
+                else
+                {
+                    if(new_ord == prev_ord)
+                    {
+                        filledQuantity = new_ord.filled_quantity;
+                        filledPrice = new_ord.average_price;
+                        fee = new_ord.fee;
+                    }
+                    else
+                    {
+                        filledPrice = (new_ord.filled_quantity * new_ord.average_price - prev_ord.filled_quantity * prev_ord.average_price) / filledQuantity;
+                        fee = new_ord.fee - prev_ord.fee;
+                    }
+                }
             }
             else
             {
-                filledPrice = (new_ord.filled_quantity * new_ord.average_price - prev_ord.filled_quantity * prev_ord.average_price) / filledQuantity;
-                fee = new_ord.fee - prev_ord.fee;
+                if (new_ord == prev_ord)
+                {
+                    filledQuantity = new_ord.filled_quantity;
+                    filledPrice = new_ord.average_price;
+                    fee = new_ord.fee;
+                }
+                else
+                {
+                    filledPrice = (new_ord.filled_quantity * new_ord.average_price - prev_ord.filled_quantity * prev_ord.average_price) / filledQuantity;
+                    fee = new_ord.fee - prev_ord.fee;
+                }
             }
+
+            //if (new_ord.isVirtual == false && new_ord.market == "bitbank")//Update fill with fill object.
+            //{
+            //    filledQuantity = 0;
+            //    fee = 0;
+            //    filledPrice = 0;
+            //}
+            //else if (filledQuantity == 0)
+            //{
+            //    filledQuantity = new_ord.filled_quantity;
+            //    filledPrice = new_ord.average_price;
+            //    fee = new_ord.fee;
+            //}
+            //else
+            //{
+            //    filledPrice = (new_ord.filled_quantity * new_ord.average_price - prev_ord.filled_quantity * prev_ord.average_price) / filledQuantity;
+            //    fee = new_ord.fee - prev_ord.fee;
+            //}
 
             if (new_ord.side == orderSide.Sell)
             {
@@ -381,15 +443,15 @@ namespace Crypto_Trading
             this.baseBalance.balance += filledQuantity;
             this.quoteBalance.balance -= filledQuantity * filledPrice;
 
-            if(new_ord.fee_asset == this.baseCcy)
+            if(new_ord.fee_asset.ToUpper() == this.baseCcy)
             {
                 this.baseBalance.balance -= fee;
-                this.total_fee += fee * filledPrice;
+                this.base_fee += fee;
             }
-            else if(new_ord.fee_asset == this.quoteCcy)
+            else if(new_ord.fee_asset.ToUpper() == this.quoteCcy)
             {
                 this.quoteBalance.balance -= fee;
-                this.total_fee += fee;
+                this.quote_fee += fee;
             }
             else
             {
@@ -416,8 +478,9 @@ namespace Crypto_Trading
             }
             this.baseBalance.balance -= fill.fee_base;
             this.quoteBalance.balance -= fill.fee_quote;
-            this.total_fee += fill.fee_quote;
-            this.total_fee += fill.fee_base * fill.price;
+            this.quote_fee += fill.fee_quote;
+            this.base_fee += fill.fee_base;
+            this.unknown_fee += fill.fee_unknown;
         }
         public string ToString(string content = "")
         {

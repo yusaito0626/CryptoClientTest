@@ -28,7 +28,7 @@ namespace Crypto_Clients
 
         public Action<string> onMessage;
         public Action<string> onPrivateMessage;
-        public Action<string> _addLog;
+        public Action<string,Enums.logType> _addLog;
 
         byte[] ws_buffer = new byte[16384];
         MemoryStream ws_memory = new MemoryStream();
@@ -57,7 +57,7 @@ namespace Crypto_Clients
             this.closeSentPrivate = false;
             this.subscribingChannels = new List<string>();
 
-            this._addLog = Console.WriteLine;
+            //this._addLog = Console.WriteLine;
         }
         public void SetApiCredentials(string name, string key)
         {
@@ -66,26 +66,26 @@ namespace Crypto_Clients
         }
         public async Task connectPublicAsync()
         {
-            this.addLog("INFO", "Connecting to coincehck");
+            this.addLog("Connecting to coincehck");
             var uri = new Uri(coincheck_connection.ws_URL);
             try
             {
                 await this.websocket_client.ConnectAsync(uri, CancellationToken.None);
-                this.addLog("INFO", "Connected to coincheck.");
+                this.addLog("Connected to coincheck.");
                 this.closeSentPublic = false;
             }
             catch (WebSocketException wse)
             {
-                this.addLog("ERROR", $"WebSocketException: {wse.Message}");
+                this.addLog($"WebSocketException: {wse.Message}",Enums.logType.ERROR);
             }
             catch (Exception ex)
             {
-                this.addLog("ERROR", $"Connection failed: {ex.Message}");
+                this.addLog($"Connection failed: {ex.Message}", Enums.logType.ERROR);
             }
         }
         public async Task connectPrivateAsync()
         {
-            this.addLog("INFO", "Connecting to private channel of coincheck");
+            this.addLog("Connecting to private channel of coincheck");
             var nonce = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var uri = new Uri(coincheck_connection.private_URL);
             string msg = nonce.ToString() + coincheck_connection.private_URL + "/private"; 
@@ -111,8 +111,8 @@ namespace Crypto_Clients
                     JsonElement js = JsonDocument.Parse(msg_body).RootElement;
                     if(js.GetProperty("success").GetBoolean() == false)
                     {
-                        this.addLog("ERROR", "Failed to login to the private channel.");
-                        this.addLog("ERROR", msg_body);
+                        this.addLog("Failed to login to the private channel.",Enums.logType.ERROR);
+                        this.addLog(msg_body, Enums.logType.ERROR);
                         this.closeSentPrivate = false;
                         await this.disconnectPrivate();
                     }
@@ -124,18 +124,18 @@ namespace Crypto_Clients
             }
             catch (WebSocketException wse)
             {
-                this.addLog("ERROR", $"WebSocketException: {wse.Message}");
+                this.addLog($"WebSocketException: {wse.Message}", Enums.logType.ERROR);
             }
             catch (Exception ex)
             {
-                this.addLog("ERROR", $"Connection failed: {ex.Message}");
+                this.addLog($"Connection failed: {ex.Message}", Enums.logType.ERROR);
             }
         }
         public async Task disconnectPublic()
         {
             if (this.closeSentPublic)
             {
-                this.addLog("WARNING", "closeAsnyc for public API is already called.");
+                this.addLog("closeAsnyc for public API is already called.",Enums.logType.WARNING);
             }
             else
             {
@@ -148,7 +148,7 @@ namespace Crypto_Clients
         {
             if (this.closeSentPrivate)
             {
-                this.addLog("WARNING", "closeAsnyc for private API is already called.");
+                this.addLog("closeAsnyc for private API is already called.",Enums.logType.WARNING);
             }
             else
             {
@@ -204,11 +204,11 @@ namespace Crypto_Clients
                 }
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {
-                    this.addLog("INFO", "Closed by server");
+                    this.addLog("Closed by server");
                     await this.websocket_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
                 }
             }
-            this.addLog("INFO", "Check websocket state. State:" +  this.websocket_client.State.ToString());
+            this.addLog("Check websocket state. State:" +  this.websocket_client.State.ToString());
         }
         public async Task<bool> onListen(Action<string> onMsg)
         {
@@ -239,7 +239,7 @@ namespace Crypto_Clients
                 }
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {
-                    this.addLog("INFO", "Closed by server");
+                    this.addLog("Closed by server");
                     if (this.websocket_client.State == WebSocketState.Open || this.websocket_client.State == WebSocketState.CloseReceived)
                     {
                         await this.disconnectPublic();
@@ -251,7 +251,7 @@ namespace Crypto_Clients
             }
             else
             {
-                this.addLog("ERROR", "Public channel is closed. Check the status. State:" + this.websocket_client.State.ToString());
+                this.addLog("Public channel is closed. Check the status. State:" + this.websocket_client.State.ToString(),Enums.logType.ERROR);
                 if (this.websocket_client.State == WebSocketState.CloseReceived)
                 {
                     await this.disconnectPublic();
@@ -304,11 +304,11 @@ namespace Crypto_Clients
                 }
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {
-                    this.addLog("INFO", "Closed by server");
+                    this.addLog("Closed by server");
                     await this.private_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
                 }
             }
-            this.addLog("INFO", "Check websocket state. State:" + this.private_client.State.ToString());
+            this.addLog("Check websocket state. State:" + this.private_client.State.ToString());
         }
         public async Task<bool> onListenPrivate(Action<string> onMsg)
         {
@@ -339,7 +339,7 @@ namespace Crypto_Clients
                 }
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {
-                    this.addLog("INFO", "Closed by server");
+                    this.addLog("Closed by server");
                     if (this.private_client.State == WebSocketState.Open || this.private_client.State == WebSocketState.CloseReceived)
                     {
                         await this.disconnectPrivate();
@@ -351,7 +351,7 @@ namespace Crypto_Clients
             }
             else
             {
-                this.addLog("ERROR", "Private channel is closed. Check the status. State:" + this.private_client.State.ToString());
+                this.addLog("Private channel is closed. Check the status. State:" + this.private_client.State.ToString(),Enums.logType.ERROR);
                 if (this.private_client.State == WebSocketState.CloseReceived)
                 {
                     await this.disconnectPrivate();
@@ -361,7 +361,7 @@ namespace Crypto_Clients
             return true;
         }
 
-        private async Task<string> getAsync(string endpoint)
+        private async Task<string> getAsync(string endpoint,string body = "")
         {
             var nonce = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var message = $"{nonce}{coincheck_connection.URL}{endpoint}";
@@ -373,7 +373,15 @@ namespace Crypto_Clients
             request.Headers.Add("ACCESS-NONCE", nonce.ToString());
             request.Headers.Add("ACCESS-SIGNATURE", ToSha256(this.secretKey, message));
 
-            request.Content = new StringContent(string.Empty, Encoding.UTF8, "application/json");
+            if(body == "")
+            {
+                request.Content = new StringContent(string.Empty, Encoding.UTF8, "application/json");
+            }
+            else
+            {
+                request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+            }
+                
 
             var response = await client.SendAsync(request);
             var resString = await response.Content.ReadAsStringAsync();
@@ -438,9 +446,14 @@ namespace Crypto_Clients
             var json = JsonDocument.Parse(resString);
             return json;
         }
-        public async Task<JsonDocument> getOrderBooks(string baseCcy,string quoteCcy)
+        public async Task<JsonDocument> getOrderBooks(string symbol)
         {
-            var resString = await this.getAsync("/api/order_books");
+            var body = new
+            {
+                pair = symbol
+            };
+            var jsonBody = JsonSerializer.Serialize(body);
+            var resString = await this.getAsync("/api/order_books?pair=" + Uri.EscapeDataString(symbol));
             var json = JsonDocument.Parse(resString);
             return json;
         }
@@ -483,9 +496,9 @@ namespace Crypto_Clients
             var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(value));
             return BitConverter.ToString(hash).Replace("-", "").ToLower();
         }
-        public void addLog(string logtype, string line)
+        public void addLog(string line,Enums.logType logtype = Enums.logType.INFO)
         {
-            this._addLog("[" + logtype + ":coincheck_connection]" + line);
+            this._addLog("[coincheck_connection]" + line,logtype);
         }
 
         private static coincheck_connection _instance;

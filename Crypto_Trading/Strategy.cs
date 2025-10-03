@@ -222,7 +222,7 @@ namespace Crypto_Trading
                     else if (isPriceChanged && this.live_sellorder.status == orderStatus.Open && this.live_sellorder.order_price != ask_price)
                     {
                         this.prev_sellorder = this.live_sellorder;
-                        this.live_sellorder = await this.oManager.placeModSpotOrder(this.maker, this.live_sellorder.order_id, this.ToBsize * (1 - this.maker.maker_fee), ask_price, false);
+                        this.live_sellorder = await this.oManager.placeModSpotOrder(this.maker, this.live_sellorder.order_id, this.ToBsize, ask_price, false);
                         this.live_askprice = ask_price;
                     }
                 }
@@ -234,7 +234,7 @@ namespace Crypto_Trading
                     }
                     else if (ask_price > 0 && (this.last_filled_time == null || (decimal)(DateTime.UtcNow - this.last_filled_time).Value.TotalSeconds > this.intervalAfterFill))
                     {
-                        this.live_sellorder = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ToBsize * (1 - this.maker.maker_fee), ask_price);
+                        this.live_sellorder = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ToBsize, ask_price);
                         this.live_askprice = ask_price;
                     }
                 }
@@ -297,7 +297,7 @@ namespace Crypto_Trading
                             if (filled_quantity > 0)
                             {
                                 side = orderSide.Sell;
-                                filled_quantity = filled_quantity / (1 - this.taker.taker_fee);
+                                //filled_quantity = filled_quantity / (1 - this.taker.taker_fee);
                                 filled_quantity = Math.Round(filled_quantity / this.taker.quantity_unit) * this.taker.quantity_unit;
                                 this.oManager.placeNewSpotOrder(this.taker, side, orderType.Market, filled_quantity, 0);
                             }
@@ -317,7 +317,7 @@ namespace Crypto_Trading
                             if (filled_quantity > 0)
                             {
                                 side = orderSide.Sell;
-                                filled_quantity = filled_quantity / (1 - this.taker.taker_fee);
+                                //filled_quantity = filled_quantity / (1 - this.taker.taker_fee);
                                 filled_quantity = Math.Round(filled_quantity / this.taker.quantity_unit) * this.taker.quantity_unit;
                                 this.oManager.placeNewSpotOrder(this.taker, side, orderType.Market, filled_quantity, 0);
                             }

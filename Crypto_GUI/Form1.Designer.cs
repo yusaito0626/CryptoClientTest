@@ -103,10 +103,23 @@
             col_price = new DataGridViewTextBoxColumn();
             col_Bid = new DataGridViewTextBoxColumn();
             tabPage2 = new TabPage();
+            groupBox3 = new GroupBox();
+            lbl_baseCcyName = new Label();
+            lbl_quoteCcyName = new Label();
             lbl_quoteBalance = new Label();
             lbl_baseBalance = new Label();
-            label6 = new Label();
-            label5 = new Label();
+            groupBox2 = new GroupBox();
+            lbl_buyAvgPrice = new Label();
+            lbl_sellAvgPrice = new Label();
+            lbl_buyNotional = new Label();
+            lbl_sellNotional = new Label();
+            lbl_buyQuantity = new Label();
+            lbl_sellQuantity = new Label();
+            label33 = new Label();
+            label32 = new Label();
+            label30 = new Label();
+            label29 = new Label();
+            label27 = new Label();
             gridView_Ins = new DataGridView();
             dataGridViewTextBoxColumn4 = new DataGridViewTextBoxColumn();
             dataGridViewTextBoxColumn5 = new DataGridViewTextBoxColumn();
@@ -145,6 +158,11 @@
             dataGridViewTextBoxColumn8 = new DataGridViewTextBoxColumn();
             dataGridViewTextBoxColumn9 = new DataGridViewTextBoxColumn();
             timer_statusCheck = new System.Windows.Forms.Timer(components);
+            label5 = new Label();
+            label6 = new Label();
+            label31 = new Label();
+            lbl_baseFee = new Label();
+            lbl_quoteFee = new Label();
             tabControl.SuspendLayout();
             tabPage1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridView_PnL).BeginInit();
@@ -153,6 +171,8 @@
             ((System.ComponentModel.ISupportInitialize)gridView_Maker).BeginInit();
             ((System.ComponentModel.ISupportInitialize)gridView_Taker).BeginInit();
             tabPage2.SuspendLayout();
+            groupBox3.SuspendLayout();
+            groupBox2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridView_Ins).BeginInit();
             tabPage4.SuspendLayout();
             groupBox1.SuspendLayout();
@@ -808,10 +828,8 @@
             // tabPage2
             // 
             tabPage2.BackColor = Color.WhiteSmoke;
-            tabPage2.Controls.Add(lbl_quoteBalance);
-            tabPage2.Controls.Add(lbl_baseBalance);
-            tabPage2.Controls.Add(label6);
-            tabPage2.Controls.Add(label5);
+            tabPage2.Controls.Add(groupBox3);
+            tabPage2.Controls.Add(groupBox2);
             tabPage2.Controls.Add(gridView_Ins);
             tabPage2.Controls.Add(lbl_notional);
             tabPage2.Controls.Add(lbl_lastprice);
@@ -830,10 +848,43 @@
             tabPage2.TabIndex = 1;
             tabPage2.Text = "Instrument";
             // 
+            // groupBox3
+            // 
+            groupBox3.Controls.Add(lbl_baseCcyName);
+            groupBox3.Controls.Add(lbl_quoteCcyName);
+            groupBox3.Controls.Add(lbl_quoteBalance);
+            groupBox3.Controls.Add(lbl_baseBalance);
+            groupBox3.Location = new Point(23, 131);
+            groupBox3.Name = "groupBox3";
+            groupBox3.Size = new Size(584, 110);
+            groupBox3.TabIndex = 15;
+            groupBox3.TabStop = false;
+            groupBox3.Text = "Balance";
+            // 
+            // lbl_baseCcyName
+            // 
+            lbl_baseCcyName.AutoSize = true;
+            lbl_baseCcyName.Location = new Point(99, 34);
+            lbl_baseCcyName.Margin = new Padding(2, 0, 2, 0);
+            lbl_baseCcyName.Name = "lbl_baseCcyName";
+            lbl_baseCcyName.Size = new Size(126, 20);
+            lbl_baseCcyName.TabIndex = 10;
+            lbl_baseCcyName.Text = "Base Ccy Balance:";
+            // 
+            // lbl_quoteCcyName
+            // 
+            lbl_quoteCcyName.AutoSize = true;
+            lbl_quoteCcyName.Location = new Point(352, 34);
+            lbl_quoteCcyName.Margin = new Padding(2, 0, 2, 0);
+            lbl_quoteCcyName.Name = "lbl_quoteCcyName";
+            lbl_quoteCcyName.Size = new Size(136, 20);
+            lbl_quoteCcyName.TabIndex = 11;
+            lbl_quoteCcyName.Text = "Quote Ccy Balance:";
+            // 
             // lbl_quoteBalance
             // 
             lbl_quoteBalance.AutoSize = true;
-            lbl_quoteBalance.Location = new Point(534, 422);
+            lbl_quoteBalance.Location = new Point(440, 67);
             lbl_quoteBalance.Margin = new Padding(2, 0, 2, 0);
             lbl_quoteBalance.Name = "lbl_quoteBalance";
             lbl_quoteBalance.Size = new Size(44, 20);
@@ -843,32 +894,153 @@
             // lbl_baseBalance
             // 
             lbl_baseBalance.AutoSize = true;
-            lbl_baseBalance.Location = new Point(151, 422);
+            lbl_baseBalance.Location = new Point(181, 67);
             lbl_baseBalance.Margin = new Padding(2, 0, 2, 0);
             lbl_baseBalance.Name = "lbl_baseBalance";
             lbl_baseBalance.Size = new Size(44, 20);
             lbl_baseBalance.TabIndex = 12;
             lbl_baseBalance.Text = "value";
             // 
-            // label6
+            // groupBox2
             // 
-            label6.AutoSize = true;
-            label6.Location = new Point(395, 422);
-            label6.Margin = new Padding(2, 0, 2, 0);
-            label6.Name = "label6";
-            label6.Size = new Size(136, 20);
-            label6.TabIndex = 11;
-            label6.Text = "Quote Ccy Balance:";
+            groupBox2.Controls.Add(lbl_quoteFee);
+            groupBox2.Controls.Add(lbl_baseFee);
+            groupBox2.Controls.Add(label31);
+            groupBox2.Controls.Add(label6);
+            groupBox2.Controls.Add(label5);
+            groupBox2.Controls.Add(lbl_buyAvgPrice);
+            groupBox2.Controls.Add(lbl_sellAvgPrice);
+            groupBox2.Controls.Add(lbl_buyNotional);
+            groupBox2.Controls.Add(lbl_sellNotional);
+            groupBox2.Controls.Add(lbl_buyQuantity);
+            groupBox2.Controls.Add(lbl_sellQuantity);
+            groupBox2.Controls.Add(label33);
+            groupBox2.Controls.Add(label32);
+            groupBox2.Controls.Add(label30);
+            groupBox2.Controls.Add(label29);
+            groupBox2.Controls.Add(label27);
+            groupBox2.Location = new Point(23, 247);
+            groupBox2.Name = "groupBox2";
+            groupBox2.Size = new Size(584, 247);
+            groupBox2.TabIndex = 14;
+            groupBox2.TabStop = false;
+            groupBox2.Text = "Execution";
             // 
-            // label5
+            // lbl_buyAvgPrice
             // 
-            label5.AutoSize = true;
-            label5.Location = new Point(23, 422);
-            label5.Margin = new Padding(2, 0, 2, 0);
-            label5.Name = "label5";
-            label5.Size = new Size(126, 20);
-            label5.TabIndex = 10;
-            label5.Text = "Base Ccy Balance:";
+            lbl_buyAvgPrice.AutoSize = true;
+            lbl_buyAvgPrice.ImageAlign = ContentAlignment.MiddleRight;
+            lbl_buyAvgPrice.Location = new Point(496, 116);
+            lbl_buyAvgPrice.Margin = new Padding(2, 0, 2, 0);
+            lbl_buyAvgPrice.Name = "lbl_buyAvgPrice";
+            lbl_buyAvgPrice.Size = new Size(44, 20);
+            lbl_buyAvgPrice.TabIndex = 25;
+            lbl_buyAvgPrice.Text = "value";
+            // 
+            // lbl_sellAvgPrice
+            // 
+            lbl_sellAvgPrice.AutoSize = true;
+            lbl_sellAvgPrice.ImageAlign = ContentAlignment.MiddleRight;
+            lbl_sellAvgPrice.Location = new Point(496, 76);
+            lbl_sellAvgPrice.Margin = new Padding(2, 0, 2, 0);
+            lbl_sellAvgPrice.Name = "lbl_sellAvgPrice";
+            lbl_sellAvgPrice.Size = new Size(44, 20);
+            lbl_sellAvgPrice.TabIndex = 24;
+            lbl_sellAvgPrice.Text = "value";
+            // 
+            // lbl_buyNotional
+            // 
+            lbl_buyNotional.AutoSize = true;
+            lbl_buyNotional.ImageAlign = ContentAlignment.MiddleRight;
+            lbl_buyNotional.Location = new Point(323, 116);
+            lbl_buyNotional.Margin = new Padding(2, 0, 2, 0);
+            lbl_buyNotional.Name = "lbl_buyNotional";
+            lbl_buyNotional.Size = new Size(44, 20);
+            lbl_buyNotional.TabIndex = 23;
+            lbl_buyNotional.Text = "value";
+            // 
+            // lbl_sellNotional
+            // 
+            lbl_sellNotional.AutoSize = true;
+            lbl_sellNotional.ImageAlign = ContentAlignment.MiddleRight;
+            lbl_sellNotional.Location = new Point(323, 76);
+            lbl_sellNotional.Margin = new Padding(2, 0, 2, 0);
+            lbl_sellNotional.Name = "lbl_sellNotional";
+            lbl_sellNotional.Size = new Size(44, 20);
+            lbl_sellNotional.TabIndex = 22;
+            lbl_sellNotional.Text = "value";
+            // 
+            // lbl_buyQuantity
+            // 
+            lbl_buyQuantity.AutoSize = true;
+            lbl_buyQuantity.ImageAlign = ContentAlignment.MiddleRight;
+            lbl_buyQuantity.Location = new Point(149, 116);
+            lbl_buyQuantity.Margin = new Padding(2, 0, 2, 0);
+            lbl_buyQuantity.Name = "lbl_buyQuantity";
+            lbl_buyQuantity.Size = new Size(44, 20);
+            lbl_buyQuantity.TabIndex = 21;
+            lbl_buyQuantity.Text = "value";
+            // 
+            // lbl_sellQuantity
+            // 
+            lbl_sellQuantity.AutoSize = true;
+            lbl_sellQuantity.ImageAlign = ContentAlignment.MiddleRight;
+            lbl_sellQuantity.Location = new Point(149, 76);
+            lbl_sellQuantity.Margin = new Padding(2, 0, 2, 0);
+            lbl_sellQuantity.Name = "lbl_sellQuantity";
+            lbl_sellQuantity.Size = new Size(44, 20);
+            lbl_sellQuantity.TabIndex = 15;
+            lbl_sellQuantity.Text = "value";
+            // 
+            // label33
+            // 
+            label33.AutoSize = true;
+            label33.Location = new Point(440, 38);
+            label33.Margin = new Padding(2, 0, 2, 0);
+            label33.Name = "label33";
+            label33.Size = new Size(100, 20);
+            label33.TabIndex = 20;
+            label33.Text = "Average Price";
+            // 
+            // label32
+            // 
+            label32.AutoSize = true;
+            label32.Location = new Point(300, 38);
+            label32.Margin = new Padding(2, 0, 2, 0);
+            label32.Name = "label32";
+            label32.Size = new Size(67, 20);
+            label32.TabIndex = 19;
+            label32.Text = "Notional";
+            // 
+            // label30
+            // 
+            label30.AutoSize = true;
+            label30.Location = new Point(128, 38);
+            label30.Margin = new Padding(2, 0, 2, 0);
+            label30.Name = "label30";
+            label30.Size = new Size(65, 20);
+            label30.TabIndex = 17;
+            label30.Text = "Quantity";
+            // 
+            // label29
+            // 
+            label29.AutoSize = true;
+            label29.Location = new Point(15, 76);
+            label29.Margin = new Padding(2, 0, 2, 0);
+            label29.Name = "label29";
+            label29.Size = new Size(33, 20);
+            label29.TabIndex = 16;
+            label29.Text = "Sell";
+            // 
+            // label27
+            // 
+            label27.AutoSize = true;
+            label27.Location = new Point(15, 116);
+            label27.Margin = new Padding(2, 0, 2, 0);
+            label27.Name = "label27";
+            label27.Size = new Size(33, 20);
+            label27.TabIndex = 15;
+            label27.Text = "Buy";
             // 
             // gridView_Ins
             // 
@@ -885,7 +1057,7 @@
             gridView_Ins.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle8;
             gridView_Ins.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             gridView_Ins.Columns.AddRange(new DataGridViewColumn[] { dataGridViewTextBoxColumn4, dataGridViewTextBoxColumn5, dataGridViewTextBoxColumn6 });
-            gridView_Ins.Location = new Point(511, 51);
+            gridView_Ins.Location = new Point(636, 47);
             gridView_Ins.Margin = new Padding(2);
             gridView_Ins.Name = "gridView_Ins";
             gridView_Ins.RowHeadersVisible = false;
@@ -917,7 +1089,7 @@
             // lbl_notional
             // 
             lbl_notional.AutoSize = true;
-            lbl_notional.Location = new Point(216, 206);
+            lbl_notional.Location = new Point(498, 98);
             lbl_notional.Margin = new Padding(2, 0, 2, 0);
             lbl_notional.Name = "lbl_notional";
             lbl_notional.Size = new Size(44, 20);
@@ -927,7 +1099,7 @@
             // lbl_lastprice
             // 
             lbl_lastprice.AutoSize = true;
-            lbl_lastprice.Location = new Point(216, 167);
+            lbl_lastprice.Location = new Point(498, 66);
             lbl_lastprice.Margin = new Padding(2, 0, 2, 0);
             lbl_lastprice.Name = "lbl_lastprice";
             lbl_lastprice.Size = new Size(44, 20);
@@ -957,7 +1129,7 @@
             // label4
             // 
             label4.AutoSize = true;
-            label4.Location = new Point(23, 167);
+            label4.Location = new Point(306, 66);
             label4.Margin = new Padding(2, 0, 2, 0);
             label4.Name = "label4";
             label4.Size = new Size(74, 20);
@@ -967,7 +1139,7 @@
             // label3
             // 
             label3.AutoSize = true;
-            label3.Location = new Point(23, 206);
+            label3.Location = new Point(306, 98);
             label3.Margin = new Padding(2, 0, 2, 0);
             label3.Name = "label3";
             label3.Size = new Size(124, 20);
@@ -1297,6 +1469,58 @@
             timer_statusCheck.Interval = 1000;
             timer_statusCheck.Tick += timer_statusCheck_Tick;
             // 
+            // label5
+            // 
+            label5.AutoSize = true;
+            label5.Location = new Point(15, 207);
+            label5.Margin = new Padding(2, 0, 2, 0);
+            label5.Name = "label5";
+            label5.Size = new Size(31, 20);
+            label5.TabIndex = 26;
+            label5.Text = "Fee";
+            // 
+            // label6
+            // 
+            label6.AutoSize = true;
+            label6.Location = new Point(167, 170);
+            label6.Margin = new Padding(2, 0, 2, 0);
+            label6.Name = "label6";
+            label6.Size = new Size(101, 20);
+            label6.TabIndex = 27;
+            label6.Text = "Base Currency";
+            // 
+            // label31
+            // 
+            label31.AutoSize = true;
+            label31.Location = new Point(377, 170);
+            label31.Margin = new Padding(2, 0, 2, 0);
+            label31.Name = "label31";
+            label31.Size = new Size(111, 20);
+            label31.TabIndex = 28;
+            label31.Text = "Quote Currency";
+            // 
+            // lbl_baseFee
+            // 
+            lbl_baseFee.AutoSize = true;
+            lbl_baseFee.ImageAlign = ContentAlignment.MiddleRight;
+            lbl_baseFee.Location = new Point(224, 207);
+            lbl_baseFee.Margin = new Padding(2, 0, 2, 0);
+            lbl_baseFee.Name = "lbl_baseFee";
+            lbl_baseFee.Size = new Size(44, 20);
+            lbl_baseFee.TabIndex = 29;
+            lbl_baseFee.Text = "value";
+            // 
+            // lbl_quoteFee
+            // 
+            lbl_quoteFee.AutoSize = true;
+            lbl_quoteFee.ImageAlign = ContentAlignment.MiddleRight;
+            lbl_quoteFee.Location = new Point(440, 207);
+            lbl_quoteFee.Margin = new Padding(2, 0, 2, 0);
+            lbl_quoteFee.Name = "lbl_quoteFee";
+            lbl_quoteFee.Size = new Size(44, 20);
+            lbl_quoteFee.TabIndex = 30;
+            lbl_quoteFee.Text = "value";
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
@@ -1318,6 +1542,10 @@
             ((System.ComponentModel.ISupportInitialize)gridView_Taker).EndInit();
             tabPage2.ResumeLayout(false);
             tabPage2.PerformLayout();
+            groupBox3.ResumeLayout(false);
+            groupBox3.PerformLayout();
+            groupBox2.ResumeLayout(false);
+            groupBox2.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)gridView_Ins).EndInit();
             tabPage4.ResumeLayout(false);
             groupBox1.ResumeLayout(false);
@@ -1361,10 +1589,10 @@
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn6;
         private Label lbl_takerName;
         private Label lbl_makerName;
-        private Label label5;
+        private Label lbl_baseCcyName;
         private Label lbl_quoteBalance;
         private Label lbl_baseBalance;
-        private Label label6;
+        private Label lbl_quoteCcyName;
         private Label lbl_makerfee_maker;
         private Label label7;
         private Label lbl_takerfee_maker;
@@ -1433,5 +1661,23 @@
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn8;
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn9;
         private System.Windows.Forms.Timer timer_statusCheck;
+        private GroupBox groupBox2;
+        private Label lbl_sellAvgPrice;
+        private Label lbl_buyNotional;
+        private Label lbl_sellNotional;
+        private Label lbl_buyQuantity;
+        private Label lbl_sellQuantity;
+        private Label label33;
+        private Label label32;
+        private Label label30;
+        private Label label29;
+        private Label label27;
+        private Label lbl_buyAvgPrice;
+        private GroupBox groupBox3;
+        private Label lbl_quoteFee;
+        private Label lbl_baseFee;
+        private Label label31;
+        private Label label6;
+        private Label label5;
     }
 }

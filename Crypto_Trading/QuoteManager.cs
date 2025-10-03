@@ -12,6 +12,7 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using static System.Runtime.InteropServices.JavaScript.JSType;
+using Enums;
 
 namespace Crypto_Trading
 {
@@ -34,7 +35,7 @@ namespace Crypto_Trading
 
         private OrderManager oManager;
 
-        public Action<string> _addLog;
+        public Action<string, Enums.logType> _addLog;
 
         public const int NUM_OF_QUOTES = 5;
 
@@ -46,7 +47,7 @@ namespace Crypto_Trading
             this.balances = new Dictionary<string, Balance>();
             this._markets = new Dictionary<string, WebSocketState>();
             this.oManager = OrderManager.GetInstance();
-            this._addLog = Console.WriteLine;
+            //this._addLog = Console.WriteLine;
             this.aborting = false;
         }
 
@@ -141,7 +142,7 @@ namespace Crypto_Trading
             }
             else
             {
-                this.addLog("ERROR","The master file doesn't exist. Filename:" + masterfile);
+                this.addLog("The master file doesn't exist. Filename:" + masterfile, Enums.logType.ERROR);
                 return false;
             }
         }
@@ -194,7 +195,7 @@ namespace Crypto_Trading
             }
             else
             {
-                this.addLog("ERROR", "The balance file doesn't exist. Filename:" + balanceFile);
+                this.addLog("The balance file doesn't exist. Filename:" + balanceFile, Enums.logType.ERROR);
                 return false;
             }
         }
@@ -293,12 +294,12 @@ namespace Crypto_Trading
                     }
                     else
                     {
-                        this.addLog("WARNING", "Unknown Symbol.  " + key);
+                        this.addLog("Unknown Symbol.  " + key, Enums.logType.WARNING);
                     }
                 }
                 else
                 {
-                    this.addLog("ERROR","Failed to receive fee information.  Exchange:" + subResult.Exchange);
+                    this.addLog("Failed to receive fee information.  Exchange:" + subResult.Exchange, Enums.logType.ERROR);
                     output = false;
                 }
             }
@@ -328,7 +329,7 @@ namespace Crypto_Trading
                     }
                     else
                     {
-                        this.addLog("WARNING","The symbol doesn't exist. Instrument:" + symbol_market);
+                        this.addLog("The symbol doesn't exist. Instrument:" + symbol_market, Enums.logType.WARNING);
                     }
                     msg.init();
                     this.ordBookStack.Push(msg);
@@ -370,7 +371,7 @@ namespace Crypto_Trading
                 }
                 else
                 {
-                    this.addLog("WARNING", "The symbol doesn't exist. Instrument:" + symbol_market);
+                    this.addLog("The symbol doesn't exist. Instrument:" + symbol_market, Enums.logType.WARNING);
                 }
                 msg.init();
                 this.ordBookStack.Push(msg);
@@ -397,7 +398,7 @@ namespace Crypto_Trading
                     }
                     else
                     {
-                        this.addLog("WARNING","The symbol doesn't exist. Instrument:" + symbol_market);
+                        this.addLog("The symbol doesn't exist. Instrument:" + symbol_market, Enums.logType.WARNING);
                     }
                     msg.init();
                     this.tradeStack.Push(msg);
@@ -435,7 +436,7 @@ namespace Crypto_Trading
                 }
                 else
                 {
-                    this.addLog("WARNING", "The symbol doesn't exist. Instrument:" + symbol_market);
+                    this.addLog("The symbol doesn't exist. Instrument:" + symbol_market, Enums.logType.WARNING);
                 }
                 msg.init();
                 this.tradeStack.Push(msg);
@@ -443,9 +444,9 @@ namespace Crypto_Trading
             return true;
         }
 
-        public void addLog(string logtype, string line)
+        public void addLog(string line,logType logtype = logType.INFO)
         {
-            this._addLog("[" + logtype + ":QuoteManager]" + line);
+            this._addLog("[QuoteManager]" + line, logtype);
         }
 
         private static QuoteManager _instance;

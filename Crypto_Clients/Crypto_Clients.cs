@@ -13,6 +13,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Runtime.CompilerServices;
+using System.Security;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -58,7 +59,7 @@ namespace Crypto_Clients
         Thread bittradePublicChannelTh;
         Thread bittradePrivateChannelTh;
 
-        public Action<string> _addLog;
+        public Action<string,Enums.logType> _addLog;
         private Crypto_Clients()
         {
             this._client = new ExchangeSocketClient();
@@ -86,7 +87,7 @@ namespace Crypto_Clients
 
             this.strQueue = new ConcurrentQueue<string>();
             
-            this._addLog = Console.WriteLine;
+            //this._addLog = Console.WriteLine;
 
             int i = 0;
 
@@ -100,7 +101,7 @@ namespace Crypto_Clients
             }
         }
 
-        public void setAddLog(Action<string> act)
+        public void setAddLog(Action<string, Enums.logType> act)
         {
             this._addLog = act;
             this.bitbank_client._addLog = act;
@@ -108,52 +109,52 @@ namespace Crypto_Clients
             this.bittrade_client._addLog = act;
         }
 
-        public async Task connectAsync(IEnumerable<string> markets)
-        {
-            foreach (string market in markets)
-            {
-                switch(market)
-                {
-                    case "bitbank":
-                        await this.bitbank_client.connectPublicAsync();
-                        this.bitbankPublicChannelTh = new Thread(() =>
-                        {
-                            this.bitbank_client.startListen(this.onBitbankMessage);
-                        });
-                        this.bitbankPublicChannelTh.Start();
-                        break;
-                    case "coincheck":
-                        await this.coincheck_client.connectPublicAsync();
-                        this.coincheckPublicChannelsTh = new Thread(() =>
-                        {
-                            this.coincheck_client.startListen(this.onCoincheckMessage);
-                        });
-                        this.coincheckPublicChannelsTh.Start();
-                        //await this.coincheck_client.connectPrivateAsync();
-                        //this.coincheckPrivateChannelsTh = new Thread(() =>
-                        //{
-                        //    this.coincheck_client.startListenPrivate(this.onConcheckPrivateMessage);
-                        //});
-                        //this.coincheckPrivateChannelsTh.Start();
-                        break;
-                    case "bittrade":
-                        await this.bittrade_client.connectPublicAsync();
-                        this.bittradePublicChannelTh = new Thread(() =>
-                        {
-                            this.bittrade_client.startListen(this.onBitTradeMessage);
-                        });
-                        this.bittradePublicChannelTh.Start();
+        //public async Task connectAsync(IEnumerable<string> markets)
+        //{
+        //    foreach (string market in markets)
+        //    {
+        //        switch(market)
+        //        {
+        //            case "bitbank":
+        //                await this.bitbank_client.connectPublicAsync();
+        //                this.bitbankPublicChannelTh = new Thread(() =>
+        //                {
+        //                    this.bitbank_client.startListen(this.onBitbankMessage);
+        //                });
+        //                this.bitbankPublicChannelTh.Start();
+        //                break;
+        //            case "coincheck":
+        //                await this.coincheck_client.connectPublicAsync();
+        //                this.coincheckPublicChannelsTh = new Thread(() =>
+        //                {
+        //                    this.coincheck_client.startListen(this.onCoincheckMessage);
+        //                });
+        //                this.coincheckPublicChannelsTh.Start();
+        //                //await this.coincheck_client.connectPrivateAsync();
+        //                //this.coincheckPrivateChannelsTh = new Thread(() =>
+        //                //{
+        //                //    this.coincheck_client.startListenPrivate(this.onConcheckPrivateMessage);
+        //                //});
+        //                //this.coincheckPrivateChannelsTh.Start();
+        //                break;
+        //            case "bittrade":
+        //                await this.bittrade_client.connectPublicAsync();
+        //                this.bittradePublicChannelTh = new Thread(() =>
+        //                {
+        //                    this.bittrade_client.startListen(this.onBitTradeMessage);
+        //                });
+        //                this.bittradePublicChannelTh.Start();
 
-                        //await this.bittrade_client.connectPrivateAsync();
-                        //this.bittradePrivateChannelTh = new Thread(() =>
-                        //{
-                        //    this.bittrade_client.startListenPrivate(this.onBitTradePrivateMessage);
-                        //});
-                        //this.bittradePrivateChannelTh.Start();
-                        break;
-                }
-            }
-        }
+        //                //await this.bittrade_client.connectPrivateAsync();
+        //                //this.bittradePrivateChannelTh = new Thread(() =>
+        //                //{
+        //                //    this.bittrade_client.startListenPrivate(this.onBitTradePrivateMessage);
+        //                //});
+        //                //this.bittradePrivateChannelTh.Start();
+        //                break;
+        //        }
+        //    }
+        //}
 
         public void pushToOrderBookStack(DataOrderBook msg)
         {
@@ -253,8 +254,8 @@ namespace Crypto_Clients
                         }
                         else
                         {
-                            this.addLog("ERROR", "Failed to get the balance information. Exchange:" + m);
-                            this.addLog("ERROR", JsonSerializer.Serialize(js));
+                            this.addLog("Failed to get the balance information. Exchange:" + m,Enums.logType.ERROR);
+                            this.addLog(JsonSerializer.Serialize(js), Enums.logType.ERROR);
                         }
                         break;
                     case "coincheck":
@@ -309,8 +310,8 @@ namespace Crypto_Clients
                         }
                         else
                         {
-                            this.addLog("ERROR","Failed to get the balance information. Exchange:" + m);
-                            this.addLog("ERROR", JsonSerializer.Serialize(js));
+                            this.addLog("Failed to get the balance information. Exchange:" + m, Enums.logType.ERROR);
+                            this.addLog(JsonSerializer.Serialize(js), Enums.logType.ERROR);
                         }
                         break;
                     case "bittrade":
@@ -362,8 +363,8 @@ namespace Crypto_Clients
                         }
                         else
                         {
-                            this.addLog("ERROR", "Failed to get the balance information. Exchange:" + m);
-                            this.addLog("ERROR", JsonSerializer.Serialize(js));
+                            this.addLog("Failed to get the balance information. Exchange:" + m, Enums.logType.ERROR);
+                            this.addLog(JsonSerializer.Serialize(js), Enums.logType.ERROR);
                         }
                         break;
                     default:
@@ -382,7 +383,7 @@ namespace Crypto_Clients
                         }
                         else
                         {
-                            this.addLog("ERROR", "Failed to get the balance information. Exchange:" + m);
+                            this.addLog("Failed to get the balance information. Exchange:" + m, Enums.logType.ERROR);
                         }
                         break;
                 }
@@ -399,7 +400,7 @@ namespace Crypto_Clients
             {
                 case "bitbank":
                     js = await this.bitbank_client.getActiveOrders();
-                    this.addLog(market, JsonSerializer.Serialize(js));
+                    this.addLog(JsonSerializer.Serialize(js));
                     if(js.RootElement.GetProperty("success").GetInt16() == 1)
                     {
                         var data = js.RootElement.GetProperty("data").GetProperty("orders");
@@ -417,7 +418,7 @@ namespace Crypto_Clients
                     break;
                 case "coincheck":
                     js = await this.coincheck_client.getActiveOrders();
-                    this.addLog(market, JsonSerializer.Serialize(js));
+                    this.addLog(JsonSerializer.Serialize(js));
                     if (js.RootElement.GetProperty("success").GetBoolean())
                     {
                         var data = js.RootElement.GetProperty("orders");
@@ -456,7 +457,7 @@ namespace Crypto_Clients
                     break;
                 case "bittrade":
                     js = await this.bittrade_client.getActiveOrders();
-                    this.addLog(market, JsonSerializer.Serialize(js));
+                    this.addLog(JsonSerializer.Serialize(js));
                     if (js.RootElement.GetProperty("status").GetString() == "ok")
                     {
                         var data = js.RootElement.GetProperty("data");
@@ -584,8 +585,8 @@ namespace Crypto_Clients
             }
             else
             {
-                this.addLog("ERROR","New Order Failed.");
-                this.addLog("ERROR", result.Error.ToString());
+                this.addLog("New Order Failed.", Enums.logType.ERROR);
+                this.addLog(result.Error.ToString(), Enums.logType.ERROR);
                 return null;
             }
         }
@@ -639,12 +640,10 @@ namespace Crypto_Clients
                         break;
                     default:
                         var subResult = await this._client.SubscribeToSpotOrderUpdatesAsync(m, request, LogOrderUpdates);
-                        this.addLog("INFO",$"{subResult.Exchange} subscribe spot order updates result: {subResult.Success} {subResult.Error}");
+                        this.addLog($"{subResult.Exchange} subscribe spot order updates result: {subResult.Success} {subResult.Error}");
                         break;
                 }
             }
-            //foreach (var subResult in await this._client.SubscribeToSpotOrderUpdatesAsync(request, LogOrderUpdates, markets))
-            //    this.addLog($"{subResult.Exchange} subscribe spot order updates result: {subResult.Success} {subResult.Error}");
         }
         void LogOrderUpdates(ExchangeEvent<SharedSpotOrder[]> update)
         {
@@ -719,7 +718,7 @@ namespace Crypto_Clients
                         break;
                     default:
                         var subResult = await this._client.SubscribeToTradeUpdatesAsync(m, new SubscribeTradeRequest(symbol), LogTrades);
-                        this.addLog("INFO",$"{subResult.Exchange} subscribe trades result: {subResult.Success} {subResult.Error}");
+                        this.addLog($"{subResult.Exchange} subscribe trades result: {subResult.Success} {subResult.Error}");
                         break;
                 }
                 
@@ -750,6 +749,16 @@ namespace Crypto_Clients
                         await this.bitbank_client.subscribeOrderBook(baseCcy, quoteCcy);
                         break;
                     case "coincheck":
+                        string coincheck_symbol = baseCcy.ToLower() + "_" + quoteCcy.ToLower();
+                        var js = await this.coincheck_client.getOrderBooks(coincheck_symbol);
+                        //this.addLog("INFO", JsonSerializer.Serialize(js));
+                        DataOrderBook ord;
+                        while(!this.ordBookStack.TryPop(out ord))
+                        {
+
+                        }
+                        ord.setCoincheckOrderBook(js.RootElement, coincheck_symbol);
+                        this.ordBookQueue.Enqueue(ord);
                         await this.coincheck_client.subscribeOrderBook(baseCcy, quoteCcy);
                         break;
                     case "bittrade":
@@ -757,18 +766,13 @@ namespace Crypto_Clients
                         break;
                     default:
                         var subResult = await this._client.SubscribeToOrderBookUpdatesAsync(m, req, LogOrderBook);
-                        this.addLog("INFO",$"{subResult.Exchange} subscribe trades result: {subResult.Success} {subResult.Error}");
+                        this.addLog($"{subResult.Exchange} subscribe trades result: {subResult.Success} {subResult.Error}");
                         break;
                 }
             }
-            //foreach (var subResult in await this._client.SubscribeToOrderBookUpdatesAsync(req, LogOrderBook, markets, default))
-            //{
-            //    this.addLog($"{subResult.Exchange} subscribe orderbook result: {subResult.Success} {subResult.Error}");
-            //}
         }
         void LogOrderBook(ExchangeEvent<SharedOrderBook> update)
         {
-            //this.orderBookQueue.Enqueue(update);
             DataOrderBook msg;
             while (!this.ordBookStack.TryPop(out msg))
             {
@@ -780,7 +784,7 @@ namespace Crypto_Clients
         async public Task subscribeCoinbaseOrderBook(string baseCcy, string quoteCcy)
         {
             var subResult = await this.CoinbaseSocketClient.AdvancedTradeApi.SubscribeToOrderBookUpdatesAsync(baseCcy + "-" + quoteCcy, LogCoinbaseOrderBook);
-            this.addLog("INFO",$"Coinbase subscribe orderbook result: {subResult.Success} {subResult.Error}");
+            this.addLog($"Coinbase subscribe orderbook result: {subResult.Success} {subResult.Error}");
         }
         void LogCoinbaseOrderBook(DataEvent<Coinbase.Net.Objects.Models.CoinbaseOrderBookUpdate> update)
         {
@@ -797,7 +801,7 @@ namespace Crypto_Clients
         async public Task subscribeBybitOrderBook(string baseCcy, string quoteCcy)
         {
             var subResult = await this.BybitSocketClient.V5SpotApi.SubscribeToOrderbookUpdatesAsync(baseCcy + quoteCcy, 50, LogBybitOrderBook);
-            this.addLog("INFO",$"Bybit subscribe orderbook result: {subResult.Success} {subResult.Error}");
+            this.addLog($"Bybit subscribe orderbook result: {subResult.Success} {subResult.Error}");
         }
         void LogBybitOrderBook(DataEvent<Bybit.Net.Objects.Models.V5.BybitOrderbook> update)
         {
@@ -864,8 +868,8 @@ namespace Crypto_Clients
             }
             catch (Exception e)
             {
-                this.addLog("INFO", e.Message);
-                this.addLog("INFO", msg_body);
+                this.addLog(e.Message,Enums.logType.ERROR);
+                this.addLog(msg_body, Enums.logType.ERROR);
             }
             
         }
@@ -984,6 +988,7 @@ namespace Crypto_Clients
             JsonElement js = JsonDocument.Parse(msg_body).RootElement;
             JsonElement subElement;
             DataSpotOrderUpdate ord;
+            DataFill fill;
             if (js.TryGetProperty("action", out subElement))
             {
                 string act = subElement.GetString();
@@ -995,32 +1000,36 @@ namespace Crypto_Clients
                         this.bittrade_client.sendPong(data.GetProperty("ts").GetInt64(),true);
                         break;
                     case "push":
-                        this.addLog("INFO", msg_body);
                         if(js.TryGetProperty("ch",out ch))
                         {
-                            while (!this.ordUpdateStack.TryPop(out ord))
-                            {
-
-                            }
                             var obj = js.GetProperty("data");
+
                             if(ch.GetString().StartsWith("orders"))
                             {
+                                while (!this.ordUpdateStack.TryPop(out ord))
+                                {
+
+                                }
                                 ord.setBitTradeOrder(obj);
                                 this.ordUpdateQueue.Enqueue(ord);
                             }
                             else if(ch.GetString().StartsWith("trade.clearing"))
                             {
-                                ord.setBitTradeTrade(obj);
-                                this.ordUpdateQueue.Enqueue(ord);
-                            }
-                            else
-                            {
-                                this.ordUpdateStack.Push(ord);
+                                while (!this.fillStack.TryPop(out fill))
+                                {
+
+                                }
+                                fill.setBitTradeFill(obj);
+                                this.fillQueue.Enqueue(fill);
                             }
                         }
                         break;
+                    case "sub":
+                        //Do nothing
+                        break;
                     default:
-                        this.addLog("INFO", msg_body);
+                        this.addLog("Unknown message from bittrade private connection");
+                        this.addLog(msg_body, Enums.logType.WARNING);
                         break;
 
                 }
@@ -1028,21 +1037,14 @@ namespace Crypto_Clients
             }
             else
             {
-                //string ch = js.GetProperty("ch").GetString();
-                //var data = js.GetProperty("data");
-                //while (!this.ordUpdateStack.TryPop(out ord))
-                //{
-
-                //}
-                //var obj = js.GetProperty("data");
-                //ord.setBitTradeTrade(obj);
-                //this.ordUpdateQueue.Enqueue(ord);
+                this.addLog("Unknown message from bittrade private connection");
+                this.addLog(msg_body, Enums.logType.WARNING);
             }
         }
 
-        public void addLog(string logtype, string line)
+        public void addLog(string line, Enums.logType logtype = Enums.logType.INFO)
         {
-            this._addLog("[" + logtype + ":Crypto_Client]" + line);
+            this._addLog("[Crypto_Client]" + line,logtype);
         }
 
         private static Crypto_Clients _instance;
@@ -1250,8 +1252,16 @@ namespace Crypto_Clients
             this.timestamp = DateTime.UtcNow;
             this.market = "coincheck";
             this.symbol = symbol;
-            this.updateType = SocketUpdateType.Update;
-            this.orderbookTime = DateTimeOffset.FromUnixTimeSeconds(Int64.Parse(js.GetProperty("last_update_at").GetString())).UtcDateTime;
+            JsonElement current_time;
+            if(js.TryGetProperty("last_update_at",out current_time))
+            {
+                this.updateType = SocketUpdateType.Update;
+                this.orderbookTime = DateTimeOffset.FromUnixTimeSeconds(Int64.Parse(js.GetProperty("last_update_at").GetString())).UtcDateTime;
+            }
+            else
+            {
+                this.updateType = SocketUpdateType.Snapshot;
+            }
             var data = js.GetProperty("asks").EnumerateArray();
             foreach (var item in data)
             {
@@ -1303,6 +1313,7 @@ namespace Crypto_Clients
         public DateTime? filled_time;
         public decimal fee_base;
         public decimal fee_quote;
+        public decimal fee_unknown;
         public string maker_taker;
         public string order_id;
         public string symbol;
@@ -1322,6 +1333,7 @@ namespace Crypto_Clients
             this.filled_time = null;
             this.fee_base = 0;
             this.fee_quote = 0;
+            this.fee_unknown = 0;
             this.maker_taker = "";
             this.order_id = "";
             this.symbol = "";
@@ -1364,7 +1376,12 @@ namespace Crypto_Clients
                 this.fee_base = 0;
                 this.fee_quote = decimal.Parse(js.GetProperty("fee").GetString());
             }
-            this.quantity = decimal.Parse(js.GetProperty("funds").GetProperty(assets[0]).GetString());
+            else
+            {
+                this.fee_base = 0;
+                this.fee_unknown = decimal.Parse(js.GetProperty("fee").GetString());
+            }
+                this.quantity = decimal.Parse(js.GetProperty("funds").GetProperty(assets[0]).GetString());
             this.quantity += this.fee_base;
             string side = js.GetProperty("side").GetString();
             if(side == "buy")
@@ -1420,6 +1437,54 @@ namespace Crypto_Clients
             //this.profit_loss = decimal.Parse(js.GetProperty("profit_loss").GetString());
             //this.interest = decimal.Parse(js.GetProperty("interest").GetString());
         }
+        public void setBitTradeFill(JsonElement js)//trade.clearing object. retrive only fees
+        {
+            this.timestamp = DateTime.UtcNow;
+            this.quantity = 0;//Executions are reflected with order objects.
+            this.price = -1;
+            this.filled_time = DateTimeOffset.FromUnixTimeMilliseconds(js.GetProperty("tradeTime").GetInt64()).UtcDateTime;
+            this.symbol = js.GetProperty("symbol").GetString();
+            this.market = "bittrade";
+            this.symbol_market = this.symbol + "@" + this.market;
+            this.order_id = js.GetProperty("orderId").GetInt64().ToString();
+            bool aggressor = js.GetProperty("aggressor").GetBoolean();
+            if(aggressor)
+            {
+                this.maker_taker = "taker";
+            }
+            else
+            {
+                this.maker_taker = "maker";
+            }
+            string side = js.GetProperty("orderSide").GetString();
+            if (side == "buy")
+            {
+                this.side = orderSide.Buy;
+            }
+            else if (side == "sell")
+            {
+                this.side = orderSide.Sell;
+            }
+            else
+            {
+                this.side = orderSide.NONE;
+            }
+            this.trade_id = js.GetProperty("tradeId").GetInt64().ToString();
+            string feeccy = js.GetProperty("feeCurrency").GetString();
+            decimal fee = decimal.Parse(js.GetProperty("transactFee").GetString()) - decimal.Parse(js.GetProperty("feeDeduct").GetString());
+            if (this.symbol.Substring(this.symbol.Length - feeccy.Length) == feeccy)
+            {
+                this.fee_quote= fee;
+            }
+            else if (this.symbol.Substring(0, feeccy.Length) == feeccy)
+            {
+                this.fee_base = fee;
+            }
+            else
+            {
+                this.fee_unknown = fee;
+            }
+        }
 
         public string ToString()
         {
@@ -1453,6 +1518,7 @@ namespace Crypto_Clients
             this.filled_time = null;
             this.fee_base = 0;
             this.fee_quote = 0;
+            this.fee_unknown = 0;
             this.maker_taker = "";
             this.order_id = "";
             this.symbol = "";
@@ -1480,6 +1546,9 @@ namespace Crypto_Clients
         public decimal filled_quantity;
         public decimal order_price;
         public decimal average_price;
+
+        public decimal current_traded_quantity;
+        public decimal current_traded_price;
 
         public string? client_order_id;
 
@@ -1510,6 +1579,8 @@ namespace Crypto_Clients
             this.filled_quantity = 0;
             this.order_price = -1;
             this.average_price = -1;
+            this.current_traded_quantity = 0;
+            this.current_traded_price = -1;
             this.client_order_id = "";
             this.fee_asset = "";
             this.fee = 0;
@@ -1697,13 +1768,13 @@ namespace Crypto_Clients
                     switch (_type)
                     {
                         case "sell-limit":
-                        case "sell-limit_maker":
+                        case "sell-limit-maker":
                             this.order_type = orderType.Limit;
                             this.side = orderSide.Sell;
                             this.order_price = decimal.Parse(js.GetProperty("orderPrice").GetString());
                             break;
                         case "buy-limit":
-                        case "buy-limit_maker":
+                        case "buy-limit-maker":
                             this.order_type = orderType.Limit;
                             this.side = orderSide.Buy;
                             this.order_price = decimal.Parse(js.GetProperty("orderPrice").GetString());
@@ -1761,13 +1832,13 @@ namespace Crypto_Clients
                     switch (_type)
                     {
                         case "sell-limit":
-                        case "sell-limit_maker":
+                        case "sell-limit-maker":
                             this.order_type = orderType.Limit;
                             this.side = orderSide.Sell;
                             this.order_price = decimal.Parse(js.GetProperty("orderPrice").GetString());
                             break;
                         case "buy-limit":
-                        case "buy-limit_maker":
+                        case "buy-limit-maker":
                             this.order_type = orderType.Limit;
                             this.side = orderSide.Buy;
                             this.order_price = decimal.Parse(js.GetProperty("orderPrice").GetString());
@@ -1816,8 +1887,70 @@ namespace Crypto_Clients
                             break;
                     }
                     break;
+                case "trade":
+                    this.update_time = DateTimeOffset.FromUnixTimeMilliseconds(js.GetProperty("tradeTime").GetInt64()).UtcDateTime;
+                    this.current_traded_price = decimal.Parse(js.GetProperty("tradePrice").GetString());
+                    this.current_traded_quantity = decimal.Parse(js.GetProperty("tradeVolume").GetString());
+                    this.filled_quantity = decimal.Parse(js.GetProperty("execAmt").GetString());
+                    _type = js.GetProperty("type").GetString();
+                    switch (_type)
+                    {
+                        case "sell-limit":
+                        case "sell-limit-maker":
+                            this.order_type = orderType.Limit;
+                            this.side = orderSide.Sell;
+                            this.order_price = decimal.Parse(js.GetProperty("orderPrice").GetString());
+                            break;
+                        case "buy-limit":
+                        case "buy-limit-maker":
+                            this.order_type = orderType.Limit;
+                            this.side = orderSide.Buy;
+                            this.order_price = decimal.Parse(js.GetProperty("orderPrice").GetString());
+                            break;
+                        case "sell-market":
+                            this.order_type = orderType.Market;
+                            this.side = orderSide.Sell;
+                            this.order_price = 0;
+                            break;
+                        case "buy-market":
+                            this.order_type = orderType.Market;
+                            this.side = orderSide.Buy;
+                            this.order_price = 0;
+                            break;
+                        case "sell-ioc":
+                        case "buy-ioc":
+                        default:
+                            this.order_type = orderType.Other;
+                            break;
+                    }
+                    str_status = js.GetProperty("orderStatus").GetString();
+                    switch (str_status)
+                    {
+                        case "created":
+                            this.status = orderStatus.WaitOpen;
+                            break;
+                        case "submitted":
+                            this.status = orderStatus.Open;
+                            break;
+                        case "partial-filled":
+                        case "partial-canceled":
+                            this.status = orderStatus.Open;
+                            break;
+                        case "filled":
+                            this.status = orderStatus.Filled;
+                            break;
+                        case "canceling":
+                            this.status = orderStatus.WaitCancel;
+                            break;
+                        case "canceled":
+                            this.status = orderStatus.Canceled;
+                            break;
+                        default:
+                            this.status = orderStatus.INVALID;
+                            break;
+                    }
+                    break;
             }
-            this.filled_quantity = 0;
             this.average_price = 0;
             this.client_order_id = js.GetProperty("clientOrderId").GetString();
             this.fee_asset = "";
@@ -1847,30 +1980,30 @@ namespace Crypto_Clients
             string _type = js.GetProperty("orderType").GetString();
             switch (_type)
             {
-                case "sell_limit":
-                case "sell_limit_maker":
+                case "sell-limit":
+                case "sell-limit-maker":
                     this.order_type = orderType.Limit;
                     this.order_price = decimal.Parse(js.GetProperty("orderPrice").GetString());
                     this.order_quantity = decimal.Parse(js.GetProperty("orderSize").GetString());
                     break;
-                case "buy_limit":
-                case "buy_limit_maker":
+                case "buy-limit":
+                case "buy-limit-maker":
                     this.order_type = orderType.Limit;
                     this.order_price = decimal.Parse(js.GetProperty("orderPrice").GetString());
                     this.order_quantity = decimal.Parse(js.GetProperty("orderSize").GetString());
                     break;
-                case "sell_market":
+                case "sell-market":
                     this.order_type = orderType.Market;
                     this.order_price = 0;
                     this.order_quantity = decimal.Parse(js.GetProperty("orderSize").GetString());
                     break;
-                case "buy_market":
+                case "buy-market":
                     this.order_type = orderType.Market;
                     this.order_price = 0;
                     this.order_quantity = this.filled_quantity;
                     break;
-                case "sell_ioc":
-                case "buy_ioc":
+                case "sell-ioc":
+                case "buy-ioc":
                 default:
                     this.order_type = orderType.Other;
                     break;
@@ -1906,8 +2039,8 @@ namespace Crypto_Clients
             switch (eventType)
             {
                 case "trade":
-                    this.average_price = decimal.Parse(js.GetProperty("tradePrice").GetString());
-                    this.filled_quantity = decimal.Parse(js.GetProperty("tradeVolume").GetString());
+                    //this.average_price = decimal.Parse(js.GetProperty("tradePrice").GetString());
+                    //this.filled_quantity = decimal.Parse(js.GetProperty("tradeVolume").GetString());
                     this.update_time = DateTimeOffset.FromUnixTimeMilliseconds(js.GetProperty("tradeTime").GetInt64()).UtcDateTime;
                     this.fee = decimal.Parse(js.GetProperty("transactFee").GetString());
                     this.fee_asset = js.GetProperty("feeCurrency").GetString().ToUpper();
@@ -1919,7 +2052,7 @@ namespace Crypto_Clients
                     break;
             }
 
-            this.client_order_id = js.GetProperty("clientOrderId").GetString();
+            //this.client_order_id = js.GetProperty("clientOrderId").GetString();
             this.create_time = DateTimeOffset.FromUnixTimeMilliseconds(js.GetProperty("orderCreateTime").GetInt64()).UtcDateTime;
 
            
@@ -1927,7 +2060,6 @@ namespace Crypto_Clients
             this.trigger_price = 0;
             this.is_trigger_order = false;
         }
-
         public void setSharedSpotOrder(SharedSpotOrder update, string market,DateTime? timestamp)
         {
             this.timestamp = DateTime.UtcNow;

@@ -56,7 +56,7 @@ namespace Crypto_Trading
         private bool virtualMode;
         public volatile int id_number;
 
-        public Action<string> _addLog;
+        public Action<string, Enums.logType> _addLog;
 
         public bool aborting;
         public bool updateOrderStopped;
@@ -88,7 +88,7 @@ namespace Crypto_Trading
                 ++i;
             }
 
-            this._addLog = Console.WriteLine;
+            //this._addLog = Console.WriteLine;
             
         }
 
@@ -285,8 +285,8 @@ namespace Crypto_Trading
                 }
                 else
                 {
-                    this.addLog("ERROR","New Order Failed");
-                    this.addLog("ERROR",js.RootElement.GetRawText());
+                    this.addLog("New Order Failed",Enums.logType.ERROR);
+                    this.addLog(js.RootElement.GetRawText(), Enums.logType.ERROR);
                     output = null;
                 }
             }
@@ -349,7 +349,7 @@ namespace Crypto_Trading
                 else
                 {
                     string msg = JsonSerializer.Serialize(js);
-                    this.addLog("ERROR", msg);
+                    this.addLog(msg, Enums.logType.ERROR);
                 }
             }
             else if (ins.market == "bittrade")
@@ -363,11 +363,11 @@ namespace Crypto_Trading
                 {
                     if (side == orderSide.Buy)
                     {
-                        order_price = Math.Round(ins.bestask.Item1 * (decimal)1.1 / ins.price_unit) * ins.price_unit;
+                        order_price = Math.Round(ins.bestask.Item1 * (decimal)1.05 / ins.price_unit) * ins.price_unit;
                     }
                     else
                     {
-                        order_price = ins.price_unit;
+                        order_price = Math.Round(ins.bestbid.Item1 * (decimal)0.95 / ins.price_unit) * ins.price_unit;
                     }
                     //Market Order
                     js = await this.ord_client.bittrade_client.placeNewOrder(ins.symbol, side.ToString().ToLower(), order_price, quantity,false);
@@ -380,7 +380,7 @@ namespace Crypto_Trading
 
                     }
                     output.timestamp = DateTime.UtcNow;
-                    output.order_id = js.RootElement.GetProperty("data").GetInt64().ToString();
+                    output.order_id = js.RootElement.GetProperty("data").GetString();
                     output.symbol = ins.symbol;
                     output.market = ins.market;
                     output.symbol_market = ins.symbol_market;
@@ -403,7 +403,7 @@ namespace Crypto_Trading
                 else
                 {
                     string msg = JsonSerializer.Serialize(js);
-                    this.addLog("ERROR", msg);
+                    this.addLog(msg, Enums.logType.ERROR);
                 }
             }
             else
@@ -511,7 +511,7 @@ namespace Crypto_Trading
                     while (!this.ord_client.ordUpdateStack.TryPop(out output))
                     {
                     }
-                    output.order_id = js.RootElement.GetProperty("data").GetInt64().ToString();
+                    output.order_id = js.RootElement.GetProperty("data").GetString();
                     output.timestamp = DateTime.UtcNow;
                     output.order_price = -1;
                     output.order_quantity = 0;
@@ -1047,12 +1047,12 @@ namespace Crypto_Trading
         {
             if(newValue)
             {
-                this.addLog("INFO","The virtual mode turned on.");
+                this.addLog("The virtual mode turned on.");
                 this.virtualMode = newValue;
             }
             else
             {
-                this.addLog("INFO","The virtual mode turned off. Orders will go to real markets");
+                this.addLog("The virtual mode turned off. Orders will go to real markets");
                 this.virtualMode = newValue;
             }
             return this.virtualMode;
@@ -1070,9 +1070,9 @@ namespace Crypto_Trading
             return ordid;   
         }
 
-        public void addLog(string logtype,string line)
+        public void addLog(string line,Enums.logType logtype = Enums.logType.INFO)
         {
-            this._addLog("[" + logtype + ":OrderManager]" + line);
+            this._addLog("[OrderManager]" + line,logtype);
         }
 
 
