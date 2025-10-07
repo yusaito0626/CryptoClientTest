@@ -128,11 +128,14 @@ namespace Crypto_GUI
             this.lbl_takerfee_maker.Text = this.stg.maker.taker_fee.ToString("N5");
             this.lbl_makerfee_taker.Text = this.stg.taker.maker_fee.ToString("N5");
             this.lbl_takerfee_taker.Text = this.stg.taker.taker_fee.ToString("N5");
-            this.lbl_markup.Text = this.stg.markup.ToString("N");
+            this.lbl_stgSymbol.Text = this.stg.baseCcy + this.stg.quoteCcy;
+            this.lbl_markup.Text = this.stg.markup.ToString("N0");
+            this.lbl_minMarkup.Text = this.stg.min_markup.ToString("N0");
+            this.lbl_maxSkew.Text = this.stg.maxSkew.ToString("N0");
             this.lbl_tobsize.Text = this.stg.ToBsize.ToString("N5");
             this.lbl_maxpos.Text = this.stg.baseCcyQuantity.ToString("N5");
-            this.lbl_skew.Text = this.stg.skewThreshold.ToString("N");
-            this.lbl_oneside.Text = this.stg.oneSideThreshold.ToString("N");
+            this.lbl_skew.Text = this.stg.skewThreshold.ToString("N0");
+            this.lbl_oneside.Text = this.stg.oneSideThreshold.ToString("N0");
             this.lbl_fillInterval.Text = this.stg.intervalAfterFill.ToString("N2");
             this.lbl_ordUpdateTh.Text = this.stg.modThreshold.ToString("N5");
 
@@ -539,7 +542,7 @@ namespace Crypto_GUI
                 foreach (var mkt in this.qManager._markets)
                 {
                     await this.qManager.connectPublicChannel(mkt.Key);
-                    if(liveTrading)
+                    if (liveTrading)
                     {
                         await this.oManager.connectPrivateChannel(mkt.Key);
                     }
@@ -579,7 +582,7 @@ namespace Crypto_GUI
                 }
                 this.qManager.ready = true;
 
-                if(liveTrading)
+                if (liveTrading)
                 {
                     await crypto_client.subscribeSpotOrderUpdates(this.qManager._markets.Keys);
                     if (this.qManager._markets.ContainsKey("bitbank"))
@@ -609,6 +612,7 @@ namespace Crypto_GUI
         private async Task<bool> startTrading()
         {
             this.stg.enabled = true;
+            this.timer_PeriodicMsg.Start();
             this.addLog("Trading started.");
             return true;
         }
@@ -618,10 +622,10 @@ namespace Crypto_GUI
             if (Interlocked.CompareExchange(ref this.stopTradingCalled, 1, 0) == 0)
             {
                 this.stg.enabled = false;
-                if(error)
+                if (error)
                 {
                     this.addLog("Error received. Now stopping the trading. Check the exchange to make sure all the orders are cancelled.", Enums.logType.ERROR);
-                    
+
                 }
                 else
                 {
@@ -756,7 +760,7 @@ namespace Crypto_GUI
         {
             //Stop strategy -> cancel all orders -> update all orders -> stop threads
             await this.stopTrading();
-            
+
             this.aborting = true;
             Thread.Sleep(1000);
 
@@ -865,6 +869,31 @@ namespace Crypto_GUI
                 this.addLog("Waiting for 5 sec", Enums.logType.INFO);
                 Thread.Sleep(5000);
                 await this.startTrading();
+            }
+        }
+
+        private async void timer_PeriodicMsg_Tick(object sender, EventArgs e)
+        {
+            decimal volume = 0;
+            decimal tradingPL = 0;
+            decimal fee = 0;
+            decimal total = 0;
+            string msg = "";
+
+            if (this.stg.maker != null && this.stg.taker != null)
+            {
+                volume = this.stg.maker.my_buy_notional + this.stg.maker.my_sell_notional;
+                tradingPL = (this.stg.taker.my_sell_notional - this.stg.taker.my_sell_quantity * this.stg.taker.mid) + (this.stg.taker.my_buy_quantity * this.stg.taker.mid - this.stg.taker.my_buy_notional);
+                tradingPL += (this.stg.maker.my_sell_notional - this.stg.maker.my_sell_quantity * this.stg.taker.mid) + (this.stg.maker.my_buy_quantity * this.stg.taker.mid - this.stg.maker.my_buy_notional);
+                fee = this.stg.taker.base_fee * this.stg.taker.mid + this.stg.taker.quote_fee + this.stg.maker.base_fee * this.stg.taker.mid + this.stg.maker.quote_fee;
+                volume *= this.multiplier;
+                tradingPL *= this.multiplier;
+                fee *= this.multiplier;
+                total = tradingPL - fee;
+
+                msg = DateTime.UtcNow.ToString() + " Notional Volume:" + volume.ToString("N2") + " Trading PnL:" + tradingPL.ToString("N2") + " Fee:" + fee.ToString("N2") + " Total:" + total.ToString("N2");
+
+                await this.MsgDeliverer.sendMessage(msg);
             }
         }
     }

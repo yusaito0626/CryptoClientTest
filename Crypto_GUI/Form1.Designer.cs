@@ -152,6 +152,12 @@
             comboSymbols = new ComboBox();
             tabPage4 = new TabPage();
             groupBox1 = new GroupBox();
+            lbl_stgSymbol = new Label();
+            label34 = new Label();
+            lbl_maxSkew = new Label();
+            label36 = new Label();
+            lbl_minMarkup = new Label();
+            label35 = new Label();
             lbl_ordUpdateTh = new Label();
             lbl_fillInterval = new Label();
             lbl_oneside = new Label();
@@ -175,6 +181,7 @@
             dataGridViewTextBoxColumn8 = new DataGridViewTextBoxColumn();
             dataGridViewTextBoxColumn9 = new DataGridViewTextBoxColumn();
             timer_statusCheck = new System.Windows.Forms.Timer(components);
+            timer_PeriodicMsg = new System.Windows.Forms.Timer(components);
             tabControl.SuspendLayout();
             tabPage1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridView_PnL).BeginInit();
@@ -1348,6 +1355,12 @@
             // 
             // groupBox1
             // 
+            groupBox1.Controls.Add(lbl_stgSymbol);
+            groupBox1.Controls.Add(label34);
+            groupBox1.Controls.Add(lbl_maxSkew);
+            groupBox1.Controls.Add(label36);
+            groupBox1.Controls.Add(lbl_minMarkup);
+            groupBox1.Controls.Add(label35);
             groupBox1.Controls.Add(lbl_ordUpdateTh);
             groupBox1.Controls.Add(lbl_fillInterval);
             groupBox1.Controls.Add(lbl_oneside);
@@ -1366,15 +1379,76 @@
             groupBox1.Margin = new Padding(2);
             groupBox1.Name = "groupBox1";
             groupBox1.Padding = new Padding(2);
-            groupBox1.Size = new Size(934, 225);
+            groupBox1.Size = new Size(1027, 497);
             groupBox1.TabIndex = 14;
             groupBox1.TabStop = false;
             groupBox1.Text = "Setting";
             // 
+            // lbl_stgSymbol
+            // 
+            lbl_stgSymbol.AutoSize = true;
+            lbl_stgSymbol.Font = new Font("Calibri", 10.8F, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Point, 0);
+            lbl_stgSymbol.Location = new Point(157, 38);
+            lbl_stgSymbol.Margin = new Padding(2, 0, 2, 0);
+            lbl_stgSymbol.Name = "lbl_stgSymbol";
+            lbl_stgSymbol.Size = new Size(63, 22);
+            lbl_stgSymbol.TabIndex = 26;
+            lbl_stgSymbol.Text = "symbol";
+            // 
+            // label34
+            // 
+            label34.AutoSize = true;
+            label34.Location = new Point(28, 38);
+            label34.Margin = new Padding(2, 0, 2, 0);
+            label34.Name = "label34";
+            label34.Size = new Size(107, 20);
+            label34.TabIndex = 25;
+            label34.Text = "Target Symbol:";
+            // 
+            // lbl_maxSkew
+            // 
+            lbl_maxSkew.AutoSize = true;
+            lbl_maxSkew.Location = new Point(143, 170);
+            lbl_maxSkew.Margin = new Padding(2, 0, 2, 0);
+            lbl_maxSkew.Name = "lbl_maxSkew";
+            lbl_maxSkew.Size = new Size(44, 20);
+            lbl_maxSkew.TabIndex = 24;
+            lbl_maxSkew.Text = "value";
+            // 
+            // label36
+            // 
+            label36.AutoSize = true;
+            label36.Location = new Point(18, 170);
+            label36.Margin = new Padding(2, 0, 2, 0);
+            label36.Name = "label36";
+            label36.Size = new Size(78, 20);
+            label36.TabIndex = 23;
+            label36.Text = "Max Skew:";
+            // 
+            // lbl_minMarkup
+            // 
+            lbl_minMarkup.AutoSize = true;
+            lbl_minMarkup.Location = new Point(143, 138);
+            lbl_minMarkup.Margin = new Padding(2, 0, 2, 0);
+            lbl_minMarkup.Name = "lbl_minMarkup";
+            lbl_minMarkup.Size = new Size(44, 20);
+            lbl_minMarkup.TabIndex = 22;
+            lbl_minMarkup.Text = "value";
+            // 
+            // label35
+            // 
+            label35.AutoSize = true;
+            label35.Location = new Point(18, 138);
+            label35.Margin = new Padding(2, 0, 2, 0);
+            label35.Name = "label35";
+            label35.Size = new Size(91, 20);
+            label35.TabIndex = 21;
+            label35.Text = "Min Markup:";
+            // 
             // lbl_ordUpdateTh
             // 
             lbl_ordUpdateTh.AutoSize = true;
-            lbl_ordUpdateTh.Location = new Point(589, 78);
+            lbl_ordUpdateTh.Location = new Point(589, 141);
             lbl_ordUpdateTh.Margin = new Padding(2, 0, 2, 0);
             lbl_ordUpdateTh.Name = "lbl_ordUpdateTh";
             lbl_ordUpdateTh.Size = new Size(44, 20);
@@ -1384,7 +1458,7 @@
             // lbl_fillInterval
             // 
             lbl_fillInterval.AutoSize = true;
-            lbl_fillInterval.Location = new Point(589, 43);
+            lbl_fillInterval.Location = new Point(589, 106);
             lbl_fillInterval.Margin = new Padding(2, 0, 2, 0);
             lbl_fillInterval.Name = "lbl_fillInterval";
             lbl_fillInterval.Size = new Size(44, 20);
@@ -1394,7 +1468,7 @@
             // lbl_oneside
             // 
             lbl_oneside.AutoSize = true;
-            lbl_oneside.Location = new Point(143, 179);
+            lbl_oneside.Location = new Point(143, 303);
             lbl_oneside.Margin = new Padding(2, 0, 2, 0);
             lbl_oneside.Name = "lbl_oneside";
             lbl_oneside.Size = new Size(44, 20);
@@ -1404,7 +1478,7 @@
             // lbl_skew
             // 
             lbl_skew.AutoSize = true;
-            lbl_skew.Location = new Point(143, 146);
+            lbl_skew.Location = new Point(143, 270);
             lbl_skew.Margin = new Padding(2, 0, 2, 0);
             lbl_skew.Name = "lbl_skew";
             lbl_skew.Size = new Size(44, 20);
@@ -1414,7 +1488,7 @@
             // lbl_maxpos
             // 
             lbl_maxpos.AutoSize = true;
-            lbl_maxpos.Location = new Point(143, 112);
+            lbl_maxpos.Location = new Point(143, 236);
             lbl_maxpos.Margin = new Padding(2, 0, 2, 0);
             lbl_maxpos.Name = "lbl_maxpos";
             lbl_maxpos.Size = new Size(44, 20);
@@ -1424,7 +1498,7 @@
             // lbl_tobsize
             // 
             lbl_tobsize.AutoSize = true;
-            lbl_tobsize.Location = new Point(143, 78);
+            lbl_tobsize.Location = new Point(143, 202);
             lbl_tobsize.Margin = new Padding(2, 0, 2, 0);
             lbl_tobsize.Name = "lbl_tobsize";
             lbl_tobsize.Size = new Size(44, 20);
@@ -1434,7 +1508,7 @@
             // lbl_markup
             // 
             lbl_markup.AutoSize = true;
-            lbl_markup.Location = new Point(143, 43);
+            lbl_markup.Location = new Point(143, 106);
             lbl_markup.Margin = new Padding(2, 0, 2, 0);
             lbl_markup.Name = "lbl_markup";
             lbl_markup.Size = new Size(44, 20);
@@ -1444,7 +1518,7 @@
             // label17
             // 
             label17.AutoSize = true;
-            label17.Location = new Point(454, 78);
+            label17.Location = new Point(454, 141);
             label17.Margin = new Padding(2, 0, 2, 0);
             label17.Name = "label17";
             label17.Size = new Size(130, 20);
@@ -1454,7 +1528,7 @@
             // label16
             // 
             label16.AutoSize = true;
-            label16.Location = new Point(454, 43);
+            label16.Location = new Point(454, 106);
             label16.Margin = new Padding(2, 0, 2, 0);
             label16.Name = "label16";
             label16.Size = new Size(121, 20);
@@ -1464,7 +1538,7 @@
             // label15
             // 
             label15.AutoSize = true;
-            label15.Location = new Point(18, 179);
+            label15.Location = new Point(18, 303);
             label15.Margin = new Padding(2, 0, 2, 0);
             label15.Name = "label15";
             label15.Size = new Size(117, 20);
@@ -1474,7 +1548,7 @@
             // label14
             // 
             label14.AutoSize = true;
-            label14.Location = new Point(18, 146);
+            label14.Location = new Point(18, 270);
             label14.Margin = new Padding(2, 0, 2, 0);
             label14.Name = "label14";
             label14.Size = new Size(84, 20);
@@ -1484,7 +1558,7 @@
             // label13
             // 
             label13.AutoSize = true;
-            label13.Location = new Point(18, 112);
+            label13.Location = new Point(18, 236);
             label13.Margin = new Padding(2, 0, 2, 0);
             label13.Name = "label13";
             label13.Size = new Size(97, 20);
@@ -1494,7 +1568,7 @@
             // label11
             // 
             label11.AutoSize = true;
-            label11.Location = new Point(18, 78);
+            label11.Location = new Point(18, 202);
             label11.Margin = new Padding(2, 0, 2, 0);
             label11.Name = "label11";
             label11.Size = new Size(65, 20);
@@ -1504,7 +1578,7 @@
             // label8
             // 
             label8.AutoSize = true;
-            label8.Location = new Point(18, 43);
+            label8.Location = new Point(18, 106);
             label8.Margin = new Padding(2, 0, 2, 0);
             label8.Name = "label8";
             label8.Size = new Size(62, 20);
@@ -1626,6 +1700,11 @@
             // 
             timer_statusCheck.Interval = 1000;
             timer_statusCheck.Tick += timer_statusCheck_Tick;
+            // 
+            // timer_PeriodicMsg
+            // 
+            timer_PeriodicMsg.Interval = 1800000;
+            timer_PeriodicMsg.Tick += timer_PeriodicMsg_Tick;
             // 
             // Form1
             // 
@@ -1797,5 +1876,12 @@
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn17;
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn18;
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn19;
+        private Label lbl_maxSkew;
+        private Label label36;
+        private Label lbl_minMarkup;
+        private Label label35;
+        private Label lbl_stgSymbol;
+        private Label label34;
+        private System.Windows.Forms.Timer timer_PeriodicMsg;
     }
 }
