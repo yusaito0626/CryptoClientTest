@@ -36,7 +36,7 @@ namespace Crypto_GUI
         QuoteManager qManager = QuoteManager.GetInstance();
         OrderManager oManager = OrderManager.GetInstance();
         ThreadManager thManager = ThreadManager.GetInstance();
-        MessageDeliverer MsgDeliverer = MessageDeliverer.GetInstance(); 
+        MessageDeliverer MsgDeliverer = MessageDeliverer.GetInstance();
 
         Strategy stg;
 
@@ -63,11 +63,15 @@ namespace Crypto_GUI
 
         private decimal multiplier = 1;
 
+        private bool autoStart;
+        private bool live;
 
         public Form1()
         {
             this.aborting = false;
             this.threadsStarted = false;
+            this.autoStart = false;
+            this.live = false;
 
             this.logQueue = new ConcurrentQueue<string>();
             this.filledOrderQueue = new ConcurrentQueue<string>();
@@ -164,7 +168,7 @@ namespace Crypto_GUI
             {
                 fileContent = File.ReadAllText(this.configPath);
             }
-            else if(File.Exists(this.defaultConfigPath))
+            else if (File.Exists(this.defaultConfigPath))
             {
                 fileContent = File.ReadAllText(this.defaultConfigPath);
             }
@@ -176,6 +180,22 @@ namespace Crypto_GUI
             using JsonDocument doc = JsonDocument.Parse(fileContent);
             var root = doc.RootElement;
             JsonElement elem;
+            if (root.TryGetProperty("autoStart", out elem))
+            {
+                this.autoStart = elem.GetBoolean();
+            }
+            else
+            {
+                this.autoStart = false;
+            }
+            if (root.TryGetProperty("live", out elem))
+            {
+                this.live = elem.GetBoolean();
+            }
+            else
+            {
+                this.live = false;
+            }
             if (root.TryGetProperty("APIsPath", out elem))
             {
                 this.APIsPath = elem.GetString();
@@ -268,7 +288,7 @@ namespace Crypto_GUI
         }
         private void onError()
         {
-            this.stopTrading();
+            this.stopTrading(true);
         }
         private void updateLog()
         {
@@ -276,7 +296,7 @@ namespace Crypto_GUI
             while (this.logQueue.TryDequeue(out line))
             {
                 this.textBoxMainLog.Text += line;
-                
+
                 if (this.logFile != null)
                 {
                     this.logFile.WriteLine(line);
@@ -286,9 +306,9 @@ namespace Crypto_GUI
         }
         private async void update()
         {
-            if(!await this.MsgDeliverer.setDiscordToken(this.discordTokenFile))
+            if (!await this.MsgDeliverer.setDiscordToken(this.discordTokenFile))
             {
-                this.addLog("Message configuration not found",Enums.logType.WARNING);
+                this.addLog("Message configuration not found", Enums.logType.WARNING);
             }
             Thread.Sleep(1000);
             this.updating = false;
@@ -519,7 +539,10 @@ namespace Crypto_GUI
                 foreach (var mkt in this.qManager._markets)
                 {
                     await this.qManager.connectPublicChannel(mkt.Key);
-                    await this.oManager.connectPrivateChannel(mkt.Key);
+                    if(liveTrading)
+                    {
+                        await this.oManager.connectPrivateChannel(mkt.Key);
+                    }
                 }
 
                 foreach (var ins in this.qManager.instruments.Values)
@@ -556,10 +579,13 @@ namespace Crypto_GUI
                 }
                 this.qManager.ready = true;
 
-                await crypto_client.subscribeSpotOrderUpdates(this.qManager._markets.Keys);
-                if(this.qManager._markets.ContainsKey("bitbank"))
+                if(liveTrading)
                 {
-                    this.thManager.addThread("bitbankSpotOrderUpdates", this.crypto_client.onBitbankOrderUpdates);
+                    await crypto_client.subscribeSpotOrderUpdates(this.qManager._markets.Keys);
+                    if (this.qManager._markets.ContainsKey("bitbank"))
+                    {
+                        this.thManager.addThread("bitbankSpotOrderUpdates", this.crypto_client.onBitbankOrderUpdates);
+                    }
                 }
 
                 this.oManager.ready = true;
@@ -586,22 +612,37 @@ namespace Crypto_GUI
             this.addLog("Trading started.");
             return true;
         }
-        private async Task<bool> stopTrading()
+        private async Task<bool> stopTrading(bool error = false)
         {
+
             if (Interlocked.CompareExchange(ref this.stopTradingCalled, 1, 0) == 0)
             {
-                this.addLog("Error received. Now stopping the trading. Check the exchange to make sure all the orders are cancelled.", Enums.logType.ERROR);
-                this.addLog("Stopping trading process started");
-                if (this.oManager.ready)
+                this.stg.enabled = false;
+                if(error)
                 {
-                    await this.oManager.cancelAllOrders();
-                    Thread.Sleep(1000);
-
-                    foreach (var th in this.thManager.threads)
+                    this.addLog("Error received. Now stopping the trading. Check the exchange to make sure all the orders are cancelled.", Enums.logType.ERROR);
+                    
+                }
+                else
+                {
+                    this.addLog("Stopping the trading normally");
+                }
+                this.addLog("Stopping trading process started");
+                Thread.Sleep(1000);
+                if (this.threadsStarted)
+                {
+                    if (this.oManager.ready)
                     {
-                        th.Value.isRunning = false;
+                        await this.oManager.cancelAllOrders();
+                        Thread.Sleep(1000);
+
+                        foreach (var th in this.thManager.threads)
+                        {
+                            th.Value.isRunning = false;
+                        }
                     }
                 }
+
             }
             return true;
         }
@@ -635,7 +676,7 @@ namespace Crypto_GUI
             await this.crypto_client.bitbank_client.disconnectPublic();
         }
 
-        private async Task tradeTest(Instrument ins,bool fillcheck)
+        private async Task tradeTest(Instrument ins, bool fillcheck)
         {
             DataSpotOrderUpdate ord;
             this.oManager.setVirtualMode(false);
@@ -714,22 +755,8 @@ namespace Crypto_GUI
         private async void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
             //Stop strategy -> cancel all orders -> update all orders -> stop threads
-            this.stg.enabled = false;
-
-            Thread.Sleep(1000);
-            if (this.threadsStarted)
-            {
-                await this.oManager.cancelAllOrders();
-                Thread.Sleep(1000);
-
-                foreach (var th in this.thManager.threads)
-                {
-                    th.Value.isRunning = false;
-                }
-                
-                Thread.Sleep(1000);
-
-            }
+            await this.stopTrading();
+            
             this.aborting = true;
             Thread.Sleep(1000);
 
@@ -820,9 +847,24 @@ namespace Crypto_GUI
                 }
             }
 
-            if(this.oManager.live_orders.Count > 2)
+            if (this.oManager.live_orders.Count > 2)
             {
                 this.addLog("Checking live order count  " + this.oManager.live_orders.Count.ToString());
+            }
+        }
+
+        private async void Form1_Shown(object sender, EventArgs e)
+        {
+            if (this.autoStart)
+            {
+                this.button_orderTest.Enabled = false;
+                this.button_receiveFeed.Enabled = false;
+                this.button_startTrading.Enabled = false;
+
+                await this.tradePreparation(this.live);
+                this.addLog("Waiting for 5 sec", Enums.logType.INFO);
+                Thread.Sleep(5000);
+                await this.startTrading();
             }
         }
     }
