@@ -81,6 +81,7 @@ namespace Crypto_Clients
             var uri = new Uri(bitbank_connection.ws_URL);
             try
             {
+                this.websocket_client.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
                 await this.websocket_client.ConnectAsync(uri, CancellationToken.None);
                 this.addLog("Connected to bitbank.");
                 this.closeSent = false;

@@ -228,19 +228,48 @@ namespace Crypto_Trading
                 }
                 else
                 {
+                    output.status = orderStatus.WaitOpen;
+                    output.filled_quantity = 0;
+                    output.average_price = 0;
+                    output.fee = 0;
+                    output.fee_asset = "";
+                    this.orders[output.order_id] = output;
+                    Thread.Sleep(100);
+                    string ordId = output.order_id;
+                    while (!this.ord_client.ordUpdateStack.TryPop(out output))
+                    {
+
+                    }
+                    output.isVirtual = true;
+                    output.order_id = ordId;
+                    output.symbol = ins.symbol;
+                    output.market = ins.market;
+                    output.symbol_market = ins.symbol_market;
+                    output.side = side;
+                    output.order_type = ordtype;
+                    output.order_quantity = quantity;
+                    output.order_price = price;
+                    output.create_time = DateTime.UtcNow;
+                    output.is_trigger_order = true;
+                    output.last_trade = "";
+                    if (timeinforce == null)
+                    {
+                        output.time_in_force = timeInForce.GoodTillCanceled;
+                    }
+                    else
+                    {
+                        output.time_in_force = (timeInForce)timeinforce;
+                    }
+                    output.timestamp = DateTime.UtcNow;
+                    output.trigger_price = 0;
+                    output.update_time = DateTime.UtcNow;
                     output.status = orderStatus.Open;
                     output.filled_quantity = 0;
                     output.average_price = 0;
                     output.fee = 0;
                     output.fee_asset = "";
-                    //while (Interlocked.CompareExchange(ref this.virtual_order_lock, 1, 0) != 0)
-                    //{
-
-                    //}
                     this.virtual_liveorders[output.order_id] = output;
-                    //Volatile.Write(ref this.virtual_order_lock, 0);
                     this.ord_client.ordUpdateQueue.Enqueue(output);
-                    Thread.Sleep(100);
                 }
             }
             else if(ins.market == "bitbank")
@@ -797,16 +826,16 @@ namespace Crypto_Trading
                 }
                 if (ord.status == orderStatus.WaitOpen)
                 {
-                    if (!this.orders.ContainsKey(ord.order_id))
-                    {
+                    //if (!this.orders.ContainsKey(ord.order_id))
+                    //{
 
-                        this.orders[ord.order_id] = ord;
-                    }
-                    else
-                    {
-                        ord.init();
-                        this.ord_client.ordUpdateStack.Push(ord);
-                    }
+                    //    this.orders[ord.order_id] = ord;
+                    //}
+                    //else
+                    //{
+                    //    ord.init();
+                    //    this.ord_client.ordUpdateStack.Push(ord);
+                    //}
                 }
                 else if (ord.status == orderStatus.WaitMod)
                 {
@@ -952,7 +981,7 @@ namespace Crypto_Trading
             {
                 string key = item.Key;
                 DataSpotOrderUpdate ord = item.Value;
-                if(key != ord.order_id)
+                if (key != ord.order_id)
                 {
                     this.addLog("The key and the order id didn't match while checking virtual orders.", Enums.logType.ERROR);
                 }
@@ -1029,11 +1058,12 @@ namespace Crypto_Trading
                     }
                 }
             }
-            foreach(string key in removing)
+            foreach (string key in removing)
             {
                 this.virtual_liveorders.Remove(key);
             }
             Volatile.Write(ref this.virtual_order_lock, 0);
+
         }
 
         public void setOrdLogPath(string logPath)

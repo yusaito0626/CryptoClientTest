@@ -70,6 +70,7 @@ namespace Crypto_Clients
             var uri = new Uri(coincheck_connection.ws_URL);
             try
             {
+                this.websocket_client.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
                 await this.websocket_client.ConnectAsync(uri, CancellationToken.None);
                 this.addLog("Connected to coincheck.");
                 this.closeSentPublic = false;
@@ -101,6 +102,7 @@ namespace Crypto_Clients
             var bytes = Encoding.UTF8.GetBytes(jsonBody);
             try
             {
+                this.private_client.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
                 await this.private_client.ConnectAsync(uri, CancellationToken.None);
                 await this.private_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
                 var buffer = new byte[16384];
