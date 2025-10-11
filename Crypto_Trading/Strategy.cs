@@ -223,10 +223,14 @@ namespace Crypto_Trading
                             case orderStatus.Canceled:
                             case orderStatus.INVALID:
                                 this.live_buyorder = null;
+                                this.live_buyorder_id = "";
+                                this.live_bidprice = 0;
                                 break;
                             case orderStatus.WaitCancel:
                                 this.addLog(this.live_buyorder.ToString());
                                 this.live_buyorder = null;
+                                this.live_buyorder_id = "";
+                                this.live_bidprice = 0;
                                 break;
                         }
                     }
@@ -234,6 +238,8 @@ namespace Crypto_Trading
                 else
                 {
                     this.live_buyorder = null;
+                    this.live_buyorder_id = "";
+                    this.live_bidprice = 0;
                 }
                 if (this.live_sellorder_id != "")
                 {
@@ -251,10 +257,14 @@ namespace Crypto_Trading
                             case orderStatus.Canceled:
                             case orderStatus.INVALID:
                                 this.live_sellorder = null;
+                                this.live_sellorder_id = "";
+                                this.live_askprice = 0;
                                 break;
                             case orderStatus.WaitCancel:
                                 this.addLog(this.live_sellorder.ToString());
                                 this.live_sellorder = null;
+                                this.live_sellorder_id = "";
+                                this.live_askprice = 0;
                                 break;
                         }
                     }
@@ -262,6 +272,8 @@ namespace Crypto_Trading
                 else
                 {
                     this.live_sellorder = null;
+                    this.live_sellorder_id = "";
+                    this.live_askprice = 0;
                 }
 
                 await this.checkLiveOrders();
@@ -407,6 +419,7 @@ namespace Crypto_Trading
                         }
                     }
                 }
+                Volatile.Write(ref this.oManager.order_lock, 0);
             }
         }
         public decimal skew()

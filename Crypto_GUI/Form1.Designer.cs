@@ -184,6 +184,13 @@
             dataGridViewTextBoxColumn9 = new DataGridViewTextBoxColumn();
             timer_statusCheck = new System.Windows.Forms.Timer(components);
             timer_PeriodicMsg = new System.Windows.Forms.Timer(components);
+            groupBox4 = new GroupBox();
+            label38 = new Label();
+            label39 = new Label();
+            label40 = new Label();
+            lbl_quoteUpdateCount = new Label();
+            lbl_orderUpdateCount = new Label();
+            lbl_fillUpdateCount = new Label();
             tabControl.SuspendLayout();
             tabPage1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridView_PnL).BeginInit();
@@ -201,6 +208,7 @@
             tabPage5.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridView_ThStatus).BeginInit();
             ((System.ComponentModel.ISupportInitialize)gridView_Connection).BeginInit();
+            groupBox4.SuspendLayout();
             SuspendLayout();
             // 
             // button_receiveFeed
@@ -1613,6 +1621,7 @@
             // 
             // tabPage5
             // 
+            tabPage5.Controls.Add(groupBox4);
             tabPage5.Controls.Add(gridView_ThStatus);
             tabPage5.Controls.Add(gridView_Connection);
             tabPage5.Location = new Point(4, 29);
@@ -1732,6 +1741,75 @@
             timer_PeriodicMsg.Interval = 1800000;
             timer_PeriodicMsg.Tick += timer_PeriodicMsg_Tick;
             // 
+            // groupBox4
+            // 
+            groupBox4.Controls.Add(lbl_fillUpdateCount);
+            groupBox4.Controls.Add(lbl_orderUpdateCount);
+            groupBox4.Controls.Add(lbl_quoteUpdateCount);
+            groupBox4.Controls.Add(label40);
+            groupBox4.Controls.Add(label39);
+            groupBox4.Controls.Add(label38);
+            groupBox4.Location = new Point(20, 296);
+            groupBox4.Name = "groupBox4";
+            groupBox4.Size = new Size(506, 502);
+            groupBox4.TabIndex = 8;
+            groupBox4.TabStop = false;
+            groupBox4.Text = "Queue";
+            // 
+            // label38
+            // 
+            label38.AutoSize = true;
+            label38.Location = new Point(19, 44);
+            label38.Name = "label38";
+            label38.Size = new Size(106, 20);
+            label38.TabIndex = 0;
+            label38.Text = "Quote Update:";
+            // 
+            // label39
+            // 
+            label39.AutoSize = true;
+            label39.Location = new Point(19, 80);
+            label39.Name = "label39";
+            label39.Size = new Size(103, 20);
+            label39.TabIndex = 1;
+            label39.Text = "Order Update:";
+            // 
+            // label40
+            // 
+            label40.AutoSize = true;
+            label40.Location = new Point(19, 115);
+            label40.Name = "label40";
+            label40.Size = new Size(84, 20);
+            label40.TabIndex = 2;
+            label40.Text = "Fill Update:";
+            // 
+            // lbl_quoteUpdateCount
+            // 
+            lbl_quoteUpdateCount.AutoSize = true;
+            lbl_quoteUpdateCount.Location = new Point(148, 44);
+            lbl_quoteUpdateCount.Name = "lbl_quoteUpdateCount";
+            lbl_quoteUpdateCount.Size = new Size(44, 20);
+            lbl_quoteUpdateCount.TabIndex = 3;
+            lbl_quoteUpdateCount.Text = "value";
+            // 
+            // lbl_orderUpdateCount
+            // 
+            lbl_orderUpdateCount.AutoSize = true;
+            lbl_orderUpdateCount.Location = new Point(148, 80);
+            lbl_orderUpdateCount.Name = "lbl_orderUpdateCount";
+            lbl_orderUpdateCount.Size = new Size(44, 20);
+            lbl_orderUpdateCount.TabIndex = 4;
+            lbl_orderUpdateCount.Text = "value";
+            // 
+            // lbl_fillUpdateCount
+            // 
+            lbl_fillUpdateCount.AutoSize = true;
+            lbl_fillUpdateCount.Location = new Point(148, 115);
+            lbl_fillUpdateCount.Name = "lbl_fillUpdateCount";
+            lbl_fillUpdateCount.Size = new Size(44, 20);
+            lbl_fillUpdateCount.TabIndex = 5;
+            lbl_fillUpdateCount.Text = "value";
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
@@ -1767,6 +1845,8 @@
             tabPage5.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)gridView_ThStatus).EndInit();
             ((System.ComponentModel.ISupportInitialize)gridView_Connection).EndInit();
+            groupBox4.ResumeLayout(false);
+            groupBox4.PerformLayout();
             ResumeLayout(false);
         }
 
@@ -1912,5 +1992,12 @@
         private System.Windows.Forms.Timer timer_PeriodicMsg;
         private Label label37;
         private Label lbl_version;
+        private GroupBox groupBox4;
+        private Label lbl_fillUpdateCount;
+        private Label lbl_orderUpdateCount;
+        private Label lbl_quoteUpdateCount;
+        private Label label40;
+        private Label label39;
+        private Label label38;
     }
 }

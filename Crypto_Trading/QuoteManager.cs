@@ -320,50 +320,50 @@ namespace Crypto_Trading
             return output;
         }
 
-        public async void updateQuotes()
-        {
-            int i = 0;
-            Instrument ins;
-            DataOrderBook msg;
-            string symbol_market;
-            while (true)
-            {
-                if(this.ordBookQueue.TryDequeue(out msg))
-                {
-                    symbol_market = msg.symbol + "@" + msg.market;
-                    if (this.instruments.ContainsKey(symbol_market))
-                    {
-                        ins = instruments[symbol_market];
-                        ins.updateQuotes(msg);
-                        if(symbol_market == this.stg.taker.symbol_market)
-                        {
-                            await this.stg.updateOrders();
-                        }
-                        this.oManager.checkVirtualOrders(ins);
-                    }
-                    else
-                    {
-                        this.addLog("The symbol doesn't exist. Instrument:" + symbol_market, Enums.logType.WARNING);
-                    }
-                    msg.init();
-                    this.ordBookStack.Push(msg);
-                    i = 0;
-                }
-                else
-                {
-                    ++i;
-                    if(i > 100000)
-                    {
-                        i = 0;
-                        Thread.Sleep(0);
-                    }
-                }
-                if(this.aborting)
-                {
-                    break;
-                }
-            }
-        }
+        //public async void updateQuotes()
+        //{
+        //    int i = 0;
+        //    Instrument ins;
+        //    DataOrderBook msg;
+        //    string symbol_market;
+        //    while (true)
+        //    {
+        //        if(this.ordBookQueue.TryDequeue(out msg))
+        //        {
+        //            symbol_market = msg.symbol + "@" + msg.market;
+        //            if (this.instruments.ContainsKey(symbol_market))
+        //            {
+        //                ins = instruments[symbol_market];
+        //                ins.updateQuotes(msg);
+        //                if(symbol_market == this.stg.taker.symbol_market)
+        //                {
+        //                    await this.stg.updateOrders();
+        //                }
+        //                this.oManager.checkVirtualOrders(ins);
+        //            }
+        //            else
+        //            {
+        //                this.addLog("The symbol doesn't exist. Instrument:" + symbol_market, Enums.logType.WARNING);
+        //            }
+        //            msg.init();
+        //            this.ordBookStack.Push(msg);
+        //            i = 0;
+        //        }
+        //        else
+        //        {
+        //            ++i;
+        //            if(i > 100000)
+        //            {
+        //                i = 0;
+        //                Thread.Sleep(0);
+        //            }
+        //        }
+        //        if(this.aborting)
+        //        {
+        //            break;
+        //        }
+        //    }
+        //}
 
         public async Task<bool> _updateQuotes()
         {
@@ -392,47 +392,47 @@ namespace Crypto_Trading
             }
             return true;
         }
-        public void updateTrades()
-        {
-            int i = 0;
-            Instrument ins;
-            DataTrade msg;
-            string symbol_market;
-            while (true)
-            {
-                if (this.tradeQueue.TryDequeue(out msg))
-                {
-                    symbol_market = msg.symbol + "@" + msg.market;
-                    if (this.instruments.ContainsKey(symbol_market))
-                    {
-                        ins = instruments[symbol_market];
-                        ins.updateTrade(msg);
+        //public void updateTrades()
+        //{
+        //    int i = 0;
+        //    Instrument ins;
+        //    DataTrade msg;
+        //    string symbol_market;
+        //    while (true)
+        //    {
+        //        if (this.tradeQueue.TryDequeue(out msg))
+        //        {
+        //            symbol_market = msg.symbol + "@" + msg.market;
+        //            if (this.instruments.ContainsKey(symbol_market))
+        //            {
+        //                ins = instruments[symbol_market];
+        //                ins.updateTrade(msg);
 
-                        this.oManager.checkVirtualOrders(ins,msg);
-                    }
-                    else
-                    {
-                        this.addLog("The symbol doesn't exist. Instrument:" + symbol_market, Enums.logType.WARNING);
-                    }
-                    msg.init();
-                    this.tradeStack.Push(msg);
-                    i = 0;
-                }
-                else
-                {
-                    ++i;
-                    if (i > 100000)
-                    {
-                        i = 0;
-                        Thread.Sleep(0);
-                    }
-                }
-                if(this.aborting)
-                {
-                    break;
-                }
-            }
-        }
+        //                this.oManager.checkVirtualOrders(ins,msg);
+        //            }
+        //            else
+        //            {
+        //                this.addLog("The symbol doesn't exist. Instrument:" + symbol_market, Enums.logType.WARNING);
+        //            }
+        //            msg.init();
+        //            this.tradeStack.Push(msg);
+        //            i = 0;
+        //        }
+        //        else
+        //        {
+        //            ++i;
+        //            if (i > 100000)
+        //            {
+        //                i = 0;
+        //                Thread.Sleep(0);
+        //            }
+        //        }
+        //        if(this.aborting)
+        //        {
+        //            break;
+        //        }
+        //    }
+        //}
         public async Task<bool> _updateTrades()
         {
             Instrument ins;

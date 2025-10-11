@@ -24,7 +24,7 @@ namespace Crypto_GUI
     {
         const string ver_major = "0";
         const string ver_minor = "1";
-        const string ver_patch = "1";
+        const string ver_patch = "3";
         string configPath = "C:\\Users\\yusai\\Crypto_Project\\configs\\config.json";
         string defaultConfigPath = AppContext.BaseDirectory + "\\config.json";
         string logPath = AppContext.BaseDirectory + "\\crypto.log";
@@ -872,10 +872,10 @@ namespace Crypto_GUI
                 }
             }
 
-            if (this.oManager.live_orders.Count > 2)
-            {
-                this.addLog("Checking live order count  " + this.oManager.live_orders.Count.ToString());
-            }
+            this.lbl_quoteUpdateCount.Text = this.qManager.ordBookQueue.Count().ToString();
+            this.lbl_orderUpdateCount.Text = this.crypto_client.ordUpdateQueue.Count().ToString();
+            this.lbl_fillUpdateCount.Text = this.crypto_client.fillQueue.Count().ToString();
+
         }
 
         private async void Form1_Shown(object sender, EventArgs e)
