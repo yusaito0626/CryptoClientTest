@@ -25,7 +25,7 @@ namespace Crypto_GUI
     {
         const string ver_major = "0";
         const string ver_minor = "2";
-        const string ver_patch = "1";
+        const string ver_patch = "2";
         string configPath = "C:\\Users\\yusai\\Crypto_Project\\configs\\config.json";
         string defaultConfigPath = AppContext.BaseDirectory + "\\config.json";
         string logPath = AppContext.BaseDirectory + "\\crypto.log";
@@ -1004,7 +1004,7 @@ namespace Crypto_GUI
                 }
                 else
                 {
-
+                    this.addLog("Updateing thread stopped. Stopping all the process", Enums.logType.ERROR);
                 }
             }
             if(this.qManager.ordBookQueue.Count() > 1000)
