@@ -13,6 +13,7 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Utils;
 
@@ -23,8 +24,8 @@ namespace Crypto_GUI
     public partial class Form1 : Form
     {
         const string ver_major = "0";
-        const string ver_minor = "1";
-        const string ver_patch = "3";
+        const string ver_minor = "2";
+        const string ver_patch = "0";
         string configPath = "C:\\Users\\yusai\\Crypto_Project\\configs\\config.json";
         string defaultConfigPath = AppContext.BaseDirectory + "\\config.json";
         string logPath = AppContext.BaseDirectory + "\\crypto.log";
@@ -69,6 +70,7 @@ namespace Crypto_GUI
         private bool autoStart;
         private bool live;
         private bool privateConnect;
+        private bool msgLogging;
 
         public Form1()
         {
@@ -77,6 +79,7 @@ namespace Crypto_GUI
             this.autoStart = false;
             this.live = false;
             this.privateConnect = true;
+            this.msgLogging = false;
 
             this.logQueue = new ConcurrentQueue<string>();
             this.filledOrderQueue = new ConcurrentQueue<DataFill>();
@@ -216,6 +219,14 @@ namespace Crypto_GUI
             else
             {
                 this.privateConnect = true;
+            }
+            if (root.TryGetProperty("msgLogging", out elem))
+            {
+                this.msgLogging = elem.GetBoolean();
+            }
+            else
+            {
+                this.msgLogging = false;
             }
             if (root.TryGetProperty("APIsPath", out elem))
             {
@@ -558,6 +569,10 @@ namespace Crypto_GUI
 
                 foreach (var mkt in this.qManager._markets)
                 {
+                    if (this.msgLogging)
+                    {
+                        this.crypto_client.setMsgLogging(mkt.Key, this.outputPath);
+                    }
                     await this.qManager.connectPublicChannel(mkt.Key);
                     if (liveTrading || this.privateConnect)
                     {
@@ -687,10 +702,24 @@ namespace Crypto_GUI
         private async void button_stopTrading_Click(object sender, EventArgs e)
         {
             await this.stopTrading();
+            this.button_startTrading.Enabled = false;
+            this.button_receiveFeed.Enabled = true;
         }
         private async void test_Click(object sender, EventArgs e)
         {
-            await tradeTest(this.qManager.instruments["eth_jpy@coincheck"],true);
+            this.addLog("Disconnecting bitbank public");
+            await this.crypto_client.bitbank_client.disconnectPublic();
+            Thread.Sleep(1000);
+            this.addLog("Disconnecting coincheck public");
+            await this.crypto_client.coincheck_client.disconnectPublic();
+            Thread.Sleep(1000);
+            this.addLog("Disconnecting coincheck private");
+            await this.crypto_client.coincheck_client.disconnectPrivate();
+            Thread.Sleep(1000);
+
+
+
+            //await tradeTest(this.qManager.instruments["eth_jpy@coincheck"],true);
         }
         private async Task onErrorCheck()
         {
@@ -790,7 +819,7 @@ namespace Crypto_GUI
                 this.updatingTh.Join(2000);
             }
         }
-        private void timer_statusCheck_Tick(object sender, EventArgs e)
+        private async void timer_statusCheck_Tick(object sender, EventArgs e)
         {
             //Connection
             this.qManager.checkConnections();
@@ -839,11 +868,21 @@ namespace Crypto_GUI
                 }
             }
 
+            List<string> stoppedThreads = new List<string>();
             //Thread
             foreach (var th in this.thManager.threads)
             {
                 bool found = false;
                 string st;
+                if(this.stopTradingCalled == 0 && th.Value.isRunning == false)
+                {
+                    //If connection lost, try reconnect
+                    //If public connection, reconnect and subscribe
+                    //if private connection, reconnect, get current status, and restart
+                    //if other threads, unexpected error stop trading
+
+                    stoppedThreads.Add(th.Key);
+                }
                 if (th.Value.isRunning)
                 {
                     st = "Running";
@@ -869,6 +908,103 @@ namespace Crypto_GUI
                 if (!found)
                 {
                     this.gridView_ThStatus.Rows.Add(th.Key, st);
+                }
+            }
+
+            foreach(var stoppedTh in stoppedThreads)
+            {
+                if (stoppedTh.Contains("Public"))
+                {
+                    bool currentTradingState = this.stg.enabled;
+                    this.stg.enabled = false;
+                    await this.oManager.cancelAllOrders();
+                    string market = stoppedTh.Replace("Public", "");
+                    this.addLog("Public Connection to " + market + " lost reconnecting in 5 sec", Enums.logType.WARNING);
+                    this.thManager.disposeThread(stoppedTh);
+                    Thread.Sleep(5000);
+                    await this.qManager.connectPublicChannel(market);
+                    Thread.Sleep(5000);
+                    foreach (var ins in this.qManager.instruments.Values)
+                    {
+                        string[] markets = [ins.market];
+                        if (market == ins.market)
+                        {
+                            if (ins.market == Exchange.Bybit)
+                            {
+                                await crypto_client.subscribeBybitOrderBook(ins.baseCcy, ins.quoteCcy);
+                            }
+                            else if (ins.market == Exchange.Coinbase)
+                            {
+                                await crypto_client.subscribeCoinbaseOrderBook(ins.baseCcy, ins.quoteCcy);
+                            }
+                            else
+                            {
+                                await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
+                            }
+                            await crypto_client.subscribeTrades(markets, ins.baseCcy, ins.quoteCcy);
+                        }
+                    }
+                    if (this.oManager.getVirtualMode())
+                    {
+                        if (!this.qManager.setVirtualBalance(this.virtualBalanceFile))
+                        {
+                            
+                        }
+                    }
+                    else
+                    {
+                        if (!this.qManager.setBalance(await this.crypto_client.getBalance(this.qManager._markets.Keys)))
+                        {
+                            
+                        }
+                    }
+                    this.addLog("Reconnection completed.");
+                    this.stg.enabled = currentTradingState;
+                }
+                else if (stoppedTh.Contains("Private"))
+                {
+                    bool currentTradingState = this.stg.enabled;
+                    this.stg.enabled = false;
+                    await this.oManager.cancelAllOrders();
+                    string market = stoppedTh.Replace("Private", "");
+                    this.addLog("Private Connection to " + market + " lost reconnecting in 5 sec", Enums.logType.WARNING);
+                    this.thManager.disposeThread(stoppedTh);
+                    Thread.Sleep(5000);
+                    await this.oManager.connectPrivateChannel(market);
+                    Thread.Sleep(5000);
+                    string[] markets = [market];
+                    if (this.live || this.privateConnect)
+                    {
+                        
+                        if (market == "bitbank")
+                        {
+                            this.thManager.addThread("bitbankSpotOrderUpdates", this.crypto_client.onBitbankOrderUpdates);
+                        }
+                        else
+                        {
+                            await crypto_client.subscribeSpotOrderUpdates(markets);
+                        }
+                    }
+                    if (this.oManager.getVirtualMode())
+                    {
+                        if (!this.qManager.setVirtualBalance(this.virtualBalanceFile))
+                        {
+
+                        }
+                    }
+                    else
+                    {
+                        if (!this.qManager.setBalance(await this.crypto_client.getBalance(this.qManager._markets.Keys)))
+                        {
+
+                        }
+                    }
+                    this.addLog("Reconnection completed.");
+                    this.stg.enabled = currentTradingState;
+                }
+                else
+                {
+
                 }
             }
 

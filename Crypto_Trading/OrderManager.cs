@@ -117,7 +117,7 @@ namespace Crypto_Trading
                     };
                     onClosing = async () =>
                     {
-                        await this.ord_client.coincheck_client.disconnectPrivate();
+                        await this.ord_client.coincheck_client.onClosingPrivate(this.ord_client.onConcheckPrivateMessage);
                     };
                     thManager.addThread(market + "Private", onMsg,onClosing);
                     this.connections[market] = this.ord_client.coincheck_client.GetSocketStatePrivate();
@@ -130,7 +130,7 @@ namespace Crypto_Trading
                     };
                     onClosing = async () =>
                     {
-                        await this.ord_client.bittrade_client.disconnectPrivate();
+                        await this.ord_client.bittrade_client.onClosingPrivate(this.ord_client.onBitTradePrivateMessage);
                     };
                     thManager.addThread(market + "Private", onMsg,onClosing);
                     this.connections[market] = this.ord_client.bittrade_client.GetSocketStatePrivate();
@@ -1047,7 +1047,6 @@ namespace Crypto_Trading
             string filename = this.outputPath + "\\orderlog_" + DateTime.UtcNow.ToString("yyyy-MM-dd_HHmmss") + ".csv";
             this.f = new FileStream(filename, FileMode.Create, FileAccess.Write);
             this.sw = new StreamWriter(f);
-            this.ord_client.bitbank_client.setLogFile(logPath);
         }
 
         public void ordLogging(string logPath = "")

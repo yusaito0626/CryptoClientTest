@@ -70,6 +70,21 @@ namespace Crypto_Trading
                 return false;
             }
         }
+
+        public bool disposeThread(string name)
+        {
+            if (this.threads.ContainsKey(name))
+            {
+                this.threads[name].stop();
+                this.threads.Remove(name);
+                return true;
+            }
+            else
+            {
+                this.addLog("The thread does not exist. name:" + name, Enums.logType.ERROR);
+                return false;
+            }
+        }
         public void stopAllThreads()
         {
             foreach(var th in this.threads)
@@ -151,7 +166,7 @@ namespace Crypto_Trading
                 {
                     if(!await this.action())
                     {
-                        this.addLog("Thread is being closed by unexpected error. name:" + this.name, logType.ERROR);
+                        //this.addLog("Thread is being closed by unexpected error. name:" + this.name, logType.ERROR);
                         this.isRunning=false;
                     }
                     if (!this.isRunning)

@@ -4,6 +4,7 @@ using CryptoExchange.Net.Objects;
 using CryptoExchange.Net.Objects.Sockets;
 using CryptoExchange.Net.Requests;
 using CryptoExchange.Net.SharedApis;
+using Enums;
 using HTX.Net.Enums;
 using PubnubApi;
 using System.Collections.Concurrent;
@@ -93,6 +94,25 @@ namespace Crypto_Clients
                 this.tradeStack.Push(new DataTrade());
                 this.fillStack.Push(new DataFill());
                 ++i;
+            }
+        }
+
+        public void setMsgLogging(string market, string outputPath)
+        {
+            switch (market)
+            {
+                case "bitbank":
+                    this.bitbank_client.setLogFile(outputPath);
+                    break;
+                case "coincheck":
+                    this.coincheck_client.setLogFile(outputPath);
+                    break;
+                case "bittrade":
+                    this.bittrade_client.setLogFile(outputPath);
+                    break;
+                default:
+                    this.addLog("Message logging is not defined for " + market, logType.WARNING);
+                    break;
             }
         }
 

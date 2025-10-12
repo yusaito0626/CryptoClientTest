@@ -39,7 +39,9 @@ namespace Crypto_Clients
         MemoryStream ws_memory = new MemoryStream();
         MemoryStream result_memory = new MemoryStream();
 
-        public StreamWriter logFile;
+        public bool logging;
+        public StreamWriter logFilePublic;
+        public StreamWriter logFilePrivate;
 
         bool closeSent;
 
@@ -68,8 +70,11 @@ namespace Crypto_Clients
 
         public void setLogFile(string path)
         {
-            FileStream fs = new FileStream(path + "bitbank_log" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".txt", FileMode.Append, FileAccess.Write, FileShare.Read);
-            this.logFile = new StreamWriter(fs);
+            this.logging = true;
+            FileStream fspub = new FileStream(path + "\\bitbankPublic_log" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".txt", FileMode.Append, FileAccess.Write, FileShare.Read);
+            this.logFilePublic = new StreamWriter(fspub);
+            FileStream fspri = new FileStream(path + "\\bitbankPrivate_log" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".txt", FileMode.Append, FileAccess.Write, FileShare.Read);
+            this.logFilePrivate = new StreamWriter(fspri);
         }
 
         public void SetApiCredentials(string name, string key)
@@ -89,6 +94,7 @@ namespace Crypto_Clients
         public async Task connectPublicAsync()
         {
             this.addLog("Connecting to bitbank");
+            this.websocket_client = new ClientWebSocket();
             var uri = new Uri(bitbank_connection.ws_URL);
             try
             {
@@ -187,158 +193,298 @@ namespace Crypto_Clients
             }
         }
 
-        public async void startListen(Action<string> onMsg)
+        public async Task onClosing(Action<string> onMsg)
         {
-            this.onMessage = onMsg;
-            var buffer = new byte[16384];
-            while (this.websocket_client.State == WebSocketState.Open)
+            if(this.websocket_client.State == WebSocketState.Aborted || this.websocket_client.State == WebSocketState.Closed)
             {
-                var result = await this.websocket_client.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                if (result.MessageType == WebSocketMessageType.Text)
-                {
-
-                    var msg = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    int idx = msg.IndexOf("{");
-                    int idx_temp = msg.IndexOf("[");
-                    if (idx_temp != -1 && idx_temp < idx)
-                    {
-                        idx = idx_temp;
-                    }
-                    if (idx != -1)
-                    {
-                        string num = msg.Substring(0, idx);
-                        switch (num)
-                        {
-                            case "0":
-                                this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("40"), WebSocketMessageType.Text, true, CancellationToken.None);
-                                break;
-                            case "2":
-                                this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("3"), WebSocketMessageType.Text, true, CancellationToken.None);
-                                break;
-                            case "40":
-                                this.addLog("Hand shake completed");
-                                break;
-                            case "42"://Actual Message
-                                if (result.EndOfMessage)
-                                {
-                                    string msg_body = msg.Substring(idx);
-                                    this.onMessage(msg_body);
-                                }
-                                else
-                                {
-                                    this.addLog("The message is too large",Enums.logType.ERROR);
-                                }
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        if (msg == "2")
-                        {
-                            this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("3"), WebSocketMessageType.Text, true, CancellationToken.None);
-                        }
-                    }
-                }
-                else if (result.MessageType == WebSocketMessageType.Close)
-                {
-                    this.addLog("Closed by server");
-                    await this.websocket_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
-                }
+                this.websocket_client.Dispose();
+                return;
             }
+            this.addLog("onClosing Called.");
+            
+            await this.websocket_client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+            DateTime time_ClosingCalled = DateTime.UtcNow;
+            DateTime currentTime = DateTime.UtcNow;
+            WebSocketReceiveResult result;
+            var buffer = new byte[16384];
+            string msg;
+            while (this.websocket_client.State != WebSocketState.Closed)
+            {
+                this.ws_memory.SetLength(0);
+                this.ws_memory.Position = 0;
+                currentTime = DateTime.UtcNow;
+                if(currentTime - time_ClosingCalled > TimeSpan.FromSeconds(10))
+                {
+                    this.addLog("onClosing timeout. Aborting", Enums.logType.ERROR);
+                    this.websocket_client.Abort();
+                    this.websocket_client.Dispose();
+                    return;
+                }
+                do
+                {
+                    result = await this.websocket_client.ReceiveAsync(new ArraySegment<byte>(this.ws_buffer), CancellationToken.None);
+                    this.ws_memory.Write(this.ws_buffer, 0, result.Count);
+                } while ((!result.EndOfMessage) && this.websocket_client.State != WebSocketState.Aborted && this.websocket_client.State != WebSocketState.Closed);
+
+                switch (result.MessageType)
+                {
+                    case WebSocketMessageType.Text:
+                        msg = Encoding.UTF8.GetString(this.ws_memory.ToArray());
+                        int idx = msg.IndexOf("{");
+                        int idx_temp = msg.IndexOf("[");
+                        if (idx_temp != -1 && idx_temp < idx)
+                        {
+                            idx = idx_temp;
+                        }
+                        if (idx != -1)
+                        {
+                            string num = msg.Substring(0, idx);
+                            switch (num)
+                            {
+                                case "0":
+                                    await this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("40"), WebSocketMessageType.Text, true, CancellationToken.None);
+                                    break;
+                                case "2":
+                                    await this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("3"), WebSocketMessageType.Text, true, CancellationToken.None);
+                                    break;
+                                case "40":
+                                    this.addLog("Hand shake completed");
+                                    break;
+                                case "42"://Actual Message
+                                    if (result.EndOfMessage)
+                                    {
+                                        string msg_body = msg.Substring(idx);
+                                        onMsg(msg_body);
+                                    }
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            if (msg == "2")
+                            {
+                                await this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("3"), WebSocketMessageType.Text, true, CancellationToken.None);
+                            }
+                        }
+                        break;
+                    case WebSocketMessageType.Binary:
+                        this.addLog("Binary type is not expected", Enums.logType.WARNING);
+                        this.ws_memory.Position = 0;
+                        using (var gzipStream = new GZipStream(this.ws_memory, CompressionMode.Decompress, leaveOpen: true))
+                        {
+                            gzipStream.CopyTo(this.result_memory);
+                        }
+                        msg = Encoding.UTF8.GetString(this.result_memory.ToArray());
+                        onMsg(msg);
+                        break;
+                    case WebSocketMessageType.Close:
+                        this.addLog("Closed by server");
+                        if (this.websocket_client.State == WebSocketState.Open || this.websocket_client.State == WebSocketState.CloseReceived)
+                        {
+                            await this.disconnectPublic();
+                        }
+                        msg = "Closing message[onClsoing]:" + Encoding.UTF8.GetString(this.ws_memory.ToArray());
+                        break;
+                    default:
+                        msg = "";
+                        break;
+                }
+                this.logFilePublic.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
+                this.logFilePublic.Flush();
+            }
+
+            this.websocket_client.Dispose();
         }
 
         public async Task<bool> onListen(Action<string> onMsg)
         {
             WebSocketReceiveResult result;
-            if (this.websocket_client.State == WebSocketState.Open)
+            string msg;
+            bool output = true;
+            switch (this.websocket_client.State)
             {
-                
-                this.ws_memory.SetLength(0);
-                this.ws_memory.Position = 0;
-                do
-                {
-                    result = await this.websocket_client.ReceiveAsync(new ArraySegment<byte>(this.ws_buffer), CancellationToken.None);
-                    this.ws_memory.Write(this.ws_buffer, 0, result.Count);
-                } while (!result.EndOfMessage);
-
-                if (result.MessageType == WebSocketMessageType.Text)
-                {
-                    var msg = Encoding.UTF8.GetString(this.ws_memory.ToArray());
-                    //Array.Clear(this.ws_buffer, 0, this.ws_buffer.Length);
-                    int idx = msg.IndexOf("{");
-                    int idx_temp = msg.IndexOf("[");
-                    if (idx_temp != -1 && idx_temp < idx)
-                    {
-                        idx = idx_temp;
-                    }
-                    if (idx != -1)
-                    {
-                        string num = msg.Substring(0, idx);
-                        switch (num)
-                        {
-                            case "0":
-                                this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("40"), WebSocketMessageType.Text, true, CancellationToken.None);
-                                break;
-                            case "2":
-                                this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("3"), WebSocketMessageType.Text, true, CancellationToken.None);
-                                break;
-                            case "40":
-                                this.addLog("Hand shake completed");
-                                break;
-                            case "42"://Actual Message
-                                if (result.EndOfMessage)
-                                {
-                                    string msg_body = msg.Substring(idx);
-                                    onMsg(msg_body);
-                                }
-                                else
-                                {
-                                    this.addLog("The message is too large", Enums.logType.ERROR);
-                                    await this.disconnectPublic();
-                                    return false;
-                                }
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        if (msg == "2")
-                        {
-                            this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("3"), WebSocketMessageType.Text, true, CancellationToken.None);
-                        }
-                    }
-                }
-                else if (result.MessageType == WebSocketMessageType.Binary)
-                {
+                case WebSocketState.Open:
+                    this.ws_memory.SetLength(0);
                     this.ws_memory.Position = 0;
-                    using var gzipStream = new GZipStream(this.ws_memory, CompressionMode.Decompress, leaveOpen: true);
-                    gzipStream.CopyTo(this.result_memory);
-                    var msg = Encoding.UTF8.GetString(this.result_memory.ToArray());
-                    this.result_memory.SetLength(0);
-                    this.result_memory.Position = 0;
-                    onMsg(msg);
-                }
-                else if (result.MessageType == WebSocketMessageType.Close)
-                {
-                    this.addLog("Closed by server");
-                    if (this.websocket_client.State == WebSocketState.Open || this.websocket_client.State == WebSocketState.CloseReceived)
+                    do
                     {
-                        await this.disconnectPublic();
+                        result = await this.websocket_client.ReceiveAsync(new ArraySegment<byte>(this.ws_buffer), CancellationToken.None);
+                        this.ws_memory.Write(this.ws_buffer, 0, result.Count);
+                    } while ((!result.EndOfMessage) && this.websocket_client.State != WebSocketState.Aborted && this.websocket_client.State != WebSocketState.Closed);
+
+                    switch(result.MessageType)
+                    {
+                        case WebSocketMessageType.Text:
+                            msg = Encoding.UTF8.GetString(this.ws_memory.ToArray());
+                            int idx = msg.IndexOf("{");
+                            int idx_temp = msg.IndexOf("[");
+                            if (idx_temp != -1 && idx_temp < idx)
+                            {
+                                idx = idx_temp;
+                            }
+                            if (idx != -1)
+                            {
+                                string num = msg.Substring(0, idx);
+                                switch (num)
+                                {
+                                    case "0":
+                                        await this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("40"), WebSocketMessageType.Text, true, CancellationToken.None);
+                                        break;
+                                    case "2":
+                                        await this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("3"), WebSocketMessageType.Text, true, CancellationToken.None);
+                                        break;
+                                    case "40":
+                                        this.addLog("Hand shake completed");
+                                        break;
+                                    case "42"://Actual Message
+                                        if (result.EndOfMessage)
+                                        {
+                                            string msg_body = msg.Substring(idx);
+                                            onMsg(msg_body);
+                                        }
+                                        break;
+                                }
+                            }
+                            else
+                            {
+                                if (msg == "2")
+                                {
+                                    await this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("3"), WebSocketMessageType.Text, true, CancellationToken.None);
+                                }
+                            }
+                            break;
+                        case WebSocketMessageType.Binary:
+                            this.addLog("Binary type is not expected", Enums.logType.WARNING);
+                            this.ws_memory.Position = 0;
+                            using (var gzipStream = new GZipStream(this.ws_memory, CompressionMode.Decompress, leaveOpen: true))
+                            {
+                                gzipStream.CopyTo(this.result_memory);
+                            }
+                            msg = Encoding.UTF8.GetString(this.result_memory.ToArray());
+                            this.addLog(msg, Enums.logType.WARNING);
+                            //onMsg(msg);
+                            break;
+                        case WebSocketMessageType.Close:
+                            this.addLog("Closed by server");
+                            output =  false;
+                            msg = "Closing message[onListen]:" + Encoding.UTF8.GetString(this.ws_memory.ToArray());
+                            break;
+                        default:
+                            msg = "";
+                            break;
                     }
-                    return false;
-                }
+                    this.logFilePublic.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
+                    this.logFilePublic.Flush();
+                    break;
+                case WebSocketState.None:
+                case WebSocketState.Connecting:
+                    //Do nothing
+                    break;
+                case WebSocketState.CloseReceived:
+                case WebSocketState.CloseSent:
+                case WebSocketState.Closed:
+                case WebSocketState.Aborted:
+                default:
+                    output = false;
+                    break;
             }
-            else
-            {
-                this.addLog("Public channel is closed. Check the status. State:" + this.websocket_client.State.ToString(), Enums.logType.ERROR);
-                if (this.websocket_client.State == WebSocketState.CloseReceived)
-                {
-                    await this.disconnectPublic();
-                }
-                return false;
-            }
-            return true;
+            return output;
         }
+        //if (this.websocket_client.State == WebSocketState.Open)
+        //{
+
+        //    this.ws_memory.SetLength(0);
+        //    this.ws_memory.Position = 0;
+        //    do
+        //    {
+        //        result = await this.websocket_client.ReceiveAsync(new ArraySegment<byte>(this.ws_buffer), CancellationToken.None);
+        //        this.ws_memory.Write(this.ws_buffer, 0, result.Count);
+        //    } while (!result.EndOfMessage);
+
+
+        //    if (result.MessageType == WebSocketMessageType.Text)
+        //    {
+        //        var msg = Encoding.UTF8.GetString(this.ws_memory.ToArray());
+        //        //Array.Clear(this.ws_buffer, 0, this.ws_buffer.Length);
+        //        int idx = msg.IndexOf("{");
+        //        int idx_temp = msg.IndexOf("[");
+        //        if (idx_temp != -1 && idx_temp < idx)
+        //        {
+        //            idx = idx_temp;
+        //        }
+        //        if (idx != -1)
+        //        {
+        //            string num = msg.Substring(0, idx);
+        //            switch (num)
+        //            {
+        //                case "0":
+        //                    this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("40"), WebSocketMessageType.Text, true, CancellationToken.None);
+        //                    break;
+        //                case "2":
+        //                    this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("3"), WebSocketMessageType.Text, true, CancellationToken.None);
+        //                    break;
+        //                case "40":
+        //                    this.addLog("Hand shake completed");
+        //                    break;
+        //                case "42"://Actual Message
+        //                    if (result.EndOfMessage)
+        //                    {
+        //                        string msg_body = msg.Substring(idx);
+        //                        onMsg(msg_body);
+        //                    }
+        //                    else
+        //                    {
+        //                        this.addLog("The message is too large", Enums.logType.ERROR);
+        //                        await this.disconnectPublic();
+        //                        return false;
+        //                    }
+        //                    break;
+        //            }
+        //        }
+        //        else
+        //        {
+        //            if (msg == "2")
+        //            {
+        //                this.websocket_client.SendAsync(Encoding.UTF8.GetBytes("3"), WebSocketMessageType.Text, true, CancellationToken.None);
+        //            }
+        //        }
+
+        //        this.logFilePublic.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
+        //        this.logFilePublic.Flush();
+        //    }
+        //    else if (result.MessageType == WebSocketMessageType.Binary)
+        //    {
+        //        this.ws_memory.Position = 0;
+        //        using var gzipStream = new GZipStream(this.ws_memory, CompressionMode.Decompress, leaveOpen: true);
+        //        gzipStream.CopyTo(this.result_memory);
+        //        var msg = Encoding.UTF8.GetString(this.result_memory.ToArray());
+        //        this.result_memory.SetLength(0);
+        //        this.result_memory.Position = 0;
+        //        onMsg(msg);
+        //    }
+        //    else if (result.MessageType == WebSocketMessageType.Close)
+        //    {
+        //        this.addLog("Closed by server");
+        //        if (this.websocket_client.State == WebSocketState.Open || this.websocket_client.State == WebSocketState.CloseReceived)
+        //        {
+        //            await this.disconnectPublic();
+        //        }
+        //        var msg = Encoding.UTF8.GetString(this.ws_memory.ToArray());
+        //        this.logFilePublic.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
+        //        this.logFilePublic.Flush();
+        //        return false;
+        //    }
+        //}
+        //else
+        //{
+        //    this.addLog("Public channel is closed. Check the status. State:" + this.websocket_client.State.ToString(), Enums.logType.ERROR);
+        //    if (this.websocket_client.State == WebSocketState.CloseReceived)
+        //    {
+        //        await this.disconnectPublic();
+        //    }
+        //    return false;
+        //}
+        //return true;
         private async Task<string> getAsync(string endpoint)
         {
             var nonce = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -496,13 +642,15 @@ namespace Crypto_Clients
                                     break;
                             }
                         }
-                        this.logFile.WriteLine(DateTime.UtcNow.ToString() + "   " + messageResult.Message.ToString());
-                        this.logFile.Flush();
+                        this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   " + messageResult.Message.ToString());
+                        this.logFilePrivate.Flush();
                     }
                 },
                 (pubnubObj, presenceResult) =>
                 {
                     this.addLog("presence: " + presenceResult.Event);
+                    this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   " + presenceResult.Event);
+                    this.logFilePrivate.Flush();
                 },
                 async (pubnubObj, status) =>
                 {
@@ -539,6 +687,8 @@ namespace Crypto_Clients
                             this.pubnub_state = WebSocketState.None;
                             break;
                     }
+                    this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   " + status.Category.ToString() + " " + status.ErrorData.ToString());
+                    this.logFilePrivate.Flush();
                 }));
 
             return pubnub;

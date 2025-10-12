@@ -53,6 +53,7 @@ namespace Crypto_Trading
             this.aborting = false;
         }
 
+        
         public async Task connectPublicChannel(string market)
         {
             ThreadManager thManager = ThreadManager.GetInstance();
@@ -68,7 +69,7 @@ namespace Crypto_Trading
                     };
                     onClosing = async () =>
                     {
-                        await this.crypto_client.bitbank_client.disconnectPublic();
+                        await this.crypto_client.bitbank_client.onClosing(this.crypto_client.onBitbankMessage);
                     };
                     thManager.addThread(market + "Public", onMsg,onClosing);
                     this._markets[market] = this.crypto_client.bitbank_client.GetSocketStatePublic();
@@ -81,7 +82,7 @@ namespace Crypto_Trading
                     };
                     onClosing = async () =>
                     {
-                        await this.crypto_client.coincheck_client.disconnectPublic();
+                        await this.crypto_client.coincheck_client.onClosing(this.crypto_client.onCoincheckMessage);
                     };
                     thManager.addThread(market + "Public", onMsg,onClosing);
                     this._markets[market] = this.crypto_client.coincheck_client.GetSocketStatePublic();
@@ -94,7 +95,7 @@ namespace Crypto_Trading
                     };
                     onClosing = async () =>
                     {
-                        await this.crypto_client.bittrade_client.disconnectPublic();
+                        await this.crypto_client.bittrade_client.onClosing(this.crypto_client.onBitTradeMessage);
                     };
                     thManager.addThread(market + "Public", onMsg,onClosing);
                     this._markets[market] = this.crypto_client.bittrade_client.GetSocketStatePublic();
