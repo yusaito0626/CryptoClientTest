@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -396,6 +397,7 @@ namespace Crypto_Trading
         {
             if(this.oManager.live_orders.Count > 2)
             {
+                List<string> cancelling_ids = new List<string>();
                 while (Interlocked.CompareExchange(ref this.oManager.order_lock, 1, 0) != 0)
                 {
 
@@ -408,17 +410,41 @@ namespace Crypto_Trading
                         {
                             this.addLog("Found an old order that is not cancelled",Enums.logType.WARNING);
                             this.addLog(ord.Value.ToString(), Enums.logType.WARNING);
-                            await this.oManager.placeCancelSpotOrder(this.maker, ord.Key);
+                            cancelling_ids.Add(ord.Key);
+                            //await this.oManager.placeCancelSpotOrder(this.maker, ord.Key);
                         }
                         else if (this.taker.symbol_market == ord.Value.symbol_market)
                         {
-                            this.addLog("Found an open order on taker side", Enums.logType.WARNING);
+                            //this.addLog("Found an open order on taker side", Enums.logType.WARNING);
+                            //this.addLog(ord.Value.ToString(), Enums.logType.WARNING);
+                            cancelling_ids.Add(ord.Key);
+                            //await this.oManager.placeCancelSpotOrder(this.taker, ord.Key);
+                        }
+                        else
+                        {
+                            this.addLog("Unknown order", Enums.logType.WARNING);
                             this.addLog(ord.Value.ToString(), Enums.logType.WARNING);
-                            await this.oManager.placeCancelSpotOrder(this.maker, ord.Key);
+                            //cancelling_ids.Add(ord.Key);
                         }
                     }
                 }
                 Volatile.Write(ref this.oManager.order_lock, 0);
+                DataSpotOrderUpdate cancelling_ord;
+                foreach(var id in cancelling_ids)
+                {
+                    if(this.oManager.orders.ContainsKey(id))
+                    {
+                        cancelling_ord = this.oManager.orders[id];
+                        if(cancelling_ord.symbol_market == this.maker.symbol_market)
+                        {
+                            await this.oManager.placeCancelSpotOrder(this.maker, id);
+                        }
+                        else if(cancelling_ord.symbol_market == this.taker.symbol_market)
+                        {
+                            await this.oManager.placeCancelSpotOrder(this.taker, id);
+                        }
+                    }
+                }
             }
         }
         public decimal skew()

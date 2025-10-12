@@ -53,7 +53,7 @@ namespace Crypto_Trading
 
         const int MOD_STACK_SIZE = 100;
 
-        Dictionary<string, Instrument> Instruments;
+        public Dictionary<string, Instrument> Instruments;
 
         private bool virtualMode;
         public volatile int id_number;
