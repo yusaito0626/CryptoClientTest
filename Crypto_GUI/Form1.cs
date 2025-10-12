@@ -25,7 +25,7 @@ namespace Crypto_GUI
     {
         const string ver_major = "0";
         const string ver_minor = "2";
-        const string ver_patch = "0";
+        const string ver_patch = "1";
         string configPath = "C:\\Users\\yusai\\Crypto_Project\\configs\\config.json";
         string defaultConfigPath = AppContext.BaseDirectory + "\\config.json";
         string logPath = AppContext.BaseDirectory + "\\crypto.log";
@@ -1007,7 +1007,18 @@ namespace Crypto_GUI
 
                 }
             }
-
+            if(this.qManager.ordBookQueue.Count() > 1000)
+            {
+                this.addLog("The order book queue count exceeds 1000.", Enums.logType.WARNING);
+            }
+            if (this.crypto_client.ordUpdateQueue.Count() > 1000)
+            {
+                this.addLog("The order update queue count exceeds 1000.", Enums.logType.WARNING);
+            }
+            if (this.crypto_client.fillQueue.Count() > 1000)
+            {
+                this.addLog("The fill queue count exceeds 1000.", Enums.logType.WARNING);
+            }
             this.lbl_quoteUpdateCount.Text = this.qManager.ordBookQueue.Count().ToString();
             this.lbl_orderUpdateCount.Text = this.crypto_client.ordUpdateQueue.Count().ToString();
             this.lbl_fillUpdateCount.Text = this.crypto_client.fillQueue.Count().ToString();
