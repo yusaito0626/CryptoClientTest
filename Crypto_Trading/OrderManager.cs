@@ -351,7 +351,14 @@ namespace Crypto_Trading
                     output.fee_asset = "";
                     output.is_trigger_order = true;
                     output.last_trade = "";
-                    this.orders[output.order_id] = output;
+                    //this.orders.TryAdd(output.order_id, output);
+                    //if (!this.orders.TryAdd(output.order_id,output))
+                    //{
+                    //    string ord_id = output.order_id;
+                    //    output.init();
+                    //    this.ord_client.ordUpdateStack.Push(output);
+                    //    output = this.orders[ord_id];
+                    //}
                     this.ord_client.ordUpdateQueue.Enqueue(output);
                 }
                 else
@@ -415,7 +422,8 @@ namespace Crypto_Trading
                     output.fee_asset = "";
                     output.is_trigger_order = true;
                     output.last_trade = "";
-                    this.orders[output.order_id] = output;
+                    //this.orders.TryAdd(output.order_id, output);
+                    this.ord_client.ordUpdateQueue.Enqueue(output);
                     while (!this.ord_client.ordUpdateStack.TryPop(out output))
                     {
 
@@ -502,6 +510,7 @@ namespace Crypto_Trading
                     output.fee_asset = "";
                     output.is_trigger_order = true;
                     output.last_trade = "";
+                    //this.orders.TryAdd(output.order_id, output);
                     this.ord_client.ordUpdateQueue.Enqueue(output);
                 }
                 else
@@ -845,14 +854,14 @@ namespace Crypto_Trading
                                 this.modifingOrdStack.Push(mod);
                             }
                         }
-                        decimal filledQuantity = ord.filled_quantity - prevord.filled_quantity;
-                        if (ins != null && filledQuantity > 0)
-                        {
-                            //ins = this.Instruments[ord.symbol_market];
-                            ins.updateFills(prevord, ord);
-                            //For future upodate, create a fill object here and call only the updateFills with the fill object.
-                            //this.filledOrderQueue.Enqueue(ord.order_id);
-                        }
+                        //decimal filledQuantity = ord.filled_quantity - prevord.filled_quantity;
+                        //if (ins != null && filledQuantity > 0)
+                        //{
+                        //    //ins = this.Instruments[ord.symbol_market];
+                        //    ins.updateFills(prevord, ord);
+                        //    //For future upodate, create a fill object here and call only the updateFills with the fill object.
+                        //    //this.filledOrderQueue.Enqueue(ord.order_id);
+                        //}
                         //this.stg.on_Message(prevord, ord);
 
                         prevord.init();
@@ -869,13 +878,10 @@ namespace Crypto_Trading
                                 ins.live_orders[ord.order_id] = ord;
                             }
                         }
-                        if (ins != null && ord.filled_quantity > 0)
-                        {
-                            //ins = this.Instruments[ord.symbol_market];
-                            ins.updateFills(ord, ord);
-                            //this.filledOrderQueue.Enqueue(ord.order_id);
-                        }
-                        //this.stg.on_Message(ord, ord);
+                        //if (ins != null && ord.filled_quantity > 0)
+                        //{
+                        //    ins.updateFills(ord, ord);
+                        //}
                     }
                 }
                 if(ins != null)

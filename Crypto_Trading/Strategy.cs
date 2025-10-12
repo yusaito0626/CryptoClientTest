@@ -280,7 +280,6 @@ namespace Crypto_Trading
 
                 if (this.live_buyorder != null)
                 {
-                    //this.live_buyorder = this.oManager.orders[this.live_buyorder.order_id];
                     if (bid_price == 0 || (this.maker.baseBalance.balance > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200)))
                     {
                         this.live_buyorder = await this.oManager.placeCancelSpotOrder(this.maker, this.live_buyorder.order_id);
