@@ -24,8 +24,8 @@ namespace Crypto_GUI
     public partial class Form1 : Form
     {
         const string ver_major = "0";
-        const string ver_minor = "2";
-        const string ver_patch = "2";
+        const string ver_minor = "3";
+        const string ver_patch = "0";
         string configPath = "C:\\Users\\yusai\\Crypto_Project\\configs\\config.json";
         string defaultConfigPath = AppContext.BaseDirectory + "\\config.json";
         string logPath = AppContext.BaseDirectory + "\\crypto.log";
@@ -72,6 +72,12 @@ namespace Crypto_GUI
         private bool privateConnect;
         private bool msgLogging;
 
+        string str_endTime;
+        DateTime endTime;
+
+        int msg_Interval;
+        DateTime nextMsgTime;
+
         public Form1()
         {
             this.aborting = false;
@@ -94,6 +100,10 @@ namespace Crypto_GUI
             this.button_startTrading.Enabled = false;
             //this.button_orderTest.Enabled = false;
 
+            this.str_endTime = "23:30:00";
+
+            this.msg_Interval = 30;
+
             if (!this.readConfig())
             {
                 this.addLog("Failed to read config.", Enums.logType.ERROR);
@@ -101,6 +111,8 @@ namespace Crypto_GUI
                 updatingTh.Start();
                 return;
             }
+
+            this.nextMsgTime = DateTime.UtcNow + TimeSpan.FromMinutes(this.msg_Interval);
 
 
             this.logFile = new StreamWriter(new FileStream(this.logPath, FileMode.Create));
@@ -173,6 +185,9 @@ namespace Crypto_GUI
             this.stopTradingCalled = 0;
             this.button_receiveFeed.Enabled = true;
             this.timer_statusCheck.Start();
+            this.timer_PeriodicMsg.Start();
+
+            this.addLog("Application closing time:" + this.str_endTime);
         }
         private bool readConfig()
         {
@@ -227,6 +242,27 @@ namespace Crypto_GUI
             else
             {
                 this.msgLogging = false;
+            }
+            if(root.TryGetProperty("endTime", out elem))
+            {
+                this.str_endTime = elem.GetString();
+                TimeSpan timeOfDay = TimeSpan.ParseExact(this.str_endTime, "hh\\:mm\\:ss", null);
+
+                this.endTime = DateTime.UtcNow.Date.Add(timeOfDay);
+                if (DateTime.UtcNow >= this.endTime)
+                {
+                    this.endTime = this.endTime.AddDays(1);
+                }
+            }
+            else
+            {
+                TimeSpan timeOfDay = TimeSpan.ParseExact(this.str_endTime, "hh\\:mm\\:ss", null);
+
+                this.endTime = DateTime.UtcNow.Date.Add(timeOfDay);
+                if (DateTime.UtcNow >= this.endTime)
+                {
+                    this.endTime = this.endTime.AddDays(1);
+                }
             }
             if (root.TryGetProperty("APIsPath", out elem))
             {
@@ -644,7 +680,6 @@ namespace Crypto_GUI
         private async Task<bool> startTrading()
         {
             this.stg.enabled = true;
-            this.timer_PeriodicMsg.Start();
             this.addLog("Trading started.");
             return true;
         }
@@ -1050,18 +1085,30 @@ namespace Crypto_GUI
 
             if (this.stg.maker != null && this.stg.taker != null)
             {
-                volume = this.stg.maker.my_buy_notional + this.stg.maker.my_sell_notional;
-                tradingPL = (this.stg.taker.my_sell_notional - this.stg.taker.my_sell_quantity * this.stg.taker.mid) + (this.stg.taker.my_buy_quantity * this.stg.taker.mid - this.stg.taker.my_buy_notional);
-                tradingPL += (this.stg.maker.my_sell_notional - this.stg.maker.my_sell_quantity * this.stg.taker.mid) + (this.stg.maker.my_buy_quantity * this.stg.taker.mid - this.stg.maker.my_buy_notional);
-                fee = this.stg.taker.base_fee * this.stg.taker.mid + this.stg.taker.quote_fee + this.stg.maker.base_fee * this.stg.taker.mid + this.stg.maker.quote_fee;
-                volume *= this.multiplier;
-                tradingPL *= this.multiplier;
-                fee *= this.multiplier;
-                total = tradingPL - fee;
+                if(DateTime.UtcNow > this.nextMsgTime)
+                {
+                    volume = this.stg.maker.my_buy_notional + this.stg.maker.my_sell_notional;
+                    tradingPL = (this.stg.taker.my_sell_notional - this.stg.taker.my_sell_quantity * this.stg.taker.mid) + (this.stg.taker.my_buy_quantity * this.stg.taker.mid - this.stg.taker.my_buy_notional);
+                    tradingPL += (this.stg.maker.my_sell_notional - this.stg.maker.my_sell_quantity * this.stg.taker.mid) + (this.stg.maker.my_buy_quantity * this.stg.taker.mid - this.stg.maker.my_buy_notional);
+                    fee = this.stg.taker.base_fee * this.stg.taker.mid + this.stg.taker.quote_fee + this.stg.maker.base_fee * this.stg.taker.mid + this.stg.maker.quote_fee;
+                    volume *= this.multiplier;
+                    tradingPL *= this.multiplier;
+                    fee *= this.multiplier;
+                    total = tradingPL - fee;
 
-                msg = DateTime.UtcNow.ToString() + " Notional Volume:" + volume.ToString("N2") + " Trading PnL:" + tradingPL.ToString("N2") + " Fee:" + fee.ToString("N2") + " Total:" + total.ToString("N2");
+                    msg = DateTime.UtcNow.ToString() + " Notional Volume:" + volume.ToString("N2") + " Trading PnL:" + tradingPL.ToString("N2") + " Fee:" + fee.ToString("N2") + " Total:" + total.ToString("N2");
 
-                await this.MsgDeliverer.sendMessage(msg);
+                    await this.MsgDeliverer.sendMessage(msg);
+                    this.nextMsgTime += TimeSpan.FromMinutes(this.msg_Interval);
+                }
+                
+            }
+
+            if(DateTime.UtcNow > this.endTime)
+            {
+                this.addLog("Closing application at EoD.");
+                await this.stopTrading(false);
+                Application.Exit();
             }
         }
     }
