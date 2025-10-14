@@ -303,8 +303,11 @@ namespace Crypto_Clients
                         msg = "";
                         break;
                 }
-                this.logFilePublic.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + msg);
-                this.logFilePublic.Flush();
+                if(this.logging)
+                {
+                    this.logFilePublic.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + msg);
+                    this.logFilePublic.Flush();
+                }
             }
 
             this.ws_memory.SetLength(0);
@@ -387,8 +390,11 @@ namespace Crypto_Clients
                             msg = "";
                             break;
                     }
-                    this.logFilePublic.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + msg);
-                    this.logFilePublic.Flush();
+                    if(this.logging)
+                    {
+                        this.logFilePublic.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + msg);
+                        this.logFilePublic.Flush();
+                    }
                     this.ws_memory.SetLength(0);
                     this.ws_memory.Position = 0;
                     break;
@@ -668,15 +674,21 @@ namespace Crypto_Clients
                                     break;
                             }
                         }
-                        this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + messageResult.Message.ToString());
-                        this.logFilePrivate.Flush();
+                        if(this.logging)
+                        {
+                            this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + messageResult.Message.ToString());
+                            this.logFilePrivate.Flush();
+                        }
                     }
                 },
                 (pubnubObj, presenceResult) =>
                 {
                     this.addLog("presence: " + presenceResult.Event);
-                    this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + presenceResult.Event);
-                    this.logFilePrivate.Flush();
+                    if(this.logging)
+                    {
+                        this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + presenceResult.Event);
+                        this.logFilePrivate.Flush();
+                    }
                 },
                 async (pubnubObj, status) =>
                 {
@@ -713,8 +725,11 @@ namespace Crypto_Clients
                             this.pubnub_state = WebSocketState.None;
                             break;
                     }
-                    this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + status.Category.ToString() + " " + status.ErrorData.ToString());
-                    this.logFilePrivate.Flush();
+                    if(this.logging)
+                    {
+                        this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + status.Category.ToString() + " " + status.ErrorData.ToString());
+                        this.logFilePrivate.Flush();
+                    }
                 }));
 
             return pubnub;

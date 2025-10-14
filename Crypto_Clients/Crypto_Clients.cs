@@ -56,6 +56,8 @@ namespace Crypto_Clients
         public Thread bitbankOrderUpdateTh;
 
         public Action<string,Enums.logType> _addLog;
+
+        private bool megLogging;
         private Crypto_Clients()
         {
             this._client = new ExchangeSocketClient();
@@ -84,7 +86,9 @@ namespace Crypto_Clients
             this.strQueue = new ConcurrentQueue<string>();
 
             this.bitbank_client.setQueues(this);
-            
+
+            this.megLogging = false;
+
             //this._addLog = Console.WriteLine;
 
             int i = 0;
@@ -101,6 +105,7 @@ namespace Crypto_Clients
 
         public void setMsgLogging(string market, string outputPath)
         {
+            this.megLogging = true;
             switch (market)
             {
                 case "bitbank":

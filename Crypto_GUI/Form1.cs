@@ -25,7 +25,7 @@ namespace Crypto_GUI
     {
         const string ver_major = "0";
         const string ver_minor = "3";
-        const string ver_patch = "6";
+        const string ver_patch = "7";
         string configPath = "C:\\Users\\yusai\\Crypto_Project\\configs\\config.json";
         string defaultConfigPath = AppContext.BaseDirectory + "\\config.json";
         string logPath = AppContext.BaseDirectory + "\\crypto.log";
@@ -321,6 +321,16 @@ namespace Crypto_GUI
                 this.addLog("Balance file is not configured.", Enums.logType.WARNING);
                 this.addLog("The virtual balance will be all 0.", Enums.logType.WARNING);
             }
+
+            string dt = DateTime.UtcNow.ToString("yyyy-MM-dd");
+            string newpath = this.outputPath + "\\" + dt;
+            if (!Directory.Exists(newpath))
+            {
+                Directory.CreateDirectory(newpath);
+            }
+            this.outputPath = newpath;
+            this.logPath = this.outputPath + "\\crypto.log";
+
             return true;
 
         }

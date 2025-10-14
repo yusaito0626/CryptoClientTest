@@ -299,8 +299,11 @@ namespace Crypto_Clients
                         msg = "Closing message[onClosing]:" + Encoding.UTF8.GetString(this.ws_memory.ToArray());
                         break;
                 }
-                this.logFilePublic.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
-                this.logFilePublic.Flush();
+                if(this.logging)
+                {
+                    this.logFilePublic.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
+                    this.logFilePublic.Flush();
+                }
             }
 
             this.ws_memory.SetLength(0);
@@ -345,8 +348,11 @@ namespace Crypto_Clients
                             msg = "Closing message[onListen]:" + Encoding.UTF8.GetString(this.ws_memory.ToArray());
                             break;
                     }
-                    this.logFilePublic.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
-                    this.logFilePublic.Flush();
+                    if(this.logging)
+                    {
+                        this.logFilePublic.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
+                        this.logFilePublic.Flush();
+                    }
                     this.ws_memory.SetLength(0);
                     this.ws_memory.Position = 0;
                     break;
@@ -552,8 +558,11 @@ namespace Crypto_Clients
                         msg = "Closing message[onClosing]:" + Encoding.UTF8.GetString(this.pv_memory.ToArray());
                         break;
                 }
-                this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
-                this.logFilePrivate.Flush();
+                if(this.logging)
+                {
+                    this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
+                    this.logFilePrivate.Flush();
+                }
             }
 
             this.pv_memory.SetLength(0);
@@ -599,8 +608,11 @@ namespace Crypto_Clients
                             msg = "Closing message[onListen]:" + Encoding.UTF8.GetString(this.pv_memory.ToArray());
                             break;
                     }
-                    this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
-                    this.logFilePrivate.Flush();
+                    if(this.logging)
+                    {
+                        this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
+                        this.logFilePrivate.Flush();
+                    }
                     this.pv_memory.SetLength(0);
                     this.pv_memory.Position = 0;
                     break;
