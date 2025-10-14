@@ -1540,6 +1540,7 @@ namespace Crypto_Clients
             this.order_type = orderType.NONE;
             this.profit_loss = 0;
             this.interest = 0;
+            this.msg = "";
         }
     }
     public class DataSpotOrderUpdate
