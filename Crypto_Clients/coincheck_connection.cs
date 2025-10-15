@@ -50,9 +50,13 @@ namespace Crypto_Clients
         public StreamWriter logFilePublic;
         public StreamWriter logFilePrivate;
 
-        Stopwatch sw;
+        Stopwatch sw_POST;
         double elapsedTime_POST;
         int count;
+
+        Stopwatch sw_Private;
+        Stopwatch sw_Public;
+
         private coincheck_connection()
         {
             this.apiName = "";
@@ -69,9 +73,11 @@ namespace Crypto_Clients
             this.closeSentPrivate = false;
             this.subscribingChannels = new List<string>();
 
-            this.sw = new Stopwatch();
+            this.sw_POST = new Stopwatch();
             this.elapsedTime_POST = 0;
             this.count = 0;
+            this.sw_Private = new Stopwatch();
+            this.sw_Public = new Stopwatch();
 
             this.lastnonce = 0;
             //this._addLog = Console.WriteLine;
@@ -326,11 +332,12 @@ namespace Crypto_Clients
                 this.logFilePublic.Flush();
             }
         }
-        public async Task<bool> onListen(Action<string> onMsg)
+        public async Task<(bool,double)> onListen(Action<string> onMsg)
         {
             WebSocketReceiveResult result;
             string msg = "";
             bool output = true;
+            double latency = 0;
             switch (this.websocket_client.State)
             {
                 case WebSocketState.Open:
@@ -340,7 +347,7 @@ namespace Crypto_Clients
                         this.ws_memory.Write(this.ws_buffer, 0, result.Count);
 
                     } while ((!result.EndOfMessage) && this.websocket_client.State != WebSocketState.Aborted && this.websocket_client.State != WebSocketState.Closed);
-
+                    this.sw_Public.Start();
                     switch (result.MessageType)
                     {
                         case WebSocketMessageType.Text:
@@ -371,6 +378,9 @@ namespace Crypto_Clients
                     }
                     this.ws_memory.SetLength(0);
                     this.ws_memory.Position = 0;
+                    this.sw_Public.Stop();
+                    latency = this.sw_Public.Elapsed.TotalNanoseconds / 1000;
+                    this.sw_Public.Reset();
                     break;
                 case WebSocketState.None:
                 case WebSocketState.Connecting:
@@ -384,7 +394,7 @@ namespace Crypto_Clients
                     output = false;
                     break;
             }
-            return output;
+            return (output, latency);
             //if (this.websocket_client.State == WebSocketState.Open)
             //{
                 //do
@@ -596,11 +606,12 @@ namespace Crypto_Clients
                 this.logFilePrivate.Flush();
             }
         }
-        public async Task<bool> onListenPrivate(Action<string> onMsg)
+        public async Task<(bool,double)> onListenPrivate(Action<string> onMsg)
         {
             WebSocketReceiveResult result;
             string msg = "";
             bool output = true;
+            double latency = 0;
             switch(this.private_client.State)
             {
                 case WebSocketState.Open:
@@ -611,6 +622,7 @@ namespace Crypto_Clients
                         this.pv_memory.Write(this.pv_buffer, 0, result.Count);
 
                     } while (!result.EndOfMessage && this.private_client.State != WebSocketState.Aborted && this.private_client.State != WebSocketState.Closed);
+                    this.sw_Private.Start();
                     switch(result.MessageType)
                     {
                         case WebSocketMessageType.Text:
@@ -642,6 +654,9 @@ namespace Crypto_Clients
                     }
                     this.pv_memory.SetLength(0);
                     this.pv_memory.Position = 0;
+                    this.sw_Private.Stop();
+                    latency = this.sw_Private.Elapsed.TotalNanoseconds / 1000;
+                    this.sw_Private.Reset();
                     break;
                 case WebSocketState.None:
                 case WebSocketState.Connecting:
@@ -655,58 +670,7 @@ namespace Crypto_Clients
                     output = false;
                     break;
             }
-            return output;
-            //if (this.private_client.State == WebSocketState.Open)
-            //{
-                
-            //    if (result.MessageType == WebSocketMessageType.Text)
-            //    {
-                    
-
-            //        this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
-            //        this.logFilePrivate.Flush();
-            //    }
-            //    else if (result.MessageType == WebSocketMessageType.Binary)
-            //    {
-            //        this.pv_memory.Position = 0;
-            //        using var gzipStream = new GZipStream(this.pv_memory, CompressionMode.Decompress, leaveOpen: true);
-            //        gzipStream.CopyTo(this.pv_result_memory);
-            //        var msg = Encoding.UTF8.GetString(this.pv_result_memory.ToArray());
-            //        onMsg(msg);
-            //        this.pv_result_memory.SetLength(0);
-            //        this.pv_result_memory.Position = 0;
-
-            //        this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
-            //        this.logFilePrivate.Flush();
-            //    }
-            //    else if (result.MessageType == WebSocketMessageType.Close)
-            //    {
-            //        this.addLog("Closed by server");
-                    
-            //        if (this.private_client.State == WebSocketState.Open || this.private_client.State == WebSocketState.CloseReceived)
-            //        {
-            //            await this.disconnectPrivate();
-            //        }
-
-
-            //        var msg = Encoding.UTF8.GetString(this.pv_result_memory.ToArray());
-            //        this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
-            //        this.logFilePrivate.Flush();
-            //        return false;
-            //    }
-            //    this.pv_memory.SetLength(0);
-            //    this.pv_memory.Position = 0;
-            //}
-            //else
-            //{
-            //    this.addLog("Private channel is closed. Check the status. State:" + this.private_client.State.ToString(),Enums.logType.ERROR);
-            //    if (this.private_client.State == WebSocketState.CloseReceived)
-            //    {
-            //        await this.disconnectPrivate();
-            //    }
-            //    return false;
-            //}
-            //return true;
+            return (output,latency);
         }
 
         private async Task<string> getAsync(string endpoint,string body = "")
@@ -759,12 +723,12 @@ namespace Crypto_Clients
             request.Headers.Add("ACCESS-NONCE", nonce.ToString());
             request.Headers.Add("ACCESS-SIGNATURE", ToSha256(this.secretKey, message));
 
-            sw = Stopwatch.StartNew();
+            sw_POST = Stopwatch.StartNew();
             var response = await this.http_client.SendAsync(request);
-            sw.Stop();
-            this.elapsedTime_POST += sw.Elapsed.TotalNanoseconds / 1000;
+            sw_POST.Stop();
+            this.elapsedTime_POST += sw_POST.Elapsed.TotalNanoseconds / 1000;
             ++this.count;
-            sw.Reset();
+            sw_POST.Reset();
             var resString = await response.Content.ReadAsStringAsync();
 
             return resString;

@@ -69,7 +69,8 @@ namespace Crypto_Trading
 
         public int latency = 0;
 
-
+        Stopwatch sw_updateOrders;
+        Stopwatch sw_updateFills;
         private OrderManager() 
         {
             this.aborting = false;
@@ -102,13 +103,16 @@ namespace Crypto_Trading
             }
 
             //this._addLog = Console.WriteLine;
+            this.sw_updateOrders = new Stopwatch();
+            this.sw_updateFills = new Stopwatch();
+
             this.ready = false;
         }
 
         public async Task connectPrivateChannel(string market)
         {
             ThreadManager thManager = ThreadManager.GetInstance();
-            Func<Task<bool>> onMsg;
+            Func<Task<(bool, double)>> onMsg;
             Action onClosing;
             switch (market)
             {
@@ -824,12 +828,14 @@ namespace Crypto_Trading
             this.ord_client.fillStack.Push(fill);
         }
 
-        public async Task<bool> _updateFill()
+        public async Task<(bool,double)> _updateFill()
         {
             DataFill fill;
             Instrument ins = null;
+            double latency = 0;
             if (this.ord_client.fillQueue.TryDequeue(out fill))
             {
+                this.sw_updateFills.Start();
                 fill.msg += " Dequeued:" + DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
                 //await this.stg.on_Message(fill);
                 foreach(var stg in this.strategies)
@@ -854,8 +860,11 @@ namespace Crypto_Trading
                 }
                 this.ordLogQueue.Enqueue(fill.ToString());
                 this.filledOrderQueue.Enqueue(fill);
+                this.sw_updateFills.Stop();
+                latency = this.sw_updateFills.Elapsed.TotalNanoseconds / 1000;
+                this.sw_updateFills.Reset();
             }
-            return true;
+            return (true, latency);
         }
 
         public async void updateFillOnClosing()
@@ -866,15 +875,18 @@ namespace Crypto_Trading
             }
         }
 
-        public async Task<bool> _updateOrders()
+        public async Task<(bool,double)> _updateOrders()
         {
             DataSpotOrderUpdate ord;
             DataSpotOrderUpdate prevord;
             //DataFill fill;
             Instrument ins = null;
             modifingOrd mod;
+            double latency = 0;
             if (this.ord_client.ordUpdateQueue.TryDequeue(out ord))
             {
+                this.sw_updateOrders.Start();
+
                 this.ordLogQueue.Enqueue(ord.ToString());
                 
                 if (this.Instruments.ContainsKey(ord.symbol_market))
@@ -1089,8 +1101,11 @@ namespace Crypto_Trading
                 {
                     Volatile.Write(ref ins.orders_lock, 0);
                 }
+                this.sw_updateOrders.Stop();
+                latency = this.sw_updateOrders.Elapsed.TotalNanoseconds / 1000;
+                this.sw_updateOrders.Reset();
             }
-            return true;
+            return (true, latency);
         }
 
         public async void updateOrdersOnClosing()
@@ -1314,7 +1329,7 @@ namespace Crypto_Trading
             }
         }
 
-        public async Task<bool> _orderLogging()
+        public async Task<(bool,double)> _orderLogging()
         {
             string line;
             if (this.ordLogQueue.TryDequeue(out line))
@@ -1323,7 +1338,7 @@ namespace Crypto_Trading
                 this.sw.Flush();
                 this.ord_logged = true;
             }
-            return true;
+            return (true,0);
         }
         public void ordLoggingOnClosing()
         {

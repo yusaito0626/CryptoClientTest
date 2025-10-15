@@ -21,7 +21,7 @@ namespace Crypto_Trading
             //this._addLog = Console.WriteLine;
         }
 
-        public void addThread(string name, Func<Task<bool>> action, Action onClosing = null,Action onError = null)
+        public void addThread(string name, Func<Task<(bool,double)>> action, Action onClosing = null,Action onError = null)
         {
             if(this.threads.ContainsKey(name))
             {
@@ -139,13 +139,13 @@ namespace Crypto_Trading
         public double totalElapsedTime;
         public int count;
 
-        public Func<Task<bool>> action;
+        public Func<Task<(bool,double)>> action;
         public Action onClosing;
         public Action onError;
 
         public Action<string, logType> addLog;
 
-        public thread(string name, Func<Task<bool>> action, Action onClosing = null, Action onError = null)
+        public thread(string name, Func<Task<(bool,double)>> action, Action onClosing = null, Action onError = null)
         {
             this.name = name;
             this.action = action;
@@ -176,17 +176,17 @@ namespace Crypto_Trading
             {
                 while (true)
                 {
-                    sw.Start();
-                    if (!await this.action())
+                    var ret = await this.action();
+                    if (!ret.Item1)
                     {
                         //this.addLog("Thread is being closed by unexpected error. name:" + this.name, logType.ERROR);
                         this.isRunning=false;
                     }
-                    sw.Stop();
-                    elapsedTime = sw.Elapsed.TotalNanoseconds;
-                    this.totalElapsedTime += elapsedTime;
-                    ++this.count;
-                    sw.Reset();
+                    if(ret.Item2 > 0)
+                    {
+                        this.totalElapsedTime += ret.Item2;
+                        ++this.count;
+                    }
                     if (!this.isRunning)
                     {
                         this.onClosing();

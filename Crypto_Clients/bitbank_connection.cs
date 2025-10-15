@@ -47,9 +47,10 @@ namespace Crypto_Clients
         public StreamWriter logFilePublic;
         public StreamWriter logFilePrivate;
 
-        Stopwatch sw;
+        Stopwatch sw_POST;
         double elapsedTime_POST;
         int count;
+        Stopwatch sw_Public;
 
         bool closeSent;
 
@@ -60,9 +61,10 @@ namespace Crypto_Clients
             this.apiName = "";
             this.secretKey = "";
 
-            this.sw = new Stopwatch();
+            this.sw_POST = new Stopwatch();
             this.elapsedTime_POST = 0;
             this.count = 0;
+            this.sw_Public = new Stopwatch();
 
             this.websocket_client = new ClientWebSocket();
             this.http_client = new HttpClient();
@@ -335,11 +337,12 @@ namespace Crypto_Clients
             }
         }
 
-        public async Task<bool> onListen(Action<string> onMsg)
+        public async Task<(bool,double)> onListen(Action<string> onMsg)
         {
             WebSocketReceiveResult result;
             string msg;
             bool output = true;
+            double latency = 0;
             switch (this.websocket_client.State)
             {
                 case WebSocketState.Open:
@@ -348,7 +351,7 @@ namespace Crypto_Clients
                         result = await this.websocket_client.ReceiveAsync(new ArraySegment<byte>(this.ws_buffer), CancellationToken.None);
                         this.ws_memory.Write(this.ws_buffer, 0, result.Count);
                     } while ((!result.EndOfMessage) && this.websocket_client.State != WebSocketState.Aborted && this.websocket_client.State != WebSocketState.Closed);
-
+                    this.sw_Public.Start();
                     switch(result.MessageType)
                     {
                         case WebSocketMessageType.Text:
@@ -417,6 +420,9 @@ namespace Crypto_Clients
                     }
                     this.ws_memory.SetLength(0);
                     this.ws_memory.Position = 0;
+                    this.sw_Public.Stop();
+                    latency = this.sw_Public.Elapsed.TotalNanoseconds / 1000;
+                    this.sw_Public.Reset();
                     break;
                 case WebSocketState.None:
                 case WebSocketState.Connecting:
@@ -430,7 +436,7 @@ namespace Crypto_Clients
                     output = false;
                     break;
             }
-            return output;
+            return (output,latency);
         }
         //if (this.websocket_client.State == WebSocketState.Open)
         //{
@@ -562,12 +568,12 @@ namespace Crypto_Clients
             request.Headers.Add("ACCESS-TIME-WINDOW", timeWindow);
             request.Headers.Add("ACCESS-SIGNATURE", ToSha256(this.secretKey, message));
 
-            sw.Start();
+            sw_POST.Start();
             var response = await this.http_client.SendAsync(request);
-            sw.Stop();
-            this.elapsedTime_POST += sw.Elapsed.TotalNanoseconds / 1000;
+            sw_POST.Stop();
+            this.elapsedTime_POST += sw_POST.Elapsed.TotalNanoseconds / 1000;
             ++this.count;
-            sw.Reset();
+            sw_POST.Reset();
             var resString = await response.Content.ReadAsStringAsync();
 
             return resString;

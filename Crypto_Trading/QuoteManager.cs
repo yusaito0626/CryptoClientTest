@@ -13,6 +13,7 @@ using System.Text;
 using System.Threading.Tasks;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using Enums;
+using System.Diagnostics;
 
 namespace Crypto_Trading
 {
@@ -44,6 +45,10 @@ namespace Crypto_Trading
 
         public bool ready;
         public bool aborting;
+
+        Stopwatch sw_updateQuotes;
+        Stopwatch sw_updateTrades;
+        Stopwatch sw_optimize;
         QuoteManager() 
         {
             this.instruments = new Dictionary<string, Instrument>();
@@ -56,13 +61,17 @@ namespace Crypto_Trading
             this.ready = false;
             //this._addLog = Console.WriteLine;
             this.aborting = false;
+
+            this.sw_updateQuotes = new Stopwatch();
+            this.sw_updateTrades = new Stopwatch();
+            this.sw_optimize = new Stopwatch();
         }
 
         
         public async Task connectPublicChannel(string market)
         {
             ThreadManager thManager = ThreadManager.GetInstance();
-            Func<Task<bool>> onMsg;
+            Func<Task<(bool, double)>> onMsg;
             Action onClosing;
             switch (market)
             {
@@ -301,13 +310,15 @@ namespace Crypto_Trading
             return output;
         }
 
-        public async Task<bool> _updateQuotes()
+        public async Task<(bool,double)> _updateQuotes()
         {
             Instrument ins;
             DataOrderBook msg;
+            double latency = 0;
             string symbol_market;
             if (this.ordBookQueue.TryDequeue(out msg))
             {
+                this.sw_updateQuotes.Start();
                 symbol_market = msg.symbol + "@" + msg.market;
                 if (this.instruments.ContainsKey(symbol_market))
                 {
@@ -331,8 +342,11 @@ namespace Crypto_Trading
                 }
                 msg.init();
                 this.ordBookStack.Push(msg);
+                this.sw_updateQuotes.Stop();
+                latency = this.sw_updateQuotes.Elapsed.TotalNanoseconds / 1000;
+                this.sw_updateQuotes.Reset();
             }
-            return true;
+            return (true,latency);
         }
 
         public void updateQuotesOnClosing()
@@ -370,14 +384,19 @@ namespace Crypto_Trading
             this.oManager.virtual_order_lock = 0;
         }
 
-        public async Task<bool> _optimize()
+        public async Task<(bool,double)> _optimize()
         {
             Strategy stg;
+            double latency = 0;
             if(this.optQueue.TryDequeue(out stg))
             {
+                this.sw_optimize.Start();
                 await stg.updateOrders();
+                this.sw_optimize.Stop();
+                latency = this.sw_optimize.Elapsed.TotalNanoseconds / 1000;
+                this.sw_optimize.Reset();
             }
-            return true;
+            return (true, latency);
         }
 
         public async void optimizeOnClosing()
@@ -401,13 +420,15 @@ namespace Crypto_Trading
             }
             this.oManager.order_lock = 0;
         }
-        public async Task<bool> _updateTrades()
+        public async Task<(bool,double)> _updateTrades()
         {
             Instrument ins;
             DataTrade msg;
             string symbol_market;
+            double latency = 0;
             if (this.tradeQueue.TryDequeue(out msg))
             {
+                this.sw_updateTrades.Start();
                 symbol_market = msg.symbol + "@" + msg.market;
                 if (this.instruments.ContainsKey(symbol_market))
                 {
@@ -422,8 +443,11 @@ namespace Crypto_Trading
                 }
                 msg.init();
                 this.tradeStack.Push(msg);
+                this.sw_updateTrades.Stop();
+                latency = this.sw_updateTrades.Elapsed.TotalNanoseconds / 1000;
+                this.sw_updateTrades.Reset();
             }
-            return true;
+            return (true, latency);
         }
 
         public void updateTradesOnClosing()
