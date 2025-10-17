@@ -1784,7 +1784,7 @@
             gridView_ThStatus.ColumnHeadersHeight = 30;
             gridView_ThStatus.Columns.AddRange(new DataGridViewColumn[] { dataGridViewTextBoxColumn10, dataGridViewTextBoxColumn11, col_latency });
             gridView_ThStatus.GridColor = SystemColors.Menu;
-            gridView_ThStatus.Location = new Point(533, 50);
+            gridView_ThStatus.Location = new Point(544, 50);
             gridView_ThStatus.Margin = new Padding(2);
             gridView_ThStatus.Name = "gridView_ThStatus";
             gridView_ThStatus.RowHeadersBorderStyle = DataGridViewHeaderBorderStyle.Sunken;
@@ -1837,7 +1837,7 @@
             gridView_Connection.ColumnHeadersHeight = 30;
             gridView_Connection.Columns.AddRange(new DataGridViewColumn[] { dataGridViewTextBoxColumn7, dataGridViewTextBoxColumn8, dataGridViewTextBoxColumn9, col_roundTrip });
             gridView_Connection.GridColor = SystemColors.Menu;
-            gridView_Connection.Location = new Point(20, 50);
+            gridView_Connection.Location = new Point(5, 50);
             gridView_Connection.Margin = new Padding(2);
             gridView_Connection.Name = "gridView_Connection";
             gridView_Connection.RowHeadersBorderStyle = DataGridViewHeaderBorderStyle.Sunken;
@@ -1853,7 +1853,7 @@
             gridView_Connection.RowHeadersWidth = 82;
             dataGridViewCellStyle16.Alignment = DataGridViewContentAlignment.MiddleRight;
             gridView_Connection.RowsDefaultCellStyle = dataGridViewCellStyle16;
-            gridView_Connection.Size = new Size(490, 213);
+            gridView_Connection.Size = new Size(535, 219);
             gridView_Connection.TabIndex = 6;
             // 
             // timer_statusCheck
@@ -1871,19 +1871,21 @@
             dataGridViewTextBoxColumn7.HeaderText = "Exchange";
             dataGridViewTextBoxColumn7.MinimumWidth = 10;
             dataGridViewTextBoxColumn7.Name = "dataGridViewTextBoxColumn7";
-            dataGridViewTextBoxColumn7.Width = 150;
+            dataGridViewTextBoxColumn7.Width = 140;
             // 
             // dataGridViewTextBoxColumn8
             // 
             dataGridViewTextBoxColumn8.HeaderText = "Public";
             dataGridViewTextBoxColumn8.MinimumWidth = 10;
             dataGridViewTextBoxColumn8.Name = "dataGridViewTextBoxColumn8";
+            dataGridViewTextBoxColumn8.Width = 125;
             // 
             // dataGridViewTextBoxColumn9
             // 
             dataGridViewTextBoxColumn9.HeaderText = "Private";
             dataGridViewTextBoxColumn9.MinimumWidth = 10;
             dataGridViewTextBoxColumn9.Name = "dataGridViewTextBoxColumn9";
+            dataGridViewTextBoxColumn9.Width = 125;
             // 
             // col_roundTrip
             // 

@@ -442,6 +442,10 @@ namespace Crypto_Trading
                     //decimal order_price;
                     if(side == orderSide.Buy)
                     {
+                        if(quantity < ins.quantity_unit * (decimal)1.1)
+                        {
+                            quantity = ins.quantity_unit * (decimal)1.1;
+                        }
                         quantity = quantity * ins.bestask.Item1;
                         js = await this.ord_client.coincheck_client.placeMarketNewOrder(ins.symbol, side.ToString().ToLower(), 0, quantity);
                     }

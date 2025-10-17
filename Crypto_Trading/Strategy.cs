@@ -515,7 +515,22 @@ namespace Crypto_Trading
         {
             if (this.enabled)
             {
+                decimal diff_amount = this.maker.baseBalance.total + this.taker.baseBalance.total - this.baseCcyQuantity; 
                 decimal filled_quantity = fill.quantity;
+                switch (fill.side)
+                {
+                    case orderSide.Buy://taker order will be sell
+                        filled_quantity += diff_amount;
+                        break;
+                    case orderSide.Sell:
+                        filled_quantity -= diff_amount;
+                        break;
+
+                }
+                if (filled_quantity > this.ToBsize * 2)
+                {
+                    filled_quantity = this.ToBsize * 2;
+                }
                 DataSpotOrderUpdate ord;
                 if (fill.market != this.maker.market)
                 {
