@@ -603,7 +603,10 @@ namespace Crypto_Clients
                     this.logFilePrivate.Flush();
                 }
             }
-
+            if(this.logging)
+            {
+                this.logFilePrivate.Flush();
+            }
             this.pv_memory.SetLength(0);
             this.pv_memory.Position = 0;
             this.private_client.Dispose();
@@ -710,7 +713,11 @@ namespace Crypto_Clients
             {
                 request.Content = new StringContent(body, Encoding.UTF8, "application/json");
             }
-                
+            if (this.logging)
+            {
+                this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   GET" + endpoint + body);
+            }
+
 
             var response = await this.http_client.SendAsync(request);
             var resString = await response.Content.ReadAsStringAsync();
@@ -742,6 +749,10 @@ namespace Crypto_Clients
             this.elapsedTime_POST += sw_POST.Elapsed.TotalNanoseconds / 1000;
             ++this.count;
             sw_POST.Reset();
+            if (this.logging)
+            {
+                this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   POST" + endpoint + body);
+            }
             var resString = await response.Content.ReadAsStringAsync();
 
             return resString;
@@ -767,7 +778,10 @@ namespace Crypto_Clients
 
             var response = await this.http_client.SendAsync(request);
             var resString = await response.Content.ReadAsStringAsync();
-
+            if (this.logging)
+            {
+                this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   DELETE" + endpoint + body);
+            }
             return resString;
         }
         public async Task<JsonDocument> getBalance()

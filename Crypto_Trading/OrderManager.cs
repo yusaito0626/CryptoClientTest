@@ -188,7 +188,8 @@ namespace Crypto_Trading
             JsonDocument js;
             if(this.virtualMode)
             {
-                while(!this.ord_client.ordUpdateStack.TryPop(out output))
+                quantity = Math.Round(quantity / ins.quantity_unit) * ins.quantity_unit;
+                while (!this.ord_client.ordUpdateStack.TryPop(out output))
                 {
 
                 }
@@ -338,6 +339,7 @@ namespace Crypto_Trading
             }
             else if(ins.market == "bitbank")
             {
+                quantity = Math.Round(quantity / ins.quantity_unit) * ins.quantity_unit;
                 DateTime sendTime = DateTime.UtcNow;
                 if (ordtype == orderType.Limit)
                 {
@@ -435,6 +437,7 @@ namespace Crypto_Trading
                 DateTime sendTime = DateTime.UtcNow;
                 if (ordtype == orderType.Limit)
                 {
+                    quantity = Math.Round(quantity / ins.quantity_unit) * ins.quantity_unit;
                     js = await this.ord_client.coincheck_client.placeNewOrder(ins.symbol, side.ToString().ToLower(), price, quantity, "post_only");
                 }
                 else
@@ -446,11 +449,12 @@ namespace Crypto_Trading
                         {
                             quantity = ins.quantity_unit * (decimal)1.1;
                         }
-                        quantity = quantity * ins.bestask.Item1;
+                        quantity = quantity * ins.adjusted_bestask.Item1;
                         js = await this.ord_client.coincheck_client.placeMarketNewOrder(ins.symbol, side.ToString().ToLower(), 0, quantity);
                     }
                     else
                     {
+                        quantity = Math.Round(quantity / ins.quantity_unit) * ins.quantity_unit;
                         js = await this.ord_client.coincheck_client.placeMarketNewOrder(ins.symbol, side.ToString().ToLower(), 0, quantity);
                     }
                     //Market Order
@@ -573,12 +577,21 @@ namespace Crypto_Trading
                 }
                 else
                 {
-                    string msg = JsonSerializer.Serialize(js);
-                    this.addLog(msg, Enums.logType.ERROR);
+                    string err = js.RootElement.GetProperty("error").GetString();
+                    if (err.StartsWith("Amount"))
+                    {
+                        this.addLog(err, Enums.logType.WARNING);
+                    }
+                    else
+                    {
+                        string msg = JsonSerializer.Serialize(js);
+                        this.addLog(msg, Enums.logType.ERROR);
+                    }
                 }
             }
             else if (ins.market == "bittrade")
             {
+                quantity = Math.Round(quantity / ins.quantity_unit) * ins.quantity_unit;
                 decimal order_price = price;
                 DateTime sendTime = DateTime.UtcNow;
                 if (ordtype == orderType.Limit)
@@ -644,6 +657,7 @@ namespace Crypto_Trading
             }
             else
             {
+                quantity = Math.Round(quantity / ins.quantity_unit) * ins.quantity_unit;
                 DateTime sendTime = DateTime.UtcNow;
                 output = await this.ord_client.placeNewSpotOrder(ins.market, ins.baseCcy, ins.quoteCcy, side, ordtype, quantity, price, timeinforce);
                 if (output != null)

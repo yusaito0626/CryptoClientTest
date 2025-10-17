@@ -26,7 +26,7 @@ namespace Crypto_GUI
     {
         const string ver_major = "0";
         const string ver_minor = "4";
-        const string ver_patch = "5";
+        const string ver_patch = "6";
         string configPath = "C:\\Users\\yusai\\Crypto_Project\\configs\\config.json";
         string defaultConfigPath = AppContext.BaseDirectory + "\\config.json";
         string logPath = AppContext.BaseDirectory + "\\crypto.log";

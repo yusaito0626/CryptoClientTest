@@ -545,7 +545,6 @@ namespace Crypto_Trading
                 {
                     ord = this.stg_orders[fill.client_order_id];
                 }
-
                 filled_quantity = Math.Round(filled_quantity / this.taker.quantity_unit) * this.taker.quantity_unit;
                 if (filled_quantity > 0)
                 {

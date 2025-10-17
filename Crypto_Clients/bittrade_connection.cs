@@ -826,6 +826,10 @@ namespace Crypto_Clients
             var nonce = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss");
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Add("Accept", "application/json");
+            if (this.logging)
+            {
+                this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   GET" + endpoint);
+            }
 
             var response = await this.http_client.SendAsync(request);
             response.EnsureSuccessStatusCode();
@@ -839,6 +843,10 @@ namespace Crypto_Clients
             using var request = new HttpRequestMessage(HttpMethod.Post, url);
             request.Headers.Add("Accept", "application/json");
             request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+            if (this.logging)
+            {
+                this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   POST" + endpoint + body);
+            }
 
             sw_POST.Start();
             var response = await this.http_client.SendAsync(request);
