@@ -1016,13 +1016,13 @@ namespace Crypto_GUI
                         switch(row.Cells[0].Value)
                         {
                             case "bitbank":
-                                row.Cells[3].Value = this.crypto_client.bitbank_client.avgLatency().ToString("N2");
+                                row.Cells[3].Value = (this.crypto_client.bitbank_client.avgLatency() / 1000).ToString("N2");
                                 break;
                             case "coincheck":
-                                row.Cells[3].Value = this.crypto_client.coincheck_client.avgLatency().ToString("N2");
+                                row.Cells[3].Value = (this.crypto_client.coincheck_client.avgLatency() / 1000).ToString("N2");
                                 break;
                             case "bittrade":
-                                row.Cells[3].Value = this.crypto_client.bittrade_client.avgLatency().ToString("N2");
+                                row.Cells[3].Value = (this.crypto_client.bittrade_client.avgLatency() / 1000) .ToString("N2");
                                 break;
                             default:
                                 row.Cells[3].Value = "None";

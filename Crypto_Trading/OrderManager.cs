@@ -416,8 +416,17 @@ namespace Crypto_Trading
                 }
                 else
                 {
-                    this.addLog("New Order Failed",Enums.logType.ERROR);
-                    this.addLog(js.RootElement.GetRawText(), Enums.logType.ERROR);
+                    int code = js.RootElement.GetProperty("data").GetProperty("code").GetInt32();
+                    switch (code)
+                    {
+                        case 10009:
+                            this.addLog("New order failed. Too many request.", Enums.logType.WARNING);
+                            break;
+                        default:
+                            this.addLog("New Order Failed", Enums.logType.ERROR);
+                            this.addLog(js.RootElement.GetRawText(), Enums.logType.ERROR);
+                            break;
+                    }
                     output = null;
                 }
             }
