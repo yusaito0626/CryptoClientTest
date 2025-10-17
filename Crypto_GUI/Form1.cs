@@ -166,23 +166,6 @@ namespace Crypto_GUI
             //this.qManager.stg = this.stg;
             //this.oManager.stg = this.stg;
 
-            //this.lbl_makerName.Text = this.stg.maker_symbol_market;
-            //this.lbl_takerName.Text = this.stg.taker_symbol_market;
-            //this.lbl_makerfee_maker.Text = this.stg.maker.maker_fee.ToString("N5");
-            //this.lbl_takerfee_maker.Text = this.stg.maker.taker_fee.ToString("N5");
-            //this.lbl_makerfee_taker.Text = this.stg.taker.maker_fee.ToString("N5");
-            //this.lbl_takerfee_taker.Text = this.stg.taker.taker_fee.ToString("N5");
-            //this.lbl_stgSymbol.Text = this.stg.baseCcy + this.stg.quoteCcy;
-            //this.lbl_markup.Text = this.stg.markup.ToString("N0");
-            //this.lbl_minMarkup.Text = this.stg.min_markup.ToString("N0");
-            //this.lbl_maxSkew.Text = this.stg.maxSkew.ToString("N0");
-            //this.lbl_tobsize.Text = this.stg.ToBsize.ToString("N5");
-            //this.lbl_maxpos.Text = this.stg.baseCcyQuantity.ToString("N5");
-            //this.lbl_skew.Text = this.stg.skewThreshold.ToString("N0");
-            //this.lbl_oneside.Text = this.stg.oneSideThreshold.ToString("N0");
-            //this.lbl_fillInterval.Text = this.stg.intervalAfterFill.ToString("N2");
-            //this.lbl_ordUpdateTh.Text = this.stg.modThreshold.ToString("N5");
-
             foreach (string key in this.qManager.instruments.Keys)
             {
                 this.comboSymbols.Items.Add(key);
@@ -1288,6 +1271,22 @@ namespace Crypto_GUI
             if(this.strategies.ContainsKey(this.comboStrategy.Text))
             {
                 this.selected_stg = this.strategies[this.comboStrategy.Text];
+                this.lbl_makerName.Text = this.selected_stg.maker_symbol_market;
+                this.lbl_takerName.Text = this.selected_stg.taker_symbol_market;
+                this.lbl_makerfee_maker.Text = this.selected_stg.maker.maker_fee.ToString("N5");
+                this.lbl_takerfee_maker.Text = this.selected_stg.maker.taker_fee.ToString("N5");
+                this.lbl_makerfee_taker.Text = this.selected_stg.taker.maker_fee.ToString("N5");
+                this.lbl_takerfee_taker.Text = this.selected_stg.taker.taker_fee.ToString("N5");
+                this.lbl_stgSymbol.Text = this.selected_stg.baseCcy + this.selected_stg.quoteCcy;
+                this.lbl_markup.Text = this.selected_stg.markup.ToString("N0");
+                this.lbl_minMarkup.Text = this.selected_stg.min_markup.ToString("N0");
+                this.lbl_maxSkew.Text = this.selected_stg.maxSkew.ToString("N0");
+                this.lbl_tobsize.Text = this.selected_stg.ToBsize.ToString("N5");
+                this.lbl_maxpos.Text = this.selected_stg.baseCcyQuantity.ToString("N5");
+                this.lbl_skew.Text = this.selected_stg.skewThreshold.ToString("N0");
+                this.lbl_oneside.Text = this.selected_stg.oneSideThreshold.ToString("N0");
+                this.lbl_fillInterval.Text = this.selected_stg.intervalAfterFill.ToString("N2");
+                this.lbl_ordUpdateTh.Text = this.selected_stg.modThreshold.ToString("N5");
             }
         }
     }
