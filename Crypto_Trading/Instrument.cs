@@ -3,6 +3,7 @@ using System.Threading;
 
 using Crypto_Clients;
 using CryptoExchange.Net.Objects.Options;
+using Utils;
 
 namespace Crypto_Trading
 {
@@ -145,6 +146,26 @@ namespace Crypto_Trading
                 }
                 i++;
             }
+
+            this.price_scale = Instrument.GetDecimalScale(this.price_unit).ToString();
+            this.quantity_scale = Instrument.GetDecimalScale(this.quantity_unit).ToString();
+
+            this.master_symbol = this.baseCcy + this.quoteCcy;
+            this.baseBalance.market = this.market;
+            this.baseBalance.ccy = this.baseCcy;
+            this.quoteBalance.market = this.market;
+            this.quoteBalance.ccy = this.quoteCcy;
+        }
+        public void initialize(masterInfo msinfo)
+        {
+            this.symbol = msinfo.symbol;
+            this.baseCcy = msinfo.baseCcy;
+            this.quoteCcy = msinfo.quoteCcy;
+            this.market = msinfo.market;
+            this.taker_fee = msinfo.taker_fee;
+            this.maker_fee = msinfo.maker_fee;
+            this.price_unit = msinfo.price_unit;
+            this.quantity_unit = msinfo.quantity_unit;
 
             this.price_scale = Instrument.GetDecimalScale(this.price_unit).ToString();
             this.quantity_scale = Instrument.GetDecimalScale(this.quantity_unit).ToString();

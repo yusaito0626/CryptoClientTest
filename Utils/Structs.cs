@@ -12,6 +12,35 @@ namespace Utils
         public string msg { get; set; }
     }
 
+    public struct masterInfo
+    {
+        public string symbol { get; set; }
+        public string baseCcy { get; set; }
+        public string quoteCcy { get; set; }
+        public string market {  get; set; }
+        public decimal taker_fee { get; set; }
+        public decimal maker_fee { get; set; }
+        public decimal price_unit { get; set; }
+        public decimal quantity_unit { get; set; }
+    }
+    public struct strategySetting
+    {
+        public string name { get; set; }
+        public string baseCcy { get; set; }
+        public string quoteCcy { get; set; }
+        public string taker_market { get; set; }
+        public string maker_market { get; set; }
+        public decimal markup { get; set; }
+        public decimal min_markup { get; set; }
+        public decimal max_skew { get; set; }
+        public decimal skew_widening { get; set; }
+        public decimal baseCcy_quantity { get; set; }
+        public decimal ToBsize { get; set; }
+        public decimal intervalAfterFill { get; set; }
+        public decimal modThreshold { get; set; }
+        public decimal skewThreshold { get; set; }
+        public decimal oneSideThreshold { get; set; }
+    }
     public struct fillInfo
     {
         public string timestamp { get; set; }

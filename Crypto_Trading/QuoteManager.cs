@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using Enums;
 using System.Diagnostics;
+using Utils;
 
 namespace Crypto_Trading
 {
@@ -173,6 +174,21 @@ namespace Crypto_Trading
             {
                 this.addLog("The master file doesn't exist. Filename:" + masterfile, Enums.logType.ERROR);
                 return false;
+            }
+        }
+        public void initializeInstruments(Dictionary<string,masterInfo> masters)
+        {
+            Instrument ins;
+            foreach(var m in masters)
+            {
+                ins = new Instrument();
+                ins.initialize(m.Value);
+                this.instruments[ins.symbol_market] = ins;
+                this.ins_bymaster[ins.master_symbol + "@" + ins.market] = ins;
+                if (!this._markets.ContainsKey(ins.market))
+                {
+                    this._markets[ins.market] = WebSocketState.None;
+                }
             }
         }
 

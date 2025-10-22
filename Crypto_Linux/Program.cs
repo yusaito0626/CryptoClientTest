@@ -17,7 +17,6 @@ namespace Crypto_Linux
 {
     internal class Program
     {
-        static string configPath = "C:/Users/yusai/Crypto_Project/configs/config.json";
         static string defaultConfigPath = Path.Combine(AppContext.BaseDirectory, "config.json");
         static string logPath = Path.Combine(AppContext.BaseDirectory, "crypto.log");
         static string outputPath = AppContext.BaseDirectory;
@@ -27,8 +26,6 @@ namespace Crypto_Linux
         static string masterFile = "";
         static string virtualBalanceFile = "";
         static string strategyFile = "";
-
-        static int latency = 100;
 
         static Crypto_Clients.Crypto_Clients crypto_client = Crypto_Clients.Crypto_Clients.GetInstance();
         static QuoteManager qManager = QuoteManager.GetInstance();
@@ -131,8 +128,6 @@ namespace Crypto_Linux
             thManager._addLog = addLog;
             ws_server._addLog = addLog;
 
-            ws_server.StartAsync(CancellationToken.None);
-
             qManager.initializeInstruments(masterFile);
             qManager.setQueues(crypto_client);
 
@@ -140,6 +135,7 @@ namespace Crypto_Linux
             oManager.setInstruments(qManager.instruments);
             oManager.filledOrderQueue = filledOrderQueue;
 
+            //readAPIFiles(APIsPath);
             getAPIsFromEnv(live);
 
             foreach (var ins in qManager.instruments.Values)
@@ -157,11 +153,53 @@ namespace Crypto_Linux
             qManager.strategies = strategies;
             oManager.strategies = strategies;
 
+            Dictionary<string,masterInfo> masterinfos = new Dictionary<string,masterInfo>();
+
+            foreach(var ins in qManager.instruments)
+            {
+                masterInfo ms = new masterInfo();
+                ms.symbol = ins.Value.symbol;
+                ms.market = ins.Value.market;
+                ms.baseCcy = ins.Value.baseCcy;
+                ms.quoteCcy= ins.Value.quoteCcy;
+                ms.taker_fee = ins.Value.taker_fee;
+                ms.maker_fee = ins.Value.maker_fee;
+                ms.price_unit = ins.Value.price_unit;
+                ms.quantity_unit = ins.Value.quantity_unit;
+                masterinfos[ins.Key] = ms;
+            }
+            await ws_server.setMasterInfo(masterinfos);
+
+            Dictionary<string,strategySetting> stgSettings = new Dictionary<string,strategySetting>();
+            foreach(var stg in strategies)
+            {
+                strategySetting setting = new strategySetting();
+                setting.name = stg.Value.name;
+                setting.baseCcy = stg.Value.baseCcy;
+                setting.quoteCcy = stg.Value.quoteCcy;
+                setting.taker_market = stg.Value.taker_market;
+                setting.maker_market = stg.Value.maker_market;
+                setting.markup = stg.Value.markup;
+                setting.min_markup = stg.Value.min_markup;
+                setting.max_skew = stg.Value.maxSkew;
+                setting.skew_widening = stg.Value.skewWidening;
+                setting.baseCcy_quantity = stg.Value.baseCcyQuantity;
+                setting.ToBsize = stg.Value.ToBsize;
+                setting.intervalAfterFill = stg.Value.intervalAfterFill;
+                setting.modThreshold = stg.Value.modThreshold;
+                setting.skewThreshold = stg.Value.skewThreshold;
+                setting.oneSideThreshold = stg.Value.oneSideThreshold;
+                stgSettings[stg.Key] = setting;
+            }
+            await ws_server.setStrategySetting(stgSettings);
+
             if (!await MsgDeliverer.setDiscordToken(discordTokenFile))
             {
                 addLog("Message configuration not found", Enums.logType.WARNING);
             }
             await tradePreparation(live);
+
+            ws_server.StartAsync(CancellationToken.None);
 
             addLog("Latency check");
 
@@ -179,6 +217,7 @@ namespace Crypto_Linux
                     await crypto_client.getBalance([m.Key]);
                     sw.Stop();
                     latency = sw.Elapsed.TotalNanoseconds / 1000000;
+                    sw.Reset();
                     addLog(m.Key + " trial " + i.ToString() + ": " + latency.ToString("N3") + " ms");
                     if(avgLatency.ContainsKey(m.Key))
                     {
@@ -305,17 +344,15 @@ namespace Crypto_Linux
         static private bool readConfig()
         {
             string fileContent;
-            if (File.Exists(configPath))
+
+            if (File.Exists(defaultConfigPath))
             {
-                fileContent = File.ReadAllText(configPath);
-            }
-            else if (File.Exists(defaultConfigPath))
-            {
+                Console.WriteLine("Reading config file " + defaultConfigPath);
                 fileContent = File.ReadAllText(defaultConfigPath);
             }
             else
             {
-                addLog("Config file doesn't exist. path:" + configPath, Enums.logType.ERROR);
+                addLog("Config file doesn't exist. path:" + defaultConfigPath, Enums.logType.ERROR);
                 return false;
             }
             using JsonDocument doc = JsonDocument.Parse(fileContent);
@@ -376,15 +413,6 @@ namespace Crypto_Linux
                 {
                     endTime = endTime.AddDays(1);
                 }
-            }
-            if (root.TryGetProperty("APIsPath", out elem))
-            {
-                APIsPath = elem.GetString();
-            }
-            else
-            {
-                addLog("API path is not configured.", Enums.logType.ERROR);
-                return false;
             }
             if(root.TryGetProperty("APIEnvList",out elem))
             {
@@ -1047,17 +1075,18 @@ namespace Crypto_Linux
             msg = JsonSerializer.Serialize(sendingItem,js_option);
             ws_server.BroadcastAsync(msg);
 
+            json = JsonSerializer.Serialize(threadStates, js_option);
+            sendingItem["data_type"] = "thread";
+            sendingItem["data"] = json;
+            msg = JsonSerializer.Serialize(sendingItem, js_option);
+            ws_server.BroadcastAsync(msg);
+
             json = JsonSerializer.Serialize(connectionStates, js_option);
             sendingItem["data_type"] = "connection";
             sendingItem["data"] = json;
             msg = JsonSerializer.Serialize(sendingItem, js_option);
             ws_server.BroadcastAsync(msg);
 
-            json = JsonSerializer.Serialize(threadStates, js_option);
-            sendingItem["data_type"] = "thread";
-            sendingItem["data"] = json;
-            msg = JsonSerializer.Serialize(sendingItem, js_option);
-            ws_server.BroadcastAsync(msg);
         }
 
         static async Task timer_PeriodicMsg_Tick()

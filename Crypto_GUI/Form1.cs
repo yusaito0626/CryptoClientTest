@@ -89,10 +89,10 @@ namespace Crypto_GUI
         ClientWebSocket info_receiver;
         byte[] ws_buffer = new byte[4096];
         MemoryStream ws_memory = new MemoryStream();
-        static Dictionary<string, strategyInfo> strategyInfos = new Dictionary<string, strategyInfo>();
-        static Dictionary<string, instrumentInfo> instrumentInfos = new Dictionary<string, instrumentInfo>();
-        static Dictionary<string, connecitonStatus> connectionStates = new Dictionary<string, connecitonStatus>();
-        static Dictionary<string, threadStatus> threadStates = new Dictionary<string, threadStatus>();
+
+        bool masterInfoReceived = false;
+        bool strategySettingReceived = false;
+
 
         public Form1()
         {
@@ -158,26 +158,16 @@ namespace Crypto_GUI
             //this.readAPIFiles(this.APIsPath);
             this.getAPIsFromEnv(this.live);
 
-            this.qManager.initializeInstruments(this.masterFile);
+            //this.qManager.initializeInstruments(this.masterFile);
             this.qManager.setQueues(this.crypto_client);
 
             this.oManager.setOrdLogPath(this.outputPath);
-            this.oManager.setInstruments(this.qManager.instruments);
+            //this.oManager.setInstruments(this.qManager.instruments);
             this.oManager.filledOrderQueue = this.filledOrderQueue;
 
-            this.setStrategies(this.strategyFile);
-            this.qManager.strategies = this.strategies;
-            this.oManager.strategies = this.strategies;
-
-            foreach (string key in this.qManager.instruments.Keys)
-            {
-                this.comboSymbols.Items.Add(key);
-            }
-
-            foreach (string key in this.strategies.Keys)
-            {
-                this.comboStrategy.Items.Add(key);
-            }
+            //this.setStrategies(this.strategyFile);
+            //this.qManager.strategies = this.strategies;
+            //this.oManager.strategies = this.strategies;
 
             int i = 0;
             int numOfRow = QuoteManager.NUM_OF_QUOTES * 2 + 1;
@@ -197,8 +187,12 @@ namespace Crypto_GUI
 
             this.stopTradingCalled = 0;
             this.button_receiveFeed.Enabled = true;
-            this.timer_statusCheck.Start();
-            this.timer_PeriodicMsg.Start();
+
+            if(!this.monitoringMode)
+            {
+                this.timer_statusCheck.Start();
+                this.timer_PeriodicMsg.Start();
+            }
 
             this.addLog("Application closing time:" + this.str_endTime);
         }
@@ -398,6 +392,20 @@ namespace Crypto_GUI
                 }
             }
 
+        }
+        private void setStrategies(Dictionary<string,strategySetting> stgSettings)
+        {
+            Strategy stg = new Strategy();
+            foreach(var setting in stgSettings)
+            {
+                stg.setStrategy(setting.Value);
+                stg.maker = this.qManager.getInstrument(stg.baseCcy, stg.quoteCcy, stg.maker_market);
+                stg.taker = this.qManager.getInstrument(stg.baseCcy, stg.quoteCcy, stg.taker_market);
+                stg.maker.ToBsize = stg.ToBsize;
+                stg.taker.ToBsize = stg.ToBsize;
+                stg._addLog = this.addLog;
+                this.strategies[stg.name] = stg;
+            }
         }
         private void readAPIFiles(string path)
         {
@@ -629,13 +637,39 @@ namespace Crypto_GUI
                     {
                         case WebSocketMessageType.Text:
                             msg = Encoding.UTF8.GetString(this.ws_memory.ToArray());
-                            //this.addLog(msg);
                             var js = JsonDocument.Parse(msg).RootElement;
                             string data_type = js.GetProperty("data_type").GetString();
                             string content = js.GetProperty("data").GetString();
                             
                             switch (data_type)
                             {
+                                case "master":
+                                    var masters = JsonSerializer.Deserialize<Dictionary<string, masterInfo>>(content);
+                                    this.qManager.initializeInstruments(masters);
+                                    this.oManager.setInstruments(this.qManager.instruments);
+                                    this.BeginInvoke(() =>
+                                    {
+                                        foreach (string key in this.qManager.instruments.Keys)
+                                        {
+                                            this.comboSymbols.Items.Add(key);
+                                        }
+                                    });
+                                    this.masterInfoReceived = true;
+                                    break;
+                                case "strategySetting":
+                                    var stgSetting = JsonSerializer.Deserialize<Dictionary<string, strategySetting>>(content);
+                                    setStrategies(stgSetting);
+                                    this.qManager.strategies = this.strategies;
+                                    this.oManager.strategies = this.strategies;
+                                    this.BeginInvoke(() =>
+                                    {
+                                        foreach (string key in this.strategies.Keys)
+                                        {
+                                            this.comboStrategy.Items.Add(key);
+                                        }
+                                    });
+                                    this.strategySettingReceived = true;
+                                    break;
                                 case "strategy":
                                     var stginfos = JsonSerializer.Deserialize<Dictionary<string, strategyInfo>>(content);
                                     foreach (var s in stginfos)
@@ -740,64 +774,11 @@ namespace Crypto_GUI
                                     break;
                                 case "connection":
                                     var conninfos = JsonSerializer.Deserialize<Dictionary<string, connecitonStatus>>(content);
-                                    foreach(var c in conninfos)
-                                    {
-                                        bool found = false;
-                                        foreach (DataGridViewRow row in this.gridView_Connection.Rows)
-                                        {
-                                            if (row.IsNewRow)
-                                            {
-                                                continue;
-                                            }
-                                            if (row.Cells[0] != null && row.Cells[0].Value.ToString() == c.Key)
-                                            {
-                                                row.Cells[1].Value = c.Value.publicState;
-                                                row.Cells[2].Value = c.Value.privateState;
-                                                row.Cells[3].Value = c.Value.avgRTT.ToString("N3");
-                                                found = true;
-                                                break;
-                                            }
-                                        }
-                                        if (!found)
-                                        {
-                                            this.gridView_Connection.Rows.Add(c.Key, c.Value.publicState, c.Value.privateState,c.Value.avgRTT.ToString("N3"));
-                                        }
-                                    }
+                                    this.BeginInvoke(this.updateConnectionStatus, conninfos);
                                     break;
                                 case "thread":
                                     var thinfos = JsonSerializer.Deserialize<Dictionary<string, threadStatus>>(content);
-                                    string st;
-                                    foreach(var t in thinfos)
-                                    {
-                                        bool found = false;
-                                        if (t.Value.isRunning)
-                                        {
-                                            st = "Running";
-                                        }
-                                        else
-                                        {
-                                            st = "Stopped";
-                                        }
-                                        foreach (DataGridViewRow row in this.gridView_ThStatus.Rows)
-                                        {
-                                            if (row.IsNewRow)
-                                            {
-                                                continue;
-                                            }
-                                            if (row.Cells[0] != null && row.Cells[0].Value.ToString() == t.Key)
-                                            {
-
-                                                row.Cells[1].Value = st;
-                                                row.Cells[2].Value = t.Value.avgProcessingTime.ToString("N3");
-                                                found = true;
-                                                break;
-                                            }
-                                        }
-                                        if (!found)
-                                        {
-                                            this.gridView_ThStatus.Rows.Add(t.Key, st,t.Value.avgProcessingTime.ToString("N3"));
-                                        }
-                                    }
+                                    this.BeginInvoke(this.updateThreadStatus, thinfos);
                                     break;
                                 case "log":
                                     var logs = JsonSerializer.Deserialize<List<logEntry>>(content);
@@ -831,17 +812,10 @@ namespace Crypto_GUI
                                     break;
                                 case "fill":
                                     var fills = JsonSerializer.Deserialize<List<fillInfo>>(content);
-                                    foreach(var f in fills)
-                                    {
-                                        this.gridView_orders.Rows.Insert(0);
-                                        this.gridView_orders.Rows[0].Cells[0].Value = f.timestamp;
-                                        this.gridView_orders.Rows[0].Cells[1].Value = f.market;
-                                        this.gridView_orders.Rows[0].Cells[2].Value = f.symbol;
-                                        this.gridView_orders.Rows[0].Cells[3].Value = f.side;
-                                        this.gridView_orders.Rows[0].Cells[4].Value = f.fill_price;
-                                        this.gridView_orders.Rows[0].Cells[5].Value = f.quantity;
-                                        this.gridView_orders.Rows[0].Cells[7].Value = f.fee;
-                                    }
+                                    this.BeginInvoke(this.updateFills, fills);
+                                    break;
+                                default:
+                                    this.addLog(msg);
                                     break;
                             }
 
@@ -873,6 +847,81 @@ namespace Crypto_GUI
                     break;
             }
             return (true, 0);
+        }
+        private void updateFills(List<fillInfo> fills)
+        {
+            foreach (var f in fills)
+            {
+                this.gridView_orders.Rows.Insert(0);
+                this.gridView_orders.Rows[0].Cells[0].Value = f.timestamp;
+                this.gridView_orders.Rows[0].Cells[1].Value = f.market;
+                this.gridView_orders.Rows[0].Cells[2].Value = f.symbol;
+                this.gridView_orders.Rows[0].Cells[3].Value = f.side;
+                this.gridView_orders.Rows[0].Cells[4].Value = f.fill_price;
+                this.gridView_orders.Rows[0].Cells[5].Value = f.quantity;
+                this.gridView_orders.Rows[0].Cells[7].Value = f.fee;
+            }
+        }
+        private void updateConnectionStatus(Dictionary<string,connecitonStatus> conninfos)
+        {
+            foreach (var c in conninfos)
+            {
+                bool found = false;
+                foreach (DataGridViewRow row in this.gridView_Connection.Rows)
+                {
+                    if (row.IsNewRow)
+                    {
+                        continue;
+                    }
+                    if (row.Cells[0] != null && row.Cells[0].Value.ToString() == c.Key)
+                    {
+                        row.Cells[1].Value = c.Value.publicState;
+                        row.Cells[2].Value = c.Value.privateState;
+                        row.Cells[3].Value = c.Value.avgRTT.ToString("N3");
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    this.gridView_Connection.Rows.Add(c.Key, c.Value.publicState, c.Value.privateState, c.Value.avgRTT.ToString("N3"));
+                }
+            }
+        }
+        private void updateThreadStatus(Dictionary<string,threadStatus> thinfos)
+        {
+            string st;
+            foreach (var t in thinfos)
+            {
+                bool found = false;
+                if (t.Value.isRunning)
+                {
+                    st = "Running";
+                }
+                else
+                {
+                    st = "Stopped";
+                }
+                foreach (DataGridViewRow row in this.gridView_ThStatus.Rows)
+                {
+                    if (row.IsNewRow)
+                    {
+                        continue;
+                    }
+                    if (row.Cells[0] != null && row.Cells[0].Value.ToString() == t.Key)
+                    {
+
+                        row.Cells[1].Value = st;
+                        row.Cells[2].Value = t.Value.avgProcessingTime.ToString("N3");
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    this.gridView_ThStatus.Rows.Add(t.Key, st, t.Value.avgProcessingTime.ToString("N3"));
+                }
+            }
         }
 
         private void _update()
@@ -1200,10 +1249,14 @@ namespace Crypto_GUI
                 {
                     await connectTradeEngine();
                     this.oManager.setVirtualMode(true);
+                    while(this.masterInfoReceived == false || this.strategySettingReceived == false)
+                    {
+                        Thread.Sleep(1000);
+                    }
                     foreach (var mkt in this.qManager._markets)
                     {
                         await this.qManager.connectPublicChannel(mkt.Key);
-                        await this.oManager.connectPrivateChannel(mkt.Key);
+                        //await this.oManager.connectPrivateChannel(mkt.Key);
                     }
                 }
 
@@ -1230,7 +1283,7 @@ namespace Crypto_GUI
                 
                 this.qManager.ready = true;
 
-                if (liveTrading || this.privateConnect)
+                if (this.monitoringMode == false && (liveTrading || this.privateConnect))
                 {
                     await crypto_client.subscribeSpotOrderUpdates(this.qManager._markets.Keys);
                 }
@@ -1240,10 +1293,10 @@ namespace Crypto_GUI
 
                 this.thManager.addThread("updateQuotes", this.qManager._updateQuotes,this.qManager.updateQuotesOnClosing,this.qManager.updateQuotesOnError);
                 this.thManager.addThread("updateTrades", this.qManager._updateTrades,this.qManager.updateTradesOnClosing,this.qManager.updateTradesOnClosing);
-                this.thManager.addThread("updateOrders", this.oManager._updateOrders,this.oManager.updateOrdersOnClosing,this.oManager.updateOrdersOnError);
-                this.thManager.addThread("updateFill", this.oManager._updateFill,this.oManager.updateFillOnClosing);
                 if(!this.monitoringMode)
                 {
+                    this.thManager.addThread("updateOrders", this.oManager._updateOrders, this.oManager.updateOrdersOnClosing, this.oManager.updateOrdersOnError);
+                    this.thManager.addThread("updateFill", this.oManager._updateFill, this.oManager.updateFillOnClosing);
                     this.thManager.addThread("optimize", this.qManager._optimize, this.qManager.optimizeOnClosing, this.qManager.optimizeOnError);
                     this.thManager.addThread("orderLogging", this.oManager._orderLogging, this.oManager.ordLoggingOnClosing, this.oManager.ordLoggingOnError);
                 }

@@ -21,6 +21,8 @@ namespace Crypto_Linux
         private readonly HttpListener _listener = new();
         private readonly List<WebSocket> _clients = new();
 
+        public Dictionary<string, masterInfo> masterInfos;
+        public Dictionary<string, strategySetting> strategySetting;
         public List<logEntry> logList = new List<logEntry>();
         public List<fillInfo> dataFillList = new List<fillInfo>();
         
@@ -29,7 +31,6 @@ namespace Crypto_Linux
 
         public Action<string, Enums.logType> _addLog;
 
-        Dictionary<string, string> sendingItem = new Dictionary<string, string>();
         JsonSerializerOptions js_option = new JsonSerializerOptions
         {
             WriteIndented = true
@@ -78,17 +79,31 @@ namespace Crypto_Linux
 
         private async Task HandleClient(WebSocket socket, CancellationToken token)
         {
-            var buffer = new byte[4096];
-
-            while(Interlocked.CompareExchange(ref this.sendingLogs,1,0) != 0)
-            {
-
-            }
             int PageSize = 10;
             int i = 0;
             string json = "";
-            
+
             string msg;
+            var buffer = new byte[4096];
+
+            Dictionary<string,string> item = new Dictionary<string,string>();
+
+            json = JsonSerializer.Serialize(this.masterInfos);
+            item["data_type"] = "master";
+            item["data"] = json;
+            msg = JsonSerializer.Serialize(item, this.js_option);
+            await this.BroadcastAsync(msg);
+
+            json = JsonSerializer.Serialize(this.strategySetting);
+            item["data_type"] = "strategySetting";
+            item["data"] = json;
+            msg = JsonSerializer.Serialize(item, this.js_option);
+            await this.BroadcastAsync(msg);
+
+            while (Interlocked.CompareExchange(ref this.sendingLogs,1,0) != 0)
+            {
+
+            }
             while (i < this.logList.Count)
             {
                 List<logEntry> subList;
@@ -101,10 +116,10 @@ namespace Crypto_Linux
                     subList = this.logList.GetRange(i, PageSize);
                 }
                 json = JsonSerializer.Serialize(subList);
-                sendingItem["data_type"] = "log";
-                sendingItem["data"] = json;
-                msg = JsonSerializer.Serialize(sendingItem, this.js_option);
-                this.BroadcastAsync(msg);
+                item["data_type"] = "log";
+                item["data"] = json;
+                msg = JsonSerializer.Serialize(item, this.js_option);
+                await this.BroadcastAsync(msg);
                 i += PageSize;
             }
             Volatile.Write(ref this.sendingLogs, 0);
@@ -125,10 +140,10 @@ namespace Crypto_Linux
                     subList = this.dataFillList.GetRange(i, PageSize);
                 }
                 json = JsonSerializer.Serialize(subList);
-                sendingItem["data_type"] = "fill";
-                sendingItem["data"] = json;
-                msg = JsonSerializer.Serialize(sendingItem, this.js_option);
-                this.BroadcastAsync(msg);
+                item["data_type"] = "fill";
+                item["data"] = json;
+                msg = JsonSerializer.Serialize(item, this.js_option);
+                await this.BroadcastAsync(msg);
                 i += PageSize;
             }
             Volatile.Write(ref this.sendingFills, 0);
@@ -168,7 +183,7 @@ namespace Crypto_Linux
 
             }
             this.dataFillList.Add(fill);
-
+            Dictionary<string, string> sendingItem = new Dictionary<string, string>();
             string json = JsonSerializer.Serialize<List<fillInfo>>([fill]);
             string msg;
             sendingItem["data_type"] = "fill";
@@ -187,11 +202,35 @@ namespace Crypto_Linux
 
             string json = JsonSerializer.Serialize<List<logEntry>>([log]);
             string msg;
+            Dictionary<string, string> sendingItem = new Dictionary<string, string>();
             sendingItem["data_type"] = "log";
             sendingItem["data"] = json;
             msg = JsonSerializer.Serialize(sendingItem, this.js_option);
             this.BroadcastAsync(msg);
             Volatile.Write(ref this.sendingLogs, 0);
+        }
+        public async Task setMasterInfo(Dictionary<string,masterInfo> msinfos)
+        {
+            string js = JsonSerializer.Serialize(msinfos);
+            string msg;
+            Dictionary<string, string> items = new Dictionary<string, string>();
+            items["data_type"] = "master";
+            items["data"] = js;
+            msg = JsonSerializer.Serialize(items, this.js_option);
+            await this.BroadcastAsync(msg);
+            this.masterInfos = msinfos;
+        }
+
+        public async Task setStrategySetting(Dictionary<string, strategySetting> strategies)
+        {
+            string js = JsonSerializer.Serialize(strategies);
+            string msg;
+            Dictionary<string, string> items = new Dictionary<string, string>();
+            items["data_type"] = "strategySetting";
+            items["data"] = js;
+            msg = JsonSerializer.Serialize(items, this.js_option);
+            await this.BroadcastAsync(msg);
+            this.strategySetting = strategies;
         }
         public async Task BroadcastAsync(string message)
         {

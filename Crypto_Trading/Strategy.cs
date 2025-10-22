@@ -8,6 +8,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Utils;
 
 namespace Crypto_Trading
 {
@@ -167,6 +168,24 @@ namespace Crypto_Trading
             this.oneSideThreshold = js.GetProperty("oneSideThreshold").GetDecimal();
             this.taker_market = js.GetProperty("taker_market").ToString();
             this.maker_market = js.GetProperty("maker_market").ToString();
+        }
+        public void setStrategy(strategySetting setting)
+        {
+            this.name = setting.name;
+            this.baseCcy = setting.baseCcy;
+            this.quoteCcy = setting.quoteCcy;
+            this.markup = setting.markup;
+            this.min_markup = setting.min_markup;
+            this.baseCcyQuantity = setting.baseCcy_quantity;
+            this.skewWidening = setting.skew_widening;
+            this.ToBsize = setting.ToBsize;
+            this.intervalAfterFill = setting.intervalAfterFill;
+            this.modThreshold = setting.modThreshold;
+            this.maxSkew = setting.max_skew;
+            this.skewThreshold = setting.skewThreshold;
+            this.oneSideThreshold = setting.oneSideThreshold;
+            this.taker_market = setting.taker_market;
+            this.maker_market = setting.maker_market;
         }
 
         public async Task updateOrders()
