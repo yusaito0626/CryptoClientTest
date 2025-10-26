@@ -656,10 +656,18 @@ namespace Crypto_Clients
 
             var json = JsonDocument.Parse(resString);
 
-            var channel = json.RootElement.GetProperty("data").GetProperty("pubnub_channel").GetString();
-            var token = json.RootElement.GetProperty("data").GetProperty("pubnub_token").GetString();
-
-            return (channel!, token!);
+            if (json.RootElement.GetProperty("success").GetInt32() == 1)
+            {
+                var channel = json.RootElement.GetProperty("data").GetProperty("pubnub_channel").GetString();
+                var token = json.RootElement.GetProperty("data").GetProperty("pubnub_token").GetString();
+                return (channel!, token!);
+            }
+            else
+            {
+                var errorCode = json.RootElement.GetProperty("data").GetProperty("code").GetInt32();
+                addLog("Failed to get channel and token. error code:" + errorCode.ToString(), Enums.logType.ERROR);
+                return ("", "");
+            }
         }
 
         private Pubnub GetPubNubAndAddListener(string channel, string token)

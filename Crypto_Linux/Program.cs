@@ -17,7 +17,8 @@ namespace Crypto_Linux
 {
     internal class Program
     {
-        static string defaultConfigPath = Path.Combine(AppContext.BaseDirectory, "config.json");
+        //static string defaultConfigPath = Path.Combine(AppContext.BaseDirectory, "config.json");
+        static string defaultConfigPath = "C:\\Users\\yusai\\Crypto_Project\\configs\\config_linuxtest.json";
         static string logPath = Path.Combine(AppContext.BaseDirectory, "crypto.log");
         static string outputPath = AppContext.BaseDirectory;
         static string APIsPath = "";
