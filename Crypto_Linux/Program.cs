@@ -1,6 +1,7 @@
 ﻿using Crypto_Clients;
 using Crypto_Trading;
 using CryptoClients.Net.Enums;
+using CryptoExchange.Net.Logging.Extensions;
 using CryptoExchange.Net.SharedApis;
 using Discord;
 using System.Collections.Concurrent;
@@ -303,6 +304,7 @@ namespace Crypto_Linux
                 Thread.Sleep(1000);
             }
         }
+
 
         static private async Task sendFills()
         {

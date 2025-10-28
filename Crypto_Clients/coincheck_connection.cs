@@ -57,8 +57,7 @@ namespace Crypto_Clients
         private Int64 lastnonce;
 
         public bool logging;
-        public StreamWriter logFilePublic;
-        public StreamWriter logFilePrivate;
+        public StreamWriter msgLog;
 
         Stopwatch sw_POST;
         double elapsedTime_POST;
@@ -98,10 +97,8 @@ namespace Crypto_Clients
         public void setLogFile(string path)
         {
             this.logging = true;
-            FileStream fspub = new FileStream(path + "/coincheckPublic_log" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".txt", FileMode.Append, FileAccess.Write, FileShare.Read);
-            this.logFilePublic = new StreamWriter(fspub);
-            FileStream fspri = new FileStream(path + "/coincheckPrivate_log" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".txt", FileMode.Append, FileAccess.Write, FileShare.Read);
-            this.logFilePrivate = new StreamWriter(fspri);
+            FileStream fspub = new FileStream(path + "/coincheck_msglog" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".txt", FileMode.Append, FileAccess.Write, FileShare.Read);
+            this.msgLog = new StreamWriter(fspub);
         }
         public void SetApiCredentials(string name, string key)
         {
@@ -326,8 +323,8 @@ namespace Crypto_Clients
                 }
                 if(this.logging)
                 {
-                    this.logFilePublic.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
-                    this.logFilePublic.Flush();
+                    this.msgLog.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
+                    this.msgLog.Flush();
                 }
             }
 
@@ -342,7 +339,7 @@ namespace Crypto_Clients
             this.websocket_client.Dispose();
             if (this.logging)
             {
-                this.logFilePublic.Flush();
+                this.msgLog.Flush();
             }
         }
         public async Task<(bool,double)> onListen(Action<string> onMsg)
@@ -386,7 +383,7 @@ namespace Crypto_Clients
                     }
                     if(this.logging)
                     {
-                        this.logFilePublic.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
+                        this.msgLog.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
                         //this.logFilePublic.Flush();
                     }
                     this.ws_memory.SetLength(0);
@@ -599,13 +596,13 @@ namespace Crypto_Clients
                 }
                 if(this.logging)
                 {
-                    this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
-                    this.logFilePrivate.Flush();
+                    this.msgLog.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
+                    this.msgLog.Flush();
                 }
             }
             if(this.logging)
             {
-                this.logFilePrivate.Flush();
+                this.msgLog.Flush();
             }
             this.pv_memory.SetLength(0);
             this.pv_memory.Position = 0;
@@ -619,7 +616,7 @@ namespace Crypto_Clients
             this.private_client.Dispose();
             if (this.logging)
             {
-                this.logFilePrivate.Flush();
+                this.msgLog.Flush();
             }
         }
         public async Task<(bool,double)> onListenPrivate(Action<string> onMsg)
@@ -665,7 +662,7 @@ namespace Crypto_Clients
                     }
                     if(this.logging)
                     {
-                        this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
+                        this.msgLog.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
                         //this.logFilePrivate.Flush();
                     }
                     this.pv_memory.SetLength(0);
@@ -715,7 +712,7 @@ namespace Crypto_Clients
             }
             if (this.logging)
             {
-                this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   GET" + endpoint + body);
+                this.msgLog.WriteLine(DateTime.UtcNow.ToString() + "   GET" + endpoint + body);
             }
 
 
@@ -751,7 +748,7 @@ namespace Crypto_Clients
             sw_POST.Reset();
             if (this.logging)
             {
-                this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   POST" + endpoint + body);
+                this.msgLog.WriteLine(DateTime.UtcNow.ToString() + "   POST" + endpoint + body);
             }
             var resString = await response.Content.ReadAsStringAsync();
 
@@ -780,7 +777,7 @@ namespace Crypto_Clients
             var resString = await response.Content.ReadAsStringAsync();
             if (this.logging)
             {
-                this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   DELETE" + endpoint + body);
+                this.msgLog.WriteLine(DateTime.UtcNow.ToString() + "   DELETE" + endpoint + body);
             }
             return resString;
         }

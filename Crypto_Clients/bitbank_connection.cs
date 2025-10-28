@@ -55,8 +55,7 @@ namespace Crypto_Clients
         MemoryStream result_memory = new MemoryStream();
 
         public bool logging;
-        public StreamWriter logFilePublic;
-        public StreamWriter logFilePrivate;
+        public StreamWriter msgLog;
 
         Stopwatch sw_POST;
         double elapsedTime_POST;
@@ -108,10 +107,8 @@ namespace Crypto_Clients
         public void setLogFile(string path)
         {
             this.logging = true;
-            FileStream fspub = new FileStream(path + "/bitbankPublic_log" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".txt", FileMode.Append, FileAccess.Write, FileShare.Read);
-            this.logFilePublic = new StreamWriter(fspub);
-            FileStream fspri = new FileStream(path + "/bitbankPrivate_log" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".txt", FileMode.Append, FileAccess.Write, FileShare.Read);
-            this.logFilePrivate = new StreamWriter(fspri);
+            FileStream fspub = new FileStream(path + "/bitbank_msglog" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".txt", FileMode.Append, FileAccess.Write, FileShare.Read);
+            this.msgLog = new StreamWriter(fspub);
         }
 
         public void SetApiCredentials(string name, string key)
@@ -330,8 +327,8 @@ namespace Crypto_Clients
                 }
                 if(this.logging)
                 {
-                    this.logFilePublic.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + msg);
-                    this.logFilePublic.Flush();
+                    this.msgLog.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + msg);
+                    this.msgLog.Flush();
                 }
             }
 
@@ -347,7 +344,7 @@ namespace Crypto_Clients
             this.websocket_client.Dispose();
             if(this.logging)
             {
-                this.logFilePublic.Flush();
+                this.msgLog.Flush();
             }
         }
 
@@ -429,7 +426,7 @@ namespace Crypto_Clients
                     }
                     if(this.logging)
                     {
-                        this.logFilePublic.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + msg);
+                        this.msgLog.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + msg);
                         //this.logFilePublic.Flush();
                     }
                     this.ws_memory.SetLength(0);
@@ -635,8 +632,8 @@ namespace Crypto_Clients
                         }
                         if(this.logging)
                         {
-                            this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + messageResult.Message.ToString());
-                            this.logFilePrivate.Flush();
+                            this.msgLog.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + messageResult.Message.ToString());
+                            this.msgLog.Flush();
                         }
                     }
                 },
@@ -645,8 +642,8 @@ namespace Crypto_Clients
                     this.addLog("presence: " + presenceResult.Event);
                     if(this.logging)
                     {
-                        this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + presenceResult.Event);
-                        this.logFilePrivate.Flush();
+                        this.msgLog.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + presenceResult.Event);
+                        this.msgLog.Flush();
                     }
                 },
                 async (pubnubObj, status) =>
@@ -686,8 +683,8 @@ namespace Crypto_Clients
                     }
                     if(this.logging)
                     {
-                        this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + status.Category.ToString() + " " + status.ErrorData.ToString());
-                        this.logFilePrivate.Flush();
+                        this.msgLog.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + status.Category.ToString() + " " + status.ErrorData.ToString());
+                        this.msgLog.Flush();
                     }
                 }));
 

@@ -1355,12 +1355,8 @@ namespace Crypto_Trading
                         }
                         else
                         {
-                            ++i;
-                            if (i > 100000)
-                            {
-                                s.Flush();
-                                i = 0;
-                            }
+                            s.Flush();
+                            Thread.Sleep(1000);
                         }
                         if (this.aborting && this.updateOrderStopped)
                         {

@@ -70,8 +70,7 @@ namespace Crypto_Clients
 
 
         public bool logging;
-        public StreamWriter logFilePublic;
-        public StreamWriter logFilePrivate;
+        public StreamWriter msgLog;
 
         Stopwatch sw_POST;
         double elapsedTime_POST;
@@ -111,9 +110,7 @@ namespace Crypto_Clients
         {
             this.logging = true;
             FileStream fspub = new FileStream(path + "/bittradePublic_log" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".txt", FileMode.Append, FileAccess.Write, FileShare.Read);
-            this.logFilePublic = new StreamWriter(fspub);
-            FileStream fspri = new FileStream(path + "/bittradePrivate_log" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".txt", FileMode.Append, FileAccess.Write, FileShare.Read);
-            this.logFilePrivate = new StreamWriter(fspri);
+            this.msgLog = new StreamWriter(fspub);
         }
         public void SetApiCredentials(string name, string key)
         {
@@ -468,8 +465,8 @@ namespace Crypto_Clients
                 }
                 if(this.logging)
                 {
-                    this.logFilePublic.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
-                    this.logFilePublic.Flush();
+                    this.msgLog.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
+                    this.msgLog.Flush();
                 }
             }
 
@@ -484,7 +481,7 @@ namespace Crypto_Clients
             this.websocket_client.Dispose();
             if (this.logging)
             {
-                this.logFilePublic.Flush();
+                this.msgLog.Flush();
             }
         }
         public async Task<(bool,double)> onListen(Action<string> onMsg)
@@ -529,7 +526,7 @@ namespace Crypto_Clients
                     }
                     if(this.logging)
                     {
-                        this.logFilePublic.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
+                        this.msgLog.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
                         //this.logFilePublic.Flush();
                     }
                     this.ws_memory.SetLength(0);
@@ -732,8 +729,8 @@ namespace Crypto_Clients
                 }
                 if(this.logging)
                 {
-                    this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
-                    this.logFilePrivate.Flush();
+                    this.msgLog.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
+                    this.msgLog.Flush();
                 }
             }
             this.pv_memory.SetLength(0);
@@ -748,7 +745,7 @@ namespace Crypto_Clients
             this.private_client.Dispose();
             if (this.logging)
             {
-                this.logFilePrivate.Flush();
+                this.msgLog.Flush();
             }
         }
 
@@ -794,7 +791,7 @@ namespace Crypto_Clients
                     }
                     if(this.logging)
                     {
-                        this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
+                        this.msgLog.WriteLine(DateTime.UtcNow.ToString() + "   " + msg);
                         //this.logFilePrivate.Flush();
                     }
                     this.pv_memory.SetLength(0);
@@ -828,7 +825,7 @@ namespace Crypto_Clients
             request.Headers.Add("Accept", "application/json");
             if (this.logging)
             {
-                this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   GET" + endpoint);
+                this.msgLog.WriteLine(DateTime.UtcNow.ToString() + "   GET" + endpoint);
             }
 
             var response = await this.http_client.SendAsync(request);
@@ -845,7 +842,7 @@ namespace Crypto_Clients
             request.Content = new StringContent(body, Encoding.UTF8, "application/json");
             if (this.logging)
             {
-                this.logFilePrivate.WriteLine(DateTime.UtcNow.ToString() + "   POST" + endpoint + body);
+                this.msgLog.WriteLine(DateTime.UtcNow.ToString() + "   POST" + endpoint + body);
             }
 
             sw_POST.Start();
