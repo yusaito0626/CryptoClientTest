@@ -994,21 +994,18 @@ namespace Crypto_Trading
                     if (this.orders.ContainsKey(ord.client_order_id))
                     {
                         prevord = this.orders[ord.client_order_id];
-                        if(ord.status == orderStatus.Filled)
+                        foreach (var stg in this.strategies)
                         {
-                            foreach (var stg in this.strategies)
+                            if (stg.Value.enabled)
                             {
-                                if (stg.Value.enabled)
+                                if (ord.symbol_market == stg.Value.maker.symbol_market)
                                 {
-                                    if(ord.symbol_market == stg.Value.maker.symbol_market)
-                                    {
-                                        stg.Value.onOrdUpdate(ord,prevord);
-                                    }
+                                    stg.Value.onOrdUpdate(ord, prevord);
                                 }
-
                             }
+
                         }
-                        
+
                         if (ord.status < prevord.status || ord.filled_quantity < prevord.filled_quantity)
                         {
                             ord.init();
@@ -1149,19 +1146,16 @@ namespace Crypto_Trading
                         }
                         else
                         {
-                            if (ord.status == orderStatus.Filled)
+                            foreach (var stg in this.strategies)
                             {
-                                foreach (var stg in this.strategies)
+                                if (stg.Value.enabled)
                                 {
-                                    if (stg.Value.enabled)
+                                    if (ord.symbol_market == stg.Value.maker.symbol_market)
                                     {
-                                        if (ord.symbol_market == stg.Value.maker.symbol_market)
-                                        {
-                                            stg.Value.onOrdUpdate(ord, ord);
-                                        }
+                                        stg.Value.onOrdUpdate(ord, ord);
                                     }
-
                                 }
+
                             }
                             if (ins != null)
                             {
