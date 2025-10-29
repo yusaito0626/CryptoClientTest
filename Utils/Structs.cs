@@ -40,6 +40,7 @@ namespace Utils
         public decimal modThreshold { get; set; }
         public decimal skewThreshold { get; set; }
         public decimal oneSideThreshold { get; set; }
+        public Boolean predictFill { get; set; }
     }
     public struct fillInfo
     {

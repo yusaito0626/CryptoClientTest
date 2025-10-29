@@ -34,7 +34,10 @@ namespace Crypto_Trading
         public decimal skewWidening;
 
         public bool abook;
-        public bool includeFee;
+
+        public bool predictFill;
+        public volatile int fill_lock;
+        public Dictionary<string, DataSpotOrderUpdate> executed_Orders;
 
         public string baseCcy;
         public string quoteCcy;
@@ -65,7 +68,8 @@ namespace Crypto_Trading
         public decimal taker_last_updated_mid;
         public decimal maker_last_updated_mid;
 
-        public DateTime? last_filled_time;
+        public DateTime? last_filled_time_buy;
+        public DateTime? last_filled_time_sell;
 
         public decimal notionalVolume;
         public decimal tradingPnL;
@@ -88,7 +92,7 @@ namespace Crypto_Trading
             this.oneSideThreshold = 0;
             this.skewWidening = 0;
             this.abook = true;
-            this.includeFee = true;
+            this.predictFill = false;
 
             this.taker_symbol_market = "";
             this.maker_symbol_market = "";
@@ -108,6 +112,7 @@ namespace Crypto_Trading
             this.live_sellorder_id = "";
             this.live_buyorder_id = "";
             this.stg_orders = new Dictionary<string, DataSpotOrderUpdate>();
+            this.executed_Orders = new Dictionary<string, DataSpotOrderUpdate>();
 
             this.live_askprice = 0;
             this.live_bidprice = 0;
@@ -132,8 +137,8 @@ namespace Crypto_Trading
                 using JsonDocument doc = JsonDocument.Parse(fileContent);
                 var root = doc.RootElement;
 
-                this.baseCcy = root.GetProperty("baseCcy").ToString();
-                this.quoteCcy = root.GetProperty("quoteCcy").ToString();
+                this.baseCcy = root.GetProperty("baseCcy").GetString();
+                this.quoteCcy = root.GetProperty("quoteCcy").GetString();
                 this.markup = root.GetProperty("markup").GetDecimal();
                 this.min_markup = root.GetProperty("min_markup").GetDecimal();
                 this.baseCcyQuantity = root.GetProperty("baseCcyQuantity").GetDecimal();
@@ -144,8 +149,9 @@ namespace Crypto_Trading
                 this.maxSkew = root.GetProperty("max_skew").GetDecimal();
                 this.skewThreshold = root.GetProperty("skewThreshold").GetDecimal();
                 this.oneSideThreshold = root.GetProperty("oneSideThreshold").GetDecimal();
-                this.taker_symbol_market = root.GetProperty("taker_symbol_market").ToString();
-                this.maker_symbol_market = root.GetProperty("maker_symbol_market").ToString();
+                this.taker_symbol_market = root.GetProperty("taker_symbol_market").GetString();
+                this.maker_symbol_market = root.GetProperty("maker_symbol_market").GetString();
+                this.predictFill = root.GetProperty("fillPrediction").GetBoolean();
                 //this.taker_market = root.GetProperty("taker_market").ToString();
                 //this.maker_market = root.GetProperty("maker_market").ToString();
             }
@@ -153,9 +159,9 @@ namespace Crypto_Trading
 
         public void setStrategy(JsonElement js)
         {
-            this.name = js.GetProperty("name").ToString();
-            this.baseCcy = js.GetProperty("baseCcy").ToString();
-            this.quoteCcy = js.GetProperty("quoteCcy").ToString();
+            this.name = js.GetProperty("name").GetString();
+            this.baseCcy = js.GetProperty("baseCcy").GetString();
+            this.quoteCcy = js.GetProperty("quoteCcy").GetString();
             this.markup = js.GetProperty("markup").GetDecimal();
             this.min_markup = js.GetProperty("min_markup").GetDecimal();
             this.baseCcyQuantity = js.GetProperty("baseCcyQuantity").GetDecimal();
@@ -166,8 +172,9 @@ namespace Crypto_Trading
             this.maxSkew = js.GetProperty("max_skew").GetDecimal();
             this.skewThreshold = js.GetProperty("skewThreshold").GetDecimal();
             this.oneSideThreshold = js.GetProperty("oneSideThreshold").GetDecimal();
-            this.taker_market = js.GetProperty("taker_market").ToString();
-            this.maker_market = js.GetProperty("maker_market").ToString();
+            this.taker_market = js.GetProperty("taker_market").GetString();
+            this.maker_market = js.GetProperty("maker_market").GetString();
+            this.predictFill = js.GetProperty("fillPrediction").GetBoolean();
         }
         public void setStrategy(strategySetting setting)
         {
@@ -186,6 +193,7 @@ namespace Crypto_Trading
             this.oneSideThreshold = setting.oneSideThreshold;
             this.taker_market = setting.taker_market;
             this.maker_market = setting.maker_market;
+            this.predictFill = setting.predictFill;
         }
 
         public async Task updateOrders()
@@ -306,6 +314,31 @@ namespace Crypto_Trading
                                 break;
                         }
                     }
+
+                    //Fill check
+                    //if(this.predictFill)
+                    //{
+                    //    if(this.live_buyorder != null)
+                    //    {
+                    //        if(this.maker.bids.ContainsKey(this.live_buyorder.order_price)==false)//Filled
+                    //        {
+                    //            while(Interlocked.CompareExchange(ref this.fill_lock,1,0) != 0)
+                    //            {
+
+                    //            }
+                    //            if(this.executed_Orders.ContainsKey(this.live_buyorder.client_order_id) == false)//Send an order to taker otherwise do nothing.
+                    //            {
+                    //                this.executed_Orders[this.live_buyorder.client_order_id] = this.live_buyorder;
+                    //                this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, this.live_buyorder.order_quantity - this.live_buyorder.filled_quantity, 0);
+
+                    //                this.live_buyorder = null;
+                    //                this.live_buyorder_id = "";
+                    //                this.live_bidprice = 0;
+                    //            }
+                    //            Volatile.Write(ref this.fill_lock, 0);
+                    //        }
+                    //    }
+                    //}
                 }
                 else
                 {
@@ -384,7 +417,7 @@ namespace Crypto_Trading
                     {
                         //Do nothing
                     }
-                    else if (bid_price > 0 && (this.last_filled_time == null || (decimal)(DateTime.UtcNow - this.last_filled_time).Value.TotalSeconds > this.intervalAfterFill))
+                    else if (bid_price > 0 && (this.last_filled_time_buy == null || (decimal)(DateTime.UtcNow - this.last_filled_time_buy).Value.TotalSeconds > this.intervalAfterFill))
                     {
                         this.live_buyorder = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ToBsize, bid_price);
                         if (this.live_buyorder != null)
@@ -436,7 +469,7 @@ namespace Crypto_Trading
                     {
                         //Do nothing
                     }
-                    else if (ask_price > 0 && (this.last_filled_time == null || (decimal)(DateTime.UtcNow - this.last_filled_time).Value.TotalSeconds > this.intervalAfterFill))
+                    else if (ask_price > 0 && (this.last_filled_time_sell == null || (decimal)(DateTime.UtcNow - this.last_filled_time_sell).Value.TotalSeconds > this.intervalAfterFill))
                     {
                         this.live_sellorder = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ToBsize, ask_price);
                         if (this.live_sellorder != null)
@@ -540,6 +573,174 @@ namespace Crypto_Trading
             return skew_point;
         }
 
+        public void onTrades(DataTrade trade)
+        {
+            if(this.predictFill && trade.symbol + "@" + trade.market == this.maker.symbol_market)
+            {
+                DataSpotOrderUpdate ord = null;
+                decimal quantity = 0;
+                switch(trade.side)
+                {
+                    case CryptoExchange.Net.SharedApis.SharedOrderSide.Buy:
+                        ord = this.live_sellorder;
+                        if (ord != null)
+                        {
+                            if(ord.order_price < trade.price)//If the buy trade price is higher than our ask
+                            {
+                                while (Interlocked.CompareExchange(ref this.fill_lock, 1, 0) != 0)
+                                {
+
+                                }
+                                if (this.executed_Orders.ContainsKey(ord.client_order_id))
+                                {
+                                    //Do nothing
+                                }
+                                else
+                                {
+                                    decimal filled_quantity = ord.order_quantity - ord.filled_quantity;
+
+                                    //this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0);
+                                    //this.last_filled_time_sell = DateTime.UtcNow;
+                                    this.executed_Orders[ord.client_order_id] = ord;
+                                    ord.msg += "  onTrades at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
+                                }
+                                Volatile.Write(ref this.fill_lock, 0);
+                            }
+                        }
+                        break;
+                    case CryptoExchange.Net.SharedApis.SharedOrderSide.Sell:
+                        ord = this.live_buyorder;
+                        if (ord != null)
+                        {
+                            if (ord.order_price > trade.price)//If the sell trade price is lower than our bid
+                            {
+                                while (Interlocked.CompareExchange(ref this.fill_lock, 1, 0) != 0)
+                                {
+
+                                }
+                                if (this.executed_Orders.ContainsKey(ord.client_order_id))
+                                {
+                                    //Do nothing
+                                }
+                                else
+                                {
+                                    decimal filled_quantity = ord.order_quantity - ord.filled_quantity;
+
+                                    //this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0);
+                                    //this.last_filled_time_buy = DateTime.UtcNow;
+                                    this.executed_Orders[ord.client_order_id] = ord;
+                                    ord.msg += "  onTrades at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
+                                }
+                                Volatile.Write(ref this.fill_lock, 0);
+                            }
+                        }
+                        break;
+                }
+            }
+        }
+        public void onMakerQuotes(DataOrderBook quote)
+        {
+            if(this.predictFill && quote.symbol + "@" + quote.market == this.maker.symbol_market)
+            {
+                DataSpotOrderUpdate ord = this.live_sellorder;
+                if(ord != null)
+                {
+                    if(quote.asks.ContainsKey(ord.order_price) && quote.asks[ord.order_price] == 0)
+                    {
+                        while (Interlocked.CompareExchange(ref this.fill_lock, 1, 0) != 0)
+                        {
+
+                        }
+                        if (this.executed_Orders.ContainsKey(ord.client_order_id))
+                        {
+                            //Do nothing
+                        }
+                        else
+                        {
+                            decimal filled_quantity = ord.order_quantity - ord.filled_quantity;
+
+                            //this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0);
+                            //this.last_filled_time_sell = DateTime.UtcNow;
+                            this.executed_Orders[ord.client_order_id] = ord;
+                            ord.msg += "  onMakerQuotes at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
+                        }
+                        Volatile.Write(ref this.fill_lock, 0);
+                    }
+                }
+
+                ord = this.live_buyorder;
+                if (ord != null)
+                {
+                    if (quote.bids.ContainsKey(ord.order_price) && quote.bids[ord.order_price] == 0)
+                    {
+                        while (Interlocked.CompareExchange(ref this.fill_lock, 1, 0) != 0)
+                        {
+
+                        }
+                        if (this.executed_Orders.ContainsKey(ord.client_order_id))
+                        {
+                            //Do nothing
+                        }
+                        else
+                        {
+                            decimal filled_quantity = ord.order_quantity - ord.filled_quantity;
+
+                            //this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0);
+                            //this.last_filled_time_buy = DateTime.UtcNow;
+                            this.executed_Orders[ord.client_order_id] = ord;
+                            ord.msg += "  onMakerQuotes at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
+                        }
+                        Volatile.Write(ref this.fill_lock, 0);
+                    }
+                }
+            }
+        }
+        public void onOrdUpdate(DataSpotOrderUpdate ord, DataSpotOrderUpdate prev)
+        {
+            if (this.predictFill)
+            {
+                if(ord.status == orderStatus.Filled && this.stg_orders.ContainsKey(ord.client_order_id))
+                {
+                    while (Interlocked.CompareExchange(ref this.fill_lock, 1, 0) != 0)
+                    {
+
+                    }
+                    if (this.executed_Orders.ContainsKey(ord.client_order_id))
+                    {
+                        //Do nothing
+                    }
+                    else
+                    {
+                        decimal filled_quantity;
+                        if(ord == prev)
+                        {
+                            filled_quantity = ord.filled_quantity;
+                        }
+                        else
+                        {
+                            filled_quantity = ord.filled_quantity - prev.filled_quantity;
+                        }
+                        switch (ord.side)
+                        {
+                            case orderSide.Buy:
+                                //this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0);
+                                //this.last_filled_time_buy = DateTime.UtcNow;
+                                this.executed_Orders[ord.client_order_id] = ord;
+                                ord.msg += "  onOrdUpdate at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
+                                break;
+                            case orderSide.Sell:
+                                //this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0);
+                                //this.last_filled_time_sell = DateTime.UtcNow;
+                                this.executed_Orders[ord.client_order_id] = ord;
+                                ord.msg += "  onOrdUpdate at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
+                                break;
+                        }
+                    }
+                    Volatile.Write(ref this.fill_lock, 0);
+                }
+            }
+        }
+
         public async Task on_Message(DataFill fill)
         {
             if (this.enabled)
@@ -567,7 +768,7 @@ namespace Crypto_Trading
                 }
                 if (this.stg_orders.ContainsKey(fill.client_order_id) == false)
                 {
-                    this.addLog("Unknown order order:" + fill.ToString());
+                    //this.addLog("Unknown order order:" + fill.ToString());
                     return;
                 }
                 else
@@ -577,22 +778,61 @@ namespace Crypto_Trading
                 filled_quantity = Math.Round(filled_quantity / this.taker.quantity_unit) * this.taker.quantity_unit;
                 if (filled_quantity > 0)
                 {
-                    switch (fill.side)
+                    if (this.predictFill)
                     {
-                        case orderSide.Buy:
-                            ord = await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0);
-                            if(ord != null)
+                        while (Interlocked.CompareExchange(ref this.fill_lock, 1, 0) != 0)
+                        {
+
+                        }
+                        //if (this.executed_Orders.ContainsKey(fill.client_order_id))
+                        //{
+                        //    //Do nothing
+                        //}
+                        //else
+                        {
+                            switch (fill.side)
                             {
-                                this.stg_orders[ord.client_order_id] = ord;
+                                case orderSide.Buy:
+                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0);
+                                    if (ord.order_quantity - ord.filled_quantity <= fill.quantity)
+                                    {
+                                        this.executed_Orders[ord.client_order_id] = ord;
+                                        ord.msg += "  onFill at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
+                                        this.last_filled_time_buy = DateTime.UtcNow;
+                                    }
+                                    break;
+                                case orderSide.Sell:
+                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0);
+                                    if (ord.order_quantity - ord.filled_quantity <= fill.quantity)
+                                    {
+                                        this.executed_Orders[ord.client_order_id] = ord;
+                                        this.last_filled_time_sell = DateTime.UtcNow;
+                                        ord.msg += "  onFill at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
+                                    }
+                                    break;
                             }
-                            break;
-                        case orderSide.Sell:
-                            ord = await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0);
-                            if (ord != null)
-                            {
-                                this.stg_orders[ord.client_order_id] = ord;
-                            }
-                            break;
+                        }
+                        Volatile.Write(ref this.fill_lock, 0);
+                    }
+                    else
+                    {
+                        switch (fill.side)
+                        {
+                            case orderSide.Buy:
+                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0);
+                                if (ord.order_quantity - ord.filled_quantity <= fill.quantity)
+                                {
+                                    this.last_filled_time_buy = DateTime.UtcNow;
+                                }
+                                break;
+                            case orderSide.Sell:
+                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0);
+                                if (ord.order_quantity - ord.filled_quantity <= fill.quantity)
+                                {
+                                    this.last_filled_time_sell = DateTime.UtcNow;
+                                }
+                                break;
+                        }
                     }
                 }
                 
