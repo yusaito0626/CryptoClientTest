@@ -288,7 +288,7 @@ namespace Crypto_Linux
                     decimal tradingPLAll = 0;
                     decimal feeAll = 0;
                     decimal totalAll = 0;
-                    string msg = "EoD PnL";
+                    string msg = "";
                     foreach (var stg in strategies.Values)
                     {
                         if (stg.maker != null && stg.taker != null)
@@ -868,7 +868,6 @@ namespace Crypto_Linux
             {
                 status = connectionStates[mkt.Key];
                 status.publicState = mkt.Value.ToString();
-                connectionStates[mkt.Key] = status;
             }
 
             foreach (var mkt in oManager.connections)
@@ -891,7 +890,6 @@ namespace Crypto_Linux
                         break;
 
                 }
-                connectionStates[mkt.Key] = status;
             }
 
             List<string> stoppedThreads = new List<string>();
@@ -1026,42 +1024,31 @@ namespace Crypto_Linux
             }
 
 
-            queueInfo qi;
-            qi = queueInfos["updateQuotes"];
-            qi.count = qManager.ordBookQueue.Count();
-            queueInfos["updateQuotes"] = qi;
+             queueInfos["updateQuotes"].count = qManager.ordBookQueue.Count();
             if(qManager.ordBookQueue.Count() > 10)
             {
                 addLog("updateQuotes  " + queueInfos["updateQuotes"].count.ToString());
             }
 
-            qi = queueInfos["updateTrades"];
-            qi.count = qManager.tradeQueue.Count();
-            queueInfos["updateTrades"] = qi;
+            queueInfos["updateTrades"].count = qManager.tradeQueue.Count();
             if (qManager.tradeQueue.Count() > 10)
             {
                 addLog("updateTrades  " + queueInfos["updateTrades"].count.ToString());
             }
 
-            qi = queueInfos["updateOrders"];
-            qi.count = crypto_client.ordUpdateQueue.Count();
-            queueInfos["updateOrders"] = qi;
+            queueInfos["updateOrders"].count = crypto_client.ordUpdateQueue.Count();
             if (crypto_client.ordUpdateQueue.Count() > 10)
             {
                 addLog("updateOrders  " + queueInfos["updateOrders"].count.ToString());
             }
 
-            qi = queueInfos["updateFills"];
-            qi.count = crypto_client.fillQueue.Count();
-            queueInfos["updateFills"] = qi;
+            queueInfos["updateFills"].count = crypto_client.fillQueue.Count();
             if (crypto_client.fillQueue.Count() > 10)
             {
                 addLog("updateFills  " + queueInfos["updateFills"].count.ToString());
             }
 
-            qi = queueInfos["optimize"];
-            qi.count = qManager.optQueue.Count();
-            queueInfos["optimize"] = qi;
+            queueInfos["optimize"].count = qManager.optQueue.Count();
             if (qManager.optQueue.Count() > 10)
             {
                 addLog("optimize  " + queueInfos["optimize"].count.ToString());
@@ -1131,7 +1118,6 @@ namespace Crypto_Linux
                 {
                     stginfo.spread = 0;
                 }
-                strategyInfos[stg.name] = stginfo;
             }
         }
         static void setInstrumentInfo()
@@ -1158,7 +1144,6 @@ namespace Crypto_Linux
 
                 insinfo.quoteFee_total = ins.quote_fee;
                 insinfo.baseFee_total = ins.base_fee;
-                instrumentInfos[ins.symbol_market] = insinfo;
             }
         }
 

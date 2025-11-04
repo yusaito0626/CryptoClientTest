@@ -6,30 +6,30 @@ using System.Threading.Tasks;
 
 namespace Utils
 {
-    public struct logEntry
+    public class logEntry
     {
-        public string logtype {  get; set; }
-        public string msg { get; set; }
+        public string? logtype {  get; set; }
+        public string? msg { get; set; }
     }
 
-    public struct masterInfo
+    public class masterInfo
     {
-        public string symbol { get; set; }
-        public string baseCcy { get; set; }
-        public string quoteCcy { get; set; }
-        public string market {  get; set; }
+        public string? symbol { get; set; }
+        public string? baseCcy { get; set; }
+        public string? quoteCcy { get; set; }
+        public string? market {  get; set; }
         public decimal taker_fee { get; set; }
         public decimal maker_fee { get; set; }
         public decimal price_unit { get; set; }
         public decimal quantity_unit { get; set; }
     }
-    public struct strategySetting
+    public class strategySetting
     {
-        public string name { get; set; }
-        public string baseCcy { get; set; }
-        public string quoteCcy { get; set; }
-        public string taker_market { get; set; }
-        public string maker_market { get; set; }
+        public string? name { get; set; }
+        public string? baseCcy { get; set; }
+        public string? quoteCcy { get; set; }
+        public string? taker_market { get; set; }
+        public string? maker_market { get; set; }
         public decimal markup { get; set; }
         public decimal min_markup { get; set; }
         public decimal max_skew { get; set; }
@@ -42,25 +42,25 @@ namespace Utils
         public decimal oneSideThreshold { get; set; }
         public Boolean predictFill { get; set; }
     }
-    public struct fillInfo
+    public class fillInfo
     {
-        public string timestamp { get; set; }
-        public string market { get; set; }
-        public string symbol { get; set; }
-        public string side { get; set; }
-        public string fill_price { get; set; }
-        public string quantity { get; set; }
-        public string fee { get; set; }
+        public string? timestamp { get; set; }
+        public string? market { get; set; }
+        public string? symbol { get; set; }
+        public string? side { get; set; }
+        public string? fill_price { get; set; }
+        public string? quantity { get; set; }
+        public string? fee { get; set; }
     }
-    public struct strategyInfo
+    public class strategyInfo
     {
-        public string name { get; set; }
-        public string baseCcy { get; set; }
-        public string quoteCcy { get; set; }
-        public string maker_market { get; set; }
-        public string taker_market { get; set; }
-        public string maker_symbol_market { get; set; }
-        public string taker_symbol_market { get; set; }
+        public string? name { get; set; }
+        public string? baseCcy { get; set; }
+        public string? quoteCcy { get; set; }
+        public string? maker_market { get; set; }
+        public string? taker_market { get; set; }
+        public string? maker_symbol_market { get; set; }
+        public string? taker_symbol_market { get; set; }
 
         public decimal spread { get; set; }
         public decimal skew { get; set; }
@@ -79,13 +79,13 @@ namespace Utils
         public decimal totalPnL { get; set; }
     }
 
-    public struct instrumentInfo
+    public class instrumentInfo
     {
-        public string symbol { get; set; }
-        public string market { get; set; }
-        public string symbol_market { get; set; }
-        public string baseCcy { get; set; }
-        public string quoteCcy { get; set; }
+        public string? symbol { get; set; }
+        public string? market { get; set; }
+        public string? symbol_market { get; set; }
+        public string? baseCcy { get; set; }
+        public string? quoteCcy { get; set; }
 
         public decimal last_price { get; set; }
         public decimal notional_buy { get; set; }
@@ -109,23 +109,23 @@ namespace Utils
         public decimal baseFee_total { get; set; }
     }
 
-    public struct connecitonStatus
+    public class connecitonStatus
     {
-        public string market { get; set; }
-        public string publicState { get; set; }
-        public string privateState { get; set; }
+        public string? market { get; set; }
+        public string? publicState { get; set; }
+        public string? privateState { get; set; }
         public double avgRTT { get; set; }
     }
 
-    public struct threadStatus
+    public class threadStatus
     {
-        public string name { get; set; }
+        public string? name { get; set; }
         public bool isRunning { get; set; }
         public double avgProcessingTime { get; set; }
     }
-    public struct queueInfo
+    public class queueInfo
     {
-        public string name { get; set; }
+        public string? name { get; set; }
         public int count { get; set; }
     }
 }
