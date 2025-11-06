@@ -683,7 +683,7 @@ namespace Crypto_Clients
             List<JsonDocument> list = new List<JsonDocument>();
 
             // order_ids が IEnumerable<string> の場合を想定
-            IEnumerable<int> orderIdInts = order_ids.Select(s => int.Parse(s));
+            IEnumerable<Int64> orderIdInts = order_ids.Select(s => Int64.Parse(s));
             int total = orderIdInts.Count();
             int pageCount = (int)Math.Ceiling((double)total / pageSize);
 

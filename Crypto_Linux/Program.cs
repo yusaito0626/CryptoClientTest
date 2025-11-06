@@ -64,6 +64,7 @@ namespace Crypto_Linux
 
         static private bool autoStart;
         static private bool live;
+        static private bool test;
         static private bool privateConnect;
         static private bool msgLogging;
 
@@ -90,6 +91,7 @@ namespace Crypto_Linux
             threadsStarted = false;
             autoStart = false;
             live = false;
+            test = false;
             privateConnect = true;
             msgLogging = false;
 
@@ -239,18 +241,27 @@ namespace Crypto_Linux
             {
                 addLog("Average Latency of " + l.Key + ": " + (l.Value / trial).ToString("N3") + " ms");
             }
-
             Thread.Sleep(5000);
-            startTrading();
 
-            if(live)
+            if (!test)
             {
-                addLog("Live Trading");
+                startTrading();
+                if (live)
+                {
+                    addLog("Live Trading");
+                }
+                else
+                {
+                    addLog("Simulation Mode");
+                }
+
             }
             else
             {
-                addLog("Simulation Mode");
+                addLog("Test Mode");
+                await testFunc();
             }
+            
 
             isRunning = true;
 
@@ -266,13 +277,13 @@ namespace Crypto_Linux
                 ThreadPool.GetAvailableThreads(out int worker, out int io);
                 ThreadPool.GetMaxThreads(out int maxWorker, out int maxIo);
 
-                if(maxWorker - worker > 20)
+                if (maxWorker - worker > 20)
                 {
                     addLog($"Worker Threads: {maxWorker - worker}/{maxWorker}");
                 }
 
                 ++i;
-                if(i > 30)
+                if (i > 30)
                 {
                     //string msg = "";
                     //foreach (var th in threadStates)
@@ -313,6 +324,62 @@ namespace Crypto_Linux
                 }
                 Thread.Sleep(1000);
             }
+        }
+
+        static private async Task testFunc()
+        {
+            addLog("Testing batch cancel...");
+
+            string symbol_market = "btc_jpy@bitbank";
+            if(qManager.instruments.ContainsKey(symbol_market))
+            {
+                decimal qt = (decimal)0.01;
+                decimal pr = 15_000_000;
+                Instrument ins = qManager.instruments[symbol_market];
+
+
+                addLog("Placing 2 new orders");
+                List<string> order_ids = new List<string>();
+                string order_id;
+                order_id = await oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Limit, qt, pr, null, true, true);
+                order_ids.Add(order_id);
+                Thread.Sleep(1000);
+                order_id = await oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Limit, qt, pr, null, true, true);
+                order_ids.Add(order_id);
+
+                Thread.Sleep(1000);
+                foreach (string id in order_ids)
+                {
+                    if (oManager.orders.ContainsKey(id))
+                    {
+                        addLog(oManager.orders[id].ToString());
+                    }
+                    else
+                    {
+                        addLog("Order not found id:" + id);
+                    }
+                }
+                addLog("Batch cancelling...");
+                await oManager.placeCancelSpotOrders(ins, order_ids, true, true);
+
+                Thread.Sleep(1000);
+                foreach (string id in order_ids)
+                {
+                    if (oManager.orders.ContainsKey(id))
+                    {
+                        addLog(oManager.orders[id].ToString());
+                    }
+                    else
+                    {
+                        addLog("Order not found id:" + id);
+                    }
+                }
+            }
+            else
+            {
+                addLog("Symbol not found. symbol_market:" + symbol_market);
+            }
+
         }
 
 
@@ -390,6 +457,15 @@ namespace Crypto_Linux
             else
             {
                 live = false;
+            }
+
+            if (root.TryGetProperty("test", out elem))
+            {
+                test = elem.GetBoolean();
+            }
+            else
+            {
+                test = false;
             }
             if (root.TryGetProperty("privateConnect", out elem))
             {

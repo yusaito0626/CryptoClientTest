@@ -411,6 +411,18 @@ namespace Crypto_Trading
                     output.update_time = DateTime.UtcNow;
                     output.status = orderStatus.Filled;
                     output.filled_quantity = quantity;
+                    if(sndOrd.order_type == orderType.Limit || sndOrd.order_type == orderType.LimitMaker)
+                    {
+                        switch (sndOrd.side)
+                        {
+                            case orderSide.Buy:
+                                sndOrd.ins.quoteBalance.AddBalance(0, output.order_price * output.order_quantity);
+                                break;
+                            case orderSide.Sell:
+                                sndOrd.ins.baseBalance.AddBalance(0, output.order_quantity);
+                                break;
+                        }
+                    }
                     decimal feetype = 0;
                     if (sndOrd.order_type == orderType.Market)
                     {
@@ -1269,7 +1281,7 @@ namespace Crypto_Trading
                 List<string> ord_ids = new List<string>();
                 foreach(string order_id in sndOrd.order_ids)
                 {
-                    if(this.orders.ContainsKey(order_id))
+                    if(this.orders.ContainsKey(order_id) && (this.orders[order_id].status == orderStatus.Open || this.orders[order_id].status == orderStatus.WaitOpen))
                     {
                         ord_ids.Add(this.orders[order_id].order_id);
                     }
@@ -1354,7 +1366,7 @@ namespace Crypto_Trading
                 List<string> ord_ids = new List<string>();
                 foreach (string order_id in sndOrd.order_ids)
                 {
-                    if (this.orders.ContainsKey(order_id))
+                    if (this.orders.ContainsKey(order_id) && (this.orders[order_id].status == orderStatus.Open || this.orders[order_id].status == orderStatus.WaitOpen))
                     {
                         ord_ids.Add(this.orders[order_id].order_id);
                     }
@@ -1390,7 +1402,7 @@ namespace Crypto_Trading
                 List<string> ord_ids = new List<string>();
                 foreach (string order_id in sndOrd.order_ids)
                 {
-                    if (this.orders.ContainsKey(order_id))
+                    if (this.orders.ContainsKey(order_id) && (this.orders[order_id].status == orderStatus.Open || this.orders[order_id].status == orderStatus.WaitOpen))
                     {
                         ord_ids.Add(this.orders[order_id].order_id);
                     }
@@ -1755,7 +1767,7 @@ namespace Crypto_Trading
                                             {
                                                 //ins.live_orders[ord.client_order_id] = ord;
                                                 decimal filled_quantity = ord.filled_quantity - prevord.filled_quantity;
-                                                if (filled_quantity > 0)
+                                                if (filled_quantity > 0 && ord.order_type != orderType.Market)
                                                 {
                                                     switch (ord.side)
                                                     {
@@ -1780,7 +1792,7 @@ namespace Crypto_Trading
                                             if (ins != null)
                                             {
                                                 decimal filled_quantity = ord.order_quantity - prevord.filled_quantity;//cancelled quantity + unprocessed filled quantity
-                                                if (filled_quantity > 0)
+                                                if (filled_quantity > 0 && ord.order_type != orderType.Market)
                                                 {
                                                     switch (ord.side)
                                                     {
@@ -1843,7 +1855,7 @@ namespace Crypto_Trading
                                         {
                                             //ins.live_orders[ord.client_order_id] = ord;
                                             decimal filled_quantity = ord.filled_quantity;
-                                            if (filled_quantity > 0)
+                                            if (filled_quantity > 0 && ord.order_type != orderType.Market)
                                             {
                                                 switch (ord.side)
                                                 {

@@ -1113,14 +1113,14 @@ namespace Crypto_Clients
             List<JsonDocument> list = new List<JsonDocument>();
 
             // order_ids が IEnumerable<string> の場合を想定
-            IEnumerable<int> orderIdInts = order_ids.Select(s => int.Parse(s));
-            int total = orderIdInts.Count();
+            //IEnumerable<Int64> orderIdInts = order_ids.Select(s => Int64.Parse(s));
+            int total = order_ids.Count();
             int pageCount = (int)Math.Ceiling((double)total / pageSize);
 
             for (int page = 0; page < pageCount; page++)
             {
                 // ページング処理
-                var subList = orderIdInts
+                var subList = order_ids
                     .Skip(page * pageSize)
                     .Take(pageSize)
                     .ToList();
