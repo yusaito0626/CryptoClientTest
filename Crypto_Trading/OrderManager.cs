@@ -292,7 +292,7 @@ namespace Crypto_Trading
 
             return orderId;
         }
-        public async Task<List<string>> placeCancelSpotOrders(Instrument ins,List<string> order_ids,bool sendNow = true,bool wait = false)
+        public async Task<IEnumerable<string>> placeCancelSpotOrders(Instrument ins,IEnumerable<string> order_ids,bool sendNow = true,bool wait = false)
         {
             sendingOrder ord;
             while (!this.sendingOrdersStack.TryPop(out ord))
@@ -309,11 +309,11 @@ namespace Crypto_Trading
             {
                 if (wait)
                 {
-                    await this.processCanOrder(ord);
+                    await this.processCanOrders(ord);
                 }
                 else
                 {
-                    this.processCanOrder(ord);
+                    this.processCanOrders(ord);
                 }
             }
             else
@@ -1213,7 +1213,7 @@ namespace Crypto_Trading
                     {
 
                     }
-                    DataSpotOrderUpdate prev = this.orders[sndOrd.ref_IntOrdId];
+                    DataSpotOrderUpdate prev = this.orders[ordid];
                     ordObj.isVirtual = true;
                     ordObj.order_id = prev.order_id;
                     ordObj.symbol = sndOrd.ins.symbol;
@@ -2607,11 +2607,11 @@ namespace Crypto_Trading
         public timeInForce? time_in_force;
         public decimal price;
         public decimal quantity;
-        public Instrument ins;
+        public Instrument? ins;
         public bool waitCancel;
-        public string msg;
+        public string? msg;
 
-        public List<string> order_ids = new List<string>();
+        public IEnumerable<string>? order_ids;
 
         public void init()
         {
@@ -2627,10 +2627,9 @@ namespace Crypto_Trading
             this.ins = null;
             this.waitCancel = false;
             this.msg = "";
-            if(this.order_ids.Count > 0)
-            {
-                this.order_ids.Clear();
-            }
+            this.order_ids = null;
+
+
         }
 
         public void copy(sendingOrder org)
@@ -2647,7 +2646,14 @@ namespace Crypto_Trading
             this.waitCancel = org.waitCancel;
             this.msg = org.msg;
 
-            this.order_ids = new List<string>(org.order_ids);
+            if(org.order_ids != null)
+            {
+                this.order_ids = new List<string>(org.order_ids);
+            }
+            else
+            {
+                this.order_ids = null;
+            }
         }
     }
 

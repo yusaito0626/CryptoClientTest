@@ -677,31 +677,57 @@ namespace Crypto_Clients
             return JsonDocument.Parse(resString);
         }
 
-        public async Task<List<JsonDocument>> placeCanOrders(string symbol,List<string> order_ids)
+        public async Task<List<JsonDocument>> placeCanOrders(string symbol, IEnumerable<string> order_ids)
         {
-            int i = 0;
             int pageSize = 30;
             List<JsonDocument> list = new List<JsonDocument>();
-            while (i < order_ids.Count)
+
+            // order_ids が IEnumerable<string> の場合を想定
+            IEnumerable<int> orderIdInts = order_ids.Select(s => int.Parse(s));
+            int total = orderIdInts.Count();
+            int pageCount = (int)Math.Ceiling((double)total / pageSize);
+
+            for (int page = 0; page < pageCount; page++)
             {
-                List<int> subList;
-                if (i + pageSize >= order_ids.Count)
-                {
-                    subList = order_ids.GetRange(i, order_ids.Count - i).Select(s => int.Parse(s)).ToList();
-                }
-                else
-                {
-                    subList = order_ids.GetRange(i, pageSize).Select(s => int.Parse(s)).ToList();
-                }
+                // ページング処理
+                var subList = orderIdInts
+                    .Skip(page * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
                 var body = new
                 {
                     pair = symbol,
                     order_ids = subList
                 };
+
                 var json = JsonSerializer.Serialize(body);
                 var resString = await this.postAsync("/v1/user/spot/cancel_orders", json);
                 list.Add(JsonDocument.Parse(resString));
             }
+            //int i = 0;
+            //int pageSize = 30;
+            //List<JsonDocument> list = new List<JsonDocument>();
+            //while (i < order_ids.Count())
+            //{
+            //    List<int> subList;
+            //    if (i + pageSize >= order_ids.Count())
+            //    {
+            //        subList = order_ids.GetRange(i, order_ids.Count - i).Select(s => int.Parse(s)).ToList();
+            //    }
+            //    else
+            //    {
+            //        subList = order_ids.GetRange(i, pageSize).Select(s => int.Parse(s)).ToList();
+            //    }
+            //    var body = new
+            //    {
+            //        pair = symbol,
+            //        order_ids = subList
+            //    };
+            //    var json = JsonSerializer.Serialize(body);
+            //    var resString = await this.postAsync("/v1/user/spot/cancel_orders", json);
+            //    list.Add(JsonDocument.Parse(resString));
+            //}
             return list;
         }
 

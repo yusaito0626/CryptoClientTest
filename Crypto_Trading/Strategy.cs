@@ -340,6 +340,57 @@ namespace Crypto_Trading
 
                 await this.checkLiveOrders();
 
+                bool newBuyOrder = false;
+                bool newSellOrder = false;
+
+                List<string> cancelling_ord = new List<string>();
+                if (this.oManager.orders.ContainsKey(this.live_buyorder_id))
+                {
+                    ord = this.oManager.orders[this.live_buyorder_id];
+                    if (bid_price == 0 || (this.maker.baseBalance.total > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200)))
+                    {
+                        cancelling_ord.Add(this.live_buyorder_id);
+                        this.live_buyorder_id = "";
+                    }
+                    else if (isPriceChanged && ord.status == orderStatus.Open && this.live_bidprice != bid_price)
+                    {
+                        cancelling_ord.Add(this.live_buyorder_id);
+                        this.live_buyorder_id = "";
+                        newBuyOrder = true;
+                    }
+                }
+                else if(this.live_buyorder_id == "")
+                {
+                    if (bid_price > 0 && (this.last_filled_time_buy == null || (decimal)(DateTime.UtcNow - this.last_filled_time_buy).Value.TotalSeconds > this.intervalAfterFill))
+                    {
+                        newBuyOrder = true;
+                    }
+                }
+                if (this.oManager.orders.ContainsKey(this.live_sellorder_id))
+                {
+                    ord = this.oManager.orders[this.live_sellorder_id];
+                    if (ask_price == 0 || (this.maker.baseBalance.total < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200)))
+                    {
+                        cancelling_ord.Add(this.live_sellorder_id);
+                        this.live_sellorder_id = "";
+                    }
+                    else if (isPriceChanged && ord.status == orderStatus.Open && this.live_askprice != ask_price)
+                    {
+                        cancelling_ord.Add(this.live_sellorder_id);
+                        this.live_sellorder_id = "";
+                        newSellOrder = true;
+                    }
+                }
+                else if (this.live_sellorder_id == "")
+                {
+                    if (bid_price > 0 && (this.last_filled_time_buy == null || (decimal)(DateTime.UtcNow - this.last_filled_time_buy).Value.TotalSeconds > this.intervalAfterFill))
+                    {
+                        newSellOrder = true;
+                    }
+                }
+
+                this.oManager.placeCancelSpotOrders(this.maker, cancelling_ord);
+
                 if(this.live_buyorder_id != "" && this.live_sellorder_id != "")//Both orders exist
                 {
                     if(bid_price == 0)
@@ -371,153 +422,186 @@ namespace Crypto_Trading
                     buyFirst = false;
                 }
 
-
                 if(buyFirst)
                 {
-                    if (this.live_buyorder_id != "")
+                    if(newBuyOrder)
                     {
-                        if (this.oManager.orders.ContainsKey(this.live_buyorder_id))
-                        {
-                            ord = this.oManager.orders[this.live_buyorder_id];
-                            if (bid_price == 0 || (this.maker.baseBalance.total > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200)))
-                            {
-                                this.live_buyorder_id = "";
-                                this.oManager.placeCancelSpotOrder(this.maker, ord.internal_order_id, true);
-                                this.live_bidprice = 0;
-                            }
-                            else if (isPriceChanged && ord.status == orderStatus.Open && ord.order_price != bid_price)
-                            {
-                                this.live_buyorder_id = "";
-                                this.live_buyorder_id = await this.oManager.placeModSpotOrder(this.maker, ord.internal_order_id, this.ToBsize, bid_price, false, true, false);
-                                this.live_bidprice = bid_price;
-                                this.stg_orders.Add(this.live_buyorder_id);
-                            }
-                        }
+                        this.live_buyorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ToBsize, bid_price, null, true, false);
+                        this.live_bidprice = bid_price;
+                        this.stg_orders.Add(this.live_buyorder_id);
                     }
-                    else
+                    if(newSellOrder)
                     {
-                        if (this.maker.baseBalance.total > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200))
-                        {
-                            //Do nothing
-                        }
-                        else if (bid_price > 0 && (this.last_filled_time_buy == null || (decimal)(DateTime.UtcNow - this.last_filled_time_buy).Value.TotalSeconds > this.intervalAfterFill))
-                        {
-                            this.live_buyorder_id = "";
-                            this.live_buyorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ToBsize, bid_price, null, true, false);
-                            this.stg_orders.Add(this.live_buyorder_id);
-                            this.live_bidprice = bid_price;
-                        }
-                    }
-
-                    if (this.live_sellorder_id != "")
-                    {
-                        if (this.oManager.orders.ContainsKey(this.live_sellorder_id))
-                        {
-                            ord = this.oManager.orders[this.live_sellorder_id];
-                            if (ask_price == 0 || (this.maker.baseBalance.total < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200)))
-                            {
-                                this.live_sellorder_id = "";
-                                this.oManager.placeCancelSpotOrder(this.maker, ord.internal_order_id, true, false);
-                                this.live_askprice = 0;
-                            }
-                            else if (isPriceChanged && ord.status == orderStatus.Open && ord.order_price != ask_price)
-                            {
-                                this.live_sellorder_id = "";
-                                this.live_sellorder_id = await this.oManager.placeModSpotOrder(this.maker, ord.internal_order_id, this.ToBsize, ask_price, false, true, false);
-                                this.stg_orders.Add(this.live_sellorder_id);
-                                this.live_askprice = ask_price;
-                            }
-                        }
-
-                    }
-                    else
-                    {
-                        if (this.maker.baseBalance.total < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200))
-                        {
-                            //Do nothing
-                        }
-                        else if (ask_price > 0 && (this.last_filled_time_sell == null || (decimal)(DateTime.UtcNow - this.last_filled_time_sell).Value.TotalSeconds > this.intervalAfterFill))
-                        {
-                            this.live_sellorder_id = "";
-                            this.live_sellorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ToBsize, ask_price, null, true, false);
-                            this.stg_orders.Add(this.live_sellorder_id);
-                            this.live_askprice = ask_price;
-                        }
+                        this.live_sellorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ToBsize, ask_price, null, true, false);
+                        this.live_askprice = ask_price;
+                        this.stg_orders.Add(this.live_sellorder_id);
                     }
                 }
                 else
                 {
-                    if (this.live_sellorder_id != "")
+                    if (newSellOrder)
                     {
-                        if (this.oManager.orders.ContainsKey(this.live_sellorder_id))
-                        {
-                            ord = this.oManager.orders[this.live_sellorder_id];
-                            if (ask_price == 0 || (this.maker.baseBalance.total < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200)))
-                            {
-                                this.live_sellorder_id = "";
-                                this.oManager.placeCancelSpotOrder(this.maker, ord.internal_order_id, true, false);
-                                this.live_askprice = 0;
-                            }
-                            else if (isPriceChanged && ord.status == orderStatus.Open && ord.order_price != ask_price)
-                            {
-                                this.live_sellorder_id = "";
-                                this.live_sellorder_id = await this.oManager.placeModSpotOrder(this.maker, ord.internal_order_id, this.ToBsize, ask_price, false, true, false);
-                                this.stg_orders.Add(this.live_sellorder_id);
-                                this.live_askprice = ask_price;
-                            }
-                        }
-
+                        this.live_sellorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ToBsize, ask_price, null, true, false);
+                        this.live_askprice = ask_price;
+                        this.stg_orders.Add(this.live_sellorder_id);
                     }
-                    else
+                    if (newBuyOrder)
                     {
-                        if (this.maker.baseBalance.total < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200))
-                        {
-                            //Do nothing
-                        }
-                        else if (ask_price > 0 && (this.last_filled_time_sell == null || (decimal)(DateTime.UtcNow - this.last_filled_time_sell).Value.TotalSeconds > this.intervalAfterFill))
-                        {
-                            this.live_sellorder_id = "";
-                            this.live_sellorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ToBsize, ask_price, null, true, false);
-                            this.stg_orders.Add(this.live_sellorder_id);
-                            this.live_askprice = ask_price;
-                        }
-                    }
-
-                    if (this.live_buyorder_id != "")
-                    {
-                        if (this.oManager.orders.ContainsKey(this.live_buyorder_id))
-                        {
-                            ord = this.oManager.orders[this.live_buyorder_id];
-                            if (bid_price == 0 || (this.maker.baseBalance.total > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200)))
-                            {
-                                this.live_buyorder_id = "";
-                                this.oManager.placeCancelSpotOrder(this.maker, ord.internal_order_id, true);
-                                this.live_bidprice = 0;
-                            }
-                            else if (isPriceChanged && ord.status == orderStatus.Open && ord.order_price != bid_price)
-                            {
-                                this.live_buyorder_id = "";
-                                this.live_buyorder_id = await this.oManager.placeModSpotOrder(this.maker, ord.internal_order_id, this.ToBsize, bid_price, false, true, false);
-                                this.live_bidprice = bid_price;
-                                this.stg_orders.Add(this.live_buyorder_id);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (this.maker.baseBalance.total > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200))
-                        {
-                            //Do nothing
-                        }
-                        else if (bid_price > 0 && (this.last_filled_time_buy == null || (decimal)(DateTime.UtcNow - this.last_filled_time_buy).Value.TotalSeconds > this.intervalAfterFill))
-                        {
-                            this.live_buyorder_id = "";
-                            this.live_buyorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ToBsize, bid_price, null, true, false);
-                            this.stg_orders.Add(this.live_buyorder_id);
-                            this.live_bidprice = bid_price;
-                        }
+                        this.live_buyorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ToBsize, bid_price, null, true, false);
+                        this.live_bidprice = bid_price;
+                        this.stg_orders.Add(this.live_buyorder_id);
                     }
                 }
+
+
+                //if (buyFirst)
+                //{
+                //    if (this.live_buyorder_id != "")
+                //    {
+                //        if (this.oManager.orders.ContainsKey(this.live_buyorder_id))
+                //        {
+                //            ord = this.oManager.orders[this.live_buyorder_id];
+                //            if (bid_price == 0 || (this.maker.baseBalance.total > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200)))
+                //            {
+                //                //this.live_buyorder_id = "";
+                //                //this.oManager.placeCancelSpotOrder(this.maker, ord.internal_order_id, true);
+                //                this.live_bidprice = 0;
+                //            }
+                //            else if (isPriceChanged && ord.status == orderStatus.Open && this.live_bidprice != bid_price)
+                //            {
+                //                //this.live_buyorder_id = "";
+                //                //this.live_buyorder_id = await this.oManager.placeModSpotOrder(this.maker, ord.internal_order_id, this.ToBsize, bid_price, false, true, false);
+                //                this.live_buyorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ToBsize, bid_price, null, true, false);
+                //                this.live_bidprice = bid_price;
+                //                this.stg_orders.Add(this.live_buyorder_id);
+                //            }
+                //        }
+                //    }
+                //    else
+                //    {
+                //        if (this.maker.baseBalance.total > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200))
+                //        {
+                //            //Do nothing
+                //        }
+                //        else if (bid_price > 0 && (this.last_filled_time_buy == null || (decimal)(DateTime.UtcNow - this.last_filled_time_buy).Value.TotalSeconds > this.intervalAfterFill))
+                //        {
+                //            this.live_buyorder_id = "";
+                //            this.live_buyorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ToBsize, bid_price, null, true, false);
+                //            this.stg_orders.Add(this.live_buyorder_id);
+                //            this.live_bidprice = bid_price;
+                //        }
+                //    }
+
+                //    if (this.live_sellorder_id != "")
+                //    {
+                //        if (this.oManager.orders.ContainsKey(this.live_sellorder_id))
+                //        {
+                //            ord = this.oManager.orders[this.live_sellorder_id];
+                //            if (ask_price == 0 || (this.maker.baseBalance.total < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200)))
+                //            {
+                //                //this.live_sellorder_id = "";
+                //                //this.oManager.placeCancelSpotOrder(this.maker, ord.internal_order_id, true, false);
+                //                this.live_askprice = 0;
+                //            }
+                //            else if (isPriceChanged && ord.status == orderStatus.Open && this.live_askprice != ask_price)
+                //            {
+                //                //this.live_sellorder_id = "";
+                //                //this.live_sellorder_id = await this.oManager.placeModSpotOrder(this.maker, ord.internal_order_id, this.ToBsize, ask_price, false, true, false);
+                //                this.live_sellorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ToBsize, ask_price, null, true, false);
+                //                this.stg_orders.Add(this.live_sellorder_id);
+                //                this.live_askprice = ask_price;
+                //            }
+                //        }
+
+                //    }
+                //    else
+                //    {
+                //        if (this.maker.baseBalance.total < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200))
+                //        {
+                //            //Do nothing
+                //        }
+                //        else if (ask_price > 0 && (this.last_filled_time_sell == null || (decimal)(DateTime.UtcNow - this.last_filled_time_sell).Value.TotalSeconds > this.intervalAfterFill))
+                //        {
+                //            this.live_sellorder_id = "";
+                //            this.live_sellorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ToBsize, ask_price, null, true, false);
+                //            this.stg_orders.Add(this.live_sellorder_id);
+                //            this.live_askprice = ask_price;
+                //        }
+                //    }
+                //}
+                //else
+                //{
+                //    if (this.live_sellorder_id != "")
+                //    {
+                //        if (this.oManager.orders.ContainsKey(this.live_sellorder_id))
+                //        {
+                //            ord = this.oManager.orders[this.live_sellorder_id];
+                //            if (ask_price == 0 || (this.maker.baseBalance.total < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200)))
+                //            {
+                //                this.live_sellorder_id = "";
+                //                this.oManager.placeCancelSpotOrder(this.maker, ord.internal_order_id, true, false);
+                //                this.live_askprice = 0;
+                //            }
+                //            else if (isPriceChanged && ord.status == orderStatus.Open && ord.order_price != ask_price)
+                //            {
+                //                this.live_sellorder_id = "";
+                //                this.live_sellorder_id = await this.oManager.placeModSpotOrder(this.maker, ord.internal_order_id, this.ToBsize, ask_price, false, true, false);
+                //                this.stg_orders.Add(this.live_sellorder_id);
+                //                this.live_askprice = ask_price;
+                //            }
+                //        }
+
+                //    }
+                //    else
+                //    {
+                //        if (this.maker.baseBalance.total < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200))
+                //        {
+                //            //Do nothing
+                //        }
+                //        else if (ask_price > 0 && (this.last_filled_time_sell == null || (decimal)(DateTime.UtcNow - this.last_filled_time_sell).Value.TotalSeconds > this.intervalAfterFill))
+                //        {
+                //            this.live_sellorder_id = "";
+                //            this.live_sellorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ToBsize, ask_price, null, true, false);
+                //            this.stg_orders.Add(this.live_sellorder_id);
+                //            this.live_askprice = ask_price;
+                //        }
+                //    }
+
+                //    if (this.live_buyorder_id != "")
+                //    {
+                //        if (this.oManager.orders.ContainsKey(this.live_buyorder_id))
+                //        {
+                //            ord = this.oManager.orders[this.live_buyorder_id];
+                //            if (bid_price == 0 || (this.maker.baseBalance.total > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200)))
+                //            {
+                //                this.live_buyorder_id = "";
+                //                this.oManager.placeCancelSpotOrder(this.maker, ord.internal_order_id, true);
+                //                this.live_bidprice = 0;
+                //            }
+                //            else if (isPriceChanged && ord.status == orderStatus.Open && ord.order_price != bid_price)
+                //            {
+                //                this.live_buyorder_id = "";
+                //                this.live_buyorder_id = await this.oManager.placeModSpotOrder(this.maker, ord.internal_order_id, this.ToBsize, bid_price, false, true, false);
+                //                this.live_bidprice = bid_price;
+                //                this.stg_orders.Add(this.live_buyorder_id);
+                //            }
+                //        }
+                //    }
+                //    else
+                //    {
+                //        if (this.maker.baseBalance.total > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200))
+                //        {
+                //            //Do nothing
+                //        }
+                //        else if (bid_price > 0 && (this.last_filled_time_buy == null || (decimal)(DateTime.UtcNow - this.last_filled_time_buy).Value.TotalSeconds > this.intervalAfterFill))
+                //        {
+                //            this.live_buyorder_id = "";
+                //            this.live_buyorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ToBsize, bid_price, null, true, false);
+                //            this.stg_orders.Add(this.live_buyorder_id);
+                //            this.live_bidprice = bid_price;
+                //        }
+                //    }
+                //}
                 Volatile.Write(ref this.updating, 0);
             }
         }
@@ -533,7 +617,9 @@ namespace Crypto_Trading
         {
             if(this.oManager.live_orders.Count > 2)
             {
-                List<string> cancelling_ids = new List<string>();
+                List<string> maker_orders = new List<string>();
+                List<string> taker_orders = new List<string>();
+
                 while (Interlocked.CompareExchange(ref this.oManager.order_lock, 1, 0) != 0)
                 {
                 }
@@ -543,11 +629,11 @@ namespace Crypto_Trading
                     {
                         if(this.maker.symbol_market == ord.Value.symbol_market)
                         {
-                            cancelling_ids.Add(ord.Key);
+                            maker_orders.Add(ord.Key);
                         }
                         else if (this.taker.symbol_market == ord.Value.symbol_market)
                         {
-                            cancelling_ids.Add(ord.Key);
+                            taker_orders.Add(ord.Key);
                         }
                         else
                         {
@@ -555,22 +641,29 @@ namespace Crypto_Trading
                     }
                 }
                 Volatile.Write(ref this.oManager.order_lock, 0);
-                DataSpotOrderUpdate cancelling_ord;
-                foreach (var id in cancelling_ids)
+                if(maker_orders.Count > 0)
                 {
-                    if (this.oManager.orders.ContainsKey(id))
-                    {
-                        cancelling_ord = this.oManager.orders[id];
-                        if (cancelling_ord.symbol_market == this.maker.symbol_market)
-                        {
-                            this.oManager.placeCancelSpotOrder(this.maker, cancelling_ord.order_id, true);
-                        }
-                        else if (cancelling_ord.symbol_market == this.taker.symbol_market)
-                        {
-                            this.oManager.placeCancelSpotOrder(this.taker, cancelling_ord.order_id,true);
-                        }
-                    }
+                    this.oManager.placeCancelSpotOrders(this.maker, maker_orders, true);
                 }
+                if(taker_orders.Count > 0)
+                {
+                    this.oManager.placeCancelSpotOrders(this.taker, taker_orders, true);
+                }
+                //foreach (var id in maker_orders)
+                //{
+                //    if (this.oManager.orders.ContainsKey(id))
+                //    {
+                //        cancelling_ord = this.oManager.orders[id];
+                //        if (cancelling_ord.symbol_market == this.maker.symbol_market)
+                //        {
+                //            this.oManager.placeCancelSpotOrder(this.maker, cancelling_ord.order_id, true);
+                //        }
+                //        else if (cancelling_ord.symbol_market == this.taker.symbol_market)
+                //        {
+                //            this.oManager.placeCancelSpotOrder(this.taker, cancelling_ord.order_id,true);
+                //        }
+                //    }
+                //}
             }
         }
         public decimal skew()

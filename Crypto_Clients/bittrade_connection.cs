@@ -16,6 +16,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Web;
+using XT.Net.Objects.Models;
 
 namespace Crypto_Clients
 {
@@ -1106,22 +1107,24 @@ namespace Crypto_Clients
 
             return JsonDocument.Parse(resString);
         }
-        public async Task<List<JsonDocument>> placeCanOrders(List<string> order_ids)
+        public async Task<List<JsonDocument>> placeCanOrders(IEnumerable<string> order_ids)
         {
-            int i = 0;
             int pageSize = 50;
             List<JsonDocument> list = new List<JsonDocument>();
-            while (i < order_ids.Count)
+
+            // order_ids が IEnumerable<string> の場合を想定
+            IEnumerable<int> orderIdInts = order_ids.Select(s => int.Parse(s));
+            int total = orderIdInts.Count();
+            int pageCount = (int)Math.Ceiling((double)total / pageSize);
+
+            for (int page = 0; page < pageCount; page++)
             {
-                List<int> subList;
-                if (i + pageSize >= order_ids.Count)
-                {
-                    subList = order_ids.GetRange(i, order_ids.Count - i).Select(s => int.Parse(s)).ToList();
-                }
-                else
-                {
-                    subList = order_ids.GetRange(i, pageSize).Select(s => int.Parse(s)).ToList();
-                }
+                // ページング処理
+                var subList = orderIdInts
+                    .Skip(page * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
                 var body = new
                 {
                     order_ids = subList
@@ -1130,6 +1133,28 @@ namespace Crypto_Clients
                 var resString = await this.postAsync("/v1/order/orders/batchcancel", json);
                 list.Add(JsonDocument.Parse(resString));
             }
+            //int i = 0;
+            //int pageSize = 50;
+            //List<JsonDocument> list = new List<JsonDocument>();
+            //while (i < order_ids.Count)
+            //{
+            //    List<int> subList;
+            //    if (i + pageSize >= order_ids.Count)
+            //    {
+            //        subList = order_ids.GetRange(i, order_ids.Count - i).Select(s => int.Parse(s)).ToList();
+            //    }
+            //    else
+            //    {
+            //        subList = order_ids.GetRange(i, pageSize).Select(s => int.Parse(s)).ToList();
+            //    }
+            //    var body = new
+            //    {
+            //        order_ids = subList
+            //    };
+            //    var json = JsonSerializer.Serialize(body);
+            //    var resString = await this.postAsync("/v1/order/orders/batchcancel", json);
+            //    list.Add(JsonDocument.Parse(resString));
+            //}
             return list;
         }
         public WebSocketState GetSocketStatePublic()

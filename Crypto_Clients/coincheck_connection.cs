@@ -1051,7 +1051,7 @@ namespace Crypto_Clients
             return JsonDocument.Parse(resString);
         }
 
-        public async Task<List<JsonDocument>> placeCanOrders(List<string> order_ids)
+        public async Task<List<JsonDocument>> placeCanOrders(IEnumerable<string> order_ids)
         {
             List<JsonDocument> list = new List<JsonDocument>();
             foreach (var order_id in order_ids)
