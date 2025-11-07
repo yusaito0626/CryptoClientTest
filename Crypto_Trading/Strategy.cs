@@ -1035,8 +1035,13 @@ namespace Crypto_Trading
                                     }
                                     else
                                     {
-                                        this.addLog("Order Not Found:" + fill.ToString());
-                                        return;
+                                        this.addLog("[OnFill]Order Not Found:" + fill.ToString(), Enums.logType.WARNING);
+                                        if (fill.quantity == this.ToBsize)
+                                        {
+                                            this.executed_Orders[fill.internal_order_id] = null;
+                                            this.last_filled_time_sell = DateTime.UtcNow;
+                                            fill.msg = "  onFill at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + fill.internal_order_id;
+                                        }
                                     }
                                     if (ord.order_quantity - ord.filled_quantity <= fill.quantity || ord.status == orderStatus.Filled)
                                     {
@@ -1052,19 +1057,25 @@ namespace Crypto_Trading
                                     if (this.oManager.orders.ContainsKey(fill.internal_order_id))
                                     {
                                         ord = this.oManager.orders[fill.internal_order_id];
+
+                                        if (ord.order_quantity - ord.filled_quantity <= fill.quantity || ord.status == orderStatus.Filled)
+                                        {
+                                            this.executed_Orders[ord.internal_order_id] = ord;
+                                            this.last_filled_time_sell = DateTime.UtcNow;
+                                            ord.msg += "  onFill at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + fill.internal_order_id;
+                                            addLog(ord.ToString());
+                                            fill.msg = ord.msg;
+                                        }
                                     }
                                     else
                                     {
-                                        this.addLog("Order Not Found:" + fill.ToString());
-                                        return;
-                                    }
-                                    if (ord.order_quantity - ord.filled_quantity <= fill.quantity || ord.status == orderStatus.Filled)
-                                    {
-                                        this.executed_Orders[ord.internal_order_id] = ord;
-                                        this.last_filled_time_sell = DateTime.UtcNow;
-                                        ord.msg += "  onFill at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + fill.internal_order_id;
-                                        addLog(ord.ToString());
-                                        fill.msg = ord.msg;
+                                        this.addLog("[OnFill]Order Not Found:" + fill.ToString(),Enums.logType.WARNING);
+                                        if(fill.quantity == this.ToBsize)
+                                        {
+                                            this.executed_Orders[fill.internal_order_id] = null;
+                                            this.last_filled_time_sell = DateTime.UtcNow;
+                                            fill.msg = "  onFill at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + fill.internal_order_id;
+                                        }
                                     }
                                     break;
                             }
@@ -1100,15 +1111,14 @@ namespace Crypto_Trading
                                 if (this.oManager.orders.ContainsKey(fill.internal_order_id))
                                 {
                                     ord = this.oManager.orders[fill.internal_order_id];
+                                    if (ord.order_quantity - ord.filled_quantity <= fill.quantity || ord.status == orderStatus.Filled)
+                                    {
+                                        this.last_filled_time_buy = DateTime.UtcNow;
+                                    }
                                 }
                                 else
                                 {
-                                    this.addLog("Order Not Found:" + fill.ToString());
-                                    return;
-                                }
-                                if (ord.order_quantity - ord.filled_quantity <= fill.quantity || ord.status == orderStatus.Filled)
-                                {
-                                    this.last_filled_time_buy = DateTime.UtcNow;
+                                    this.addLog("[OnFill]Order Not Found:" + fill.ToString());
                                 }
                                 break;
                             case orderSide.Sell:
@@ -1116,15 +1126,14 @@ namespace Crypto_Trading
                                 if (this.oManager.orders.ContainsKey(fill.internal_order_id))
                                 {
                                     ord = this.oManager.orders[fill.internal_order_id];
+                                    if (ord.order_quantity - ord.filled_quantity <= fill.quantity || ord.status == orderStatus.Filled)
+                                    {
+                                        this.last_filled_time_sell = DateTime.UtcNow;
+                                    }
                                 }
                                 else
                                 {
-                                    this.addLog("Order Not Found:" + fill.ToString());
-                                    return;
-                                }
-                                if (ord.order_quantity - ord.filled_quantity <= fill.quantity || ord.status == orderStatus.Filled)
-                                {
-                                    this.last_filled_time_sell = DateTime.UtcNow;
+                                    this.addLog("[OnFill]Order Not Found:" + fill.ToString());
                                 }
                                 break;
                         }
