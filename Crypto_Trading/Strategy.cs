@@ -55,6 +55,8 @@ namespace Crypto_Trading
         public volatile int updating;
         public volatile int queued;
 
+        public DateTime lastPosAdjustment;
+
         //public DataSpotOrderUpdate? live_sellorder;
         //public DataSpotOrderUpdate? live_buyorder;
 
@@ -737,7 +739,17 @@ namespace Crypto_Trading
                                 {
                                     this.live_sellorder_id = "";
                                     decimal filled_quantity = ord.order_quantity - ord.filled_quantity;
-                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, null, true);
+                                    decimal diff_amount = this.maker.baseBalance.total + this.taker.baseBalance.total - this.baseCcyQuantity;
+                                    if (DateTime.UtcNow - this.lastPosAdjustment > TimeSpan.FromSeconds(10))
+                                    {
+                                        this.lastPosAdjustment = DateTime.UtcNow;
+                                        filled_quantity -= diff_amount;
+                                    }
+
+                                    if (filled_quantity > 0)
+                                    {
+                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, null, true);
+                                    }
                                     this.last_filled_time_sell = DateTime.UtcNow;
                                     this.executed_Orders[ord.internal_order_id] = ord;
                                     ord.msg += "  onTrades at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
@@ -773,8 +785,16 @@ namespace Crypto_Trading
                                 {
                                     this.live_buyorder_id = "";
                                     decimal filled_quantity = ord.order_quantity - ord.filled_quantity;
-
-                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, null, true);
+                                    decimal diff_amount = this.maker.baseBalance.total + this.taker.baseBalance.total - this.baseCcyQuantity;
+                                    if (DateTime.UtcNow - this.lastPosAdjustment > TimeSpan.FromSeconds(10))
+                                    {
+                                        this.lastPosAdjustment = DateTime.UtcNow;
+                                        filled_quantity += diff_amount;
+                                    }
+                                    if (filled_quantity > 0)
+                                    {
+                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, null, true);
+                                    }
                                     this.last_filled_time_buy = DateTime.UtcNow;
                                     this.executed_Orders[ord.internal_order_id] = ord;
                                     ord.msg += "  onTrades at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
@@ -823,17 +843,16 @@ namespace Crypto_Trading
                         else
                         {
                             decimal filled_quantity = ord.order_quantity - ord.filled_quantity;
-                            switch (ord.side)
+                            if(DateTime.UtcNow - this.lastPosAdjustment > TimeSpan.FromSeconds(10))
                             {
-                                case orderSide.Buy://taker order will be sell
-                                    filled_quantity += diff_amount;
-                                    break;
-                                case orderSide.Sell:
-                                    filled_quantity -= diff_amount;
-                                    break;
-
+                                this.lastPosAdjustment = DateTime.UtcNow;
+                                filled_quantity -= diff_amount;
                             }
-                            this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, null, true);
+                            
+                            if(filled_quantity > 0)
+                            {
+                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, null, true);
+                            }
                             this.last_filled_time_sell = DateTime.UtcNow;
                             this.executed_Orders[ord.internal_order_id] = ord;
                             ord.msg += "  onMakerQuotes at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
@@ -867,7 +886,11 @@ namespace Crypto_Trading
                         else
                         {
                             decimal filled_quantity = ord.order_quantity - ord.filled_quantity;
-
+                            if (DateTime.UtcNow - this.lastPosAdjustment > TimeSpan.FromSeconds(10))
+                            {
+                                this.lastPosAdjustment = DateTime.UtcNow;
+                                filled_quantity += diff_amount;
+                            }
                             this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, null, true);
                             this.last_filled_time_buy = DateTime.UtcNow;
                             this.executed_Orders[ord.internal_order_id] = ord;
@@ -907,33 +930,44 @@ namespace Crypto_Trading
                         {
                             filled_quantity = ord.filled_quantity - prev.filled_quantity;
                         }
-                        switch (ord.side)
+                        if(DateTime.UtcNow - this.lastPosAdjustment > TimeSpan.FromSeconds(10))
                         {
-                            case orderSide.Buy://taker order will be sell
-                                filled_quantity += diff_amount;
-                                break;
-                            case orderSide.Sell:
-                                filled_quantity -= diff_amount;
-                                break;
+                            this.lastPosAdjustment = DateTime.UtcNow;
+                            switch (ord.side)
+                            {
+                                case orderSide.Buy://taker order will be sell
+                                    filled_quantity += diff_amount;
+                                    break;
+                                case orderSide.Sell:
+                                    filled_quantity -= diff_amount;
+                                    break;
 
+                            }
                         }
+                        
                         switch (ord.side)
                         {
                             case orderSide.Buy:
-                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, null, true);
+                                if (filled_quantity > 0)
+                                {
+                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, null, true);
+                                }
                                 this.last_filled_time_buy = DateTime.UtcNow;
-                                this.executed_Orders[ord.internal_order_id] = ord;
-                                ord.msg += "  onOrdUpdate at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
-                                addLog(ord.ToString());
                                 break;
                             case orderSide.Sell:
-                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, null, true);
+
+                                if(filled_quantity > 0)
+                                {
+                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, null, true);
+                                }
                                 this.last_filled_time_sell = DateTime.UtcNow;
-                                this.executed_Orders[ord.internal_order_id] = ord;
-                                ord.msg += "  onOrdUpdate at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
-                                addLog(ord.ToString());
                                 break;
                         }
+                        
+                        
+                        this.executed_Orders[ord.internal_order_id] = ord;
+                        ord.msg += "  onOrdUpdate at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
+                        addLog(ord.ToString());
                     }
                     Volatile.Write(ref this.fill_lock, 0);
                 }
@@ -946,16 +980,6 @@ namespace Crypto_Trading
             {
                 decimal diff_amount = this.maker.baseBalance.total + this.taker.baseBalance.total - this.baseCcyQuantity; 
                 decimal filled_quantity = fill.quantity;
-                switch (fill.side)
-                {
-                    case orderSide.Buy://taker order will be sell
-                        filled_quantity += diff_amount;
-                        break;
-                    case orderSide.Sell:
-                        filled_quantity -= diff_amount;
-                        break;
-
-                }
                 if (filled_quantity > this.ToBsize * 2)
                 {
                     filled_quantity = this.ToBsize * 2;
@@ -970,25 +994,41 @@ namespace Crypto_Trading
                     //this.addLog("Unknown order order:" + fill.ToString());
                     return;
                 }
-                filled_quantity = Math.Round(filled_quantity / this.taker.quantity_unit) * this.taker.quantity_unit;
-                if (filled_quantity > 0)
-                {
-                    if (this.predictFill)
-                    {
-                        while (Interlocked.CompareExchange(ref this.fill_lock, 1, 0) != 0)
-                        {
 
-                        }
-                        if (this.executed_Orders.ContainsKey(fill.internal_order_id))
+                if (this.predictFill)
+                {
+                    while (Interlocked.CompareExchange(ref this.fill_lock, 1, 0) != 0)
+                    {
+
+                    }
+                    if (this.executed_Orders.ContainsKey(fill.internal_order_id))
+                    {
+                        //Do nothing
+                    }
+                    else
+                    {
+                        if(DateTime.UtcNow - this.lastPosAdjustment > TimeSpan.FromSeconds(10))
                         {
-                            //Do nothing
+                            this.lastPosAdjustment = DateTime.UtcNow;
+                            switch (fill.side)
+                            {
+                                case orderSide.Buy://taker order will be sell
+                                    filled_quantity += diff_amount;
+                                    break;
+                                case orderSide.Sell:
+                                    filled_quantity -= diff_amount;
+                                    break;
+
+                            }
                         }
-                        else
+                        
+                        filled_quantity = Math.Round(filled_quantity / this.taker.quantity_unit) * this.taker.quantity_unit;
+                        if (filled_quantity > 0)
                         {
                             switch (fill.side)
                             {
                                 case orderSide.Buy:
-                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0,null,true);
+                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, null, true);
                                     if (this.oManager.orders.ContainsKey(fill.internal_order_id))
                                     {
                                         ord = this.oManager.orders[fill.internal_order_id];
@@ -1029,9 +1069,29 @@ namespace Crypto_Trading
                                     break;
                             }
                         }
-                        Volatile.Write(ref this.fill_lock, 0);
+                        
                     }
-                    else
+                    Volatile.Write(ref this.fill_lock, 0);
+                }
+                else
+                {
+                    if (DateTime.UtcNow - this.lastPosAdjustment > TimeSpan.FromSeconds(10))
+                    {
+                        this.lastPosAdjustment = DateTime.UtcNow;
+                        switch (fill.side)
+                        {
+                            case orderSide.Buy://taker order will be sell
+                                filled_quantity += diff_amount;
+                                break;
+                            case orderSide.Sell:
+                                filled_quantity -= diff_amount;
+                                break;
+
+                        }
+                    }
+
+                    filled_quantity = Math.Round(filled_quantity / this.taker.quantity_unit) * this.taker.quantity_unit;
+                    if (filled_quantity > 0)
                     {
                         switch (fill.side)
                         {
@@ -1070,7 +1130,6 @@ namespace Crypto_Trading
                         }
                     }
                 }
-                
             }
         }
         public void addLog(string line, Enums.logType logtype = Enums.logType.INFO)

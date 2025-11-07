@@ -55,6 +55,7 @@ namespace Crypto_Clients
         private List<string> subscribingChannels;
 
         private Int64 lastnonce;
+        private volatile int nonceChecking;
 
         public bool logging;
         public StreamWriter msgLog;
@@ -92,6 +93,7 @@ namespace Crypto_Clients
             this.sw_Public = new Stopwatch();
 
             this.lastnonce = 0;
+            this.nonceChecking = 0;
             //this._addLog = Console.WriteLine;
         }
         public void setLogFile(string path)
@@ -864,12 +866,17 @@ namespace Crypto_Clients
 
         private async Task<string> getAsync(string endpoint,string body = "")
         {
+            while (Interlocked.CompareExchange(ref this.nonceChecking, 1, 0) != 0)
+            {
+
+            }
             var nonce = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             if (nonce <= this.lastnonce)
             {
-                ++nonce;
+                nonce = this.lastnonce + 1;
             }
             this.lastnonce = nonce;
+            Volatile.Write(ref this.nonceChecking, 0);
             var message = $"{nonce}{coincheck_connection.URL}{endpoint}";
 
             var request = new HttpRequestMessage(HttpMethod.Get, coincheck_connection.URL + endpoint);
@@ -900,12 +907,17 @@ namespace Crypto_Clients
 
         private async Task<string> postAsync(string endpoint, string body)
         {
+            while(Interlocked.CompareExchange(ref this.nonceChecking,1,0) != 0)
+            {
+
+            }
             var nonce = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             if (nonce <= this.lastnonce)
             {
-                ++nonce;
+                nonce = this.lastnonce + 1;
             }
             this.lastnonce = nonce;
+            Volatile.Write(ref this.nonceChecking, 0);
             var message = $"{nonce}{coincheck_connection.URL}{endpoint}{body}";
 
             var request = new HttpRequestMessage(HttpMethod.Post, coincheck_connection.URL + endpoint);
@@ -927,18 +939,22 @@ namespace Crypto_Clients
                 this.msgLog.WriteLine(DateTime.UtcNow.ToString() + "   POST" + endpoint + body);
             }
             var resString = await response.Content.ReadAsStringAsync();
-
             return resString;
         }
 
         private async Task<string> deleteAsync(string endpoint,string body)
         {
+            while (Interlocked.CompareExchange(ref this.nonceChecking, 1, 0) != 0)
+            {
+
+            }
             var nonce = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             if (nonce <= this.lastnonce)
             {
-                ++nonce;
+                nonce = this.lastnonce + 1;
             }
             this.lastnonce = nonce;
+            Volatile.Write(ref this.nonceChecking, 0);
             var message = $"{nonce}{coincheck_connection.URL}{endpoint}{body}";
 
             var request = new HttpRequestMessage(HttpMethod.Delete, coincheck_connection.URL + endpoint);

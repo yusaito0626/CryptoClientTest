@@ -11,6 +11,7 @@ using PubnubApi;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Data;
 using System.Data.SqlTypes;
 using System.Diagnostics;
@@ -609,8 +610,29 @@ namespace Crypto_Trading
                     int code = js.RootElement.GetProperty("data").GetProperty("code").GetInt32();
                     switch (code)
                     {
+                        case 10000:
+                            this.addLog("New order failed. The URL doesn't exist. Error code: 10000",Enums.logType.ERROR);
+                            break;
+                        case 10001:
+                            this.addLog("New order failed. System error, Contact support Error code:10001", Enums.logType.WARNING);
+                            break;
+                        case 10002:
+                            this.addLog("New order failed. Improper Json format. Error code:10002", Enums.logType.ERROR);
+                            break;
+                        case 10003:
+                            this.addLog("New order failed.  System error, Contact support Error code:10003", Enums.logType.WARNING);
+                            break;
+                        case 10005:
+                            this.addLog("New order failed.  Timeout error. Error code:10005", Enums.logType.WARNING);
+                            break;
+                        case 10007:
+                            this.addLog("New order failed.  Under maintenance. Error code:10007", Enums.logType.ERROR);
+                            break;
+                        case 10008:
+                            this.addLog("New order failed. The system is busy. Error code:10008", Enums.logType.WARNING);
+                            break;
                         case 10009:
-                            this.addLog("New order failed. Too many request.", Enums.logType.WARNING);
+                            this.addLog("New order failed. Too many request. Error code:10009", Enums.logType.WARNING);
                             break;
                         default:
                             this.addLog("New Order Failed", Enums.logType.ERROR);
@@ -1115,8 +1137,29 @@ namespace Crypto_Trading
                     int code = js.RootElement.GetProperty("data").GetProperty("code").GetInt32();
                     switch (code)
                     {
+                        case 10000:
+                            this.addLog("Cancel order failed. The URL doesn't exist. Error code: 10000", Enums.logType.ERROR);
+                            break;
+                        case 10001:
+                            this.addLog("Cancel order failed. System error, Contact support Error code:10001", Enums.logType.WARNING);
+                            break;
+                        case 10002:
+                            this.addLog("Cancel order failed. Improper Json format. Error code:10002", Enums.logType.ERROR);
+                            break;
+                        case 10003:
+                            this.addLog("Cancel order failed.  System error, Contact support Error code:10003", Enums.logType.WARNING);
+                            break;
+                        case 10005:
+                            this.addLog("Cancel order failed.  Timeout error. Error code:10005", Enums.logType.WARNING);
+                            break;
+                        case 10007:
+                            this.addLog("Cancel order failed.  Under maintenance. Error code:10007", Enums.logType.ERROR);
+                            break;
+                        case 10008:
+                            this.addLog("Cancel order failed. The system is busy. Error code:10008", Enums.logType.WARNING);
+                            break;
                         case 10009:
-                            this.addLog("Cancel order failed. Too many request.", Enums.logType.WARNING);
+                            this.addLog("Cancel order failed. Too many request. Error code:10009", Enums.logType.WARNING);
                             break;
                         case 50026://Already Canceled
                         case 50027://Already filled
@@ -1321,40 +1364,40 @@ namespace Crypto_Trading
                                 break;
                             case 50026://Already Canceled
                             case 50027://Already filled
-                                this.addLog("Cancel Order Failed", Enums.logType.ERROR);
-                                this.addLog(elem.RootElement.GetRawText(), Enums.logType.ERROR);
+                                this.addLog("Cancel Order Failed code:" + code.ToString());
+                                this.addLog(elem.RootElement.GetRawText());
                                 break;
                             default:
                                 this.addLog("Cancel Order Failed", Enums.logType.ERROR);
                                 this.addLog(elem.RootElement.GetRawText(), Enums.logType.ERROR);
                                 break;
                         }
-                        foreach(string ordid in sndOrd.order_ids)
-                        {
-                            while (!this.ord_client.ordUpdateStack.TryPop(out ordObj))
-                            {
+                        //foreach(string ordid in sndOrd.order_ids)
+                        //{
+                        //    while (!this.ord_client.ordUpdateStack.TryPop(out ordObj))
+                        //    {
 
-                            }
-                            DataSpotOrderUpdate prev = this.orders[ordid];
+                        //    }
+                        //    DataSpotOrderUpdate prev = this.orders[ordid];
 
-                            ordObj.status = orderStatus.INVALID;
-                            ordObj.timestamp = sendTime;
-                            ordObj.internal_order_id = ordid;
-                            ordObj.side = prev.side;
-                            ordObj.symbol = prev.symbol;
-                            ordObj.market = prev.market;
-                            ordObj.symbol_market = prev.symbol_market;
-                            ordObj.order_quantity = prev.order_quantity;
-                            ordObj.order_price = prev.order_price;
-                            ordObj.filled_quantity = 0;
-                            ordObj.average_price = 0;
-                            ordObj.fee = 0;
-                            ordObj.fee_asset = "";
-                            ordObj.is_trigger_order = true;
-                            ordObj.last_trade = "";
-                            ordObj.msg = sndOrd.msg;
-                            this.ord_client.ordUpdateQueue.Enqueue(ordObj);
-                        }
+                        //    ordObj.status = orderStatus.Open;
+                        //    ordObj.timestamp = sendTime;
+                        //    ordObj.internal_order_id = ordid;
+                        //    ordObj.side = prev.side;
+                        //    ordObj.symbol = prev.symbol;
+                        //    ordObj.market = prev.market;
+                        //    ordObj.symbol_market = prev.symbol_market;
+                        //    ordObj.order_quantity = prev.order_quantity;
+                        //    ordObj.order_price = prev.order_price;
+                        //    ordObj.filled_quantity = 0;
+                        //    ordObj.average_price = 0;
+                        //    ordObj.fee = 0;
+                        //    ordObj.fee_asset = "";
+                        //    ordObj.is_trigger_order = true;
+                        //    ordObj.last_trade = "";
+                        //    ordObj.msg = sndOrd.msg;
+                        //    this.ord_client.ordUpdateQueue.Enqueue(ordObj);
+                        //}
                         
                     }
                 }
@@ -1393,7 +1436,37 @@ namespace Crypto_Trading
                         output.Add(ordObj);
                         this.ord_client.ordUpdateQueue.Enqueue(ordObj);
                     }
+                    else
+                    {
+                        //foreach (string ordid in sndOrd.order_ids)
+                        //{
+                        //    while (!this.ord_client.ordUpdateStack.TryPop(out ordObj))
+                        //    {
+
+                        //    }
+                        //    DataSpotOrderUpdate prev = this.orders[ordid];
+
+                        //    ordObj.status = orderStatus.Open;
+                        //    ordObj.timestamp = sendTime;
+                        //    ordObj.internal_order_id = ordid;
+                        //    ordObj.side = prev.side;
+                        //    ordObj.symbol = prev.symbol;
+                        //    ordObj.market = prev.market;
+                        //    ordObj.symbol_market = prev.symbol_market;
+                        //    ordObj.order_quantity = prev.order_quantity;
+                        //    ordObj.order_price = prev.order_price;
+                        //    ordObj.filled_quantity = 0;
+                        //    ordObj.average_price = 0;
+                        //    ordObj.fee = 0;
+                        //    ordObj.fee_asset = "";
+                        //    ordObj.is_trigger_order = true;
+                        //    ordObj.last_trade = "";
+                        //    ordObj.msg = sndOrd.msg;
+                        //    this.ord_client.ordUpdateQueue.Enqueue(ordObj);
+                        //}
+                    }
                 }
+                
                 
             }
             else if (sndOrd.ins.market == "bittrade")
@@ -1523,6 +1596,7 @@ namespace Crypto_Trading
             Instrument ins = null;
             var spinner = new SpinWait();
             bool ret = true;
+            int i = 0;
             try
             {
                 while (true)
@@ -1556,12 +1630,24 @@ namespace Crypto_Trading
                             this.ordLogQueue.Enqueue(fill.ToString());
                             this.filledOrderQueue.Enqueue(fill);
                             spinner.Reset();
+                            i = 0;
                             end();
-
                         }
                         else
                         {
-                            this.ord_client.fillQueue.Enqueue(fill);
+                            if(i > 200000)
+                            {
+                                addLog("Unknown fill received.", Enums.logType.WARNING);
+                                addLog(fill.ToString(), Enums.logType.WARNING);
+                                this.filledOrderQueue.Enqueue(fill);
+                                i = 0;
+                            }
+                            else
+                            {
+                                this.ord_client.fillQueue.Enqueue(fill);
+                                ++i;
+                            }
+                            break;
                         }
 
                     }
@@ -1642,10 +1728,10 @@ namespace Crypto_Trading
 
         public async void updateFillOnClosing()
         {
-            while (this.ord_client.fillQueue.Count() > 0)
-            {
-                await this._updateFill();
-            }
+            //while (this.ord_client.fillQueue.Count() > 0)
+            //{
+            //    await this._updateFill();
+            //}
         }
         public async Task<bool> updateOrders(Action start,Action end,CancellationToken ct,int spinningMax)
         {
@@ -1737,10 +1823,18 @@ namespace Crypto_Trading
 
                                     if (ord.status < prevord.status || ord.filled_quantity < prevord.filled_quantity)
                                     {
-                                        ord.update_time = DateTime.UtcNow;
-                                        this.order_pool.Enqueue(ord);
-                                        //ord.init();
-                                        //this.ord_client.ordUpdateStack.Push(ord);
+                                        if(prevord.status == orderStatus.WaitCancel && ord.status == orderStatus.Open)
+                                        {
+                                            this.orders[ord.internal_order_id] = ord;
+                                            this.live_orders[ord.internal_order_id] = ord;
+                                            prevord.update_time = DateTime.UtcNow;
+                                            this.order_pool.Enqueue(prevord);
+                                        }
+                                        else
+                                        {
+                                            ord.update_time = DateTime.UtcNow;
+                                            this.order_pool.Enqueue(ord);
+                                        }
                                     }
                                     else
                                     {
@@ -1806,7 +1900,6 @@ namespace Crypto_Trading
                                                     }
                                                 }
                                             }
-
                                         }
                                         if (this.modifingOrders.ContainsKey(ord.internal_order_id))
                                         {

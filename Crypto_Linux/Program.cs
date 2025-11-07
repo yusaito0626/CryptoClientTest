@@ -764,6 +764,7 @@ namespace Crypto_Linux
                     {
                         return false;
                     }
+                    
                 }
                 qManager.ready = true;
 
@@ -793,6 +794,59 @@ namespace Crypto_Linux
                 queueInfos["optimize"] = new queueInfo() { name = "optimize", count = 0 };
 
                 threadsStarted = true;
+
+                if(liveTrading)
+                {
+                    List<DataSpotOrderUpdate> activeOrders;
+                    addLog("Checking active orders...");
+                    foreach (var mkt in qManager._markets.Keys)
+                    {
+                        activeOrders = await crypto_client.getActiveOrders(mkt);
+                        if (activeOrders.Count > 0)
+                        {
+                            Dictionary<string, List<string>> activeOrder_ids = new Dictionary<string, List<string>>();
+                            foreach (var order in activeOrders)
+                            {
+                                string symbol = order.symbol;
+                                if (activeOrder_ids.ContainsKey(symbol))
+                                {
+                                    activeOrder_ids[symbol].Add(order.order_id);
+                                }
+                                else
+                                {
+                                    activeOrder_ids[symbol] = new List<string>();
+                                    activeOrder_ids[symbol].Add(order.order_id);
+                                }
+                            }
+                            foreach (var ids in activeOrder_ids)
+                            {
+
+                                if (qManager.instruments.ContainsKey(ids.Key))
+                                {
+                                    Instrument ins = qManager.instruments[ids.Key];
+                                    addLog("Cancelling " + ids.Value.Count().ToString() + " orders of " + ids.Key);
+                                    await oManager.placeCancelSpotOrders(ins, ids.Value, true, true);
+                                }
+                            }
+                        }
+                    }
+
+                    addLog("Checking balance...");
+                    foreach (var stg in strategies.Values)
+                    {
+                        decimal baseBalance_diff = stg.baseCcyQuantity - (stg.maker.baseBalance.total + stg.taker.baseBalance.total);
+                        orderSide side = orderSide.Buy;
+                        if (baseBalance_diff < 0)
+                        {
+                            baseBalance_diff *= -1;
+                            side = orderSide.Sell;
+                        }
+                        stg.lastPosAdjustment = DateTime.UtcNow;
+                        addLog("SoD balance of " + stg.name + " BaseCcy:" + (stg.maker.baseBalance.total + stg.taker.baseBalance.total).ToString() + " QuoteCcy:" + (stg.maker.quoteBalance.total + stg.taker.quoteBalance.total).ToString());
+                        addLog("Adjustment at SoD: " + side.ToString() + " " + baseBalance_diff.ToString());
+                        await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, null, true, false);
+                    }
+                }
             }
             catch (Exception ex)
             {
