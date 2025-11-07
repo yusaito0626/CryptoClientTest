@@ -841,10 +841,14 @@ namespace Crypto_Linux
                             baseBalance_diff *= -1;
                             side = orderSide.Sell;
                         }
+                        baseBalance_diff = Math.Round(baseBalance_diff / stg.taker.quantity_unit) * stg.taker.quantity_unit;
                         stg.lastPosAdjustment = DateTime.UtcNow;
                         addLog("SoD balance of " + stg.name + " BaseCcy:" + (stg.maker.baseBalance.total + stg.taker.baseBalance.total).ToString() + " QuoteCcy:" + (stg.maker.quoteBalance.total + stg.taker.quoteBalance.total).ToString());
                         addLog("Adjustment at SoD: " + side.ToString() + " " + baseBalance_diff.ToString());
-                        await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, null, true, false);
+                        if(baseBalance_diff > 0)
+                        {
+                            await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, null, true, false);
+                        }
                     }
                 }
             }

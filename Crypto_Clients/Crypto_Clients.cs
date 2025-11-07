@@ -425,7 +425,7 @@ namespace Crypto_Clients
             {
                 case "bitbank":
                     js = await this.bitbank_client.getActiveOrders();
-                    this.addLog(JsonSerializer.Serialize(js));
+                    //this.addLog(JsonSerializer.Serialize(js));
                     if(js.RootElement.GetProperty("success").GetInt16() == 1)
                     {
                         var data = js.RootElement.GetProperty("data").GetProperty("orders");
@@ -443,7 +443,7 @@ namespace Crypto_Clients
                     break;
                 case "coincheck":
                     js = await this.coincheck_client.getActiveOrders();
-                    this.addLog(JsonSerializer.Serialize(js));
+                    //this.addLog(JsonSerializer.Serialize(js));
                     if (js.RootElement.GetProperty("success").GetBoolean())
                     {
                         var data = js.RootElement.GetProperty("orders");
@@ -482,7 +482,7 @@ namespace Crypto_Clients
                     break;
                 case "bittrade":
                     js = await this.bittrade_client.getActiveOrders();
-                    this.addLog(JsonSerializer.Serialize(js));
+                    //this.addLog(JsonSerializer.Serialize(js));
                     if (js.RootElement.GetProperty("status").GetString() == "ok")
                     {
                         var data = js.RootElement.GetProperty("data");
