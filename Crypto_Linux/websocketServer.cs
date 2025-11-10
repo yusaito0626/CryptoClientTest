@@ -151,36 +151,57 @@ namespace Crypto_Linux
                 i += PageSize;
             }
             Volatile.Write(ref this.sendingFills, 0);
-
-            while (socket.State == WebSocketState.Open && !token.IsCancellationRequested)
+            try
             {
-                var result = await socket.ReceiveAsync(buffer, token);
-
-                if (result.MessageType == WebSocketMessageType.Close)
+                while (socket.State == WebSocketState.Open && !token.IsCancellationRequested)
                 {
-                    this.addLog("Client disconnected");
-                    await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", token);
-                    _clients.Remove(socket);
+                    WebSocketReceiveResult result;
+                    try
+                    {
+                        result = await socket.ReceiveAsync(buffer, token);
+                    }
+                    catch (WebSocketException ex)
+                    {
+                        this.addLog($"Client disconnected unexpectedly: {ex.Message}");
+                        break;
+                    }
+
+                    if (result.MessageType == WebSocketMessageType.Close)
+                    {
+                        this.addLog("Client disconnected");
+                        await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", token);
+                        _clients.Remove(socket);
+                    }
+
+                    string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+
+                    if (message == "ping")
+                    {
+                        await socket.SendAsync(
+                            Encoding.UTF8.GetBytes("pong"),
+                            WebSocketMessageType.Text,
+                            true,
+                            token
+                        );
+                    }
+                    else if (message == "exit")
+                    {
+                        this.addLog("Recieved exit command from a client");
+                        await onExitCommand();
+                    }
+
+
                 }
-
-                string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-
-                if (message == "ping")
+            }
+            finally
+            {
+                addLog("The client removed.");
+                _clients.Remove(socket);
+                if (socket.State != WebSocketState.Closed)
                 {
-                    await socket.SendAsync(
-                        Encoding.UTF8.GetBytes("pong"),
-                        WebSocketMessageType.Text,
-                        true,
-                        token
-                    );
+                    try { await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", token); }
+                    catch { }
                 }
-                else if(message == "exit")
-                {
-                    this.addLog("Recieved exit command from a client");
-                    await onExitCommand();
-                }
-                
-
             }
         }
 
@@ -254,8 +275,20 @@ namespace Crypto_Linux
 
             foreach (var ws in _clients.ToList())
             {
-                if (ws.State == WebSocketState.Open)
+                if (ws.State != WebSocketState.Open)
+                {
+                    _clients.Remove(ws);
+                    continue;
+                }
+                try
+                {
                     await ws.SendAsync(seg, WebSocketMessageType.Text, true, CancellationToken.None);
+                }
+                catch (WebSocketException)
+                {
+                    this.addLog("Removing disconnected client during broadcast");
+                    _clients.Remove(ws);
+                }
             }
         }
 
