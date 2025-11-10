@@ -1,5 +1,6 @@
 ﻿using PubnubApi;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO.Compression;
@@ -988,6 +989,56 @@ namespace Crypto_Clients
                 this.msgLog.WriteLine(DateTime.UtcNow.ToString() + "   DELETE" + endpoint + body);
             }
             return resString;
+        }
+
+        public async Task<JsonDocument> getTradeHistory()
+        {
+            var resString = await this.getAsync("/api/exchange/orders/transactions");
+            var json = JsonDocument.Parse(resString);
+            return json;
+        }
+        public async Task<List<JsonElement>> getTradeHistoryPagenation(DateTime? startTime = null, DateTime? endTime = null)
+        {
+            List<JsonElement> allTransactions = new List<JsonElement>();
+            string starting_after = null;
+            int limit = 100;
+            DateTime currentTime = DateTime.UtcNow;
+            while (true)
+            {
+                string query = $"?limit={limit}&order=desc";
+                if (!string.IsNullOrEmpty(starting_after))
+                    query += $"&starting_after={starting_after}";
+                var resString = await this.getAsync("/api/exchange/orders/transactions_pagination" + query);
+                var json = JsonDocument.Parse(resString);
+
+                if (!json.RootElement.TryGetProperty("data", out JsonElement transactions) || transactions.GetArrayLength() == 0)
+                    break;
+
+                foreach (var tx in transactions.EnumerateArray())
+                {
+                    currentTime = DateTime.Parse(tx.GetProperty("created_at").GetString(), null, System.Globalization.DateTimeStyles.RoundtripKind);
+                    if(endTime != null && currentTime > endTime)
+                    {
+
+                    }
+                    else if(startTime != null && currentTime < startTime)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        allTransactions.Add(tx);
+                    }
+                }
+                if(startTime != null && currentTime < startTime)
+                {
+                    break;
+                }
+
+                
+                starting_after = transactions[transactions.GetArrayLength() - 1].GetProperty("id").GetInt64().ToString();
+            }
+            return allTransactions;
         }
         public async Task<JsonDocument> getBalance()
         {

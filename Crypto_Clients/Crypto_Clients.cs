@@ -4,6 +4,8 @@ using CryptoExchange.Net.Objects;
 using CryptoExchange.Net.Objects.Sockets;
 using CryptoExchange.Net.Requests;
 using CryptoExchange.Net.SharedApis;
+using Discord;
+using Discord.Audio.Streams;
 using Enums;
 using HTX.Net.Enums;
 using PubnubApi;
@@ -562,6 +564,70 @@ namespace Crypto_Clients
                     break;
             }
             return l;
+        }
+
+        public async Task<List<DataFill>> getTradeHistory(string market,DateTime? startTime = null,DateTime? endTime = null)
+        {
+            List<DataFill> output = new List<DataFill>();
+            JsonDocument js;
+            List<JsonElement> js_list;
+            DataFill fill;
+            string test;
+            switch(market)
+            {
+                case "bitbank":
+                    js = await this.bitbank_client.getTradeHistory("", startTime, endTime);
+                    if(js.RootElement.GetProperty("success").GetInt32() == 1)
+                    {
+                        var data = js.RootElement.GetProperty("data").GetProperty("trades");
+                        foreach(var item in data.EnumerateArray())
+                        {
+                            while (!this.fillStack.TryPop(out fill))
+                            {
+                            }
+                            fill.setBitBankFill(item);
+                            output.Add(fill);
+                        }
+                    }
+                    else
+                    {
+                        addLog("Failed to get trade history from bitbank.", logType.WARNING);
+                    }
+                    break;
+                case "coincheck":
+                    js_list = await this.coincheck_client.getTradeHistoryPagenation(startTime, endTime);
+                    foreach(var js_elem in js_list)
+                    {
+                        while (!this.fillStack.TryPop(out fill))
+                        {
+                        }
+                        fill.setCoincheckFill(js_elem);
+                        output.Add(fill);
+                    }
+                    if(js_list.Count > 0)
+                    {
+                        addLog("Failed to get trade history from coincheck.", logType.WARNING);
+                    }
+                    //js = await this.coincheck_client.getTradeHistory();
+                    //if (js.RootElement.GetProperty("success").GetBoolean())
+                    //{
+                    //    var data = js.RootElement.GetProperty("transactions");
+                    //    foreach (var item in data.EnumerateArray())
+                    //    {
+                    //        while (!this.fillStack.TryPop(out fill))
+                    //        {
+                    //        }
+                    //        fill.setCoincheckFill(item);
+                    //        output.Add(fill);
+                    //    }
+                    //}
+                    //else
+                    //{
+                    //    addLog("Failed to get trade history from coincheck.", logType.WARNING);
+                    //}
+                    break;
+            }
+            return output;
         }
         async public Task<ExchangeWebResult<SharedFee>[]> getFees(IEnumerable<string>? markets,string baseCcy,string quoteCcy)
         {
@@ -1370,7 +1436,16 @@ namespace Crypto_Clients
             this.timestamp = DateTime.UtcNow;
             this.order_id = js.GetProperty("order_id").GetUInt64().ToString();
             this.trade_id = js.GetProperty("id").GetUInt64().ToString();
-            this.filled_time = DateTime.Parse(js.GetProperty("event_time").GetString(), null, System.Globalization.DateTimeStyles.RoundtripKind);
+            JsonElement time;
+            if(js.TryGetProperty("event_time",out time))
+            {
+                this.filled_time = DateTime.Parse(time.GetString(), null, System.Globalization.DateTimeStyles.RoundtripKind);
+            }
+            else if(js.TryGetProperty("created_at", out time))
+            {
+                this.filled_time = DateTime.Parse(time.GetString(), null, System.Globalization.DateTimeStyles.RoundtripKind);
+            }
+
             this.symbol = js.GetProperty("pair").GetString();
             this.market = "coincheck";
             this.symbol_market = this.symbol + "@" + this.market;

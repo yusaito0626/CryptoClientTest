@@ -582,13 +582,13 @@ namespace Crypto_Clients
             return (output,latency);
         }
        
-        private async Task<string> getAsync(string endpoint)
+        private async Task<string> getAsync(string endpoint,string body = "")
         {
             var nonce = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             var timeWindow = "5000";
-            var message = $"{nonce}{timeWindow}{endpoint}";
+            var message = $"{nonce}{timeWindow}{endpoint}{body}";
 
-            var request = new HttpRequestMessage(HttpMethod.Get, bitbank_connection.URL + endpoint);
+            var request = new HttpRequestMessage(HttpMethod.Get, bitbank_connection.URL + endpoint + body);
 
             request.Headers.Add("ACCESS-KEY", this.apiName);
             request.Headers.Add("ACCESS-REQUEST-TIME", nonce.ToString());
@@ -596,6 +596,14 @@ namespace Crypto_Clients
             request.Headers.Add("ACCESS-SIGNATURE", ToSha256(this.secretKey, message));
 
             request.Content = new StringContent(string.Empty, Encoding.UTF8, "application/json");
+            //if (body == "")
+            //{
+            //    request.Content = new StringContent(string.Empty, Encoding.UTF8, "application/json");
+            //}
+            //else
+            //{
+            //    request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+            //}
 
             var response = await this.http_client.SendAsync(request);
             var resString = await response.Content.ReadAsStringAsync();
@@ -640,17 +648,55 @@ namespace Crypto_Clients
             var json = JsonDocument.Parse(resString);
             return json;
         }
-        public async Task<JsonDocument> getStatus()
+        public async Task<JsonDocument> getTradeHistory(string symbol = "",DateTime? startTime = null,DateTime? endTime = null)
         {
-            var resString = await this.getAsync("/spot/status");
+            var js = new Dictionary<string, object>();
+
+            if (string.IsNullOrEmpty(symbol))
+            {
+                js["pair"] = symbol;
+            }
+            if(startTime != null)
+            {
+                js["since"] = ((DateTimeOffset)startTime).ToUnixTimeMilliseconds();
+            }
+            if (endTime != null)
+            {
+                js["end"] = ((DateTimeOffset)endTime).ToUnixTimeMilliseconds();
+            }
+            js["order"] = "asc";
+
+            string body = BuildQueryString(JsonDocument.Parse(JsonSerializer.Serialize(js)));
+            var resString = await this.getAsync("/v1/user/spot/trade_history", body);
             var json = JsonDocument.Parse(resString);
             return json;
         }
-        public async Task<JsonDocument> getSpotDetails()
+        public  string BuildQueryString(JsonDocument doc)
         {
-            var resString = await this.getAsync("/spot/pairs");
-            var json = JsonDocument.Parse(resString);
-            return json;
+            var sb = new StringBuilder();
+            bool first = true;
+
+            foreach (var property in doc.RootElement.EnumerateObject())
+            {
+                if (property.Value.ValueKind == JsonValueKind.Null)
+                    continue; // null値はスキップ
+
+                if (first)
+                {
+                    sb.Append('?');
+                    first = false;
+                }
+                else
+                {
+                    sb.Append('&');
+                }
+
+                sb.Append(Uri.EscapeDataString(property.Name));
+                sb.Append('=');
+                sb.Append(Uri.EscapeDataString(property.Value.ToString()));
+            }
+
+            return sb.ToString();
         }
 
 

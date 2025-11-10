@@ -256,6 +256,12 @@ namespace Crypto_Linux
 
             addLog("Latency check");
 
+            List<DataFill> tradeHistory = await crypto_client.getTradeHistory("coincheck",DateTime.UtcNow.Date);
+            foreach(DataFill fill in tradeHistory)
+            {
+                Console.WriteLine(fill.ToString());
+            }
+            Console.WriteLine(tradeHistory.Count.ToString() + " trades found.");
             i = 0;
             int trial = 3;
             Stopwatch sw = new Stopwatch();
