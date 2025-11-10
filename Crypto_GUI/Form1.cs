@@ -117,7 +117,7 @@ namespace Crypto_GUI
 
             this.button_receiveFeed.Enabled = false;
             this.button_startTrading.Enabled = false;
-            //this.button_orderTest.Enabled = false;
+            this.button_orderTest.Enabled = false;
 
             this.str_endTime = "23:30:00";
 
@@ -1433,15 +1433,21 @@ namespace Crypto_GUI
         }
         private async void button_stopTrading_Click(object sender, EventArgs e)
         {
-            string msg = "exit"; 
-            var bytes = Encoding.UTF8.GetBytes(msg);
-            if (this.info_receiver.State == WebSocketState.Open)
+            DialogResult result = MessageBox.Show(
+                    "Are you sure you want to stop trading?",
+                    "Stop trading",
+                    MessageBoxButtons.OKCancel,
+                    MessageBoxIcon.Question
+                );
+            if (result == DialogResult.OK)
             {
-                await this.info_receiver.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                string msg = "exit";
+                var bytes = Encoding.UTF8.GetBytes(msg);
+                if (this.info_receiver.State == WebSocketState.Open)
+                {
+                    await this.info_receiver.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                }
             }
-            //await this.stopTrading();
-            //this.button_startTrading.Enabled = false;
-            //this.button_receiveFeed.Enabled = true;
         }
         private async void test_Click(object sender, EventArgs e)
         {
@@ -1862,12 +1868,12 @@ namespace Crypto_GUI
                 this.button_receiveFeed.Enabled = false;
                 this.button_startTrading.Enabled = false;
 
-                await this.tradePreparation(this.live);
+                //await this.tradePreparation(this.live);
                 if(!monitoringMode)
                 {
                     this.addLog("Waiting for 5 sec", Enums.logType.INFO);
                     Thread.Sleep(5000);
-                    this.startTrading();
+                    //this.startTrading();
                 }
                 else
                 {
