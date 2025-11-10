@@ -90,6 +90,8 @@ namespace Crypto_Linux
 
             Dictionary<string,string> item = new Dictionary<string,string>();
 
+            this.addLog("Client connected");
+
             json = JsonSerializer.Serialize(this.masterInfos);
             item["data_type"] = "master";
             item["data"] = json;
@@ -149,8 +151,6 @@ namespace Crypto_Linux
                 i += PageSize;
             }
             Volatile.Write(ref this.sendingFills, 0);
-
-            this.addLog("Client connected");
 
             while (socket.State == WebSocketState.Open && !token.IsCancellationRequested)
             {

@@ -811,7 +811,22 @@ namespace Crypto_Linux
                     {
                         return false;
                     }
-                    
+                    string SoDPosFile = outputPath + "/SoD_Position.csv";
+                    StreamWriter sw = null;
+                    if (!File.Exists(SoDPosFile))
+                    {
+                        sw = new StreamWriter(new FileStream(SoDPosFile, FileMode.Create, FileAccess.Write));
+                        sw.WriteLine("timestamp,symbol,market,symbol_market,base_ccy,quote_ccy,baseccy_balance,quoteccy_balance");
+                        string currentTime = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
+                        foreach (var ins in qManager.instruments.Values)
+                        {
+                            string line = currentTime + "," + ins.symbol + "," + ins.market + "," + ins.symbol_market + "," + ins.baseCcy + "," + ins.quoteCcy + "," + ins.baseBalance.total.ToString() + "," + ins.quoteBalance.total.ToString();
+                            sw.WriteLine(line);
+                            sw.Flush();
+                        }
+                        sw.Close();
+                        sw.Dispose();
+                    }
                 }
                 qManager.ready = true;
 
@@ -879,6 +894,7 @@ namespace Crypto_Linux
                     }
 
                     addLog("Checking balance...");
+                    
                     foreach (var stg in strategies.Values)
                     {
                         decimal baseBalance_diff = stg.baseCcyQuantity - (stg.maker.baseBalance.total + stg.taker.baseBalance.total);
