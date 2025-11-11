@@ -622,7 +622,7 @@ namespace Crypto_Linux
                 Directory.CreateDirectory(newpath);
             }
             outputPath = newpath;
-            logPath = outputPath + "/crypto.log";
+            logPath = outputPath + "/crypto_" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".log";
 
             return true;
 
@@ -870,19 +870,23 @@ namespace Crypto_Linux
                                 }
                             }
                         }
-                        List<DataFill> histFill;
+                        SortedDictionary<DateTime,DataFill> histFill = new SortedDictionary<DateTime, DataFill>();
                         foreach (var mkt in qManager._markets.Keys)
                         {
-                            histFill = await crypto_client.getTradeHistory(mkt, DateTime.UtcNow.Date);
-                            foreach (var fill in histFill)
+                            List<DataFill> temp_histFill = await crypto_client.getTradeHistory(mkt, DateTime.UtcNow.Date);
+                            foreach(var fill in temp_histFill)
                             {
-                                string symbol_market = fill.symbol_market;
-                                if (qManager.instruments.ContainsKey(symbol_market))
-                                {
-                                    Instrument ins = qManager.instruments[symbol_market];
-                                    ins.updateFills(fill);
-                                    filledOrderQueue.Enqueue(fill);
-                                }
+                                histFill[fill.filled_time ?? DateTime.UtcNow] = fill;
+                            }
+                        }
+                        foreach (var fill in histFill.Values)
+                        {
+                            string symbol_market = fill.symbol_market;
+                            if (qManager.instruments.ContainsKey(symbol_market))
+                            {
+                                Instrument ins = qManager.instruments[symbol_market];
+                                ins.updateFills(fill);
+                                filledOrderQueue.Enqueue(fill);
                             }
                         }
                         //Just in case, update balance again

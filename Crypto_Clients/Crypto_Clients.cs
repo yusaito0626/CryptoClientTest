@@ -586,6 +586,7 @@ namespace Crypto_Clients
                             {
                             }
                             fill.setBitBankFill(item);
+                            fill.timestamp = fill.filled_time;
                             output.Add(fill);
                         }
                     }
@@ -602,6 +603,7 @@ namespace Crypto_Clients
                         {
                         }
                         fill.setCoincheckFill(js_elem);
+                        fill.timestamp = fill.filled_time;
                         output.Add(fill);
                     }
                     if(js_list.Count > 0)
