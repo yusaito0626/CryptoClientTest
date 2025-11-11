@@ -841,7 +841,6 @@ namespace Crypto_Linux
                         StreamReader sr = new StreamReader(new FileStream(SoDPosFile, FileMode.Open, FileAccess.Read));
                         while(sr.ReadLine() is string line)
                         {
-                            addLog(line);
                             if(line.StartsWith("timestamp"))
                             {
                                 continue;
