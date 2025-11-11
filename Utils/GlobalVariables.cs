@@ -11,7 +11,7 @@ namespace Utils
     {
         public const string ver_major = "1";
         public const string ver_minor = "3";
-        public const string ver_patch = "0";
+        public const string ver_patch = "1";
 
         public static string tmMsecFormat = "yyyy-MM-dd HH:mm:ss.fff";
     }

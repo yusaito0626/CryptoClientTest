@@ -348,7 +348,7 @@ namespace Crypto_Trading
                                     }
                                     else if (symbol_market == stg.Value.maker.symbol_market && !this.oManager.getVirtualMode())
                                     {
-                                        //stg.Value.onMakerQuotes(msg);
+                                        stg.Value.onMakerQuotes(msg);
                                     }
                                 }
 
