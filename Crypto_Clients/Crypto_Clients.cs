@@ -566,6 +566,112 @@ namespace Crypto_Clients
             return l;
         }
 
+        public async Task<List<DataTrade>> getVolumeHistory(string market,string symbol, DateTime? startTime = null, DateTime? endTime = null)
+        {
+            List<DataTrade> output = new List<DataTrade>();
+            JsonDocument js;
+            List<JsonElement> js_list;
+            DataTrade trade;
+            string test;
+            switch (market)
+            {
+                case "bitbank":
+                    if(startTime == null && endTime == null)
+                    {
+                        js = await this.bitbank_client.getVolumeHistory(symbol);
+                        if (js.RootElement.GetProperty("success").GetInt32() == 1)
+                        {
+                            var data = js.RootElement.GetProperty("data").GetProperty("transactions");
+                            foreach (var item in data.EnumerateArray())
+                            {
+                                while (!this.tradeStack.TryPop(out trade))
+                                {
+                                }
+                                trade.setBitbankTrade(item, market, symbol);
+                                trade.timestamp = trade.filled_time;
+                                output.Add(trade);
+                            }
+                        }
+                        else
+                        {
+                            addLog("Failed to get trade history from bitbank.", logType.WARNING);
+                        }
+                    }
+                    else
+                    {
+                        if (endTime == null)
+                        {
+                            endTime = DateTime.UtcNow;
+                        }
+                        DateTime d = ((DateTime)startTime).Date;
+                        while (d < (DateTime)endTime)
+                        {
+                            string YYYYMMDD = d.ToString("yyyyMMdd");
+                            js = await this.bitbank_client.getVolumeHistory(symbol, YYYYMMDD);
+                            if (js.RootElement.GetProperty("success").GetInt32() == 1)
+                            {
+                                var data = js.RootElement.GetProperty("data").GetProperty("transactions");
+                                foreach (var item in data.EnumerateArray())
+                                {
+                                    while (!this.tradeStack.TryPop(out trade))
+                                    {
+                                    }
+                                    trade.setBitbankTrade(item, market, symbol);
+                                    if (trade.filled_time >= (DateTime)startTime && trade.filled_time <= (DateTime)endTime)
+                                    {
+                                        trade.timestamp = trade.filled_time;
+                                        output.Add(trade);
+                                    }
+                                    else
+                                    {
+                                        trade.init();
+                                        this.tradeStack.Push(trade);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                addLog("Failed to get trade history from bitbank.", logType.WARNING);
+                            }
+                            d += TimeSpan.FromDays(1);
+                        }
+                    }
+                    
+                    
+                    break;
+                case "coincheck":
+                    js_list = await this.coincheck_client.getVolumeHistory(symbol,startTime, endTime);
+                    foreach (var js_elem in js_list)
+                    {
+                        while (!this.tradeStack.TryPop(out trade))
+                        {
+                        }
+                        trade.market = "coincheck";
+                        trade.symbol = js_elem.GetProperty("pair").GetString();
+                        trade.quantity = decimal.Parse(js_elem.GetProperty("amount").GetString());
+                        trade.price = decimal.Parse(js_elem.GetProperty("rate").GetString());
+                        string ord_side = js_elem.GetProperty("order_type").GetString();
+                        if(ord_side == "buy")
+                        {
+                            trade.side = SharedOrderSide.Buy;
+                        }
+                        else if (ord_side == "sell")
+                        {
+                            trade.side = SharedOrderSide.Sell;
+                        }
+                        trade.filled_time = DateTime.Parse(js_elem.GetProperty("created_at").GetString(), null, System.Globalization.DateTimeStyles.RoundtripKind);
+                        trade.timestamp = trade.filled_time;
+                        output.Add(trade);
+                    }
+                    if (js_list.Count == 0)
+                    {
+                        addLog("Failed to get trade history from coincheck.", logType.WARNING);
+                    }
+                    break;
+            }
+            return output;
+        }
+
         public async Task<List<DataFill>> getTradeHistory(string market,DateTime? startTime = null,DateTime? endTime = null)
         {
             List<DataFill> output = new List<DataFill>();
@@ -606,7 +712,7 @@ namespace Crypto_Clients
                         fill.timestamp = fill.filled_time;
                         output.Add(fill);
                     }
-                    if(js_list.Count > 0)
+                    if(js_list.Count == 0)
                     {
                         addLog("Failed to get trade history from coincheck.", logType.WARNING);
                     }

@@ -657,6 +657,30 @@ namespace Crypto_Clients
             var json = JsonDocument.Parse(resString);
             return json;
         }
+        public async Task<JsonDocument> getCandleStick(string symbol,string candle_type,string period)
+        {
+            string url = "https://public.bitbank.cc";
+            string request = $"/{symbol}/candlestick/{candle_type}/{period}";
+            Console.WriteLine(request);
+            var resString = await this.getAsync(request, "", url);
+            Console.WriteLine(resString);
+            var json = JsonDocument.Parse(resString);
+            return json;
+        }
+        public async Task<JsonDocument> getVolumeHistory(string symbol, string YYYYMMDD = "")
+        {
+            string url = "https://public.bitbank.cc";
+            string request = $"/{symbol}/transactions";
+            if(YYYYMMDD != "")
+            {
+                request += $"/{YYYYMMDD}";
+            }
+            Console.WriteLine(request);
+            var resString = await this.getAsync(request, "",url);
+            Console.WriteLine(resString);
+            var json = JsonDocument.Parse(resString);
+            return json;
+        }
         public async Task<JsonDocument> getTradeHistory(string symbol = "",DateTime? startTime = null,DateTime? endTime = null)
         {
             var js = new Dictionary<string, object>();

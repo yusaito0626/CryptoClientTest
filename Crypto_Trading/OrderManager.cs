@@ -1685,6 +1685,7 @@ namespace Crypto_Trading
                                 if(fill.queued_count > 1000000)//Run as normal since we need to handle the fill anyway
                                 {
                                     start();
+                                    addLog("Handle the fill anyway", Enums.logType.WARNING);
                                     fill.internal_order_id = fill.market + fill.order_id;
                                     foreach (var stg in this.strategies)
                                     {
@@ -1717,6 +1718,7 @@ namespace Crypto_Trading
                                     {
                                         Thread.Sleep(10);
                                         this.ord_client.fillQueue.Enqueue(fill);
+                                        addLog("The order has been queued.", Enums.logType.WARNING);
                                     });
                                 }
                             }

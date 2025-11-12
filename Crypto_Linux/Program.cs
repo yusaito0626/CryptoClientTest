@@ -5,6 +5,7 @@ using CryptoClients.Net.Enums;
 using CryptoExchange.Net.Logging.Extensions;
 using CryptoExchange.Net.SharedApis;
 using Discord;
+using Enums;
 using System;
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
@@ -1005,9 +1006,12 @@ namespace Crypto_Linux
             {
                 addLog("An error occured while initializing the platforms.", Enums.logType.ERROR);
                 addLog(ex.Message, Enums.logType.ERROR);
-
                 Console.WriteLine("An error occured while initializing the platforms.");
                 Console.WriteLine(ex.Message);
+                if (ex.StackTrace != null)
+                {
+                    Console.WriteLine(ex.StackTrace, logType.ERROR);
+                }
                 return false;
             }
 
@@ -1096,7 +1100,7 @@ namespace Crypto_Linux
                             baseBalance_diff *= -1;
                             side = orderSide.Sell;
                         }
-                        baseBalance_diff = Math.Round(baseBalance_diff / stg.taker.quantity_unit) / stg.taker.quantity_unit;
+                        baseBalance_diff = Math.Round(baseBalance_diff / stg.taker.quantity_unit) * stg.taker.quantity_unit;
                         addLog("EoD balance of " + stg.name + " BaseCcy:" + (stg.maker.baseBalance.total + stg.taker.baseBalance.total).ToString() + " QuoteCcy:" + (stg.maker.quoteBalance.total + stg.taker.quoteBalance.total).ToString());
                         if(baseBalance_diff >= stg.taker.quantity_unit)
                         {
