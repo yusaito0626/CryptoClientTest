@@ -346,6 +346,7 @@ namespace Crypto_Linux
         static private string stgPnLMsg()
         {
             decimal volumeAll = 0;
+            decimal posPnLAll = 0;
             decimal tradingPLAll = 0;
             decimal feeAll = 0;
             decimal totalAll = 0;
@@ -356,20 +357,21 @@ namespace Crypto_Linux
                 {
                     stg.netExposure = stg.maker.baseBalance.total + stg.taker.baseBalance.total - stg.baseCcyQuantity;
                     stg.notionalVolume = stg.maker.my_buy_notional + stg.maker.my_sell_notional;
-                    stg.tradingPnL = stg.SoD_baseCcyPos * (stg.taker.mid - stg.taker.open_mid);
-                    stg.tradingPnL += (stg.taker.my_sell_notional - stg.taker.my_sell_quantity * stg.taker.mid) + (stg.taker.my_buy_quantity * stg.taker.mid - stg.taker.my_buy_notional);
+                    stg.posPnL = stg.SoD_baseCcyPos * (stg.taker.mid - stg.taker.open_mid);
+                    stg.tradingPnL = (stg.taker.my_sell_notional - stg.taker.my_sell_quantity * stg.taker.mid) + (stg.taker.my_buy_quantity * stg.taker.mid - stg.taker.my_buy_notional);
                     stg.tradingPnL += (stg.maker.my_sell_notional - stg.maker.my_sell_quantity * stg.taker.mid) + (stg.maker.my_buy_quantity * stg.taker.mid - stg.maker.my_buy_notional);
                     stg.totalFee = stg.taker.base_fee * stg.taker.mid + stg.taker.quote_fee + stg.maker.base_fee * stg.taker.mid + stg.maker.quote_fee;
-                    stg.totalPnL = stg.tradingPnL - stg.totalFee;
+                    stg.totalPnL = stg.posPnL + stg.tradingPnL - stg.totalFee;
 
-                    msg += DateTime.UtcNow.ToString() + " - Strategy " + stg.name + " -    \nNotional Volume:" + stg.notionalVolume.ToString("N2") + "\nNet Exposure:" + stg.netExposure.ToString("N2") + "\nTrading PnL:" + stg.tradingPnL.ToString("N2") + "\nFee:" + stg.totalFee.ToString("N2") + "\nTotal:" + stg.totalPnL.ToString("N2") + "\n";
+                    msg += DateTime.UtcNow.ToString() + " - Strategy " + stg.name + " -    \nNotional Volume:" + stg.notionalVolume.ToString("N2") + "\nNet Exposure:" + stg.netExposure.ToString("N2") + "\nPosition PnL:" + stg.posPnL.ToString("N2") + "\nTrading PnL:" + stg.tradingPnL.ToString("N2") + "\nFee:" + stg.totalFee.ToString("N2") + "\nTotal:" + stg.totalPnL.ToString("N2") + "\n";
                     volumeAll += stg.notionalVolume;
+                    posPnLAll += stg.posPnL;
                     tradingPLAll += stg.tradingPnL;
                     feeAll += stg.totalFee;
                     totalAll += stg.totalPnL;
                 }
             }
-            msg += DateTime.UtcNow.ToString() + " - All -    \nNotional Volume:" + volumeAll.ToString("N2") + "\nTrading PnL:" + tradingPLAll.ToString("N2") + "\nFee:" + feeAll.ToString("N2") + "\nTotal:" + totalAll.ToString("N2") + "\n";
+            msg += DateTime.UtcNow.ToString() + " - All -    \nNotional Volume:" + volumeAll.ToString("N2") + "\nPosition PnL:" + posPnLAll.ToString("N2") + "\nTrading PnL:" + tradingPLAll.ToString("N2") + "\nFee:" + feeAll.ToString("N2") + "\nTotal:" + totalAll.ToString("N2") + "\n";
             return msg;
         }
 
@@ -966,6 +968,7 @@ namespace Crypto_Linux
                     {
 
                         stg.SoD_baseCcyPos = (stg.maker.SoD_baseBalance.total + stg.taker.SoD_baseBalance.total) - stg.baseCcyQuantity;
+                        addLog("SoD Balance strategy " + stg.name + "  Balance:" + stg.SoD_baseCcyPos.ToString());
                         decimal baseBalance_diff = stg.baseCcyQuantity - (stg.maker.baseBalance.total + stg.taker.baseBalance.total);
                         //stg.SoD_baseCcyPos = - baseBalance_diff;
                         orderSide side = orderSide.Buy;
@@ -1350,16 +1353,17 @@ namespace Crypto_Linux
 
                 stg.netExposure = stg.maker.baseBalance.total + stg.taker.baseBalance.total - stg.baseCcyQuantity;
                 stg.notionalVolume = stg.maker.my_buy_notional + stg.maker.my_sell_notional;
-                stg.tradingPnL = stg.SoD_baseCcyPos * (stg.taker.mid - stg.taker.open_mid);
-                stg.tradingPnL += (stg.taker.my_sell_notional - stg.taker.my_sell_quantity * stg.taker.mid) + (stg.taker.my_buy_quantity * stg.taker.mid - stg.taker.my_buy_notional);
+                stg.posPnL = stg.SoD_baseCcyPos * (stg.taker.mid - stg.taker.open_mid);
+                stg.tradingPnL = (stg.taker.my_sell_notional - stg.taker.my_sell_quantity * stg.taker.mid) + (stg.taker.my_buy_quantity * stg.taker.mid - stg.taker.my_buy_notional);
                 stg.tradingPnL += (stg.maker.my_sell_notional - stg.maker.my_sell_quantity * stg.taker.mid) + (stg.maker.my_buy_quantity * stg.taker.mid - stg.maker.my_buy_notional);
                 stg.totalFee = stg.taker.base_fee * stg.taker.mid + stg.taker.quote_fee + stg.maker.base_fee * stg.taker.mid + stg.maker.quote_fee;
-                stg.totalPnL = stg.tradingPnL - stg.totalFee;
+                stg.totalPnL = stg.posPnL +  stg.tradingPnL - stg.totalFee;
 
                 stginfo.notionalVolume = stg.notionalVolume;
+                stginfo.posPnL = stg.posPnL;
                 stginfo.tradingPnL = stg.tradingPnL;
                 stginfo.totalFee= stg.totalFee;
-                stginfo.totalPnL = stginfo.tradingPnL - stginfo.totalFee;
+                stginfo.totalPnL = stginfo.posPnL + stginfo.tradingPnL - stginfo.totalFee;
 
                 stginfo.skew = stg.skew_point;
                 if(stginfo.bid > 0 && stginfo.ask > 0)

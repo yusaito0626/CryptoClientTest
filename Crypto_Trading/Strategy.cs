@@ -64,6 +64,8 @@ namespace Crypto_Trading
 
         public string live_sellorder_id;
         public string live_buyorder_id;
+        public DateTime live_sellorder_time;
+        public DateTime live_buyorder_time;
         public List<string> stg_orders;
 
 
@@ -81,6 +83,7 @@ namespace Crypto_Trading
         public decimal SoD_price;
         public decimal netExposure;
         public decimal notionalVolume;
+        public decimal posPnL;
         public decimal tradingPnL;
         public decimal totalFee;
         public decimal totalPnL;
@@ -136,6 +139,7 @@ namespace Crypto_Trading
             this.SoD_baseCcyPos = 0;
             this.SoD_price = 0;
             this.notionalVolume = 0;
+            this.posPnL = 0;
             this.tradingPnL = 0;
             this.totalFee = 0;
             this.totalPnL = 0;
@@ -339,6 +343,7 @@ namespace Crypto_Trading
                 }
 
                 DataSpotOrderUpdate ord;
+                DateTime currentTime = DateTime.UtcNow;
                 if (this.live_buyorder_id != "")
                 {
                     if (this.oManager.orders.ContainsKey(this.live_buyorder_id))
@@ -355,6 +360,12 @@ namespace Crypto_Trading
                                 this.live_bidprice = 0;
                                 break;
                         }
+                    }
+                    else if(currentTime - this.live_buyorder_time > TimeSpan.FromSeconds(10))
+                    {
+                        addLog("Strategy buy order not found. order_id:" + this.live_buyorder_id);
+                        this.live_buyorder_id = "";
+                        this.live_bidprice = 0;
                     }
                 }
                 else
@@ -378,6 +389,12 @@ namespace Crypto_Trading
                                 this.live_askprice = 0;
                                 break;
                         }
+                    }
+                    else if (currentTime - this.live_sellorder_time > TimeSpan.FromSeconds(10))
+                    {
+                        addLog("Strategy sell order not found. order_id:" + this.live_sellorder_id);
+                        this.live_sellorder_id = "";
+                        this.live_askprice = 0;
                     }
                 }
                 else
@@ -476,12 +493,14 @@ namespace Crypto_Trading
                         this.live_buyorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ToBsize, bid_price, null, true, false);
                         this.live_bidprice = bid_price;
                         this.stg_orders.Add(this.live_buyorder_id);
+                        this.live_buyorder_time = DateTime.UtcNow;
                     }
                     if(newSellOrder)
                     {
                         this.live_sellorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ToBsize, ask_price, null, true, false);
                         this.live_askprice = ask_price;
                         this.stg_orders.Add(this.live_sellorder_id);
+                        this.live_sellorder_time = DateTime.UtcNow;
                     }
                 }
                 else
@@ -491,12 +510,14 @@ namespace Crypto_Trading
                         this.live_sellorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ToBsize, ask_price, null, true, false);
                         this.live_askprice = ask_price;
                         this.stg_orders.Add(this.live_sellorder_id);
+                        this.live_sellorder_time = DateTime.UtcNow;
                     }
                     if (newBuyOrder)
                     {
                         this.live_buyorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ToBsize, bid_price, null, true, false);
                         this.live_bidprice = bid_price;
                         this.stg_orders.Add(this.live_buyorder_id);
+                        this.live_buyorder_time = DateTime.UtcNow;
                     }
                 }
 

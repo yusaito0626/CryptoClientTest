@@ -74,6 +74,7 @@ namespace Utils
         public decimal liquidity_bid { get; set; }
 
         public decimal notionalVolume { get; set; }
+        public decimal posPnL { get; set; }
         public decimal tradingPnL { get; set; }
         public decimal totalFee { get; set; }
         public decimal totalPnL { get; set; }

@@ -684,6 +684,7 @@ namespace Crypto_GUI
                                                 stg.live_askprice = s.Value.ask;
                                                 stg.live_bidprice = s.Value.bid;
                                                 stg.notionalVolume = s.Value.notionalVolume;
+                                                stg.posPnL = s.Value.posPnL;
                                                 stg.tradingPnL = s.Value.tradingPnL;
                                                 stg.totalFee = s.Value.totalFee;
                                                 stg.totalPnL = s.Value.totalPnL;
@@ -710,6 +711,7 @@ namespace Crypto_GUI
                                                 stg.live_askprice = s.Value.ask;
                                                 stg.live_bidprice = s.Value.bid;
                                                 stg.notionalVolume = s.Value.notionalVolume;
+                                                stg.posPnL = s.Value.posPnL;
                                                 stg.tradingPnL = s.Value.tradingPnL;
                                                 stg.totalFee = s.Value.totalFee;
                                                 stg.totalPnL = s.Value.totalPnL;
@@ -1053,16 +1055,17 @@ namespace Crypto_GUI
                         {
 
                             row.Cells[1].Value = stg.notionalVolume.ToString("N2");
-                            row.Cells[2].Value = stg.tradingPnL.ToString("N2");
-                            row.Cells[3].Value = stg.totalFee.ToString("N2");
-                            row.Cells[4].Value = stg.totalPnL.ToString("N2");
+                            row.Cells[2].Value = stg.posPnL.ToString("N2");
+                            row.Cells[3].Value = stg.tradingPnL.ToString("N2");
+                            row.Cells[4].Value = stg.totalFee.ToString("N2");
+                            row.Cells[5].Value = stg.totalPnL.ToString("N2");
                             found = true;
                             break;
                         }
                     }
                     if (!found)
                     {
-                        this.gridView_PnL.Rows.Add(stg.name, stg.notionalVolume.ToString("N2"), stg.tradingPnL.ToString("N2"), stg.totalFee.ToString("N2"), stg.totalPnL.ToString("N2"));
+                        this.gridView_PnL.Rows.Add(stg.name, stg.notionalVolume.ToString("N2"), stg.posPnL.ToString("N2"), stg.tradingPnL.ToString("N2"), stg.totalFee.ToString("N2"), stg.totalPnL.ToString("N2"));
                     }
 
                 }
