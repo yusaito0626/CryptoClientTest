@@ -348,11 +348,11 @@ namespace Crypto_Trading
                                     }
                                     else if (symbol_market == stg.Value.maker.symbol_market && !this.oManager.getVirtualMode())
                                     {
-                                        //stg.Value.onMakerQuotes(msg);
                                         if (Interlocked.CompareExchange(ref stg.Value.queued, 1, 0) == 0)
                                         {
                                             this.optQueue.Enqueue(stg.Value);
                                         }
+                                        //stg.Value.onMakerQuotes(msg);
                                     }
                                 }
 
@@ -396,52 +396,6 @@ namespace Crypto_Trading
             }
             return ret;
             
-        }
-        public async Task<(bool,double)> _updateQuotes()
-        {
-            Instrument ins;
-            DataOrderBook msg;
-            double latency = 0;
-            string symbol_market;
-            if (this.ordBookQueue.TryDequeue(out msg))
-            {
-                this.sw_updateQuotes.Start();
-                symbol_market = msg.symbol + "@" + msg.market;
-                if (this.instruments.ContainsKey(symbol_market))
-                {
-                    ins = instruments[symbol_market];
-                    ins.updateQuotes(msg);
-                    foreach(var stg in this.strategies)
-                    {
-                        if(stg.Value.enabled)
-                        {
-                            if (symbol_market == stg.Value.taker.symbol_market)
-                            {
-                                if (Interlocked.CompareExchange(ref stg.Value.queued, 1, 0) == 0)
-                                {
-                                    this.optQueue.Enqueue(stg.Value);
-                                }
-                            }
-                            else if (symbol_market == stg.Value.maker.symbol_market && !this.oManager.getVirtualMode())
-                            {
-                                //stg.Value.onMakerQuotes(msg);
-                            }
-                        }
-                        
-                    }
-                    this.oManager.checkVirtualOrders(ins);
-                }
-                else
-                {
-                    this.addLog("The symbol doesn't exist. Instrument:" + symbol_market, Enums.logType.WARNING);
-                }
-                msg.init();
-                this.ordBookStack.Push(msg);
-                this.sw_updateQuotes.Stop();
-                latency = this.sw_updateQuotes.Elapsed.TotalNanoseconds / 1000;
-                this.sw_updateQuotes.Reset();
-            }
-            return (true,latency);
         }
 
         public void updateQuotesOnClosing()

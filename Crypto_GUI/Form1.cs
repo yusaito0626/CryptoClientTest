@@ -145,10 +145,10 @@ namespace Crypto_GUI
                 this.Text += " Monitoring Mode";
             }
 
-            this.nextMsgTime = DateTime.UtcNow + TimeSpan.FromMinutes(this.msg_Interval);
+            //this.nextMsgTime = DateTime.UtcNow + TimeSpan.FromMinutes(this.msg_Interval);
 
 
-            this.logFile = new StreamWriter(new FileStream(this.logPath, FileMode.Create));
+            //this.logFile = new StreamWriter(new FileStream(this.logPath, FileMode.Create));
 
             this.qManager._addLog = this.addLog;
             this.oManager._addLog = this.addLog;
@@ -161,7 +161,7 @@ namespace Crypto_GUI
             //this.qManager.initializeInstruments(this.masterFile);
             this.qManager.setQueues(this.crypto_client);
 
-            this.oManager.setOrdLogPath(this.outputPath);
+            //this.oManager.setOrdLogPath(this.outputPath);
             //this.oManager.setInstruments(this.qManager.instruments);
             this.oManager.filledOrderQueue = this.filledOrderQueue;
 
@@ -1352,15 +1352,6 @@ namespace Crypto_GUI
                     this.thManager.addThread("optimize", this.qManager.optimize, this.qManager.optimizeOnClosing, this.qManager.optimizeOnError,100);
                     this.thManager.addThread("orderLogging", this.oManager.orderLogging, this.oManager.ordLoggingOnClosing, this.oManager.ordLoggingOnError,1);
                 }
-                //this.thManager.addThread("updateQuotes", this.qManager._updateQuotes,this.qManager.updateQuotesOnClosing,this.qManager.updateQuotesOnError);
-                //this.thManager.addThread("updateTrades", this.qManager._updateTrades,this.qManager.updateTradesOnClosing,this.qManager.updateTradesOnClosing);
-                //if(!this.monitoringMode)
-                //{
-                //    this.thManager.addThread("updateOrders", this.oManager._updateOrders, this.oManager.updateOrdersOnClosing, this.oManager.updateOrdersOnError);
-                //    this.thManager.addThread("updateFill", this.oManager._updateFill, this.oManager.updateFillOnClosing);
-                //    this.thManager.addThread("optimize", this.qManager._optimize, this.qManager.optimizeOnClosing, this.qManager.optimizeOnError);
-                //    this.thManager.addThread("orderLogging", this.oManager._orderLogging, this.oManager.ordLoggingOnClosing, this.oManager.ordLoggingOnError);
-                //}
                 this.threadsStarted = true;
             }
             catch (Exception ex)
@@ -1371,7 +1362,7 @@ namespace Crypto_GUI
                 return false;
             }
 
-            this.BeginInvoke(()=>{ this.button_startTrading.Enabled = true;});
+            //this.BeginInvoke(()=>{ this.button_startTrading.Enabled = true;});
             return true;
         }
         private bool startTrading()
@@ -1916,41 +1907,41 @@ namespace Crypto_GUI
             string msg = "";
 
             //To keep http_client alive.
-            await this.crypto_client.getBalance(this.qManager._markets.Keys);
+            //await this.crypto_client.getBalance(this.qManager._markets.Keys);
 
-            if (DateTime.UtcNow > this.nextMsgTime)
-            {
-                foreach (var stg in this.strategies.Values)
-                {
-                    if (stg.maker != null && stg.taker != null)
-                    {
-                        volume = stg.maker.my_buy_notional + stg.maker.my_sell_notional;
-                        tradingPL = (stg.taker.my_sell_notional - stg.taker.my_sell_quantity * stg.taker.mid) + (stg.taker.my_buy_quantity * stg.taker.mid - stg.taker.my_buy_notional);
-                        tradingPL += (stg.maker.my_sell_notional - stg.maker.my_sell_quantity * stg.taker.mid) + (stg.maker.my_buy_quantity * stg.taker.mid - stg.maker.my_buy_notional);
-                        fee = stg.taker.base_fee * stg.taker.mid + stg.taker.quote_fee + stg.maker.base_fee * stg.taker.mid + stg.maker.quote_fee;
-                        total = tradingPL - fee;
+            //if (DateTime.UtcNow > this.nextMsgTime)
+            //{
+            //    foreach (var stg in this.strategies.Values)
+            //    {
+            //        if (stg.maker != null && stg.taker != null)
+            //        {
+            //            volume = stg.maker.my_buy_notional + stg.maker.my_sell_notional;
+            //            tradingPL = (stg.taker.my_sell_notional - stg.taker.my_sell_quantity * stg.taker.mid) + (stg.taker.my_buy_quantity * stg.taker.mid - stg.taker.my_buy_notional);
+            //            tradingPL += (stg.maker.my_sell_notional - stg.maker.my_sell_quantity * stg.taker.mid) + (stg.maker.my_buy_quantity * stg.taker.mid - stg.maker.my_buy_notional);
+            //            fee = stg.taker.base_fee * stg.taker.mid + stg.taker.quote_fee + stg.maker.base_fee * stg.taker.mid + stg.maker.quote_fee;
+            //            total = tradingPL - fee;
 
-                        msg += DateTime.UtcNow.ToString() + " - Strategy " + stg.name + " -    Notional Volume:" + volume.ToString("N2") + " Trading PnL:" + tradingPL.ToString("N2") + " Fee:" + fee.ToString("N2") + " Total:" + total.ToString("N2") + "\n";
-                        volumeAll += volume;
-                        tradingPLAll += tradingPL;
-                        feeAll += fee;
-                        totalAll += total;
-                    }
-                }
-                msg += DateTime.UtcNow.ToString() + " - All -    Notional Volume:" + volumeAll.ToString("N2") + " Trading PnL:" + tradingPLAll.ToString("N2") + " Fee:" + feeAll.ToString("N2") + " Total:" + totalAll.ToString("N2") + "\n";
+            //            msg += DateTime.UtcNow.ToString() + " - Strategy " + stg.name + " -    Notional Volume:" + volume.ToString("N2") + " Trading PnL:" + tradingPL.ToString("N2") + " Fee:" + fee.ToString("N2") + " Total:" + total.ToString("N2") + "\n";
+            //            volumeAll += volume;
+            //            tradingPLAll += tradingPL;
+            //            feeAll += fee;
+            //            totalAll += total;
+            //        }
+            //    }
+            //    msg += DateTime.UtcNow.ToString() + " - All -    Notional Volume:" + volumeAll.ToString("N2") + " Trading PnL:" + tradingPLAll.ToString("N2") + " Fee:" + feeAll.ToString("N2") + " Total:" + totalAll.ToString("N2") + "\n";
 
-                await this.MsgDeliverer.sendMessage(msg);
-                this.nextMsgTime += TimeSpan.FromMinutes(this.msg_Interval);
-            }
+            //    await this.MsgDeliverer.sendMessage(msg);
+            //    this.nextMsgTime += TimeSpan.FromMinutes(this.msg_Interval);
+            //}
             
             
 
-            if (DateTime.UtcNow > this.endTime)
-            {
-                this.addLog("Closing application at EoD.");
-                await this.stopTrading(false);
-                Application.Exit();
-            }
+            //if (DateTime.UtcNow > this.endTime)
+            //{
+            //    this.addLog("Closing application at EoD.");
+            //    await this.stopTrading(false);
+            //    Application.Exit();
+            //}
         }
 
         private void comboStrategy_SelectedIndexChanged(object sender, EventArgs e)

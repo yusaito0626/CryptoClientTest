@@ -1,4 +1,5 @@
-﻿using Crypto_Clients;
+﻿using Binance.Net.Enums;
+using Crypto_Clients;
 using Crypto_Trading;
 using CryptoClients.Net.Enums;
 using CryptoExchange.Net.Logging.Extensions;
@@ -876,9 +877,18 @@ namespace Crypto_Linux
                         SortedDictionary<DateTime,DataFill> histFill = new SortedDictionary<DateTime, DataFill>();
                         foreach (var mkt in qManager._markets.Keys)
                         {
+                            DateTime currentTime = DateTime.UtcNow;
                             List<DataFill> temp_histFill = await crypto_client.getTradeHistory(mkt, DateTime.UtcNow.Date);
                             foreach(var fill in temp_histFill)
                             {
+                                if(fill.filled_time == null)
+                                {
+                                    fill.filled_time = currentTime;
+                                }
+                                while (histFill.ContainsKey((DateTime)fill.filled_time))
+                                {
+                                    fill.filled_time += TimeSpan.FromMilliseconds(1);
+                                }
                                 histFill[fill.filled_time ?? DateTime.UtcNow] = fill;
                             }
                         }
