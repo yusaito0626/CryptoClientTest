@@ -1084,9 +1084,13 @@ namespace Crypto_Linux
                             baseBalance_diff *= -1;
                             side = orderSide.Sell;
                         }
+                        baseBalance_diff = Math.Round(baseBalance_diff / stg.taker.quantity_unit) / stg.taker.quantity_unit;
                         addLog("EoD balance of " + stg.name + " BaseCcy:" + (stg.maker.baseBalance.total + stg.taker.baseBalance.total).ToString() + " QuoteCcy:" + (stg.maker.quoteBalance.total + stg.taker.quoteBalance.total).ToString());
-                        addLog("Adjustment at EoD: " + side.ToString() + " " + baseBalance_diff.ToString());
-                        oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0,null,true,false);
+                        if(baseBalance_diff >= stg.taker.quantity_unit)
+                        {
+                            addLog("Adjustment at EoD: " + side.ToString() + " " + baseBalance_diff.ToString());
+                            oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, null, true, false);
+                        }
                     }
 
                     Thread.Sleep(1000);
@@ -1517,7 +1521,7 @@ namespace Crypto_Linux
             
             logEntry log = logEntryStack.Pop();
             log.logtype = logtype.ToString();
-            log.msg = body;
+            log.msg = messageline;
             ws_server.processLog(log);
         }
         static private void onError()

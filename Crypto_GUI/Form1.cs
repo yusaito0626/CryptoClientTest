@@ -506,20 +506,24 @@ namespace Crypto_GUI
         }
         private void addLog(string body, Enums.logType logtype = Enums.logType.INFO)
         {
-            string messageline = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   [" + logtype.ToString() + "]" + body + "\n";
+            string messageline = body;
+            if (!body.Contains("[Trade Engine]"))
+            {
+                messageline = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   [" + logtype.ToString() + "]" + body + "\n";
+            }
             
             this.logQueue.Enqueue(messageline);
-            switch (logtype)
-            {
-                case Enums.logType.ERROR:
-                case Enums.logType.FATAL:
-                    this.MsgDeliverer.sendMessage(messageline);
-                    this.onError();
-                    break;
-                default:
-                    break;
+            //switch (logtype)
+            //{
+            //    case Enums.logType.ERROR:
+            //    case Enums.logType.FATAL:
+            //        this.MsgDeliverer.sendMessage(messageline);
+            //        this.onError();
+            //        break;
+            //    default:
+            //        break;
 
-            }
+            //}
         }
         private void onError()
         {
