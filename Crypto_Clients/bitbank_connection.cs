@@ -124,12 +124,13 @@ namespace Crypto_Clients
             StreamWriter msgLog = new StreamWriter(fspub);
             bool ret = true;
             int i = 0;
+            string msg;
             try
             {
                 while (true)
                 {
                     i = 0;
-                    while (this.msgLogQueue.TryDequeue(out var msg))
+                    while (this.msgLogQueue.TryDequeue(out msg))
                     {
                         start();
                         msgLog.WriteLine(msg);
@@ -149,7 +150,7 @@ namespace Crypto_Clients
                     spinner.SpinOnce();
                     if (spinningMax > 0 && spinner.Count >= spinningMax)
                     {
-                        Thread.Yield();
+                        Thread.Sleep(500);
                         spinner.Reset();
                     }
                 }

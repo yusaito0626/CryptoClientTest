@@ -118,12 +118,13 @@ namespace Crypto_Clients
             StreamWriter msgLog = new StreamWriter(fspub);
             bool ret = true;
             int i = 0;
+            string msg;
             try
             {
                 while (true)
                 {
                     i = 0;
-                    while (this.msgLogQueue.TryDequeue(out var msg))
+                    while (this.msgLogQueue.TryDequeue(out msg))
                     {
                         start();
                         msgLog.WriteLine(msg);
@@ -143,7 +144,7 @@ namespace Crypto_Clients
                     spinner.SpinOnce();
                     if (spinningMax > 0 && spinner.Count >= spinningMax)
                     {
-                        Thread.Yield();
+                        Thread.Sleep(500);
                         spinner.Reset();
                     }
                 }
@@ -963,8 +964,8 @@ namespace Crypto_Clients
             }
 
 
-            var response = await this.http_client.SendAsync(request);
             Volatile.Write(ref this.nonceChecking, 0);
+            var response = await this.http_client.SendAsync(request);
             var resString = await response.Content.ReadAsStringAsync();
 
             return resString;
@@ -993,8 +994,8 @@ namespace Crypto_Clients
             request.Headers.Add("ACCESS-SIGNATURE", ToSha256(this.secretKey, message));
 
             sw_POST = Stopwatch.StartNew();
-            var response = await this.http_client.SendAsync(request);
             Volatile.Write(ref this.nonceChecking, 0);
+            var response = await this.http_client.SendAsync(request);
             sw_POST.Stop();
             this.elapsedTime_POST += sw_POST.Elapsed.TotalNanoseconds / 1000;
             ++this.count;
@@ -1029,8 +1030,8 @@ namespace Crypto_Clients
             request.Headers.Add("ACCESS-NONCE", nonce.ToString());
             request.Headers.Add("ACCESS-SIGNATURE", ToSha256(this.secretKey, message));
 
-            var response = await this.http_client.SendAsync(request);
             Volatile.Write(ref this.nonceChecking, 0);
+            var response = await this.http_client.SendAsync(request);
             var resString = await response.Content.ReadAsStringAsync();
             if (this.logging)
             {

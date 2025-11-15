@@ -366,7 +366,7 @@ namespace Crypto_Linux
                     stg.totalFee = stg.taker.base_fee * stg.taker.mid + stg.taker.quote_fee + stg.maker.base_fee * stg.taker.mid + stg.maker.quote_fee;
                     stg.totalPnL = stg.posPnL + stg.tradingPnL - stg.totalFee;
 
-                    msg += DateTime.UtcNow.ToString() + " - Strategy " + stg.name + " -    \nNotional Volume:" + stg.notionalVolume.ToString("N2") + "\nNet Exposure:" + stg.netExposure.ToString("N2") + "\nPosition PnL:" + stg.posPnL.ToString("N2") + "\nTrading PnL:" + stg.tradingPnL.ToString("N2") + "\nFee:" + stg.totalFee.ToString("N2") + "\nTotal:" + stg.totalPnL.ToString("N2") + "\n";
+                    msg += DateTime.UtcNow.ToString() + " - Strategy " + stg.name + " -    \nNotional Volume:" + stg.notionalVolume.ToString("N2") + "\nNet Exposure:" + stg.netExposure.ToString("N2") + "    [Maker Balance:" + stg.maker.baseBalance.total.ToString("N2") + "]\nPosition PnL:" + stg.posPnL.ToString("N2") + "\nTrading PnL:" + stg.tradingPnL.ToString("N2") + "\nFee:" + stg.totalFee.ToString("N2") + "\nTotal:" + stg.totalPnL.ToString("N2") + "\n";
                     volumeAll += stg.notionalVolume;
                     posPnLAll += stg.posPnL;
                     tradingPLAll += stg.tradingPnL;

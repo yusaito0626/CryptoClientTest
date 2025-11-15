@@ -364,6 +364,7 @@ namespace Crypto_Trading
                     else if(currentTime - this.live_buyorder_time > TimeSpan.FromSeconds(10))
                     {
                         addLog("Strategy buy order not found. order_id:" + this.live_buyorder_id);
+                        await RefreshLiveOrders();
                         this.live_buyorder_id = "";
                         this.live_bidprice = 0;
                     }
@@ -393,6 +394,7 @@ namespace Crypto_Trading
                     else if (currentTime - this.live_sellorder_time > TimeSpan.FromSeconds(10))
                     {
                         addLog("Strategy sell order not found. order_id:" + this.live_sellorder_id);
+                        await RefreshLiveOrders();
                         this.live_sellorder_id = "";
                         this.live_askprice = 0;
                     }
@@ -733,6 +735,40 @@ namespace Crypto_Trading
                 //    }
                 //}
             }
+        }
+
+        public async Task RefreshLiveOrders()
+        {
+            this.addLog("Cancelling all the orders including unknown.",Enums.logType.WARNING);
+            Crypto_Clients.Crypto_Clients client = Crypto_Clients.Crypto_Clients.GetInstance();
+
+            List<DataSpotOrderUpdate> ordList = await client.getActiveOrders(this.maker.market);
+            List<string> id_list = new List<string>();
+            foreach(DataSpotOrderUpdate ord in ordList)
+            {
+                if(this.maker.symbol_market == ord.symbol_market)
+                {
+                    if (this.oManager.ordIdMapping.ContainsKey(ord.market + ord.order_id))
+                    {
+                        ord.internal_order_id = this.oManager.ordIdMapping[ord.market + ord.order_id];
+                    }
+                    else
+                    {
+                        ord.internal_order_id = ord.market + ord.order_id;
+                        this.oManager.ordIdMapping[ord.market + ord.order_id] = ord.market + ord.order_id;
+                    }
+                    id_list.Add(ord.internal_order_id);
+                    this.oManager.orders[ord.internal_order_id] = ord;
+                }
+            }
+            Thread.Sleep(1000);//Make sure the cancel orders are executed
+            await this.oManager.placeCancelSpotOrders(this.maker, id_list,true,true);
+            this.maker.baseBalance.inuse = 0;
+            this.maker.quoteBalance.inuse = 0;
+            this.live_bidprice = 0;
+            this.live_buyorder_id = "";
+            this.live_askprice = 0;
+            this.live_sellorder_id = "";
         }
         public decimal skew()
         {

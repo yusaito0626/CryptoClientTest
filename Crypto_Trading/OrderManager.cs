@@ -1720,7 +1720,7 @@ namespace Crypto_Trading
                                     {
                                         Thread.Sleep(10);
                                         this.ord_client.fillQueue.Enqueue(localfill);
-                                        addLog("The order has been queued.", Enums.logType.WARNING);
+                                        addLog("The order has been queued. count:" + localfill.queued_count.ToString("N0"), Enums.logType.WARNING);
                                     });
                                 }
                             }
@@ -2084,23 +2084,7 @@ namespace Crypto_Trading
                                             ins = this.Instruments[ord.symbol_market];
                                             ord.internal_order_id = ord.market + ord.order_id;
                                             this.ordIdMapping[ord.internal_order_id] = ord.market + ord.order_id;
-                                            this.orders[ord.market + ord.order_id] = ord;
-
-                                            decimal filled_quantity = ord.filled_quantity;
-                                            if (filled_quantity > 0 && ord.order_type != orderType.Market)
-                                            {
-                                                switch (ord.side)
-                                                {
-                                                    case orderSide.Buy:
-                                                        ins.quoteBalance.AddBalance(0, -filled_quantity * ord.order_price);
-                                                        break;
-                                                    case orderSide.Sell:
-                                                        ins.baseBalance.AddBalance(0, -filled_quantity);
-                                                        break;
-
-                                                }
-                                            }
-
+                                            //Add the order_id in the mapping and queue it again.
                                             foreach (var stg in this.strategies.Values)
                                             {
                                                 if (stg.maker.symbol_market == ord.symbol_market)
@@ -2117,6 +2101,9 @@ namespace Crypto_Trading
                                                 }
                                             }
                                             this.placeCancelSpotOrder(ins, ord.market + ord.order_id, true, false);
+
+                                            ++(ord.queued_count);
+                                            this.ord_client.ordUpdateQueue.Enqueue(ord);                                            
                                         }
                                         else
                                         {
