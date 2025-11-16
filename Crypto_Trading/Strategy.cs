@@ -743,6 +743,8 @@ namespace Crypto_Trading
             Crypto_Clients.Crypto_Clients client = Crypto_Clients.Crypto_Clients.GetInstance();
 
             List<DataSpotOrderUpdate> ordList = await client.getActiveOrders(this.maker.market);
+
+            this.addLog("The number of active orders:" + ordList.Count.ToString("N0"), Enums.logType.WARNING);
             List<string> id_list = new List<string>();
             foreach(DataSpotOrderUpdate ord in ordList)
             {
@@ -761,14 +763,23 @@ namespace Crypto_Trading
                     this.oManager.orders[ord.internal_order_id] = ord;
                 }
             }
-            Thread.Sleep(1000);//Make sure the cancel orders are executed
-            await this.oManager.placeCancelSpotOrders(this.maker, id_list,true,true);
-            this.maker.baseBalance.inuse = 0;
-            this.maker.quoteBalance.inuse = 0;
-            this.live_bidprice = 0;
-            this.live_buyorder_id = "";
-            this.live_askprice = 0;
-            this.live_sellorder_id = "";
+            if(id_list.Count > 0)
+            {
+                Thread.Sleep(1000);//Make sure the cancel orders are executed
+                this.addLog("Cancelling...", Enums.logType.WARNING);
+                await this.oManager.placeCancelSpotOrders(this.maker, id_list, true, true);
+                this.maker.baseBalance.inuse = 0;
+                this.maker.quoteBalance.inuse = 0;
+                this.live_bidprice = 0;
+                this.live_buyorder_id = "";
+                this.live_askprice = 0;
+                this.live_sellorder_id = "";
+                this.addLog("Order cancelled.", Enums.logType.WARNING);
+            }
+            else
+            {
+                addLog("Active order not found");
+            }
         }
         public decimal skew()
         {

@@ -54,7 +54,7 @@ namespace Crypto_Linux
         static Stack<fillInfo> fillInfoStack;
 
         static Strategy selected_stg;
-        static Dictionary<string, Strategy> strategies;
+        static public Dictionary<string, Strategy> strategies;
 
         static bool enabled;
 
@@ -366,7 +366,7 @@ namespace Crypto_Linux
                     stg.totalFee = stg.taker.base_fee * stg.taker.mid + stg.taker.quote_fee + stg.maker.base_fee * stg.taker.mid + stg.maker.quote_fee;
                     stg.totalPnL = stg.posPnL + stg.tradingPnL - stg.totalFee;
 
-                    msg += DateTime.UtcNow.ToString() + " - Strategy " + stg.name + " -    \nNotional Volume:" + stg.notionalVolume.ToString("N2") + "\nNet Exposure:" + stg.netExposure.ToString("N2") + "    [Maker Balance:" + stg.maker.baseBalance.total.ToString("N2") + "]\nPosition PnL:" + stg.posPnL.ToString("N2") + "\nTrading PnL:" + stg.tradingPnL.ToString("N2") + "\nFee:" + stg.totalFee.ToString("N2") + "\nTotal:" + stg.totalPnL.ToString("N2") + "\n";
+                    msg += DateTime.UtcNow.ToString() + " - Strategy " + stg.name + " -    \nNotional Volume:" + stg.notionalVolume.ToString("N2") + "\nNet Exposure:" + stg.netExposure.ToString("N" + stg.maker.quantity_scale) + "    [Maker Balance:" + stg.maker.baseBalance.total.ToString("N" + stg.maker.quantity_scale) + "]\nPosition PnL:" + stg.posPnL.ToString("N2") + "\nTrading PnL:" + stg.tradingPnL.ToString("N2") + "\nFee:" + stg.totalFee.ToString("N2") + "\nTotal:" + stg.totalPnL.ToString("N2") + "\n";
                     volumeAll += stg.notionalVolume;
                     posPnLAll += stg.posPnL;
                     tradingPLAll += stg.tradingPnL;
@@ -1088,6 +1088,34 @@ namespace Crypto_Linux
                 {
                     await oManager.cancelAllOrders();
                     Thread.Sleep(1000);
+                    foreach(var mkt in qManager._markets.Keys)
+                    {
+                        List<DataSpotOrderUpdate> unknown_orders = await crypto_client.getActiveOrders(mkt);
+                        if(unknown_orders.Count > 0)
+                        {
+                            addLog("Unknown orders found at " + mkt);
+                            Dictionary<Instrument,List<string>> ordId_list = new Dictionary<Instrument,List<string>>();
+                            foreach(var ord in unknown_orders)
+                            {
+                                if(qManager.instruments.ContainsKey(ord.symbol_market))
+                                {
+                                    Instrument ins = qManager.instruments[ord.symbol_market];
+                                    if(!ordId_list.ContainsKey(ins))
+                                    {
+                                        ordId_list[ins] = new List<string>();
+                                    }
+                                    oManager.ordIdMapping[ord.market + ord.order_id] = ord.market + ord.order_id;
+                                    oManager.orders[ord.market + ord.order_id] = ord;
+                                    ordId_list[ins].Add(ord.market + ord.order_id);
+                                }
+                            }
+                            foreach(var item in ordId_list)
+                            {
+                                await oManager.placeCancelSpotOrders(item.Key, item.Value);
+                                Thread.Sleep(1000);
+                            }
+                        }
+                    }
 
                     //Just in case
                     foreach(var m in qManager._markets)

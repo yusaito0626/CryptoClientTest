@@ -129,4 +129,10 @@ namespace Utils
         public string? name { get; set; }
         public int count { get; set; }
     }
+    public class variableUpdate
+    {
+        public string stg_name { get; set; }
+        public string? type { get; set; }
+        public string? value { get; set; }
+    }
 }

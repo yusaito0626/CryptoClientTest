@@ -112,8 +112,18 @@ namespace Crypto_GUI
 
             InitializeComponent();
 
-            this.lbl_version.Text = GlobalVariables.ver_major + ":" + GlobalVariables.ver_minor + ":" + GlobalVariables.ver_patch;
-            this.Text += "   Ver." + this.lbl_version.Text;
+            this.Text += "   Ver." + GlobalVariables.ver_major + ":" + GlobalVariables.ver_minor + ":" + GlobalVariables.ver_patch;
+
+            comboStgVariables.Items.Add("Markup");
+            comboStgVariables.Items.Add("Min Markup");
+            comboStgVariables.Items.Add("Max Skew");
+            comboStgVariables.Items.Add("ToB Size");
+            comboStgVariables.Items.Add("Max Position");
+            comboStgVariables.Items.Add("Skew Level");
+            comboStgVariables.Items.Add("Skew Widening");
+            comboStgVariables.Items.Add("One Side Quote");
+            comboStgVariables.Items.Add("Interval After Fill");
+            comboStgVariables.Items.Add("Update Threshold");
 
             this.button_receiveFeed.Enabled = false;
             this.button_startTrading.Enabled = false;
@@ -140,7 +150,7 @@ namespace Crypto_GUI
                     tab.BackColor = SystemColors.GradientActiveCaption;
                 }
             }
-            else if(this.monitoringMode)
+            else if (this.monitoringMode)
             {
                 this.Text += " Monitoring Mode";
             }
@@ -188,7 +198,7 @@ namespace Crypto_GUI
             this.stopTradingCalled = 0;
             this.button_receiveFeed.Enabled = true;
 
-            if(!this.monitoringMode)
+            if (!this.monitoringMode)
             {
                 this.timer_statusCheck.Start();
                 this.timer_PeriodicMsg.Start();
@@ -223,7 +233,7 @@ namespace Crypto_GUI
             {
                 this.autoStart = false;
             }
-            
+
             if (root.TryGetProperty("live", out elem))
             {
                 this.live = elem.GetBoolean();
@@ -246,7 +256,7 @@ namespace Crypto_GUI
             if (root.TryGetProperty("monitoringMode", out elem))
             {
                 this.monitoringMode = elem.GetBoolean();
-                if(monitoringMode)
+                if (monitoringMode)
                 {
                     this.live = false;
                     this.privateConnect = true;
@@ -394,10 +404,10 @@ namespace Crypto_GUI
             }
 
         }
-        private void setStrategies(Dictionary<string,strategySetting> stgSettings)
+        private void setStrategies(Dictionary<string, strategySetting> stgSettings)
         {
             Strategy stg = new Strategy();
-            foreach(var setting in stgSettings)
+            foreach (var setting in stgSettings)
             {
                 stg.setStrategy(setting.Value);
                 stg.maker = this.qManager.getInstrument(stg.baseCcy, stg.quoteCcy, stg.maker_market);
@@ -438,9 +448,9 @@ namespace Crypto_GUI
                 tradeState = "VIEWONLY";
             }
 
-            if(this.APIList.Count() == 0)
+            if (this.APIList.Count() == 0)
             {
-                foreach(var mkt in this.qManager._markets.Keys)
+                foreach (var mkt in this.qManager._markets.Keys)
                 {
                     this.APIList.Add(mkt.ToUpper() + "_" + tradeState);
                 }
@@ -511,7 +521,7 @@ namespace Crypto_GUI
             {
                 messageline = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   [" + logtype.ToString() + "]" + body + "\n";
             }
-            
+
             this.logQueue.Enqueue(messageline);
             //switch (logtype)
             //{
@@ -548,8 +558,8 @@ namespace Crypto_GUI
             Thread.Sleep(1000);
             this.BeginInvoke(this.updateLog);
             this.updating = false;
-            
-            if(!monitoringMode)
+
+            if (!monitoringMode)
             {
                 if (!await this.MsgDeliverer.setDiscordToken(this.discordTokenFile))
                 {
@@ -568,7 +578,7 @@ namespace Crypto_GUI
         }
         private async Task connectTradeEngine()
         {
-            if(this.tradeEngine == "")
+            if (this.tradeEngine == "")
             {
                 this.addLog("The trade engine location is unknown", Enums.logType.ERROR);
             }
@@ -577,9 +587,9 @@ namespace Crypto_GUI
                 bool connected = false;
                 int trial = 0;
                 this.info_receiver = new ClientWebSocket();
-                
+
                 var uri = new Uri(this.tradeEngine);
-                while(!connected)
+                while (!connected)
                 {
                     try
                     {
@@ -604,26 +614,26 @@ namespace Crypto_GUI
                         this.info_receiver = new ClientWebSocket();
                         Thread.Sleep(5000);
                     }
-                    if(!connected)
+                    if (!connected)
                     {
-                        if(trial > 5)
+                        if (trial > 5)
                         {
-                            this.addLog("Unable to connect after " + trial.ToString() + " trials",logType.ERROR);
+                            this.addLog("Unable to connect after " + trial.ToString() + " trials", logType.ERROR);
                             this.addLog("Aborting", logType.ERROR);
                             return;
                         }
                         else
                         {
-                            this.addLog("Tried " + trial.ToString() + " times",logType.WARNING);
+                            this.addLog("Tried " + trial.ToString() + " times", logType.WARNING);
                         }
                     }
                 }
-                
+
                 this.thManager.addThread("ReceiveInfo", receiveAsync, null, null);
             }
         }
 
-        private async Task<(bool,double)> receiveAsync()
+        private async Task<(bool, double)> receiveAsync()
         {
             WebSocketReceiveResult result;
             string msg;
@@ -673,6 +683,7 @@ namespace Crypto_GUI
                                             foreach (string key in this.strategies.Keys)
                                             {
                                                 this.comboStrategy.Items.Add(key);
+                                                this.combo_StgSetting.Items.Add(key);
                                             }
                                         });
                                         this.strategySettingReceived = true;
@@ -721,6 +732,7 @@ namespace Crypto_GUI
                                                 stg.totalPnL = s.Value.totalPnL;
                                                 this.strategies[s.Key] = stg;
                                                 this.comboStrategy.Items.Add(s.Key);
+                                                this.combo_StgSetting.Items.Add(s.Key);
                                             }
                                         }
                                         break;
@@ -778,6 +790,92 @@ namespace Crypto_GUI
                                                 ins.my_sell_notional = i.Value.my_notional_sell;
                                                 ins.quote_fee = i.Value.quoteFee_total;
                                                 ins.base_fee = i.Value.baseFee_total;
+                                            }
+                                        }
+                                        break;
+                                    case "variableUpdate":
+                                        {
+                                            var update = JsonSerializer.Deserialize<variableUpdate>(content);
+                                            if(this.strategies.ContainsKey(update.stg_name))
+                                            {
+                                                Strategy stg = this.strategies[update.stg_name];
+                                                decimal newvalue;
+                                                switch (update.type.ToLower())
+                                                {
+                                                    case "markup":
+                                                        if (decimal.TryParse(update.value, out newvalue))
+                                                        {
+                                                            stg.markup = newvalue;
+                                                        }
+                                                        break;
+                                                    case "min_markup":
+                                                        if (decimal.TryParse(update.value, out newvalue))
+                                                        {
+                                                            stg.min_markup = newvalue;
+                                                        }
+                                                        break;
+                                                    case "max_skew":
+                                                        if (decimal.TryParse(update.value, out newvalue))
+                                                        {
+                                                            stg.maxSkew = newvalue;
+                                                        }
+                                                        break;
+                                                    case "skewwidenng":
+                                                        if (decimal.TryParse(update.value, out newvalue))
+                                                        {
+                                                            stg.skewWidening = newvalue;
+                                                        }
+                                                        break;
+                                                    case "baseccyquantity":
+                                                        if (decimal.TryParse(update.value, out newvalue))
+                                                        {
+                                                            stg.baseCcyQuantity = newvalue;
+                                                        }
+                                                        break;
+                                                    case "tobsize":
+                                                        if (decimal.TryParse(update.value, out newvalue))
+                                                        {
+                                                            stg.ToBsize = newvalue;
+                                                        }
+                                                        break;
+                                                    case "intervalafterfill":
+                                                        if (decimal.TryParse(update.value, out newvalue))
+                                                        {
+                                                            stg.intervalAfterFill = newvalue;
+                                                        }
+                                                        break;
+                                                    case "modthreashold":
+                                                        if (decimal.TryParse(update.value, out newvalue))
+                                                        {
+                                                            stg.modThreshold = newvalue;
+                                                        }
+                                                        break;
+                                                    case "skewthreshold":
+                                                        if (decimal.TryParse(update.value, out newvalue))
+                                                        {
+                                                            stg.skewThreshold = newvalue;
+                                                        }
+                                                        break;
+                                                    case "onesidethreshold":
+                                                        if (decimal.TryParse(update.value, out newvalue))
+                                                        {
+                                                            stg.oneSideThreshold = newvalue;
+                                                        }
+                                                        break;
+                                                    default:
+                                                        break;
+                                                }
+                                                if(stg == this.selected_stg)
+                                                {
+                                                    this.BeginInvoke(() =>
+                                                    {
+                                                        this.update_StgInfo();
+                                                    });
+                                                }
+                                            }
+                                            else
+                                            {
+                                                addLog("The strategy to update a variable not found. stg_name:" + update.stg_name,logType.WARNING);
                                             }
                                         }
                                         break;
@@ -888,7 +986,7 @@ namespace Crypto_GUI
         }
         private void updateQueueInfo(Dictionary<string, queueInfo> queueInfos)
         {
-            foreach(var q in queueInfos)
+            foreach (var q in queueInfos)
             {
                 bool found = false;
                 foreach (DataGridViewRow row in this.gridView_QueueInfo.Rows)
@@ -910,7 +1008,7 @@ namespace Crypto_GUI
                 }
             }
         }
-        private void updateConnectionStatus(Dictionary<string,connecitonStatus> conninfos)
+        private void updateConnectionStatus(Dictionary<string, connecitonStatus> conninfos)
         {
             foreach (var c in conninfos)
             {
@@ -936,7 +1034,7 @@ namespace Crypto_GUI
                 }
             }
         }
-        private void updateThreadStatus(Dictionary<string,threadStatus> thinfos)
+        private void updateThreadStatus(Dictionary<string, threadStatus> thinfos)
         {
             string st;
             foreach (var t in thinfos)
@@ -998,7 +1096,7 @@ namespace Crypto_GUI
             decimal fee = 0;
             decimal total = 0;
 
-            if(!this.monitoringMode)
+            if (!this.monitoringMode)
             {
                 foreach (var stg in this.strategies.Values)
                 {
@@ -1046,7 +1144,7 @@ namespace Crypto_GUI
                         tradingPL += (stg.maker.my_sell_notional - stg.maker.my_sell_quantity * stg.taker.mid) + (stg.maker.my_buy_quantity * stg.taker.mid - stg.maker.my_buy_notional);
                         fee = stg.taker.base_fee * stg.taker.mid + stg.taker.quote_fee + stg.maker.base_fee * stg.taker.mid + stg.maker.quote_fee;
                         total = tradingPL - fee;
-                        
+
                     }
                     bool found = false;
                     foreach (DataGridViewRow row in this.gridView_PnL.Rows)
@@ -1074,9 +1172,9 @@ namespace Crypto_GUI
 
                 }
             }
-           
 
-            
+
+
         }
         private void update_Instrument()
         {
@@ -1194,14 +1292,14 @@ namespace Crypto_GUI
                     {
                         row.Visible = true;
                     }
-                    else if(!row.IsNewRow)
+                    else if (!row.IsNewRow)
                     {
                         row.Visible = false;
                     }
                 }
             }
 
-            
+
         }
         private void updateQuotesView(DataGridView view, Instrument ins)
         {
@@ -1264,7 +1362,7 @@ namespace Crypto_GUI
         {
             try
             {
-                if(!this.monitoringMode)
+                if (!this.monitoringMode)
                 {
                     this.oManager.setVirtualMode(!liveTrading);
                     foreach (var mkt in this.qManager._markets)
@@ -1296,13 +1394,13 @@ namespace Crypto_GUI
                 }
                 else
                 {
-                    if(this.txtBox_URL.Text != "")
+                    if (this.txtBox_URL.Text != "")
                     {
                         this.tradeEngine = this.txtBox_URL.Text;
                     }
                     await connectTradeEngine();
                     this.oManager.setVirtualMode(true);
-                    while(this.masterInfoReceived == false || this.strategySettingReceived == false)
+                    while (this.masterInfoReceived == false || this.strategySettingReceived == false)
                     {
                         Thread.Sleep(1000);
                     }
@@ -1313,7 +1411,7 @@ namespace Crypto_GUI
                     }
                 }
 
-                    
+
 
                 foreach (var ins in this.qManager.instruments.Values)
                 {
@@ -1333,7 +1431,7 @@ namespace Crypto_GUI
                     await crypto_client.subscribeTrades(markets, ins.baseCcy, ins.quoteCcy);
                 }
 
-                
+
                 this.qManager.ready = true;
 
                 if (this.monitoringMode == false && (liveTrading || this.privateConnect))
@@ -1343,14 +1441,14 @@ namespace Crypto_GUI
 
                 this.oManager.ready = true;
 
-                this.thManager.addThread("updateQuotes", this.qManager.updateQuotes, this.qManager.updateQuotesOnClosing, this.qManager.updateQuotesOnError,1000);
-                this.thManager.addThread("updateTrades", this.qManager.updateTrades, this.qManager.updateTradesOnClosing, this.qManager.updateTradesOnClosing,1000);
+                this.thManager.addThread("updateQuotes", this.qManager.updateQuotes, this.qManager.updateQuotesOnClosing, this.qManager.updateQuotesOnError, 1000);
+                this.thManager.addThread("updateTrades", this.qManager.updateTrades, this.qManager.updateTradesOnClosing, this.qManager.updateTradesOnClosing, 1000);
                 if (!this.monitoringMode)
                 {
-                    this.thManager.addThread("updateOrders", this.oManager.updateOrders, this.oManager.updateOrdersOnClosing, this.oManager.updateOrdersOnError,1000);
+                    this.thManager.addThread("updateOrders", this.oManager.updateOrders, this.oManager.updateOrdersOnClosing, this.oManager.updateOrdersOnError, 1000);
                     this.thManager.addThread("updateFill", this.oManager.updateFills, this.oManager.updateFillOnClosing, null, 0);
-                    this.thManager.addThread("optimize", this.qManager.optimize, this.qManager.optimizeOnClosing, this.qManager.optimizeOnError,100);
-                    this.thManager.addThread("orderLogging", this.oManager.orderLogging, this.oManager.ordLoggingOnClosing, this.oManager.ordLoggingOnError,1);
+                    this.thManager.addThread("optimize", this.qManager.optimize, this.qManager.optimizeOnClosing, this.qManager.optimizeOnError, 100);
+                    this.thManager.addThread("orderLogging", this.oManager.orderLogging, this.oManager.ordLoggingOnClosing, this.oManager.ordLoggingOnError, 1);
                 }
                 this.threadsStarted = true;
             }
@@ -1368,7 +1466,7 @@ namespace Crypto_GUI
         private bool startTrading()
         {
             this.enabled = true;
-            foreach(var stg in this.strategies.Values)
+            foreach (var stg in this.strategies.Values)
             {
                 stg.enabled = true;
             }
@@ -1428,7 +1526,7 @@ namespace Crypto_GUI
                 await this.tradePreparation(this.live);
             });
             th.Start();
-                
+
             //if (await this.tradePreparation(this.live))
             //{
             //    this.button_startTrading.Enabled = true;
@@ -1462,7 +1560,7 @@ namespace Crypto_GUI
         }
         private async void test_Click(object sender, EventArgs e)
         {
-            await tradeTest(this.qManager.instruments["eth_jpy@coincheck"],true);
+            await tradeTest(this.qManager.instruments["eth_jpy@coincheck"], true);
         }
         private async Task onErrorCheck()
         {
@@ -1486,7 +1584,7 @@ namespace Crypto_GUI
             if (ordid != "")
             {
                 Thread.Sleep(1000);
-                if(this.oManager.orders.ContainsKey(ordid))
+                if (this.oManager.orders.ContainsKey(ordid))
                 {
                     ord = this.oManager.orders[ordid];
                     ordid = ord.order_id;
@@ -1684,7 +1782,7 @@ namespace Crypto_GUI
                     if (row.Cells[0] != null && row.Cells[0].Value.ToString() == mkt.Key)
                     {
                         row.Cells[2].Value = mkt.Value.ToString();
-                        switch(row.Cells[0].Value)
+                        switch (row.Cells[0].Value)
                         {
                             case "bitbank":
                                 row.Cells[3].Value = (this.crypto_client.bitbank_client.avgLatency() / 1000).ToString("N2");
@@ -1693,7 +1791,7 @@ namespace Crypto_GUI
                                 row.Cells[3].Value = (this.crypto_client.coincheck_client.avgLatency() / 1000).ToString("N2");
                                 break;
                             case "bittrade":
-                                row.Cells[3].Value = (this.crypto_client.bittrade_client.avgLatency() / 1000) .ToString("N2");
+                                row.Cells[3].Value = (this.crypto_client.bittrade_client.avgLatency() / 1000).ToString("N2");
                                 break;
                             default:
                                 row.Cells[3].Value = "None";
@@ -1802,7 +1900,7 @@ namespace Crypto_GUI
                         }
                     }
                     this.addLog("Reconnection completed.");
-                    if(currentTradingState)
+                    if (currentTradingState)
                     {
                         startTrading();
                     }
@@ -1838,7 +1936,7 @@ namespace Crypto_GUI
                         }
                     }
                     this.addLog("Reconnection completed.");
-                    if(currentTradingState)
+                    if (currentTradingState)
                     {
                         startTrading();
                     }
@@ -1880,7 +1978,7 @@ namespace Crypto_GUI
                 this.button_startTrading.Enabled = false;
 
                 //await this.tradePreparation(this.live);
-                if(!monitoringMode)
+                if (!monitoringMode)
                 {
                     this.addLog("Waiting for 5 sec", Enums.logType.INFO);
                     Thread.Sleep(5000);
@@ -1933,8 +2031,8 @@ namespace Crypto_GUI
             //    await this.MsgDeliverer.sendMessage(msg);
             //    this.nextMsgTime += TimeSpan.FromMinutes(this.msg_Interval);
             //}
-            
-            
+
+
 
             //if (DateTime.UtcNow > this.endTime)
             //{
@@ -1946,9 +2044,28 @@ namespace Crypto_GUI
 
         private void comboStrategy_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if(this.strategies.ContainsKey(this.comboStrategy.Text))
+            if (this.strategies.ContainsKey(this.comboStrategy.Text))
             {
+                this.combo_StgSetting.Text = this.comboStrategy.Text;
                 this.selected_stg = this.strategies[this.comboStrategy.Text];
+                this.update_StgInfo();
+            }
+        }
+
+        private void combo_StgSetting_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (this.strategies.ContainsKey(this.combo_StgSetting.Text))
+            {
+                this.comboStrategy.Text = this.combo_StgSetting.Text;
+                this.selected_stg = this.strategies[this.comboStrategy.Text];
+                this.update_StgInfo();
+            }
+        }
+
+        private void update_StgInfo()
+        {
+            if(this.selected_stg != null)
+            {
                 this.lbl_makerName.Text = this.selected_stg.maker_symbol_market;
                 this.lbl_takerName.Text = this.selected_stg.taker_symbol_market;
                 this.lbl_makerfee_maker.Text = this.selected_stg.maker.maker_fee.ToString("N5");
@@ -1961,10 +2078,511 @@ namespace Crypto_GUI
                 this.lbl_maxSkew.Text = this.selected_stg.maxSkew.ToString("N0");
                 this.lbl_tobsize.Text = this.selected_stg.ToBsize.ToString("N5");
                 this.lbl_maxpos.Text = this.selected_stg.baseCcyQuantity.ToString("N5");
+                this.lbl_skewWidening.Text = this.selected_stg.skewWidening.ToString("N2");
                 this.lbl_skew.Text = this.selected_stg.skewThreshold.ToString("N0");
                 this.lbl_oneside.Text = this.selected_stg.oneSideThreshold.ToString("N0");
                 this.lbl_fillInterval.Text = this.selected_stg.intervalAfterFill.ToString("N2");
                 this.lbl_ordUpdateTh.Text = this.selected_stg.modThreshold.ToString("N5");
+            }
+        }
+
+        private async void button_UpdateVariable_Click(object sender, EventArgs e)
+        {
+            decimal value;
+            string data_type = "variableUpdate";
+            Dictionary<string, string> dict;
+            switch ( this.comboStgVariables.Text)
+            {
+                case "Markup":
+                    if(!decimal.TryParse(this.txtBox_newValue.Text, out value))
+                    {
+                        DialogResult result = MessageBox.Show(
+                            "The value must be a number",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                    }
+                    else
+                    {
+                        if(this.selected_stg == null)
+                        {
+                            DialogResult result = MessageBox.Show(
+                            "Select a strategy",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                        }
+                        else
+                        {
+                            DialogResult result = MessageBox.Show(
+                                "You're changing the markup of " + this.selected_stg.name + " from " + this.selected_stg.markup.ToString("N2") + " to " + this.txtBox_newValue.Text + ".",
+                                "Updating a variable",
+                                MessageBoxButtons.OKCancel,
+                                MessageBoxIcon.Question
+                                );
+                            if (result == DialogResult.OK)
+                            {
+                                variableUpdate upd = new variableUpdate();
+                                upd.stg_name = this.selected_stg.name;
+                                upd.type = "markup";
+                                upd.value = this.txtBox_newValue.Text;
+                                string body = JsonSerializer.Serialize(upd);
+                                dict = new Dictionary<string, string>();
+                                dict["data_type"] = data_type;
+                                dict["data"] = body;
+                                string msg = JsonSerializer.Serialize(dict);
+                                var bytes = Encoding.UTF8.GetBytes(msg);
+                                if (this.info_receiver.State == WebSocketState.Open)
+                                {
+                                    await this.info_receiver.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                                }
+                            }
+                        }
+                    }
+                    break;
+                case "Min Markup":
+                    if (!decimal.TryParse(this.txtBox_newValue.Text, out value))
+                    {
+                        DialogResult result = MessageBox.Show(
+                            "The value must be a number",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                    }
+                    else
+                    {
+                        if (this.selected_stg == null)
+                        {
+                            DialogResult result = MessageBox.Show(
+                            "Select a strategy",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                        }
+                        else
+                        {
+                            DialogResult result = MessageBox.Show(
+                                "You're changing the minimum markup of " + this.selected_stg.name + " from " + this.selected_stg.min_markup.ToString("N2") + " to " + this.txtBox_newValue.Text + ".",
+                                "Updating a variable",
+                                MessageBoxButtons.OKCancel,
+                                MessageBoxIcon.Question
+                                );
+                            if (result == DialogResult.OK)
+                            {
+                                variableUpdate upd = new variableUpdate();
+                                upd.stg_name = this.selected_stg.name;
+                                upd.type = "min_markup";
+                                upd.value = this.txtBox_newValue.Text;
+                                string body = JsonSerializer.Serialize(upd);
+                                dict = new Dictionary<string, string>();
+                                dict["data_type"] = data_type;
+                                dict["data"] = body;
+                                string msg = JsonSerializer.Serialize(dict);
+                                var bytes = Encoding.UTF8.GetBytes(msg);
+                                if (this.info_receiver.State == WebSocketState.Open)
+                                {
+                                    await this.info_receiver.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                                }
+                            }
+                        }
+                    }
+                    break;
+                case "Max Skew":
+                    if (!decimal.TryParse(this.txtBox_newValue.Text, out value))
+                    {
+                        DialogResult result = MessageBox.Show(
+                            "The value must be a number",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                    }
+                    else
+                    {
+                        if (this.selected_stg == null)
+                        {
+                            DialogResult result = MessageBox.Show(
+                            "Select a strategy",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                        }
+                        else
+                        {
+                            DialogResult result = MessageBox.Show(
+                                "You're changing the maximum skew of " + this.selected_stg.name + " from " + this.selected_stg.maxSkew.ToString("N2") + " to " + this.txtBox_newValue.Text + ".",
+                                "Updating a variable",
+                                MessageBoxButtons.OKCancel,
+                                MessageBoxIcon.Question
+                                );
+                            if (result == DialogResult.OK)
+                            {
+                                variableUpdate upd = new variableUpdate();
+                                upd.stg_name = this.selected_stg.name;
+                                upd.type = "max_skew";
+                                upd.value = this.txtBox_newValue.Text;
+                                string body = JsonSerializer.Serialize(upd);
+                                dict = new Dictionary<string, string>();
+                                dict["data_type"] = data_type;
+                                dict["data"] = body;
+                                string msg = JsonSerializer.Serialize(dict);
+                                var bytes = Encoding.UTF8.GetBytes(msg);
+                                if (this.info_receiver.State == WebSocketState.Open)
+                                {
+                                    await this.info_receiver.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                                }
+                            }
+                        }
+                    }
+                    break;
+                case "ToB Size":
+                    if (!decimal.TryParse(this.txtBox_newValue.Text, out value))
+                    {
+                        DialogResult result = MessageBox.Show(
+                            "The value must be a number",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                    }
+                    else
+                    {
+                        if (this.selected_stg == null)
+                        {
+                            DialogResult result = MessageBox.Show(
+                            "Select a strategy",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                        }
+                        else
+                        {
+                            DialogResult result = MessageBox.Show(
+                                "You're changing the ToB size of " + this.selected_stg.name + " from " + this.selected_stg.ToBsize.ToString("N" + this.selected_stg.maker.quantity_scale) + " to " + this.txtBox_newValue.Text + ".",
+                                "Updating a variable",
+                                MessageBoxButtons.OKCancel,
+                                MessageBoxIcon.Question
+                                );
+                            if (result == DialogResult.OK)
+                            {
+                                variableUpdate upd = new variableUpdate();
+                                upd.stg_name = this.selected_stg.name;
+                                upd.type = "tobsize";
+                                upd.value = this.txtBox_newValue.Text;
+                                string body = JsonSerializer.Serialize(upd);
+                                dict = new Dictionary<string, string>();
+                                dict["data_type"] = data_type;
+                                dict["data"] = body;
+                                string msg = JsonSerializer.Serialize(dict);
+                                var bytes = Encoding.UTF8.GetBytes(msg);
+                                if (this.info_receiver.State == WebSocketState.Open)
+                                {
+                                    await this.info_receiver.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                                }
+                            }
+                        }
+                    }
+                    break;
+                case "Max Position":
+                    if (!decimal.TryParse(this.txtBox_newValue.Text, out value))
+                    {
+                        DialogResult result = MessageBox.Show(
+                            "The value must be a number",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                    }
+                    else
+                    {
+                        if (this.selected_stg == null)
+                        {
+                            DialogResult result = MessageBox.Show(
+                            "Select a strategy",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                        }
+                        else
+                        {
+                            DialogResult result = MessageBox.Show(
+                                "You're changing the maximum position of " + this.selected_stg.name + " from " + this.selected_stg.baseCcyQuantity.ToString("N" + this.selected_stg.maker.quantity_scale) + " to " + this.txtBox_newValue.Text + ".",
+                                "Updating a variable",
+                                MessageBoxButtons.OKCancel,
+                                MessageBoxIcon.Question
+                                );
+                            if (result == DialogResult.OK)
+                            {
+                                variableUpdate upd = new variableUpdate();
+                                upd.stg_name = this.selected_stg.name;
+                                upd.type = "baseccyquantity";
+                                upd.value = this.txtBox_newValue.Text;
+                                string body = JsonSerializer.Serialize(upd);
+                                dict = new Dictionary<string, string>();
+                                dict["data_type"] = data_type;
+                                dict["data"] = body;
+                                string msg = JsonSerializer.Serialize(dict);
+                                var bytes = Encoding.UTF8.GetBytes(msg);
+                                if (this.info_receiver.State == WebSocketState.Open)
+                                {
+                                    await this.info_receiver.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                                }
+                            }
+                        }
+                    }
+                    break;
+                case "Skew Level":
+                    if (!decimal.TryParse(this.txtBox_newValue.Text, out value))
+                    {
+                        DialogResult result = MessageBox.Show(
+                            "The value must be a number",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                    }
+                    else
+                    {
+                        if (this.selected_stg == null)
+                        {
+                            DialogResult result = MessageBox.Show(
+                            "Select a strategy",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                        }
+                        else
+                        {
+                            DialogResult result = MessageBox.Show(
+                                "You're changing the skewing threshold of " + this.selected_stg.name + " from " + this.selected_stg.skewThreshold.ToString("N2") + " to " + this.txtBox_newValue.Text + ".",
+                                "Updating a variable",
+                                MessageBoxButtons.OKCancel,
+                                MessageBoxIcon.Question
+                                );
+                            if (result == DialogResult.OK)
+                            {
+                                variableUpdate upd = new variableUpdate();
+                                upd.stg_name = this.selected_stg.name;
+                                upd.type = "skewthreshold";
+                                upd.value = this.txtBox_newValue.Text;
+                                string body = JsonSerializer.Serialize(upd);
+                                dict = new Dictionary<string, string>();
+                                dict["data_type"] = data_type;
+                                dict["data"] = body;
+                                string msg = JsonSerializer.Serialize(dict);
+                                var bytes = Encoding.UTF8.GetBytes(msg);
+                                if (this.info_receiver.State == WebSocketState.Open)
+                                {
+                                    await this.info_receiver.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                                }
+                            }
+                        }
+                    }
+                    break;
+                case "Skew Widening":
+                    if (!decimal.TryParse(this.txtBox_newValue.Text, out value))
+                    {
+                        DialogResult result = MessageBox.Show(
+                            "The value must be a number",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                    }
+                    else
+                    {
+                        if (this.selected_stg == null)
+                        {
+                            DialogResult result = MessageBox.Show(
+                            "Select a strategy",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                        }
+                        else
+                        {
+                            DialogResult result = MessageBox.Show(
+                                "You're changing the skew widening value of " + this.selected_stg.name + " from " + this.selected_stg.skewWidening.ToString("N2") + " to " + this.txtBox_newValue.Text + ".",
+                                "Updating a variable",
+                                MessageBoxButtons.OKCancel,
+                                MessageBoxIcon.Question
+                                );
+                            if (result == DialogResult.OK)
+                            {
+                                variableUpdate upd = new variableUpdate();
+                                upd.stg_name = this.selected_stg.name;
+                                upd.type = "skewwidenng";
+                                upd.value = this.txtBox_newValue.Text;
+                                string body = JsonSerializer.Serialize(upd);
+                                dict = new Dictionary<string, string>();
+                                dict["data_type"] = data_type;
+                                dict["data"] = body;
+                                string msg = JsonSerializer.Serialize(dict);
+                                var bytes = Encoding.UTF8.GetBytes(msg);
+                                if (this.info_receiver.State == WebSocketState.Open)
+                                {
+                                    await this.info_receiver.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                                }
+                            }
+                        }
+                    }
+                    break;
+                case "One Side Quote":
+                    if (!decimal.TryParse(this.txtBox_newValue.Text, out value))
+                    {
+                        DialogResult result = MessageBox.Show(
+                            "The value must be a number",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                    }
+                    else
+                    {
+                        if (this.selected_stg == null)
+                        {
+                            DialogResult result = MessageBox.Show(
+                            "Select a strategy",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                        }
+                        else
+                        {
+                            DialogResult result = MessageBox.Show(
+                                "You're changing the one-side quote threshold of " + this.selected_stg.name + " from " + this.selected_stg.oneSideThreshold.ToString("N2") + " to " + this.txtBox_newValue.Text + ".",
+                                "Updating a variable",
+                                MessageBoxButtons.OKCancel,
+                                MessageBoxIcon.Question
+                                );
+                            if (result == DialogResult.OK)
+                            {
+                                variableUpdate upd = new variableUpdate();
+                                upd.stg_name = this.selected_stg.name;
+                                upd.type = "onesidethreshold";
+                                upd.value = this.txtBox_newValue.Text;
+                                string body = JsonSerializer.Serialize(upd);
+                                dict = new Dictionary<string, string>();
+                                dict["data_type"] = data_type;
+                                dict["data"] = body;
+                                string msg = JsonSerializer.Serialize(dict);
+                                var bytes = Encoding.UTF8.GetBytes(msg);
+                                if (this.info_receiver.State == WebSocketState.Open)
+                                {
+                                    await this.info_receiver.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                                }
+                            }
+                        }
+                    }
+                    break;
+                case "Interval After Fill":
+                    if (!decimal.TryParse(this.txtBox_newValue.Text, out value))
+                    {
+                        DialogResult result = MessageBox.Show(
+                            "The value must be a number",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                    }
+                    else
+                    {
+                        if (this.selected_stg == null)
+                        {
+                            DialogResult result = MessageBox.Show(
+                            "Select a strategy",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                        }
+                        else
+                        {
+                            DialogResult result = MessageBox.Show(
+                                "You're changing the interval after fill[sec] of " + this.selected_stg.name + " from " + this.selected_stg.intervalAfterFill.ToString("N2") + " to " + this.txtBox_newValue.Text + ".",
+                                "Updating a variable",
+                                MessageBoxButtons.OKCancel,
+                                MessageBoxIcon.Question
+                                );
+                            if (result == DialogResult.OK)
+                            {
+                                variableUpdate upd = new variableUpdate();
+                                upd.stg_name = this.selected_stg.name;
+                                upd.type = "intervalafterfill";
+                                upd.value = this.txtBox_newValue.Text;
+                                string body = JsonSerializer.Serialize(upd);
+                                dict = new Dictionary<string, string>();
+                                dict["data_type"] = data_type;
+                                dict["data"] = body;
+                                string msg = JsonSerializer.Serialize(dict);
+                                var bytes = Encoding.UTF8.GetBytes(msg);
+                                if (this.info_receiver.State == WebSocketState.Open)
+                                {
+                                    await this.info_receiver.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                                }
+                            }
+                        }
+                    }
+                    break;
+                case "Update Threshold":
+                    if (!decimal.TryParse(this.txtBox_newValue.Text, out value))
+                    {
+                        DialogResult result = MessageBox.Show(
+                            "The value must be a number",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                    }
+                    else
+                    {
+                        if (this.selected_stg == null)
+                        {
+                            DialogResult result = MessageBox.Show(
+                            "Select a strategy",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                        }
+                        else
+                        {
+                            DialogResult result = MessageBox.Show(
+                                "You're changing the update threshold of " + this.selected_stg.name + " from " + this.selected_stg.modThreshold.ToString("N6") + " to " + this.txtBox_newValue.Text + ".",
+                                "Updating a variable",
+                                MessageBoxButtons.OKCancel,
+                                MessageBoxIcon.Question
+                                );
+                            if (result == DialogResult.OK)
+                            {
+                                variableUpdate upd = new variableUpdate();
+                                upd.stg_name = this.selected_stg.name;
+                                upd.type = "modthreashold";
+                                upd.value = this.txtBox_newValue.Text;
+                                string body = JsonSerializer.Serialize(upd);
+                                dict = new Dictionary<string, string>();
+                                dict["data_type"] = data_type;
+                                dict["data"] = body;
+                                string msg = JsonSerializer.Serialize(dict);
+                                var bytes = Encoding.UTF8.GetBytes(msg);
+                                if (this.info_receiver.State == WebSocketState.Open)
+                                {
+                                    await this.info_receiver.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                                }
+                            }
+                        }
+                    }
+                    break;
             }
         }
     }

@@ -1,6 +1,7 @@
 ﻿using Crypto_Clients;
 using Crypto_Trading;
 using Enums;
+using PubnubApi.EndPoint;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -98,6 +99,50 @@ namespace Crypto_Linux
             msg = JsonSerializer.Serialize(item, this.js_option);
             await this.BroadcastAsync(msg);
 
+            foreach (var stg in Program.strategies)
+            {
+                if(this.strategySetting.ContainsKey(stg.Key))
+                {
+                    strategySetting setting = this.strategySetting[stg.Key];
+                    setting.name = stg.Value.name;
+                    setting.baseCcy = stg.Value.baseCcy;
+                    setting.quoteCcy = stg.Value.quoteCcy;
+                    setting.taker_market = stg.Value.taker_market;
+                    setting.maker_market = stg.Value.maker_market;
+                    setting.markup = stg.Value.markup;
+                    setting.min_markup = stg.Value.min_markup;
+                    setting.max_skew = stg.Value.maxSkew;
+                    setting.skew_widening = stg.Value.skewWidening;
+                    setting.baseCcy_quantity = stg.Value.baseCcyQuantity;
+                    setting.ToBsize = stg.Value.ToBsize;
+                    setting.intervalAfterFill = stg.Value.intervalAfterFill;
+                    setting.modThreshold = stg.Value.modThreshold;
+                    setting.skewThreshold = stg.Value.skewThreshold;
+                    setting.oneSideThreshold = stg.Value.oneSideThreshold;
+                    this.strategySetting[stg.Key] = setting;
+                }
+                else
+                {
+                    strategySetting setting = new strategySetting();
+                    setting.name = stg.Value.name;
+                    setting.baseCcy = stg.Value.baseCcy;
+                    setting.quoteCcy = stg.Value.quoteCcy;
+                    setting.taker_market = stg.Value.taker_market;
+                    setting.maker_market = stg.Value.maker_market;
+                    setting.markup = stg.Value.markup;
+                    setting.min_markup = stg.Value.min_markup;
+                    setting.max_skew = stg.Value.maxSkew;
+                    setting.skew_widening = stg.Value.skewWidening;
+                    setting.baseCcy_quantity = stg.Value.baseCcyQuantity;
+                    setting.ToBsize = stg.Value.ToBsize;
+                    setting.intervalAfterFill = stg.Value.intervalAfterFill;
+                    setting.modThreshold = stg.Value.modThreshold;
+                    setting.skewThreshold = stg.Value.skewThreshold;
+                    setting.oneSideThreshold = stg.Value.oneSideThreshold;
+                    this.strategySetting[stg.Key] = setting;
+                }
+                    
+            }
             json = JsonSerializer.Serialize(this.strategySetting);
             item["data_type"] = "strategySetting";
             item["data"] = json;
@@ -188,6 +233,113 @@ namespace Crypto_Linux
                     {
                         this.addLog("Recieved exit command from a client");
                         await onExitCommand();
+                    }
+                    else
+                    {
+                        var js = JsonDocument.Parse(message).RootElement;
+                        string data_type = js.GetProperty("data_type").GetString();
+                        string content = js.GetProperty("data").GetString();
+                        switch (data_type)
+                        {
+                            case "variableUpdate":
+                                {
+                                    var newVar = JsonSerializer.Deserialize<variableUpdate>(content);
+                                    if(Program.strategies.ContainsKey(newVar.stg_name))
+                                    {
+                                        decimal newvalue;
+                                        Strategy stg = Program.strategies[newVar.stg_name];
+                                        switch (newVar.type.ToLower())
+                                        {
+                                            case "markup":
+                                                if(decimal.TryParse(newVar.value,out newvalue))
+                                                {
+                                                    addLog("The markup of " + stg.name + " has been changed from " + stg.markup.ToString("N0") + " to " + newVar.value);
+                                                    stg.markup = newvalue;
+                                                    await BroadcastAsync(message);
+                                                }
+                                                break;
+                                            case "min_markup":
+                                                if (decimal.TryParse(newVar.value, out newvalue))
+                                                {
+                                                    addLog("The minimum markup of " + stg.name + " has been changed from " + stg.min_markup.ToString("N0") + " to " + newVar.value);
+                                                    stg.min_markup = newvalue;
+                                                    await BroadcastAsync(message);
+                                                }
+                                                break;
+                                            case "max_skew":
+                                                if (decimal.TryParse(newVar.value, out newvalue))
+                                                {
+                                                    addLog("The max skew of " + stg.name + " has been changed from " + stg.maxSkew.ToString("N0") + " to " + newVar.value);
+                                                    stg.maxSkew = newvalue;
+                                                    await BroadcastAsync(message);
+                                                }
+                                                break;
+                                            case "skewwidenng":
+                                                if (decimal.TryParse(newVar.value, out newvalue))
+                                                {
+                                                    addLog("The skew widening of " + stg.name + " has been changed from " + stg.skewWidening.ToString("N0") + " to " + newVar.value);
+                                                    stg.skewWidening = newvalue;
+                                                    await BroadcastAsync(message);
+                                                }
+                                                break;
+                                            case "baseccyquantity":
+                                                if (decimal.TryParse(newVar.value, out newvalue))
+                                                {
+                                                    addLog("The total quantity of base currency of " + stg.name + " has been changed from " + stg.baseCcyQuantity.ToString("N0") + " to " + newVar.value);
+                                                    stg.baseCcyQuantity = newvalue;
+                                                    await BroadcastAsync(message);
+                                                }
+                                                break;
+                                            case "tobsize":
+                                                if (decimal.TryParse(newVar.value, out newvalue))
+                                                {
+                                                    addLog("The TOB size of " + stg.name + " has been changed from " + stg.ToBsize.ToString("N0") + " to " + newVar.value);
+                                                    stg.ToBsize = newvalue;
+                                                    await BroadcastAsync(message);
+                                                }
+                                                break;
+                                            case "intervalafterfill":
+                                                if (decimal.TryParse(newVar.value, out newvalue))
+                                                {
+                                                    addLog("The interval after a fill of " + stg.name + " has been changed from " + stg.intervalAfterFill.ToString("N0") + " to " + newVar.value);
+                                                    stg.intervalAfterFill = newvalue;
+                                                    await BroadcastAsync(message);
+                                                }
+                                                break;
+                                            case "modthreashold":
+                                                if (decimal.TryParse(newVar.value, out newvalue))
+                                                {
+                                                    addLog("The mod threshold of " + stg.name + " has been changed from " + stg.modThreshold.ToString("N0") + " to " + newVar.value);
+                                                    stg.modThreshold = newvalue;
+                                                    await BroadcastAsync(message);
+                                                }
+                                                break;
+                                            case "skewthreshold":
+                                                if (decimal.TryParse(newVar.value, out newvalue))
+                                                {
+                                                    addLog("The skew threshold of " + stg.name + " has been changed from " + stg.skewThreshold.ToString("N0") + " to " + newVar.value);
+                                                    stg.skewThreshold = newvalue;
+                                                    await BroadcastAsync(message);
+                                                }
+                                                break;
+                                            case "onesidethreshold":
+                                                if (decimal.TryParse(newVar.value, out newvalue))
+                                                {
+                                                    addLog("The one-side threshold of " + stg.name + " has been changed from " + stg.oneSideThreshold.ToString("N0") + " to " + newVar.value);
+                                                    stg.oneSideThreshold = newvalue;
+                                                    await BroadcastAsync(message);
+                                                }
+                                                break;
+                                            default:
+                                                break;
+                                        }
+                                    }
+                                    
+                                }
+                                break;
+                            default:
+                                break;
+                        }
                     }
 
 
