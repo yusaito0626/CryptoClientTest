@@ -1367,6 +1367,7 @@ namespace Crypto_Trading
                             ordObj.order_quantity = 0;
                             ordObj.market = sndOrd.ins.market;
                             ordObj.symbol = sndOrd.ins.symbol;
+                            ordObj.symbol_market = sndOrd.ins.symbol_market;
                             ordObj.internal_order_id = this.ordIdMapping[ordObj.market + ordObj.order_id];
                             ordObj.filled_quantity = 0;
                             ordObj.status = orderStatus.WaitCancel;
@@ -1625,8 +1626,16 @@ namespace Crypto_Trading
             }
             foreach (var ord in this.live_orders.Values)
             {
-                ins = this.Instruments[ord.symbol_market];
-                this.placeCancelSpotOrder(ins, ord.internal_order_id,true);
+                if(this.Instruments.ContainsKey(ord.symbol_market))
+                {
+                    ins = this.Instruments[ord.symbol_market];
+                    this.placeCancelSpotOrder(ins, ord.internal_order_id, true);
+                }
+                else
+                {
+                    addLog("Unknown order.", logType.WARNING);
+                    addLog(ord.ToString(), logType.WARNING);
+                }
             }
             Volatile.Write(ref this.order_lock, 0);
         }

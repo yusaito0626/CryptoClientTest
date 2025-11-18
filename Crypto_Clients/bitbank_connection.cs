@@ -667,7 +667,10 @@ namespace Crypto_Clients
                 request.Headers.Add("ACCESS-SIGNATURE", ToSha256(this.secretKey, message));
 
                 request.Content = new StringContent(string.Empty, Encoding.UTF8, "application/json");
-                var response = await this.http_client.SendAsync(request);
+                
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                
+                var response = await this.http_client.SendAsync(request,cts.Token);
                 var resString = await response.Content.ReadAsStringAsync();
                 return resString;
             }
@@ -704,13 +707,15 @@ namespace Crypto_Clients
                 request.Headers.Add("ACCESS-TIME-WINDOW", timeWindow);
                 request.Headers.Add("ACCESS-SIGNATURE", ToSha256(this.secretKey, message));
 
-                sw_POST.Restart();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                 if (this.logging)
                 {
                     this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   POST " + endpoint + " " + body);
                     //this.logFilePublic.Flush();
                 }
-                var response = await this.http_client.SendAsync(request);
+
+                sw_POST.Restart();
+                var response = await this.http_client.SendAsync(request,cts.Token);
                 sw_POST.Stop();
                 this.elapsedTime_POST = (this.elapsedTime_POST * this.count + sw_POST.Elapsed.TotalNanoseconds / 1000) / (this.count + 1);
                 ++this.count;
