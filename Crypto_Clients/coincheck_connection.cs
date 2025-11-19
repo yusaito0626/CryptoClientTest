@@ -1004,6 +1004,7 @@ namespace Crypto_Clients
                 if (nonce <= this.lastnonce)
                 {
                     nonce = this.lastnonce + 1;
+                    Thread.Sleep(1);
                 }
                 this.lastnonce = nonce;
                 var message = $"{nonce}{coincheck_connection.URL}{endpoint}{body}";

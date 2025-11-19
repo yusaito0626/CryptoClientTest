@@ -600,7 +600,7 @@ namespace Crypto_GUI
                     }
                     catch (WebSocketException wse)
                     {
-                        this.addLog($"WebSocketException: {wse.Message}", Enums.logType.WARNING);
+                        //this.addLog($"WebSocketException: {wse.Message}", Enums.logType.WARNING);
                         ++trial;
                         this.info_receiver.Dispose();
                         this.info_receiver = new ClientWebSocket();
@@ -608,7 +608,7 @@ namespace Crypto_GUI
                     }
                     catch (Exception ex)
                     {
-                        this.addLog($"Connection failed: {ex.Message}", Enums.logType.WARNING);
+                        //this.addLog($"Connection failed: {ex.Message}", Enums.logType.WARNING);
                         ++trial;
                         this.info_receiver.Dispose();
                         this.info_receiver = new ClientWebSocket();
@@ -616,15 +616,9 @@ namespace Crypto_GUI
                     }
                     if (!connected)
                     {
-                        if (trial > 5)
+                        if(trial == 1)
                         {
-                            this.addLog("Unable to connect after " + trial.ToString() + " trials", logType.ERROR);
-                            this.addLog("Aborting", logType.ERROR);
-                            return;
-                        }
-                        else
-                        {
-                            this.addLog("Tried " + trial.ToString() + " times", logType.WARNING);
+                            addLog("Waiting for the trading engine to start...");
                         }
                     }
                 }

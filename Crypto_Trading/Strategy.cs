@@ -80,8 +80,14 @@ namespace Crypto_Trading
         public decimal taker_last_updated_mid;
         public decimal maker_last_updated_mid;
 
+        public DateTime? last_filled_time;
         public DateTime? last_filled_time_buy;
         public DateTime? last_filled_time_sell;
+
+        public decimal markup_decay_basetime = 30; //minutes
+
+        public decimal temp_markup_bid = 0;
+        public decimal temp_markup_ask = 0;
 
         public decimal SoD_baseCcyPos;
         public decimal SoD_price;
@@ -140,6 +146,10 @@ namespace Crypto_Trading
 
             this.taker_last_updated_mid = 0;
             this.maker_last_updated_mid = 0;
+
+            this.last_filled_time = null;
+            this.last_filled_time_buy = null;
+            this.last_filled_time_sell = null;
 
             this.netExposure = 0;
             this.SoD_baseCcyPos = 0;
@@ -395,6 +405,7 @@ namespace Crypto_Trading
             {
                 bool buyFirst = true;
                 this.skew_point = this.skew();
+                decimal modTh_buffer = 100 * Math.Abs(this.skew_point) / this.maxSkew / 1000000;
                 int i = 0;
                 while (Interlocked.CompareExchange(ref this.taker.quotes_lock, 1, 0) != 0)
                 {
@@ -409,21 +420,65 @@ namespace Crypto_Trading
                 decimal min_markup_bid = bid_price * (1 - this.min_markup / 1000000);
                 decimal min_markup_ask = ask_price * (1 + this.min_markup / 1000000);
 
+                decimal markup_bid = this.markup;
+                decimal markup_ask = this.markup;
+
+                decimal elapsedTimeFromLastfill = (decimal)(DateTime.UtcNow - (this.last_filled_time ?? DateTime.UtcNow)).TotalMinutes - 5;
+                if(elapsedTimeFromLastfill < 0)
+                {
+                    elapsedTimeFromLastfill = 0;
+                }
+                decimal markup_decay = - elapsedTimeFromLastfill / this.markup_decay_basetime;
                 if (this.skew_point > 0)
                 {
-                    bid_price *= (1 + (-this.markup + this.skew_point) / 1000000);
-                    ask_price *= (1 + (this.markup + (decimal)(1 + this.skewWidening) * this.skew_point) / 1000000);
+                    markup_ask += (decimal)(1 + this.skewWidening) * this.skew_point + Math.Max(markup_decay,-1) * this.markup;
+                    if(this.skew_point == this.maxSkew)
+                    {
+                        markup_bid += -this.skew_point + markup_decay * this.markup;
+                    }
+                    else
+                    {
+                        markup_bid += -this.skew_point + Math.Max(markup_decay, -1) * this.markup;
+                    }
                 }
                 else if (this.skew_point < 0)
                 {
-                    bid_price *= (1 + (-this.markup + (decimal)(1 + this.skewWidening) * this.skew_point) / 1000000);
-                    ask_price *= (1 + (this.markup + this.skew_point) / 1000000);
+                    markup_bid += - (decimal)(1 + this.skewWidening) * this.skew_point + Math.Max(markup_decay, -1) * this.markup;
+                    if(this.skew_point == - this.maxSkew)
+                    {
+                        markup_ask += this.skew_point + markup_decay * this.markup;
+                    }
+                    else
+                    {
+                        markup_ask += this.skew_point + Math.Max(markup_decay, -1) * this.markup;
+                    }
                 }
                 else
                 {
-                    bid_price *= (1 + (-this.markup) / 1000000);
-                    ask_price *= (1 + (this.markup) / 1000000);
+                    markup_bid += Math.Max(markup_decay, -1) * this.markup;
+                    markup_ask += Math.Max(markup_decay, -1) * this.markup;
                 }
+                this.temp_markup_ask = markup_ask;
+                this.temp_markup_bid = markup_bid;
+
+                bid_price *= (1 - markup_bid / 1000000);
+                ask_price *= (1 + markup_ask / 1000000);
+
+                //if (this.skew_point > 0)
+                //{
+                //    bid_price *= (1 + (-this.markup + this.skew_point) / 1000000);
+                //    ask_price *= (1 + (this.markup + (decimal)(1 + this.skewWidening) * this.skew_point) / 1000000);
+                //}
+                //else if (this.skew_point < 0)
+                //{
+                //    bid_price *= (1 + (-this.markup + (decimal)(1 + this.skewWidening) * this.skew_point) / 1000000);
+                //    ask_price *= (1 + (this.markup + this.skew_point) / 1000000);
+                //}
+                //else
+                //{
+                //    bid_price *= (1 + (-this.markup) / 1000000);
+                //    ask_price *= (1 + (this.markup) / 1000000);
+                //}
                 while (Interlocked.CompareExchange(ref this.maker.quotes_lock, 1, 0) != 0)
                 {
                 }
@@ -489,7 +544,7 @@ namespace Crypto_Trading
                     ask_price = 0;
                 }
 
-                bool isPriceChanged = this.checkPriceChange();
+                bool isPriceChanged = this.checkPriceChange(modTh_buffer);
 
                 if (isPriceChanged)
                 {
@@ -580,7 +635,7 @@ namespace Crypto_Trading
                         cancelling_ord.Add(this.live_buyorder_id);
                         this.live_buyorder_id = "";
                     }
-                    else if (isPriceChanged && ord.status == orderStatus.Open && this.live_bidprice != bid_price)
+                    else if ((isPriceChanged || bid_price > this.live_bidprice) && ord.status == orderStatus.Open && this.live_bidprice != bid_price)
                     {
                         cancelling_ord.Add(this.live_buyorder_id);
                         this.live_buyorder_id = "";
@@ -602,7 +657,7 @@ namespace Crypto_Trading
                         cancelling_ord.Add(this.live_sellorder_id);
                         this.live_sellorder_id = "";
                     }
-                    else if (isPriceChanged && ord.status == orderStatus.Open && this.live_askprice != ask_price)
+                    else if ((isPriceChanged || ask_price < this.live_askprice) && ord.status == orderStatus.Open && this.live_askprice != ask_price)
                     {
                         cancelling_ord.Add(this.live_sellorder_id);
                         this.live_sellorder_id = "";
@@ -689,10 +744,10 @@ namespace Crypto_Trading
             return ret;
         }
 
-        public bool checkPriceChange()
+        public bool checkPriceChange(decimal buf = 0)
         {
-            bool taker_check = (this.taker_last_updated_mid == 0 || this.taker.mid / this.taker_last_updated_mid > 1 + this.modThreshold || this.taker.mid / this.taker_last_updated_mid < 1 - this.modThreshold);
-            bool maker_check = (this.maker_last_updated_mid == 0 || this.maker.mid / this.maker_last_updated_mid > 1 + this.modThreshold || this.maker.mid / this.maker_last_updated_mid < 1 - this.modThreshold);
+            bool taker_check = (this.taker_last_updated_mid == 0 || this.taker.mid / this.taker_last_updated_mid > 1 + this.modThreshold + buf || this.taker.mid / this.taker_last_updated_mid < 1 - this.modThreshold - buf);
+            bool maker_check = (this.maker_last_updated_mid == 0 || this.maker.mid / this.maker_last_updated_mid > 1 + this.modThreshold + buf || this.maker.mid / this.maker_last_updated_mid < 1 - this.modThreshold - buf);
             return (taker_check || maker_check);
         }
 
@@ -822,6 +877,7 @@ namespace Crypto_Trading
                                         this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, null, true);
                                     }
                                     this.last_filled_time_sell = DateTime.UtcNow;
+                                    this.last_filled_time = this.last_filled_time_sell;
                                     this.executed_Orders[ord.internal_order_id] = ord;
                                     ord.msg += "  onTrades at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
                                     addLog(ord.ToString());
@@ -867,6 +923,7 @@ namespace Crypto_Trading
                                         this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, null, true);
                                     }
                                     this.last_filled_time_buy = DateTime.UtcNow;
+                                    this.last_filled_time = this.last_filled_time_buy;
                                     this.executed_Orders[ord.internal_order_id] = ord;
                                     ord.msg += "  onTrades at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
                                     addLog(ord.ToString());
@@ -925,6 +982,7 @@ namespace Crypto_Trading
                                 this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, null, true);
                             }
                             this.last_filled_time_sell = DateTime.UtcNow;
+                            this.last_filled_time = this.last_filled_time_sell;
                             this.executed_Orders[ord.internal_order_id] = ord;
                             ord.msg += "  onMakerQuotes at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
                             addLog(ord.ToString());
@@ -964,6 +1022,7 @@ namespace Crypto_Trading
                             }
                             this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, null, true);
                             this.last_filled_time_buy = DateTime.UtcNow;
+                            this.last_filled_time = this.last_filled_time_buy;
                             this.executed_Orders[ord.internal_order_id] = ord;
                             ord.msg += "  onMakerQuotes at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
                             addLog(ord.ToString());
@@ -1035,6 +1094,7 @@ namespace Crypto_Trading
                                     this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, null, true);
                                 }
                                 this.last_filled_time_buy = DateTime.UtcNow;
+                                this.last_filled_time = this.last_filled_time_buy;
                                 break;
                             case orderSide.Sell:
 
@@ -1043,6 +1103,7 @@ namespace Crypto_Trading
                                     this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, null, true);
                                 }
                                 this.last_filled_time_sell = DateTime.UtcNow;
+                                this.last_filled_time = this.last_filled_time_sell;
                                 break;
                         }
                         
@@ -1132,6 +1193,7 @@ namespace Crypto_Trading
                                             addLog(ord.ToString());
                                             fill.msg = ord.msg;
                                             this.last_filled_time_buy = DateTime.UtcNow;
+                                            this.last_filled_time = this.last_filled_time_buy;
                                         }
                                     }
                                     else
@@ -1141,6 +1203,7 @@ namespace Crypto_Trading
                                         {
                                             this.executed_Orders[fill.internal_order_id] = null;
                                             this.last_filled_time_buy = DateTime.UtcNow;
+                                            this.last_filled_time = this.last_filled_time_buy;
                                             fill.msg = "  onFill at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + fill.internal_order_id;
                                         }
                                     }
@@ -1155,6 +1218,7 @@ namespace Crypto_Trading
                                         {
                                             this.executed_Orders[ord.internal_order_id] = ord;
                                             this.last_filled_time_sell = DateTime.UtcNow;
+                                            this.last_filled_time = this.last_filled_time_sell;
                                             ord.msg += "  onFill at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + fill.internal_order_id;
                                             addLog(ord.ToString());
                                             fill.msg = ord.msg;
@@ -1167,6 +1231,7 @@ namespace Crypto_Trading
                                         {
                                             this.executed_Orders[fill.internal_order_id] = null;
                                             this.last_filled_time_sell = DateTime.UtcNow;
+                                            this.last_filled_time = this.last_filled_time_sell;
                                             fill.msg = "  onFill at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + fill.internal_order_id;
                                         }
                                     }
@@ -1207,6 +1272,7 @@ namespace Crypto_Trading
                                     if (ord.order_quantity - ord.filled_quantity <= fill.quantity || ord.status == orderStatus.Filled)
                                     {
                                         this.last_filled_time_buy = DateTime.UtcNow;
+                                        this.last_filled_time = this.last_filled_time_buy;
                                     }
                                 }
                                 else
@@ -1222,6 +1288,7 @@ namespace Crypto_Trading
                                     if (ord.order_quantity - ord.filled_quantity <= fill.quantity || ord.status == orderStatus.Filled)
                                     {
                                         this.last_filled_time_sell = DateTime.UtcNow;
+                                        this.last_filled_time = this.last_filled_time_sell;
                                     }
                                 }
                                 else
