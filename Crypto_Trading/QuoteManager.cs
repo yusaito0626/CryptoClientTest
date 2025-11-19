@@ -450,6 +450,10 @@ namespace Crypto_Trading
                         start();
                         if(!await stg.updateOrders())
                         {
+                            foreach (var mkt in this._markets.Keys)
+                            {
+                                this.oManager.refreshHttpClient(mkt);
+                            }
                             this.addLog("Cancelling all the orders including unknown.", Enums.logType.WARNING);
                             await this.oManager.cancelAllOrders();
                             Thread.Sleep(1000);

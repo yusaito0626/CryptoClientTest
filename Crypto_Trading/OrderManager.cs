@@ -159,6 +159,22 @@ namespace Crypto_Trading
             //this.OrderProcessingStop.Cancel();
         }
 
+        public void refreshHttpClient(string market)
+        {
+            switch(market)
+            {
+                case "bitbank":
+                    this.ord_client.bitbank_client.refreshHttpClient();
+                    break;
+                case "coincheck":
+                    this.ord_client.bitbank_client.refreshHttpClient();
+                    break;
+                default:
+                    addLog("Httpclient refresh is not configured for " + market, logType.ERROR);
+                    break;
+            }
+        }
+
         public async Task connectPrivateChannel(string market)
         {
             ThreadManager thManager = ThreadManager.GetInstance();
@@ -823,16 +839,6 @@ namespace Crypto_Trading
                 }
                 else
                 {
-                    string err = js.RootElement.GetProperty("error").GetString();
-                    if (err.StartsWith("Amount"))
-                    {
-                        this.addLog(err, Enums.logType.WARNING);
-                    }
-                    else
-                    {
-                        string msg = JsonSerializer.Serialize(js);
-                        this.addLog(msg, Enums.logType.ERROR);
-                    }
                     while (!this.ord_client.ordUpdateStack.TryPop(out output))
                     {
 
@@ -853,6 +859,23 @@ namespace Crypto_Trading
                     output.is_trigger_order = true;
                     output.last_trade = "";
                     output.msg = sndOrd.msg;
+
+                    string err = js.RootElement.GetProperty("error").GetString();
+                    if (err.StartsWith("Amount"))
+                    {
+                        this.addLog(err, Enums.logType.WARNING);
+                    }
+                    else if(err.StartsWith("Nonce"))//Nonce must be incremented
+                    {
+                        output.err_code = (int)Enums.ordError.NONCE_ERROR;
+                        this.addLog(err, Enums.logType.WARNING);
+                    }
+                    else
+                    {
+                        string msg = JsonSerializer.Serialize(js);
+                        this.addLog(msg, Enums.logType.ERROR);
+                    }
+                    
                     this.ord_client.ordUpdateQueue.Enqueue(output);
                 }
             }
@@ -1805,6 +1828,14 @@ namespace Crypto_Trading
                         }
                         if (ord.status == orderStatus.INVALID)
                         {
+                            foreach(var stg in this.strategies)
+                            {
+                                if(stg.Value.taker.symbol_market == ord.symbol_market && ord.err_code == (int)Enums.ordError.NONCE_ERROR)
+                                {
+                                    addLog("Taker order failed. Resending.", logType.WARNING);
+                                    this.placeNewSpotOrder(stg.Value.taker,ord.side,ord.order_type,ord.order_quantity,ord.order_price);
+                                }
+                            }
                             this.orders[ord.internal_order_id] = ord;
                             this.ordLogQueue.Enqueue(ord.ToString());
                         }

@@ -1836,6 +1836,8 @@ namespace Crypto_Clients
         public bool isVirtual;
         public string msg;
 
+        public int err_code;
+
         public int queued_count;
 
         public DataSpotOrderUpdate()
@@ -1865,6 +1867,7 @@ namespace Crypto_Clients
             this.is_trigger_order = false;
             this.isVirtual = false;
             this.msg = "";
+            this.err_code = 0;
             this.queued_count = 0;
         }
 
@@ -2483,6 +2486,7 @@ namespace Crypto_Clients
             this.is_trigger_order = false;
             this.isVirtual = false;
             this.msg = "";
+            this.err_code = 0;
             this.queued_count = 0;
         }
         public string ToString()

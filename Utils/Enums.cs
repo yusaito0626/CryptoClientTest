@@ -56,4 +56,9 @@
         ImmediateOrCancel = 2,
         FillOrKill = 3
     }
+    public enum  ordError
+    {
+        NONE = 0,
+        NONCE_ERROR = 1,
+    }
 }

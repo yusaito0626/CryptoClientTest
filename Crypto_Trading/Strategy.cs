@@ -84,7 +84,7 @@ namespace Crypto_Trading
         public DateTime? last_filled_time_buy;
         public DateTime? last_filled_time_sell;
 
-        public decimal markup_decay_basetime = 30; //minutes
+        public decimal markup_decay_basetime = 60; //minutes
 
         public decimal temp_markup_bid = 0;
         public decimal temp_markup_ask = 0;

@@ -103,6 +103,16 @@ namespace Crypto_Clients
 
         }
 
+        public void refreshHttpClient()
+        {
+            this.http_client.Dispose();
+            this.http_client = new HttpClient(_handler)
+            {
+                BaseAddress = new Uri(URL),
+                Timeout = TimeSpan.FromSeconds(10)
+            };
+        }
+
         public void setQueues(Crypto_Clients client)
         {
             this.orderQueue = client.ordUpdateQueue;

@@ -104,6 +104,15 @@ namespace Crypto_Clients
             this.nonceChecking = 0;
             
         }
+        public void refreshHttpClient()
+        {
+            this.http_client.Dispose();
+            this.http_client = new HttpClient(_handler)
+            {
+                BaseAddress = new Uri(URL),
+                Timeout = TimeSpan.FromSeconds(10)
+            };
+        }
         public void setLogFile(string path)
         {
             this.logging = true;
