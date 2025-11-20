@@ -15,6 +15,7 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 using Enums;
 using System.Diagnostics;
 using Utils;
+using PubnubApi.EventEngine.Subscribe.Effects;
 
 namespace Crypto_Trading
 {
@@ -576,6 +577,7 @@ namespace Crypto_Trading
             Strategy stg;
             var spinner = new SpinWait();
             bool ret = true;
+            bool refresh = false;
             try
             {
                 while (true)
@@ -614,6 +616,14 @@ namespace Crypto_Trading
                         start();
                         if(!await stg.updateOrders())
                         {
+                            refresh = true;
+                        }
+                        Volatile.Write(ref stg.queued, 0);
+                        spinner.Reset();
+                        end();
+                        if (refresh)
+                        {
+                            refresh = false;
                             foreach (var mkt in this._markets.Keys)
                             {
                                 this.oManager.refreshHttpClient(mkt);
@@ -634,9 +644,6 @@ namespace Crypto_Trading
                             t.Wait();
                             addLog("All the strategy orders have been reset.");
                         }
-                        Volatile.Write(ref stg.queued, 0);
-                        spinner.Reset();
-                        end();
                     }
                     if (ct.IsCancellationRequested)
                     {

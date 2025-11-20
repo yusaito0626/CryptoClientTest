@@ -59,7 +59,8 @@
     public enum  ordError
     {
         NONE = 0,
-        NONCE_ERROR = 1,
-        TIMED_OUT = 80001
+        TIMED_OUT = 80001,
+        NONCE_ERROR = 90001,
+        RATE_LIMIT_EXCEEDED = 90002
     }
 }

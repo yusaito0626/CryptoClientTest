@@ -165,6 +165,7 @@ namespace Crypto_Trading
         {
             if(Interlocked.CompareExchange(ref this.refreshing_httpClient,1,0) == 0)
             {
+                addLog("Refreshing HTTP clients...");
                 this.ready = false;
                 Thread.Sleep(1000);
                 switch (market)
@@ -920,6 +921,11 @@ namespace Crypto_Trading
                     else if(err.StartsWith("Nonce"))//Nonce must be incremented
                     {
                         output.err_code = (int)Enums.ordError.NONCE_ERROR;
+                        this.addLog(err, Enums.logType.WARNING);
+                    }
+                    else if(err.StartsWith("Rate limit"))
+                    {
+                        output.err_code = (int)Enums.ordError.RATE_LIMIT_EXCEEDED;
                         this.addLog(err, Enums.logType.WARNING);
                     }
                     else
@@ -1876,6 +1882,7 @@ namespace Crypto_Trading
             modifingOrd mod;
             var spinner = new SpinWait();
             bool ret = true;
+            DateTime takerPosAdjustment = DateTime.UtcNow;
             try
             {
                 while (true)
@@ -1892,10 +1899,31 @@ namespace Crypto_Trading
                         {
                             foreach(var stg in this.strategies)
                             {
-                                if(stg.Value.taker.symbol_market == ord.symbol_market && ord.err_code == (int)Enums.ordError.NONCE_ERROR)
+                                if(stg.Value.taker.symbol_market == ord.symbol_market)
                                 {
-                                    addLog("Taker order failed. Resending.", logType.WARNING);
-                                    this.placeNewSpotOrder(stg.Value.taker,ord.side,ord.order_type,ord.order_quantity,ord.order_price);
+                                    if(ord.err_code == (int)Enums.ordError.NONCE_ERROR)
+                                    {
+                                        addLog("Taker order failed. Resending.", logType.WARNING);
+                                        this.placeNewSpotOrder(stg.Value.taker, ord.side, ord.order_type, ord.order_quantity, ord.order_price);
+                                    }
+                                    else if(ord.err_code == (int)Enums.ordError.RATE_LIMIT_EXCEEDED)
+                                    {
+                                        if (DateTime.UtcNow - takerPosAdjustment > TimeSpan.FromSeconds(10))
+                                        {
+                                            takerPosAdjustment = DateTime.UtcNow;
+                                            stg.Value.lastPosAdjustment = DateTime.UtcNow;
+                                            Thread.Sleep(1000);
+                                            decimal diff_amount = stg.Value.maker.baseBalance.total + stg.Value.taker.baseBalance.total - stg.Value.baseCcyQuantity;
+                                            orderSide side = orderSide.Sell;
+                                            if(diff_amount < 0)
+                                            {
+                                                side = orderSide.Buy;
+                                                diff_amount *= -1;
+                                            }
+                                            diff_amount = Math.Round(diff_amount / stg.Value.taker.quantity_unit) * stg.Value.taker.quantity_unit;
+                                            this.placeNewSpotOrder(stg.Value.taker, side, orderType.Market, diff_amount, 0, null, true);
+                                        }
+                                    }
                                 }
                             }
                             this.orders[ord.internal_order_id] = ord;
