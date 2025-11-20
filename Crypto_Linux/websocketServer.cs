@@ -393,9 +393,7 @@ namespace Crypto_Linux
             }
             if(log.msg != null && log.msg.Contains("Error code:10009"))
             {
-                log.msg = "";
-                log.logtype = "";
-                logEntryStack.Push(log);
+
             }
             else
             {

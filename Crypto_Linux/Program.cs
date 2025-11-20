@@ -49,8 +49,8 @@ namespace Crypto_Linux
         {
             WriteIndented = true
         };
-        static int logSize = 10000;
-        static ConcurrentStack<logEntry> logEntryStack;
+        static int logSize = 50000;
+        static Stack<logEntry> logEntryStack;
         static Stack<fillInfo> fillInfoStack;
 
         static Strategy selected_stg;
@@ -141,10 +141,8 @@ namespace Crypto_Linux
             privateConnect = true;
             msgLogging = false;
 
-            ws_server.logEntryStack = logEntryStack;
-
             filledOrderQueue = new ConcurrentQueue<DataFill>();
-            logEntryStack = new ConcurrentStack<logEntry>();
+            logEntryStack = new Stack<logEntry>();
             fillInfoStack = new Stack<fillInfo>();
             int i = 0;
             while (i < logSize)
@@ -180,7 +178,6 @@ namespace Crypto_Linux
             crypto_client.setAddLog(addLog);
             thManager._addLog = addLog;
             ws_server._addLog = addLog;
-
 
             ws_server.onExitCommand = async () =>
             {
@@ -348,25 +345,11 @@ namespace Crypto_Linux
                     await timer_PeriodicMsg_Tick();
                     i = 0;
                 }
-                checkStacks();
                 updateLog();
                 Thread.Sleep(1000);
             }
             addLog("Exitting the main process...");
             Thread.Sleep(2000);
-        }
-
-        static private void checkStacks()
-        {
-            if(logEntryStack.Count < 1000)
-            {
-                int i = 0;
-                while(i < 20000)
-                {
-                    logEntryStack.Push(new logEntry());
-                    ++i;
-                }
-            }
         }
 
         static private string stgPnLMsg()
@@ -1632,15 +1615,19 @@ namespace Crypto_Linux
 
             }
             logEntry log;
-            int i = 0;
-            while (!logEntryStack.TryPop(out log))
+            if (logEntryStack.Count > 0)
             {
-                ++i;
-                if(i > 10000)
+                log = logEntryStack.Pop();
+            }
+            else
+            {
+                int i = 0;
+                while(i < 1000)
                 {
-                    log = new logEntry();
-                    break;
+                    logEntryStack.Push(new logEntry());
+                    ++i;
                 }
+                log = new logEntry();
             }
             log.logtype = logtype.ToString();
             log.msg = messageline;
