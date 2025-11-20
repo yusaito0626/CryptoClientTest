@@ -242,6 +242,7 @@ namespace Crypto_Linux
                 setting.skew_widening = stg.Value.skewWidening;
                 setting.baseCcy_quantity = stg.Value.baseCcyQuantity;
                 setting.ToBsize = stg.Value.ToBsize;
+                setting.ToBsizeMultiple = stg.Value.ToBsizeMultiple;
                 setting.intervalAfterFill = stg.Value.intervalAfterFill;
                 setting.modThreshold = stg.Value.modThreshold;
                 setting.skewThreshold = stg.Value.skewThreshold;
@@ -1480,6 +1481,10 @@ namespace Crypto_Linux
                 insinfo.quantity_buy = ins.buy_quantity;
                 insinfo.notional_sell = ins.sell_notional;
                 insinfo.quantity_sell = ins.sell_quantity;
+                if(ins.startTime_RV != null)
+                {
+                    insinfo.realized_volatility = ins.realized_volatility;
+                }
 
                 insinfo.my_notional_buy = ins.my_buy_notional;
                 insinfo.my_quantity_buy = ins.my_buy_quantity;

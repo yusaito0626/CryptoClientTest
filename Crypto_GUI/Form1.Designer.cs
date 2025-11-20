@@ -29,9 +29,6 @@
         private void InitializeComponent()
         {
             components = new System.ComponentModel.Container();
-            DataGridViewCellStyle dataGridViewCellStyle20 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle21 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle22 = new DataGridViewCellStyle();
             DataGridViewCellStyle dataGridViewCellStyle23 = new DataGridViewCellStyle();
             DataGridViewCellStyle dataGridViewCellStyle24 = new DataGridViewCellStyle();
             DataGridViewCellStyle dataGridViewCellStyle25 = new DataGridViewCellStyle();
@@ -39,6 +36,9 @@
             DataGridViewCellStyle dataGridViewCellStyle27 = new DataGridViewCellStyle();
             DataGridViewCellStyle dataGridViewCellStyle28 = new DataGridViewCellStyle();
             DataGridViewCellStyle dataGridViewCellStyle29 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle20 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle21 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle22 = new DataGridViewCellStyle();
             DataGridViewCellStyle dataGridViewCellStyle30 = new DataGridViewCellStyle();
             DataGridViewCellStyle dataGridViewCellStyle31 = new DataGridViewCellStyle();
             DataGridViewCellStyle dataGridViewCellStyle32 = new DataGridViewCellStyle();
@@ -170,6 +170,10 @@
             combo_StgSetting = new ComboBox();
             label37 = new Label();
             groupBox1 = new GroupBox();
+            lbl_tobmulti = new Label();
+            label47 = new Label();
+            lbl_decayingtime = new Label();
+            label46 = new Label();
             lbl_skewstep = new Label();
             label45 = new Label();
             lbl_skewtype = new Label();
@@ -211,8 +215,8 @@
             col_roundTrip = new DataGridViewTextBoxColumn();
             timer_statusCheck = new System.Windows.Forms.Timer(components);
             timer_PeriodicMsg = new System.Windows.Forms.Timer(components);
-            lbl_decayingtime = new Label();
-            label46 = new Label();
+            label42 = new Label();
+            lbl_RV = new Label();
             tabControl.SuspendLayout();
             tabPage1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridView_PnL).BeginInit();
@@ -307,14 +311,14 @@
             // 
             // gridView_PnL
             // 
-            dataGridViewCellStyle20.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle20.BackColor = SystemColors.Control;
-            dataGridViewCellStyle20.Font = new Font("Calibri", 10.875F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            dataGridViewCellStyle20.ForeColor = SystemColors.WindowText;
-            dataGridViewCellStyle20.SelectionBackColor = SystemColors.Highlight;
-            dataGridViewCellStyle20.SelectionForeColor = SystemColors.HighlightText;
-            dataGridViewCellStyle20.WrapMode = DataGridViewTriState.True;
-            gridView_PnL.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle20;
+            dataGridViewCellStyle23.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle23.BackColor = SystemColors.Control;
+            dataGridViewCellStyle23.Font = new Font("Calibri", 10.875F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            dataGridViewCellStyle23.ForeColor = SystemColors.WindowText;
+            dataGridViewCellStyle23.SelectionBackColor = SystemColors.Highlight;
+            dataGridViewCellStyle23.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle23.WrapMode = DataGridViewTriState.True;
+            gridView_PnL.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle23;
             gridView_PnL.ColumnHeadersHeight = 30;
             gridView_PnL.Columns.AddRange(new DataGridViewColumn[] { col_strategyName, col_volume, Column1, col_tradingPL, col_feeAmount, col_totalPnL });
             gridView_PnL.GridColor = SystemColors.Menu;
@@ -322,18 +326,18 @@
             gridView_PnL.Margin = new Padding(2);
             gridView_PnL.Name = "gridView_PnL";
             gridView_PnL.RowHeadersBorderStyle = DataGridViewHeaderBorderStyle.Sunken;
-            dataGridViewCellStyle21.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle21.BackColor = SystemColors.Control;
-            dataGridViewCellStyle21.Font = new Font("Calibri", 10.875F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            dataGridViewCellStyle21.ForeColor = SystemColors.WindowText;
-            dataGridViewCellStyle21.SelectionBackColor = SystemColors.Highlight;
-            dataGridViewCellStyle21.SelectionForeColor = SystemColors.HighlightText;
-            dataGridViewCellStyle21.WrapMode = DataGridViewTriState.True;
-            gridView_PnL.RowHeadersDefaultCellStyle = dataGridViewCellStyle21;
+            dataGridViewCellStyle24.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle24.BackColor = SystemColors.Control;
+            dataGridViewCellStyle24.Font = new Font("Calibri", 10.875F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            dataGridViewCellStyle24.ForeColor = SystemColors.WindowText;
+            dataGridViewCellStyle24.SelectionBackColor = SystemColors.Highlight;
+            dataGridViewCellStyle24.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle24.WrapMode = DataGridViewTriState.True;
+            gridView_PnL.RowHeadersDefaultCellStyle = dataGridViewCellStyle24;
             gridView_PnL.RowHeadersVisible = false;
             gridView_PnL.RowHeadersWidth = 82;
-            dataGridViewCellStyle22.Alignment = DataGridViewContentAlignment.MiddleRight;
-            gridView_PnL.RowsDefaultCellStyle = dataGridViewCellStyle22;
+            dataGridViewCellStyle25.Alignment = DataGridViewContentAlignment.MiddleRight;
+            gridView_PnL.RowsDefaultCellStyle = dataGridViewCellStyle25;
             gridView_PnL.Size = new Size(839, 219);
             gridView_PnL.TabIndex = 5;
             // 
@@ -468,14 +472,14 @@
             // gridView_orders
             // 
             gridView_orders.BackgroundColor = SystemColors.Window;
-            dataGridViewCellStyle23.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle23.BackColor = SystemColors.Control;
-            dataGridViewCellStyle23.Font = new Font("Yu Gothic UI", 9F);
-            dataGridViewCellStyle23.ForeColor = SystemColors.WindowText;
-            dataGridViewCellStyle23.SelectionBackColor = SystemColors.Highlight;
-            dataGridViewCellStyle23.SelectionForeColor = SystemColors.HighlightText;
-            dataGridViewCellStyle23.WrapMode = DataGridViewTriState.True;
-            gridView_orders.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle23;
+            dataGridViewCellStyle26.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle26.BackColor = SystemColors.Control;
+            dataGridViewCellStyle26.Font = new Font("Yu Gothic UI", 9F);
+            dataGridViewCellStyle26.ForeColor = SystemColors.WindowText;
+            dataGridViewCellStyle26.SelectionBackColor = SystemColors.Highlight;
+            dataGridViewCellStyle26.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle26.WrapMode = DataGridViewTriState.True;
+            gridView_orders.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle26;
             gridView_orders.ColumnHeadersHeight = 29;
             gridView_orders.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             gridView_orders.Columns.AddRange(new DataGridViewColumn[] { col_time, col_market, col_symbol, col_side, col_fillprice, col_quantity, col_feeCcy, col_fee });
@@ -484,8 +488,8 @@
             gridView_orders.Name = "gridView_orders";
             gridView_orders.RowHeadersVisible = false;
             gridView_orders.RowHeadersWidth = 82;
-            dataGridViewCellStyle24.Alignment = DataGridViewContentAlignment.MiddleRight;
-            gridView_orders.RowsDefaultCellStyle = dataGridViewCellStyle24;
+            dataGridViewCellStyle27.Alignment = DataGridViewContentAlignment.MiddleRight;
+            gridView_orders.RowsDefaultCellStyle = dataGridViewCellStyle27;
             gridView_orders.Size = new Size(1023, 227);
             gridView_orders.TabIndex = 32;
             // 
@@ -830,14 +834,14 @@
             gridView_Maker.AllowUserToAddRows = false;
             gridView_Maker.AllowUserToDeleteRows = false;
             gridView_Maker.BackgroundColor = Color.White;
-            dataGridViewCellStyle25.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle25.BackColor = SystemColors.Control;
-            dataGridViewCellStyle25.Font = new Font("Segoe UI", 9F);
-            dataGridViewCellStyle25.ForeColor = SystemColors.WindowText;
-            dataGridViewCellStyle25.SelectionBackColor = SystemColors.Highlight;
-            dataGridViewCellStyle25.SelectionForeColor = SystemColors.HighlightText;
-            dataGridViewCellStyle25.WrapMode = DataGridViewTriState.True;
-            gridView_Maker.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle25;
+            dataGridViewCellStyle28.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle28.BackColor = SystemColors.Control;
+            dataGridViewCellStyle28.Font = new Font("Segoe UI", 9F);
+            dataGridViewCellStyle28.ForeColor = SystemColors.WindowText;
+            dataGridViewCellStyle28.SelectionBackColor = SystemColors.Highlight;
+            dataGridViewCellStyle28.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle28.WrapMode = DataGridViewTriState.True;
+            gridView_Maker.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle28;
             gridView_Maker.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             gridView_Maker.Columns.AddRange(new DataGridViewColumn[] { dataGridViewTextBoxColumn1, dataGridViewTextBoxColumn2, dataGridViewTextBoxColumn3 });
             gridView_Maker.Location = new Point(28, 92);
@@ -874,14 +878,14 @@
             gridView_Taker.AllowUserToAddRows = false;
             gridView_Taker.AllowUserToDeleteRows = false;
             gridView_Taker.BackgroundColor = Color.White;
-            dataGridViewCellStyle26.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle26.BackColor = SystemColors.Control;
-            dataGridViewCellStyle26.Font = new Font("Segoe UI", 9F);
-            dataGridViewCellStyle26.ForeColor = SystemColors.WindowText;
-            dataGridViewCellStyle26.SelectionBackColor = SystemColors.Highlight;
-            dataGridViewCellStyle26.SelectionForeColor = SystemColors.HighlightText;
-            dataGridViewCellStyle26.WrapMode = DataGridViewTriState.True;
-            gridView_Taker.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle26;
+            dataGridViewCellStyle29.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle29.BackColor = SystemColors.Control;
+            dataGridViewCellStyle29.Font = new Font("Segoe UI", 9F);
+            dataGridViewCellStyle29.ForeColor = SystemColors.WindowText;
+            dataGridViewCellStyle29.SelectionBackColor = SystemColors.Highlight;
+            dataGridViewCellStyle29.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle29.WrapMode = DataGridViewTriState.True;
+            gridView_Taker.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle29;
             gridView_Taker.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             gridView_Taker.Columns.AddRange(new DataGridViewColumn[] { col_Ask, col_price, col_Bid });
             gridView_Taker.Location = new Point(498, 92);
@@ -916,6 +920,8 @@
             // tabPage2
             // 
             tabPage2.BackColor = Color.WhiteSmoke;
+            tabPage2.Controls.Add(lbl_RV);
+            tabPage2.Controls.Add(label42);
             tabPage2.Controls.Add(gridView_insOrders);
             tabPage2.Controls.Add(groupBox3);
             tabPage2.Controls.Add(groupBox2);
@@ -940,14 +946,14 @@
             // gridView_insOrders
             // 
             gridView_insOrders.BackgroundColor = SystemColors.Window;
-            dataGridViewCellStyle27.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle27.BackColor = SystemColors.Control;
-            dataGridViewCellStyle27.Font = new Font("Yu Gothic UI", 9F);
-            dataGridViewCellStyle27.ForeColor = SystemColors.WindowText;
-            dataGridViewCellStyle27.SelectionBackColor = SystemColors.Highlight;
-            dataGridViewCellStyle27.SelectionForeColor = SystemColors.HighlightText;
-            dataGridViewCellStyle27.WrapMode = DataGridViewTriState.True;
-            gridView_insOrders.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle27;
+            dataGridViewCellStyle20.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle20.BackColor = SystemColors.Control;
+            dataGridViewCellStyle20.Font = new Font("Yu Gothic UI", 9F);
+            dataGridViewCellStyle20.ForeColor = SystemColors.WindowText;
+            dataGridViewCellStyle20.SelectionBackColor = SystemColors.Highlight;
+            dataGridViewCellStyle20.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle20.WrapMode = DataGridViewTriState.True;
+            gridView_insOrders.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle20;
             gridView_insOrders.ColumnHeadersHeight = 29;
             gridView_insOrders.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             gridView_insOrders.Columns.AddRange(new DataGridViewColumn[] { dataGridViewTextBoxColumn12, dataGridViewTextBoxColumn13, dataGridViewTextBoxColumn14, dataGridViewTextBoxColumn15, dataGridViewTextBoxColumn16, dataGridViewTextBoxColumn17, dataGridViewTextBoxColumn18, dataGridViewTextBoxColumn19 });
@@ -956,8 +962,8 @@
             gridView_insOrders.Name = "gridView_insOrders";
             gridView_insOrders.RowHeadersVisible = false;
             gridView_insOrders.RowHeadersWidth = 82;
-            dataGridViewCellStyle28.Alignment = DataGridViewContentAlignment.MiddleRight;
-            gridView_insOrders.RowsDefaultCellStyle = dataGridViewCellStyle28;
+            dataGridViewCellStyle21.Alignment = DataGridViewContentAlignment.MiddleRight;
+            gridView_insOrders.RowsDefaultCellStyle = dataGridViewCellStyle21;
             gridView_insOrders.Size = new Size(1023, 227);
             gridView_insOrders.TabIndex = 33;
             // 
@@ -1312,14 +1318,14 @@
             gridView_Ins.AllowUserToAddRows = false;
             gridView_Ins.AllowUserToDeleteRows = false;
             gridView_Ins.BackgroundColor = Color.White;
-            dataGridViewCellStyle29.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle29.BackColor = SystemColors.Control;
-            dataGridViewCellStyle29.Font = new Font("Segoe UI", 9F);
-            dataGridViewCellStyle29.ForeColor = SystemColors.WindowText;
-            dataGridViewCellStyle29.SelectionBackColor = SystemColors.Highlight;
-            dataGridViewCellStyle29.SelectionForeColor = SystemColors.HighlightText;
-            dataGridViewCellStyle29.WrapMode = DataGridViewTriState.True;
-            gridView_Ins.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle29;
+            dataGridViewCellStyle22.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle22.BackColor = SystemColors.Control;
+            dataGridViewCellStyle22.Font = new Font("Segoe UI", 9F);
+            dataGridViewCellStyle22.ForeColor = SystemColors.WindowText;
+            dataGridViewCellStyle22.SelectionBackColor = SystemColors.Highlight;
+            dataGridViewCellStyle22.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle22.WrapMode = DataGridViewTriState.True;
+            gridView_Ins.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle22;
             gridView_Ins.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             gridView_Ins.Columns.AddRange(new DataGridViewColumn[] { dataGridViewTextBoxColumn4, dataGridViewTextBoxColumn5, dataGridViewTextBoxColumn6 });
             gridView_Ins.Location = new Point(636, 47);
@@ -1542,6 +1548,8 @@
             // 
             // groupBox1
             // 
+            groupBox1.Controls.Add(lbl_tobmulti);
+            groupBox1.Controls.Add(label47);
             groupBox1.Controls.Add(lbl_decayingtime);
             groupBox1.Controls.Add(label46);
             groupBox1.Controls.Add(lbl_skewstep);
@@ -1579,10 +1587,50 @@
             groupBox1.TabStop = false;
             groupBox1.Text = "Setting";
             // 
+            // lbl_tobmulti
+            // 
+            lbl_tobmulti.AutoSize = true;
+            lbl_tobmulti.Location = new Point(528, 106);
+            lbl_tobmulti.Margin = new Padding(2, 0, 2, 0);
+            lbl_tobmulti.Name = "lbl_tobmulti";
+            lbl_tobmulti.Size = new Size(44, 20);
+            lbl_tobmulti.TabIndex = 36;
+            lbl_tobmulti.Text = "value";
+            // 
+            // label47
+            // 
+            label47.AutoSize = true;
+            label47.Location = new Point(364, 106);
+            label47.Margin = new Padding(2, 0, 2, 0);
+            label47.Name = "label47";
+            label47.Size = new Size(95, 20);
+            label47.TabIndex = 35;
+            label47.Text = "ToB multiple:";
+            // 
+            // lbl_decayingtime
+            // 
+            lbl_decayingtime.AutoSize = true;
+            lbl_decayingtime.Location = new Point(158, 296);
+            lbl_decayingtime.Margin = new Padding(2, 0, 2, 0);
+            lbl_decayingtime.Name = "lbl_decayingtime";
+            lbl_decayingtime.Size = new Size(44, 20);
+            lbl_decayingtime.TabIndex = 34;
+            lbl_decayingtime.Text = "value";
+            // 
+            // label46
+            // 
+            label46.AutoSize = true;
+            label46.Location = new Point(18, 296);
+            label46.Margin = new Padding(2, 0, 2, 0);
+            label46.Name = "label46";
+            label46.Size = new Size(111, 20);
+            label46.TabIndex = 33;
+            label46.Text = "Decaying Time:";
+            // 
             // lbl_skewstep
             // 
             lbl_skewstep.AutoSize = true;
-            lbl_skewstep.Location = new Point(544, 265);
+            lbl_skewstep.Location = new Point(528, 297);
             lbl_skewstep.Margin = new Padding(2, 0, 2, 0);
             lbl_skewstep.Name = "lbl_skewstep";
             lbl_skewstep.Size = new Size(44, 20);
@@ -1592,7 +1640,7 @@
             // label45
             // 
             label45.AutoSize = true;
-            label45.Location = new Point(380, 265);
+            label45.Location = new Point(364, 297);
             label45.Margin = new Padding(2, 0, 2, 0);
             label45.Name = "label45";
             label45.Size = new Size(80, 20);
@@ -1602,7 +1650,7 @@
             // lbl_skewtype
             // 
             lbl_skewtype.AutoSize = true;
-            lbl_skewtype.Location = new Point(544, 234);
+            lbl_skewtype.Location = new Point(528, 266);
             lbl_skewtype.Margin = new Padding(2, 0, 2, 0);
             lbl_skewtype.Name = "lbl_skewtype";
             lbl_skewtype.Size = new Size(44, 20);
@@ -1612,7 +1660,7 @@
             // label44
             // 
             label44.AutoSize = true;
-            label44.Location = new Point(380, 234);
+            label44.Location = new Point(364, 266);
             label44.Margin = new Padding(2, 0, 2, 0);
             label44.Name = "label44";
             label44.Size = new Size(81, 20);
@@ -1703,7 +1751,7 @@
             // lbl_ordUpdateTh
             // 
             lbl_ordUpdateTh.AutoSize = true;
-            lbl_ordUpdateTh.Location = new Point(544, 203);
+            lbl_ordUpdateTh.Location = new Point(528, 235);
             lbl_ordUpdateTh.Margin = new Padding(2, 0, 2, 0);
             lbl_ordUpdateTh.Name = "lbl_ordUpdateTh";
             lbl_ordUpdateTh.Size = new Size(44, 20);
@@ -1713,7 +1761,7 @@
             // lbl_fillInterval
             // 
             lbl_fillInterval.AutoSize = true;
-            lbl_fillInterval.Location = new Point(544, 170);
+            lbl_fillInterval.Location = new Point(528, 202);
             lbl_fillInterval.Margin = new Padding(2, 0, 2, 0);
             lbl_fillInterval.Name = "lbl_fillInterval";
             lbl_fillInterval.Size = new Size(44, 20);
@@ -1723,7 +1771,7 @@
             // lbl_oneside
             // 
             lbl_oneside.AutoSize = true;
-            lbl_oneside.Location = new Point(544, 139);
+            lbl_oneside.Location = new Point(528, 171);
             lbl_oneside.Margin = new Padding(2, 0, 2, 0);
             lbl_oneside.Name = "lbl_oneside";
             lbl_oneside.Size = new Size(44, 20);
@@ -1733,7 +1781,7 @@
             // lbl_skew
             // 
             lbl_skew.AutoSize = true;
-            lbl_skew.Location = new Point(544, 106);
+            lbl_skew.Location = new Point(528, 138);
             lbl_skew.Margin = new Padding(2, 0, 2, 0);
             lbl_skew.Name = "lbl_skew";
             lbl_skew.Size = new Size(44, 20);
@@ -1773,7 +1821,7 @@
             // label17
             // 
             label17.AutoSize = true;
-            label17.Location = new Point(380, 203);
+            label17.Location = new Point(364, 235);
             label17.Margin = new Padding(2, 0, 2, 0);
             label17.Name = "label17";
             label17.Size = new Size(130, 20);
@@ -1783,7 +1831,7 @@
             // label16
             // 
             label16.AutoSize = true;
-            label16.Location = new Point(380, 170);
+            label16.Location = new Point(364, 202);
             label16.Margin = new Padding(2, 0, 2, 0);
             label16.Name = "label16";
             label16.Size = new Size(121, 20);
@@ -1793,7 +1841,7 @@
             // label15
             // 
             label15.AutoSize = true;
-            label15.Location = new Point(380, 139);
+            label15.Location = new Point(364, 171);
             label15.Margin = new Padding(2, 0, 2, 0);
             label15.Name = "label15";
             label15.Size = new Size(117, 20);
@@ -1803,7 +1851,7 @@
             // label14
             // 
             label14.AutoSize = true;
-            label14.Location = new Point(380, 106);
+            label14.Location = new Point(364, 138);
             label14.Margin = new Padding(2, 0, 2, 0);
             label14.Name = "label14";
             label14.Size = new Size(84, 20);
@@ -2022,25 +2070,25 @@
             timer_PeriodicMsg.Interval = 60000;
             timer_PeriodicMsg.Tick += timer_PeriodicMsg_Tick;
             // 
-            // lbl_decayingtime
+            // label42
             // 
-            lbl_decayingtime.AutoSize = true;
-            lbl_decayingtime.Location = new Point(158, 296);
-            lbl_decayingtime.Margin = new Padding(2, 0, 2, 0);
-            lbl_decayingtime.Name = "lbl_decayingtime";
-            lbl_decayingtime.Size = new Size(44, 20);
-            lbl_decayingtime.TabIndex = 34;
-            lbl_decayingtime.Text = "value";
+            label42.AutoSize = true;
+            label42.Location = new Point(636, 437);
+            label42.Margin = new Padding(2, 0, 2, 0);
+            label42.Name = "label42";
+            label42.Size = new Size(127, 20);
+            label42.TabIndex = 34;
+            label42.Text = "Realized volatility";
             // 
-            // label46
+            // lbl_RV
             // 
-            label46.AutoSize = true;
-            label46.Location = new Point(18, 296);
-            label46.Margin = new Padding(2, 0, 2, 0);
-            label46.Name = "label46";
-            label46.Size = new Size(111, 20);
-            label46.TabIndex = 33;
-            label46.Text = "Decaying Time:";
+            lbl_RV.AutoSize = true;
+            lbl_RV.Location = new Point(795, 437);
+            lbl_RV.Margin = new Padding(2, 0, 2, 0);
+            lbl_RV.Name = "lbl_RV";
+            lbl_RV.Size = new Size(44, 20);
+            lbl_RV.TabIndex = 35;
+            lbl_RV.Text = "value";
             // 
             // Form1
             // 
@@ -2251,5 +2299,9 @@
         private Label label45;
         private Label lbl_decayingtime;
         private Label label46;
+        private Label lbl_tobmulti;
+        private Label label47;
+        private Label label42;
+        private Label lbl_RV;
     }
 }

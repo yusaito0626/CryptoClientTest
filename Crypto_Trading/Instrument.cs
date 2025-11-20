@@ -62,6 +62,10 @@ namespace Crypto_Trading
         public decimal my_sell_notional;
         public decimal my_buy_notional;
 
+        public DateTime? startTime_RV = null;
+        public double cum_realized_volatility;
+        public double realized_volatility;
+
         public decimal base_fee;
         public decimal quote_fee;
         public decimal unknown_fee;
@@ -127,6 +131,8 @@ namespace Crypto_Trading
             this.my_buy_quantity = 0;
             this.my_sell_notional = 0;
             this.my_buy_notional = 0;
+
+            this.cum_realized_volatility = 0;
 
             this.base_fee = 0;
             this.quote_fee = 0;
@@ -444,6 +450,19 @@ namespace Crypto_Trading
             else
             {
                 this.mid = 0;
+            }
+
+            if(this.prev_mid > 0 && this.mid > 0 && this.mid != this.prev_mid)
+            {
+                this.cum_realized_volatility += Math.Pow(Math.Log((double)this.mid / (double)this.prev_mid), 2);
+                if(this.startTime_RV == null)
+                {
+                    this.startTime_RV = DateTime.UtcNow;
+                }
+                else
+                {
+                    this.realized_volatility = Math.Pow(this.cum_realized_volatility / (DateTime.UtcNow - this.startTime_RV).Value.TotalMinutes * 5,0.5);
+                }
             }
 
             if(this.open_mid < 0 && this.mid > 0)

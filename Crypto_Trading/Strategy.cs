@@ -29,6 +29,8 @@ namespace Crypto_Trading
         public decimal baseCcyQuantity;
         public decimal ToBsize;
 
+        public decimal ToBsizeMultiple;
+
         public decimal intervalAfterFill;
         public decimal modThreshold;
 
@@ -111,6 +113,7 @@ namespace Crypto_Trading
             this.min_markup = 0;
             this.baseCcyQuantity = 0;
             this.ToBsize = 0;
+            this.ToBsizeMultiple = 1;
             this.intervalAfterFill = 0;
             this.modThreshold = 0;
             this.maxSkew = 0;
@@ -264,6 +267,14 @@ namespace Crypto_Trading
             {
                 addLog("ToB size is not configurated", logType.ERROR);
             }
+            if (root.TryGetProperty("ToBsizeMultiple", out item))
+            {
+                this.ToBsizeMultiple = item.GetDecimal();
+            }
+            else
+            {
+                this.ToBsizeMultiple = 1;
+            }
             if (root.TryGetProperty("modThreshold", out item))
             {
                 this.modThreshold = item.GetDecimal();
@@ -393,6 +404,7 @@ namespace Crypto_Trading
             this.baseCcyQuantity = setting.baseCcy_quantity;
             this.skewWidening = setting.skew_widening;
             this.ToBsize = setting.ToBsize;
+            this.ToBsizeMultiple = setting.ToBsizeMultiple;
             this.intervalAfterFill = setting.intervalAfterFill;
             this.modThreshold = setting.modThreshold;
             this.maxSkew = setting.max_skew;
@@ -468,6 +480,8 @@ namespace Crypto_Trading
                 {
                     markup_bid += Math.Max(markup_decay, -1) * this.markup;
                     markup_ask += Math.Max(markup_decay, -1) * this.markup;
+                    ordersize_ask *= this.ToBsizeMultiple;
+                    ordersize_bid *= this.ToBsizeMultiple;
                 }
                 this.temp_markup_ask = markup_ask;
                 this.temp_markup_bid = markup_bid;

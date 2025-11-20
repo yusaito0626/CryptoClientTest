@@ -36,6 +36,7 @@ namespace Utils
         public decimal skew_widening { get; set; }
         public decimal baseCcy_quantity { get; set; }
         public decimal ToBsize { get; set; }
+        public decimal ToBsizeMultiple { get; set; }
         public decimal intervalAfterFill { get; set; }
         public decimal modThreshold { get; set; }
         public decimal skewThreshold { get; set; }
@@ -96,6 +97,7 @@ namespace Utils
         public decimal notional_sell { get; set; }
         public decimal quantity_buy { get; set; }
         public decimal quantity_sell { get; set; }
+        public double realized_volatility { get; set; }
 
         //balance
         public decimal baseCcy_total { get; set; }

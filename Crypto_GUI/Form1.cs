@@ -742,6 +742,7 @@ namespace Crypto_GUI
                                                 ins.sell_notional = i.Value.notional_sell;
                                                 ins.buy_quantity = i.Value.quantity_buy;
                                                 ins.sell_quantity = i.Value.quantity_sell;
+                                                ins.realized_volatility = i.Value.realized_volatility;
                                                 ins.baseBalance = new Balance();
                                                 ins.baseBalance.ccy = ins.baseCcy;
                                                 ins.baseBalance.total = i.Value.baseCcy_total;
@@ -770,6 +771,7 @@ namespace Crypto_GUI
                                                 ins.sell_notional = i.Value.notional_sell;
                                                 ins.buy_quantity = i.Value.quantity_buy;
                                                 ins.sell_quantity = i.Value.quantity_sell;
+                                                ins.realized_volatility = i.Value.realized_volatility;
                                                 ins.baseBalance = new Balance();
                                                 ins.baseBalance.ccy = ins.baseCcy;
                                                 ins.baseBalance.total = i.Value.baseCcy_total;
@@ -1208,6 +1210,7 @@ namespace Crypto_GUI
                 this.lbl_quoteFee.Text = this.selected_ins.quote_fee.ToString("N" + this.selected_ins.quantity_scale);
                 this.updateQuotesView(this.gridView_Ins, this.selected_ins);
 
+                this.lbl_RV.Text = this.selected_ins.realized_volatility.ToString("N5");
                 //while (Interlocked.CompareExchange(ref this.selected_ins.orders_lock, 1, 0) != 0)
                 //{
                 //    bool stop = true;
@@ -2071,6 +2074,7 @@ namespace Crypto_GUI
                 this.lbl_minMarkup.Text = this.selected_stg.min_markup.ToString("N0");
                 this.lbl_maxSkew.Text = this.selected_stg.maxSkew.ToString("N0");
                 this.lbl_tobsize.Text = this.selected_stg.ToBsize.ToString("N5");
+                this.lbl_tobmulti.Text = this.selected_stg.ToBsizeMultiple.ToString("N2");
                 this.lbl_maxpos.Text = this.selected_stg.baseCcyQuantity.ToString("N5");
                 this.lbl_skewWidening.Text = this.selected_stg.skewWidening.ToString("N2");
                 this.lbl_skew.Text = this.selected_stg.skewThreshold.ToString("N0");

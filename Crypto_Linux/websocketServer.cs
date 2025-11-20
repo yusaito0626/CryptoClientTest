@@ -115,6 +115,7 @@ namespace Crypto_Linux
                     setting.skew_widening = stg.Value.skewWidening;
                     setting.baseCcy_quantity = stg.Value.baseCcyQuantity;
                     setting.ToBsize = stg.Value.ToBsize;
+                    setting.ToBsizeMultiple = stg.Value.ToBsizeMultiple;
                     setting.intervalAfterFill = stg.Value.intervalAfterFill;
                     setting.modThreshold = stg.Value.modThreshold;
                     setting.skewThreshold = stg.Value.skewThreshold;
@@ -139,6 +140,7 @@ namespace Crypto_Linux
                     setting.skew_widening = stg.Value.skewWidening;
                     setting.baseCcy_quantity = stg.Value.baseCcyQuantity;
                     setting.ToBsize = stg.Value.ToBsize;
+                    setting.ToBsizeMultiple = stg.Value.ToBsizeMultiple;
                     setting.intervalAfterFill = stg.Value.intervalAfterFill;
                     setting.modThreshold = stg.Value.modThreshold;
                     setting.skewThreshold = stg.Value.skewThreshold;
