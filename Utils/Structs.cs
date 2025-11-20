@@ -98,6 +98,7 @@ namespace Utils
         public decimal quantity_buy { get; set; }
         public decimal quantity_sell { get; set; }
         public double realized_volatility { get; set; }
+        public double latest_realized_volatility { get; set; }
 
         //balance
         public decimal baseCcy_total { get; set; }

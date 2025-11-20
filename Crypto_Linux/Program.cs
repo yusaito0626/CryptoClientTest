@@ -1481,10 +1481,9 @@ namespace Crypto_Linux
                 insinfo.quantity_buy = ins.buy_quantity;
                 insinfo.notional_sell = ins.sell_notional;
                 insinfo.quantity_sell = ins.sell_quantity;
-                if(ins.startTime_RV != null)
-                {
-                    insinfo.realized_volatility = ins.realized_volatility;
-                }
+                
+                insinfo.realized_volatility = ins.realized_volatility;
+                insinfo.latest_realized_volatility = ins.latest_realized_volatility;
 
                 insinfo.my_notional_buy = ins.my_buy_notional;
                 insinfo.my_quantity_buy = ins.my_buy_quantity;

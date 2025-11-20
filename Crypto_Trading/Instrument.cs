@@ -63,8 +63,11 @@ namespace Crypto_Trading
         public decimal my_buy_notional;
 
         public DateTime? startTime_RV = null;
+        public DateTime? lastTime_RV = null;
         public double cum_realized_volatility;
         public double realized_volatility;
+        public double latest_realized_volatility;
+        public double prev_realized_volatility;
 
         public decimal base_fee;
         public decimal quote_fee;
@@ -133,6 +136,9 @@ namespace Crypto_Trading
             this.my_buy_notional = 0;
 
             this.cum_realized_volatility = 0;
+            this.realized_volatility = 0;
+            this.latest_realized_volatility = 0;
+            this.prev_realized_volatility = 0;
 
             this.base_fee = 0;
             this.quote_fee = 0;
@@ -455,13 +461,24 @@ namespace Crypto_Trading
             if(this.prev_mid > 0 && this.mid > 0 && this.mid != this.prev_mid)
             {
                 this.cum_realized_volatility += Math.Pow(Math.Log((double)this.mid / (double)this.prev_mid), 2);
+                DateTime currentTime = DateTime.UtcNow;
                 if(this.startTime_RV == null)
                 {
-                    this.startTime_RV = DateTime.UtcNow;
+                    this.startTime_RV = currentTime;
                 }
                 else
                 {
-                    this.realized_volatility = Math.Pow(this.cum_realized_volatility / (DateTime.UtcNow - this.startTime_RV).Value.TotalMinutes * 5,0.5);
+                    this.realized_volatility = Math.Pow(this.cum_realized_volatility / (currentTime - this.startTime_RV).Value.TotalMinutes,0.5);
+                }
+                if (this.lastTime_RV == null)
+                {
+                    this.lastTime_RV = currentTime;
+                }
+                else if ((currentTime - this.lastTime_RV).Value.TotalMinutes > 1)
+                {
+                    this.latest_realized_volatility = Math.Pow(this.cum_realized_volatility - this.prev_realized_volatility, 0.5);
+                    this.prev_realized_volatility = this.cum_realized_volatility;
+                    this.lastTime_RV = currentTime;
                 }
             }
 

@@ -743,6 +743,7 @@ namespace Crypto_GUI
                                                 ins.buy_quantity = i.Value.quantity_buy;
                                                 ins.sell_quantity = i.Value.quantity_sell;
                                                 ins.realized_volatility = i.Value.realized_volatility;
+                                                ins.latest_realized_volatility = i.Value.latest_realized_volatility;
                                                 ins.baseBalance = new Balance();
                                                 ins.baseBalance.ccy = ins.baseCcy;
                                                 ins.baseBalance.total = i.Value.baseCcy_total;
@@ -772,6 +773,7 @@ namespace Crypto_GUI
                                                 ins.buy_quantity = i.Value.quantity_buy;
                                                 ins.sell_quantity = i.Value.quantity_sell;
                                                 ins.realized_volatility = i.Value.realized_volatility;
+                                                ins.latest_realized_volatility = i.Value.latest_realized_volatility;
                                                 ins.baseBalance = new Balance();
                                                 ins.baseBalance.ccy = ins.baseCcy;
                                                 ins.baseBalance.total = i.Value.baseCcy_total;
@@ -1211,6 +1213,7 @@ namespace Crypto_GUI
                 this.updateQuotesView(this.gridView_Ins, this.selected_ins);
 
                 this.lbl_RV.Text = this.selected_ins.realized_volatility.ToString("N5");
+                this.lbl_LRV.Text = this.selected_ins.latest_realized_volatility.ToString("N5");
                 //while (Interlocked.CompareExchange(ref this.selected_ins.orders_lock, 1, 0) != 0)
                 //{
                 //    bool stop = true;
