@@ -174,7 +174,7 @@ namespace Crypto_Trading
                         this.ord_client.bitbank_client.refreshHttpClient();
                         break;
                     case "coincheck":
-                        this.ord_client.bitbank_client.refreshHttpClient();
+                        this.ord_client.coincheck_client.refreshHttpClient();
                         break;
                     default:
                         addLog("Httpclient refresh is not configured for " + market, logType.ERROR);

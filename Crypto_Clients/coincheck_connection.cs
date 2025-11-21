@@ -1,10 +1,12 @@
-﻿using PubnubApi;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.IO.Compression;
+using System.Net;
+using System.Net.Http;
+using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
@@ -34,17 +36,8 @@ namespace Crypto_Clients
         ClientWebSocket websocket_client;
         ClientWebSocket private_client;
         HttpClient http_client;
-        private static readonly SocketsHttpHandler _handler = new()
-        {
-            ConnectTimeout = TimeSpan.FromSeconds(3),
-            PooledConnectionLifetime = TimeSpan.FromHours(1),
 
-            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(10),
-
-            KeepAlivePingDelay = TimeSpan.FromMinutes(1),
-            KeepAlivePingTimeout = TimeSpan.FromSeconds(15),
-            KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always
-        };
+        private SocketsHttpHandler _handler;
 
         public Action<string> onMessage;
         public Action<string> onPrivateMessage;
@@ -73,6 +66,9 @@ namespace Crypto_Clients
         Stopwatch sw_Private;
         Stopwatch sw_Public;
 
+
+        volatile int refreshing = 0;
+
         private coincheck_connection()
         {
             this.apiName = "";
@@ -80,6 +76,7 @@ namespace Crypto_Clients
 
             this.websocket_client = new ClientWebSocket();
             this.private_client = new ClientWebSocket();
+            this._handler = this.createHandler();
             this.http_client = new HttpClient(_handler)
             {
                 BaseAddress = new Uri(URL),
@@ -104,14 +101,74 @@ namespace Crypto_Clients
             this.nonceChecking = 0;
             
         }
-        public void refreshHttpClient()
+
+        private SocketsHttpHandler createHandler()
         {
-            this.http_client.Dispose();
-            this.http_client = new HttpClient(_handler)
+            var handler = new SocketsHttpHandler
             {
-                BaseAddress = new Uri(URL),
-                Timeout = TimeSpan.FromSeconds(10)
+                ConnectTimeout = TimeSpan.FromSeconds(3),
+                PooledConnectionLifetime = TimeSpan.FromHours(1),
+
+                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(10),
+
+                KeepAlivePingDelay = TimeSpan.FromMinutes(1),
+                KeepAlivePingTimeout = TimeSpan.FromSeconds(15),
+                KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always
             };
+            handler.ConnectCallback = async (context, cancellationToken) =>
+            {
+                IPAddress[] ips = await Dns.GetHostAddressesAsync(context.DnsEndPoint.Host);
+
+                Exception last = null;
+
+                foreach (var ip in ips)
+                {
+                    try
+                    {
+                        var socket = new Socket(ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
+                        {
+                            NoDelay = true
+                        };
+
+                        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        cts.CancelAfter(TimeSpan.FromSeconds(3)); // connect timeout
+
+                        await socket.ConnectAsync(new IPEndPoint(ip, context.DnsEndPoint.Port), cts.Token);
+
+                        return new NetworkStream(socket, ownsSocket: true);
+                    }
+                    catch (Exception ex)
+                    {
+                        last = ex;
+                    }
+                }
+
+                throw last ?? new Exception("Connect failed");
+            };
+
+            return handler;
+        }
+        public bool refreshHttpClient()
+        {
+            if (Interlocked.CompareExchange(ref this.refreshing, 1, 0) == 0)
+            {
+                this.http_client.Dispose();
+                this._handler.Dispose();
+                Thread.Sleep(1000);
+                this._handler = this.createHandler();
+
+                this.http_client = new HttpClient(_handler)
+                {
+                    BaseAddress = new Uri(URL),
+                    Timeout = TimeSpan.FromSeconds(10)
+                };
+                Volatile.Write(ref this.refreshing, 0);
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
         public void setLogFile(string path)
         {

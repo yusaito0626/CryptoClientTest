@@ -1,13 +1,7 @@
-﻿using Bitget.Net.Objects.Models.V2;
-using CryptoExchange.Net.SharedApis;
-using Discord;
-using PubnubApi;
-using System;
+﻿using PubnubApi;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO.Compression;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
