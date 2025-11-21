@@ -882,6 +882,21 @@ namespace Crypto_Trading
             return (taker_check || maker_check);
         }
 
+        public async Task adjustPosition()
+        {
+            decimal diff_amount = this.maker.baseBalance.total + this.taker.baseBalance.total - this.baseCcyQuantity;
+            addLog("Strategy[" + this.name + "] Adjusting the position diff_amount:" + diff_amount.ToString("N" + this.taker.quantity_scale));
+            orderSide side = orderSide.Sell;
+            if(diff_amount < 0)
+            {
+                diff_amount *= -1;
+                side = orderSide.Buy;
+            }
+            diff_amount = Math.Round(diff_amount / this.taker.quantity_unit) * this.taker.quantity_unit; 
+
+            this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, diff_amount, 0, null, true);
+        }
+
         public async Task checkLiveOrders()
         {
             if(this.oManager.live_orders.Count > 2)

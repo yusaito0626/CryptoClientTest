@@ -611,6 +611,10 @@ namespace Crypto_Trading
                                 stg_obj.live_sellorder_id = "";
                             }
                             t.Wait();
+                            foreach (var stg_obj in this.strategies.Values)
+                            {
+                                stg.adjustPosition();
+                            }
                             addLog("All the strategy orders have been reset.");
                         }
                         start();
@@ -642,6 +646,10 @@ namespace Crypto_Trading
                                 stg_obj.live_sellorder_id = "";
                             }
                             t.Wait();
+                            foreach (var stg_obj in this.strategies.Values)
+                            {
+                                stg.adjustPosition();
+                            }
                             addLog("All the strategy orders have been reset.");
                         }
                     }

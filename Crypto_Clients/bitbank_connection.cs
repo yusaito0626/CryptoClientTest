@@ -55,6 +55,7 @@ namespace Crypto_Clients
         Stopwatch sw_Public;
 
         bool closeSent;
+        bool pubnubReconnected = false;
 
         private List<string> subscribingChannels;
 
@@ -1077,6 +1078,7 @@ namespace Crypto_Clients
                             this.pubnub_state = WebSocketState.Closed;
                             this.addLog("pubnub reconnecting...");
                             await connectPrivateAsync();
+                            this.pubnubReconnected = true;
                             break;
 
                         default:

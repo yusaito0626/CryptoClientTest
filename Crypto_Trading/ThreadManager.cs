@@ -258,13 +258,13 @@ namespace Crypto_Trading
                         this.spinnerMaxCount);
                     if(ret)
                     {
-                        this.addLog("The thread is Successfully stopping... name:" + this.name,logType.INFO);
                         onClosing();
+                        this.addLog("The thread has been successfully closed... name:" + this.name, logType.INFO);
                     }
                     else
                     {
-                        this.addLog("The thread is stopping with an error", logType.WARNING);
                         onError();
+                        this.addLog("The thread has been closed with an error. name:" + this.name, logType.WARNING);
                     }
                     this.isRunning = false;
                 });
