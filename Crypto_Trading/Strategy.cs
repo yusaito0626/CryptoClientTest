@@ -519,8 +519,6 @@ namespace Crypto_Trading
                     }
                 }
 
-                this.temp_markup_ask = markup_ask;
-                this.temp_markup_bid = markup_bid;
 
                 decimal ordersize_bid = this.ToBsize;
                 decimal ordersize_ask = this.ToBsize;
@@ -562,8 +560,8 @@ namespace Crypto_Trading
                     ordersize_ask *= this.ToBsizeMultiple;
                     ordersize_bid *= this.ToBsizeMultiple;
                 }
-                //this.temp_markup_ask = markup_ask;
-                //this.temp_markup_bid = markup_bid;
+                this.temp_markup_ask = markup_ask;
+                this.temp_markup_bid = markup_bid;
 
                 if(vr_markup > 5000)
                 {
