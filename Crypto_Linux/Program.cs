@@ -242,12 +242,13 @@ namespace Crypto_Linux
                 setting.skew_widening = stg.Value.skewWidening;
                 setting.baseCcy_quantity = stg.Value.baseCcyQuantity;
                 setting.ToBsize = stg.Value.ToBsize;
-                setting.ToBsizeMultiple = stg.Value.ToBsizeMultiple;
+                setting.ToBsizeMultiplier = stg.Value.ToBsizeMultiplier;
                 setting.intervalAfterFill = stg.Value.intervalAfterFill;
                 setting.modThreshold = stg.Value.modThreshold;
                 setting.skewThreshold = stg.Value.skewThreshold;
                 setting.oneSideThreshold = stg.Value.oneSideThreshold;
                 setting.decaying_time = stg.Value.markup_decay_basetime;
+                setting.markupMultiplier = stg.Value.RVMarkup_multiplier;
                 setting.predictFill = stg.Value.predictFill;
                 setting.skew_type = stg.Value.skew_type.ToString();
                 setting.skew_step = stg.Value.skew_step;
@@ -379,6 +380,20 @@ namespace Crypto_Linux
                     feeAll += stg.totalFee;
                     totalAll += stg.totalPnL;
                     msg += "markup_bid:" + stg.temp_markup_bid.ToString("N2") + "  markup_ask:" + stg.temp_markup_ask.ToString("N2") + "   Base markup:" + stg.prev_markup.ToString("N2")  + "\n";
+
+                    msg += "Maker Latency:\n";
+                    msg += "<QuotesUpdate> All count:" + stg.maker.count_Allquotes.ToString("N0") + "  Latent Feed:" + stg.maker.count_Latentquotes.ToString("N0") + "\n";
+                    msg += "<Trades> All count:" + stg.maker.count_AllTrade.ToString("N0") + "  Latent Feed:" + stg.maker.count_LatentTrade.ToString("N0") + "\n";
+                    msg += "<OrderUpdate> All count:" + stg.maker.count_AllOrderUpdates.ToString("N0") + "  Latent Feed:" + stg.maker.count_LatentOrderUpdates.ToString("N0") + "\n";
+                    msg += "<Fill> All count:" + stg.maker.count_AllFill.ToString("N0") + "  Latent Feed:" + stg.maker.count_LatentFill.ToString("N0") + "\n";
+                    stg.maker.count_Allquotes = 0;
+                    stg.maker.count_Latentquotes = 0;
+                    stg.maker.count_AllTrade = 0;
+                    stg.maker.count_LatentTrade = 0;
+                    stg.maker.count_AllOrderUpdates= 0;
+                    stg.maker.count_LatentOrderUpdates = 0;
+                    stg.maker.count_AllFill = 0;
+                    stg.maker.count_LatentFill = 0;
                 }
             }
             msg += DateTime.UtcNow.ToString() + " - All -    \nNotional Volume:" + volumeAll.ToString("N2") + "\nPosition PnL:" + posPnLAll.ToString("N2") + "\nTrading PnL:" + tradingPLAll.ToString("N2") + "\nFee:" + feeAll.ToString("N2") + "\nTotal:" + totalAll.ToString("N2") + "\n";
@@ -1037,7 +1052,7 @@ namespace Crypto_Linux
             {
                 stg.enabled = true;
             }
-            addLog("Trading started.");
+            addLog("Warming up...");
             return true;
         }
 

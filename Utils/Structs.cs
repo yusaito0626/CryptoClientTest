@@ -36,12 +36,13 @@ namespace Utils
         public decimal skew_widening { get; set; }
         public decimal baseCcy_quantity { get; set; }
         public decimal ToBsize { get; set; }
-        public decimal ToBsizeMultiple { get; set; }
+        public decimal ToBsizeMultiplier { get; set; }
         public decimal intervalAfterFill { get; set; }
         public decimal modThreshold { get; set; }
         public decimal skewThreshold { get; set; }
         public decimal oneSideThreshold { get; set; }
         public decimal decaying_time { get; set; }
+        public decimal markupMultiplier { get; set; }
         public Boolean predictFill { get; set; }
         public string? skew_type { get; set; }
         public decimal skew_step { get; set; }

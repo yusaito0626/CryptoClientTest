@@ -2517,7 +2517,7 @@ namespace Crypto_Clients
             {
                 line += ",";
             }
-            line += "," + this.last_trade + "," + this.trigger_price.ToString() + "," + this.is_trigger_order.ToString() + "," + this.msg;
+            line += "," + this.last_trade + "," + this.trigger_price.ToString() + "," + this.is_trigger_order.ToString() + "," + this.err_code.ToString() + "," + this.msg;
 
             return line;
         }

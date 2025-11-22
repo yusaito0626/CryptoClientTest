@@ -2,10 +2,12 @@
 using CryptoExchange.Net.Objects.Options;
 using Discord;
 using Discord.Audio.Streams;
+using Enums;
+using System.Net;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Threading;
 using Utils;
-using Enums;
 
 namespace Crypto_Trading
 {
@@ -28,6 +30,27 @@ namespace Crypto_Trading
         public long quoteSeqNo;
         public SortedDictionary<decimal, decimal> asks;
         public SortedDictionary<decimal, decimal> bids;
+
+        public DateTime quoteTime;
+
+        DateTime sample1Time;
+        double sample_latency1;
+        DateTime intercept_time;
+        public double intercept_latency;
+        double sample_gap = 60;
+        int count = 0;
+        int NofSample = 100;
+        public double coef;
+
+        public int count_Allquotes;
+        public int count_Latentquotes;
+        public int count_AllTrade;
+        public int count_LatentTrade;
+        public int count_AllOrderUpdates;
+        public int count_LatentOrderUpdates;
+        public int count_AllFill;
+        public int count_LatentFill;
+        public double latencyTh = 1000;
 
         public ValueTuple<decimal, decimal> bestask;
         public ValueTuple<decimal, decimal> bestbid;
@@ -95,6 +118,8 @@ namespace Crypto_Trading
         public string quantity_scale;
 
         public decimal ToBsize;
+
+        public bool readyToTrade = false;
 
         public Instrument()
         {
@@ -167,6 +192,15 @@ namespace Crypto_Trading
             this.quantity_unit = 0;
 
             this.ToBsize = 0;
+
+            this.count_Allquotes = 0;
+            this.count_Latentquotes = 0;
+            this.count_AllTrade = 0;
+            this.count_LatentTrade = 0;
+            this.count_AllOrderUpdates = 0;
+            this.count_LatentOrderUpdates = 0;
+            this.count_AllFill = 0;
+            this.count_LatentFill = 0;
         }
 
         public void initialize(string line)
@@ -227,9 +261,77 @@ namespace Crypto_Trading
             return scale;
         }
 
+        public double getTheoLatency(DateTime currentTime)
+        {
+            if (this.readyToTrade)
+            {
+                return this.coef * (currentTime - this.intercept_time).TotalSeconds + this.intercept_latency;
+            }
+            else
+            {
+                return -60000;
+            }
+        }
+
         public void updateQuotes(DataOrderBook update)
         {
             this.last_quote_updated_time = update.timestamp;
+
+            if(update.orderbookTime.HasValue)
+            {
+                this.quoteTime = update.orderbookTime.Value;
+
+                if(this.count < this.NofSample)
+                {
+                    if(this.count == 0)
+                    {
+                        if(this.sample_latency1 == 0)
+                        {
+                            this.sample_latency1 = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
+                            this.sample1Time = this.last_quote_updated_time.Value;
+                        }
+                        else
+                        {
+                            this.intercept_latency = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
+                            this.intercept_time = this.last_quote_updated_time.Value;
+                        }
+                        ++(this.count);
+                    }
+                    else
+                    {
+                        if(this.intercept_latency == 0)
+                        {
+                            double currentValue = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
+                            if(currentValue < this.sample_latency1)
+                            {
+                                this.sample_latency1 = currentValue;
+                                this.sample1Time = this.last_quote_updated_time.Value;
+                            }
+                            ++(this.count);
+                            if(count == 100)
+                            {
+                                count = 0;
+                            }
+                        }
+                        else if((this.last_quote_updated_time.Value - this.sample1Time).TotalSeconds > this.sample_gap)
+                        {
+                            double currentValue = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
+                            if (currentValue < this.intercept_latency)
+                            {
+                                this.intercept_latency = currentValue;
+                                this.intercept_time = this.last_quote_updated_time.Value;
+                            }
+                            ++(this.count);
+                            if (count == 100)
+                            {
+                                this.coef = (this.intercept_latency - this.sample_latency1) / (this.intercept_time - this.sample1Time).TotalSeconds;
+                                this.readyToTrade = true;
+                            }
+                        }
+                    }
+                }
+            }
+
             switch (update.updateType)
             {
                 case CryptoExchange.Net.Objects.SocketUpdateType.Snapshot:
@@ -294,6 +396,18 @@ namespace Crypto_Trading
                     Volatile.Write(ref this.quotes_lock, 0);
                     break;
             }
+
+            if (this.readyToTrade)
+            {
+                ++(this.count_Allquotes);
+                double theo = this.getTheoLatency(update.timestamp.Value);
+                double latency = (update.timestamp.Value - update.orderbookTime.Value).TotalMilliseconds;
+
+                if (latency - theo > this.latencyTh)
+                {
+                    ++(this.count_Latentquotes);
+                }
+            }
         }
         public void updateTrade(DataTrade update)
         {
@@ -309,6 +423,18 @@ namespace Crypto_Trading
                     this.sell_quantity += update.quantity;
                     this.sell_notional += update.quantity * update.price;
                     break;
+            }
+
+            if (this.readyToTrade)
+            {
+                ++(this.count_AllTrade);
+                double theo = this.getTheoLatency(update.timestamp.Value);
+                double latency = (update.timestamp.Value - update.filled_time.Value).TotalMilliseconds;
+
+                if (latency - theo > this.latencyTh)
+                {
+                    ++(this.count_LatentTrade);
+                }
             }
         }
 
@@ -699,6 +825,23 @@ namespace Crypto_Trading
             }
         }
 
+        public void updateOrders(DataSpotOrderUpdate ord)
+        {
+
+            this.orders[ord.internal_order_id] = ord;
+
+            if (this.readyToTrade)
+            {
+                ++(this.count_AllOrderUpdates);
+                double theo = this.getTheoLatency(ord.timestamp.Value);
+                double latency = (ord.timestamp.Value - ord.update_time.Value).TotalMilliseconds;
+
+                if (latency - theo > this.latencyTh)
+                {
+                    ++(this.count_LatentOrderUpdates);
+                }
+            }
+        }
         public void updateFills(DataFill fill)
         {
             if(fill.side == orderSide.Buy)
@@ -721,6 +864,18 @@ namespace Crypto_Trading
             this.quote_fee += fill.fee_quote;
             this.base_fee += fill.fee_base;
             this.unknown_fee += fill.fee_unknown;
+
+            if(this.readyToTrade)
+            {
+                ++(this.count_AllFill);
+                double theo = this.getTheoLatency(fill.timestamp.Value);
+                double latency = (fill.timestamp.Value - fill.filled_time.Value).TotalMilliseconds;
+
+                if(latency - theo > this.latencyTh)
+                {
+                    ++(this.count_LatentFill);
+                }
+            }
         }
         public string ToString(string content = "")
         {

@@ -23,12 +23,13 @@ namespace Crypto_Trading
         public OrderManager oManager;
 
         public bool enabled;
+        private bool ready;
 
         public decimal markup;
         public decimal min_markup;
         public decimal baseCcyQuantity;
         public decimal ToBsize;
-        public decimal ToBsizeMultiple;
+        public decimal ToBsizeMultiplier;
 
         public decimal intervalAfterFill;
         public decimal modThreshold;
@@ -84,7 +85,7 @@ namespace Crypto_Trading
 
         public DateTime prevMarkupTime;
         public decimal prev_markup;
-        public double RVMarkup_multiplier = 1;
+        public decimal RVMarkup_multiplier = 1;
 
         public decimal taker_last_updated_mid;
         public decimal maker_last_updated_mid;
@@ -116,11 +117,12 @@ namespace Crypto_Trading
         {
             this.name = "";
             this.enabled = false;
+            this.ready = false;
             this.markup = 0;
             this.min_markup = 0;
             this.baseCcyQuantity = 0;
             this.ToBsize = 0;
-            this.ToBsizeMultiple = 1;
+            this.ToBsizeMultiplier = 1;
             this.intervalAfterFill = 0;
             this.modThreshold = 0;
             this.maxSkew = 0;
@@ -279,14 +281,6 @@ namespace Crypto_Trading
             {
                 addLog("ToB size is not configurated", logType.ERROR);
             }
-            if (root.TryGetProperty("ToBsizeMultiple", out item))
-            {
-                this.ToBsizeMultiple = item.GetDecimal();
-            }
-            else
-            {
-                this.ToBsizeMultiple = 1;
-            }
             if (root.TryGetProperty("modThreshold", out item))
             {
                 this.modThreshold = item.GetDecimal();
@@ -349,6 +343,22 @@ namespace Crypto_Trading
                 addLog("Fill prediction is not configurated. Default value will be set. value:false", logType.WARNING);
                 this.predictFill = false;
             }
+            if (root.TryGetProperty("ToBsizeMultiplier", out item))
+            {
+                this.ToBsizeMultiplier = item.GetDecimal();
+            }
+            else
+            {
+                this.ToBsizeMultiplier = 1;
+            }
+            if (root.TryGetProperty("RVMarkupMultiplier", out item))
+            {
+                this.RVMarkup_multiplier = item.GetDecimal();
+            }
+            else
+            {
+                this.RVMarkup_multiplier = 1;
+            }
 
             if (root.TryGetProperty("skew_type", out item))
             {
@@ -389,24 +399,7 @@ namespace Crypto_Trading
             {
                 this.markup_decay_basetime = 999999;
             }
-
-                //this.name = js.GetProperty("name").GetString();
-                //this.baseCcy = js.GetProperty("baseCcy").GetString();
-                //this.quoteCcy = js.GetProperty("quoteCcy").GetString();
-                //this.markup = js.GetProperty("markup").GetDecimal();
-                //this.min_markup = js.GetProperty("min_markup").GetDecimal();
-                //this.baseCcyQuantity = js.GetProperty("baseCcyQuantity").GetDecimal();
-                //this.skewWidening = js.GetProperty("skewWidening").GetDecimal();
-                //this.ToBsize = js.GetProperty("ToBsize").GetDecimal();
-                //this.intervalAfterFill = js.GetProperty("intervalAfterFill").GetDecimal();
-                //this.modThreshold = js.GetProperty("modThreshold").GetDecimal();
-                //this.maxSkew = js.GetProperty("max_skew").GetDecimal();
-                //this.skewThreshold = js.GetProperty("skewThreshold").GetDecimal();
-                //this.oneSideThreshold = js.GetProperty("oneSideThreshold").GetDecimal();
-                //this.taker_market = js.GetProperty("taker_market").GetString();
-                //this.maker_market = js.GetProperty("maker_market").GetString();
-                //this.predictFill = js.GetProperty("fillPrediction").GetBoolean();
-            }
+        }
         public void setStrategy(strategySetting setting)
         {
             this.name = setting.name;
@@ -417,13 +410,14 @@ namespace Crypto_Trading
             this.baseCcyQuantity = setting.baseCcy_quantity;
             this.skewWidening = setting.skew_widening;
             this.ToBsize = setting.ToBsize;
-            this.ToBsizeMultiple = setting.ToBsizeMultiple;
+            this.ToBsizeMultiplier = setting.ToBsizeMultiplier;
             this.intervalAfterFill = setting.intervalAfterFill;
             this.modThreshold = setting.modThreshold;
             this.maxSkew = setting.max_skew;
             this.skewThreshold = setting.skewThreshold;
             this.oneSideThreshold = setting.oneSideThreshold;
             this.markup_decay_basetime = setting.decaying_time;
+            this.RVMarkup_multiplier = setting.markupMultiplier;
             this.taker_market = setting.taker_market;
             this.maker_market = setting.maker_market;
             this.predictFill = setting.predictFill;
@@ -436,6 +430,26 @@ namespace Crypto_Trading
             bool ret = true;
             if (this.enabled)
             {
+                if (this.ready == false)
+                {
+                    if(this.maker.readyToTrade && this.taker.readyToTrade)
+                    {
+                        addLog("Strategy " + this.name + " ready to trade.");
+                        addLog(this.maker.symbol_market + " Latency coef:" + this.maker.coef.ToString() + "  intercept:" + this.maker.intercept_latency);
+                        addLog(this.taker.symbol_market +  " Latency coef:" + this.taker.coef.ToString() + "  intercept:" + this.taker.intercept_latency);
+                        this.ready = true;
+                    }
+                    else
+                    {
+                        return true;
+                    }
+                }
+
+                if (!this.checkLatency(2000))
+                {
+
+                }
+
                 DateTime current = DateTime.UtcNow;
                 bool buyFirst = true;
                 this.skew_point = this.skew();
@@ -462,7 +476,7 @@ namespace Crypto_Trading
                 {
                     taker_VR = (taker_VR + this.taker.prev_RV) / 2;
                 }
-                decimal vr_markup = (decimal)(taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000 * this.RVMarkup_multiplier);
+                decimal vr_markup = this. markup + ((decimal)(taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000) - this.markup) * this.RVMarkup_multiplier;
 
                 if (vr_markup >= this.prev_markup)
                 {
@@ -575,8 +589,8 @@ namespace Crypto_Trading
                 {
                     markup_bid += Math.Max(markup_decay, -1) * this.markup;
                     markup_ask += Math.Max(markup_decay, -1) * this.markup;
-                    ordersize_ask *= this.ToBsizeMultiple;
-                    ordersize_bid *= this.ToBsizeMultiple;
+                    ordersize_ask *= this.ToBsizeMultiplier;
+                    ordersize_bid *= this.ToBsizeMultiplier;
                 }
                 this.temp_markup_ask = markup_ask;
                 this.temp_markup_bid = markup_bid;
@@ -895,6 +909,51 @@ namespace Crypto_Trading
             return ret;
         }
 
+        public bool checkLatency(double threshold = 1000)
+        {
+            double theoLatency;
+            double currentLatency;
+
+            bool ret = true; 
+
+            theoLatency = this.taker.getTheoLatency(this.taker.last_quote_updated_time.Value);
+            currentLatency = (this.taker.last_quote_updated_time.Value - this.taker.quoteTime).TotalMilliseconds;
+
+            if(this.taker.market == "coincheck")
+            {
+                if((this.taker.last_quote_updated_time.Value - this.taker.quoteTime).TotalSeconds > 1.5)
+                {
+                    addLog("Observing large latency on " + this.taker.symbol_market + ".   SeqNo:" + this.taker.quoteSeqNo.ToString() +  "  Latency:" + (currentLatency).ToString("N3"), logType.WARNING);
+                    ret = false;
+                }
+            }
+            else if (currentLatency - theoLatency > threshold)
+            {
+                addLog("Observing large latency on " + this.taker.symbol_market + ".   SeqNo:" + this.taker.quoteSeqNo.ToString() + " Latency:" + (currentLatency - theoLatency).ToString("N3"), logType.WARNING);
+                addLog("Raw Latency:" + (currentLatency).ToString("N3"), logType.WARNING);
+                ret = false;
+            }
+
+            theoLatency = this.maker.getTheoLatency(this.taker.last_quote_updated_time.Value);
+            currentLatency = (this.maker.last_quote_updated_time.Value - this.taker.quoteTime).TotalMilliseconds;
+
+            if (this.maker.market == "coincheck")
+            {
+                if ((this.maker.last_quote_updated_time.Value - this.maker.quoteTime).TotalSeconds > 1.5)
+                {
+                    addLog("Observing large latency on " + this.maker.symbol_market + ".   SeqNo:" + this.maker.quoteSeqNo.ToString() + " Latency:" + (currentLatency).ToString("N3"), logType.WARNING);
+                    ret = false;
+                }
+            }
+            else if (currentLatency - theoLatency > threshold)
+            {
+                addLog("Observing large latency on " + this.maker.symbol_market + ".   SeqNo:" + this.maker.quoteSeqNo.ToString() + " Latency:" + (currentLatency - theoLatency).ToString("N3"), logType.WARNING);
+                addLog("Raw Latency:" + (currentLatency).ToString("N3"), logType.WARNING);
+                ret = false;
+            }
+
+            return ret;
+        }
         public bool checkPriceChange(decimal buf = 0)
         {
             bool taker_check = (this.taker_last_updated_mid == 0 || this.taker.mid / this.taker_last_updated_mid > 1 + this.modThreshold + buf || this.taker.mid / this.taker_last_updated_mid < 1 - this.modThreshold - buf);

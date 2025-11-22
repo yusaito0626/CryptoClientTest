@@ -115,12 +115,13 @@ namespace Crypto_Linux
                     setting.skew_widening = stg.Value.skewWidening;
                     setting.baseCcy_quantity = stg.Value.baseCcyQuantity;
                     setting.ToBsize = stg.Value.ToBsize;
-                    setting.ToBsizeMultiple = stg.Value.ToBsizeMultiple;
+                    setting.ToBsizeMultiplier = stg.Value.ToBsizeMultiplier;
                     setting.intervalAfterFill = stg.Value.intervalAfterFill;
                     setting.modThreshold = stg.Value.modThreshold;
                     setting.skewThreshold = stg.Value.skewThreshold;
                     setting.oneSideThreshold = stg.Value.oneSideThreshold;
                     setting.decaying_time = stg.Value.markup_decay_basetime;
+                    setting.markupMultiplier = stg.Value.RVMarkup_multiplier;
                     setting.predictFill = stg.Value.predictFill;
                     setting.skew_type = stg.Value.skew_type.ToString();
                     setting.skew_step = stg.Value.skew_step;
@@ -140,12 +141,13 @@ namespace Crypto_Linux
                     setting.skew_widening = stg.Value.skewWidening;
                     setting.baseCcy_quantity = stg.Value.baseCcyQuantity;
                     setting.ToBsize = stg.Value.ToBsize;
-                    setting.ToBsizeMultiple = stg.Value.ToBsizeMultiple;
+                    setting.ToBsizeMultiplier = stg.Value.ToBsizeMultiplier;
                     setting.intervalAfterFill = stg.Value.intervalAfterFill;
                     setting.modThreshold = stg.Value.modThreshold;
                     setting.skewThreshold = stg.Value.skewThreshold;
                     setting.oneSideThreshold = stg.Value.oneSideThreshold;
                     setting.decaying_time = stg.Value.markup_decay_basetime;
+                    setting.markupMultiplier = stg.Value.RVMarkup_multiplier;
                     setting.predictFill = stg.Value.predictFill;
                     setting.skew_type = stg.Value.skew_type.ToString();
                     setting.skew_step = stg.Value.skew_step;
@@ -308,11 +310,11 @@ namespace Crypto_Linux
                                                     await BroadcastAsync(message);
                                                 }
                                                 break;
-                                            case "tobsizemultiple":
+                                            case "tobsizemultiplier":
                                                 if (decimal.TryParse(newVar.value, out newvalue))
                                                 {
-                                                    addLog("The TOB size multiple of " + stg.name + " has been changed from " + stg.ToBsize.ToString("N0") + " to " + newVar.value);
-                                                    stg.ToBsizeMultiple = newvalue;
+                                                    addLog("The TOB size multiplier of " + stg.name + " has been changed from " + stg.ToBsize.ToString("N0") + " to " + newVar.value);
+                                                    stg.ToBsizeMultiplier = newvalue;
                                                     await BroadcastAsync(message);
                                                 }
                                                 break;
@@ -353,6 +355,14 @@ namespace Crypto_Linux
                                                 {
                                                     addLog("The decaying time of " + stg.name + " has been changed from " + stg.markup_decay_basetime.ToString("N0") + " to " + newVar.value);
                                                     stg.markup_decay_basetime = newvalue;
+                                                    await BroadcastAsync(message);
+                                                }
+                                                break;
+                                            case "markupmultiplier":
+                                                if (decimal.TryParse(newVar.value, out newvalue))
+                                                {
+                                                    addLog("The markup multiplier of " + stg.name + " has been changed from " + stg.RVMarkup_multiplier.ToString("N2") + " to " + newVar.value);
+                                                    stg.RVMarkup_multiplier = newvalue;
                                                     await BroadcastAsync(message);
                                                 }
                                                 break;

@@ -259,7 +259,7 @@ namespace Crypto_Trading
             this.Instruments = dic;
         }
 
-        public async Task<string> placeNewSpotOrder(Instrument ins, orderSide side, orderType ordtype, decimal quantity, decimal price, timeInForce? timeinforce = null,bool sendNow = true,bool wait = false)
+        public async Task<string> placeNewSpotOrder(Instrument ins, orderSide side, orderType ordtype, decimal quantity, decimal price, timeInForce? timeinforce = null,bool sendNow = true,bool wait = false,string msg = "")
         {
             sendingOrder ord;
             string ordid;
@@ -279,6 +279,7 @@ namespace Crypto_Trading
                 ord.quantity = quantity;
                 ord.price = price;
                 ord.time_in_force = timeinforce;
+                ord.msg = msg;
                 if (sendNow)
                 {
                     if (wait)
@@ -303,7 +304,7 @@ namespace Crypto_Trading
                 return "";
             }
         }
-        public async Task<string> placeCancelSpotOrder(Instrument ins, string orderId, bool sendNow = true, bool wait = false)
+        public async Task<string> placeCancelSpotOrder(Instrument ins, string orderId, bool sendNow = true, bool wait = false,string msg = "")
         {
             sendingOrder ord;
             if(this.ready)
@@ -317,7 +318,7 @@ namespace Crypto_Trading
                 //ord.internalOrdId = ordid;
                 ord.action = orderAction.Can;
                 ord.ins = ins;
-
+                ord.msg = msg;
                 ord.ref_IntOrdId = orderId;
 
                 if (sendNow)
@@ -344,7 +345,7 @@ namespace Crypto_Trading
                 return "";
             }
         }
-        public async Task<IEnumerable<string>> placeCancelSpotOrders(Instrument ins,IEnumerable<string> order_ids,bool sendNow = true,bool wait = false)
+        public async Task<IEnumerable<string>> placeCancelSpotOrders(Instrument ins,IEnumerable<string> order_ids,bool sendNow = true,bool wait = false, string msg = "")
         {
             sendingOrder ord;
             if(this.ready)
@@ -358,7 +359,7 @@ namespace Crypto_Trading
                 ord.ins = ins;
 
                 ord.order_ids = order_ids;
-
+                ord.msg = msg;
                 if (sendNow)
                 {
                     if (wait)
@@ -383,7 +384,7 @@ namespace Crypto_Trading
                 return new List<string>() ;
             }
         }
-        public async Task<string> placeModSpotOrder(Instrument ins, string orderId, decimal quantity, decimal price,bool waitCancel, bool sendNow = true,bool wait = false)
+        public async Task<string> placeModSpotOrder(Instrument ins, string orderId, decimal quantity, decimal price,bool waitCancel, bool sendNow = true,bool wait = false,string msg = "")
         {
             sendingOrder ord;
             string ordid;
@@ -402,6 +403,7 @@ namespace Crypto_Trading
                 ord.quantity = quantity;
                 ord.price = price;
                 ord.waitCancel = waitCancel;
+                ord.msg = msg;
                 if (sendNow)
                 {
                     if (wait)
@@ -2012,6 +2014,7 @@ namespace Crypto_Trading
                                         this.orders[ord.internal_order_id] = ord;
                                         if (ins != null)
                                         {
+                                            ins.updateOrders(ord);
                                             ins.orders[ord.internal_order_id] = ord;
                                         }
                                         if (ord.status == orderStatus.Open)
