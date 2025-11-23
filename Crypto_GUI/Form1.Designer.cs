@@ -174,6 +174,8 @@
             combo_StgSetting = new ComboBox();
             label37 = new Label();
             groupBox1 = new GroupBox();
+            lbl_ordthrottle = new Label();
+            label51 = new Label();
             lbl_markupMulti = new Label();
             label50 = new Label();
             lbl_tobmulti = new Label();
@@ -1594,6 +1596,8 @@
             // 
             // groupBox1
             // 
+            groupBox1.Controls.Add(lbl_ordthrottle);
+            groupBox1.Controls.Add(label51);
             groupBox1.Controls.Add(lbl_markupMulti);
             groupBox1.Controls.Add(label50);
             groupBox1.Controls.Add(lbl_tobmulti);
@@ -1635,6 +1639,26 @@
             groupBox1.TabStop = false;
             groupBox1.Text = "Setting";
             // 
+            // lbl_ordthrottle
+            // 
+            lbl_ordthrottle.AutoSize = true;
+            lbl_ordthrottle.Location = new Point(520, 330);
+            lbl_ordthrottle.Margin = new Padding(2, 0, 2, 0);
+            lbl_ordthrottle.Name = "lbl_ordthrottle";
+            lbl_ordthrottle.Size = new Size(44, 20);
+            lbl_ordthrottle.TabIndex = 40;
+            lbl_ordthrottle.Text = "value";
+            // 
+            // label51
+            // 
+            label51.AutoSize = true;
+            label51.Location = new Point(356, 330);
+            label51.Margin = new Padding(2, 0, 2, 0);
+            label51.Name = "label51";
+            label51.Size = new Size(101, 20);
+            label51.TabIndex = 39;
+            label51.Text = "order throttle:";
+            // 
             // lbl_markupMulti
             // 
             lbl_markupMulti.AutoSize = true;
@@ -1671,7 +1695,7 @@
             label47.Location = new Point(356, 106);
             label47.Margin = new Padding(2, 0, 2, 0);
             label47.Name = "label47";
-            label47.Size = new Size(95, 20);
+            label47.Size = new Size(104, 20);
             label47.TabIndex = 35;
             label47.Text = "ToB multiplier:";
             // 
@@ -2355,5 +2379,7 @@
         private Label label49;
         private Label lbl_markupMulti;
         private Label label50;
+        private Label lbl_ordthrottle;
+        private Label label51;
     }
 }

@@ -25,6 +25,8 @@ namespace Crypto_Trading
         public bool enabled;
         private bool ready;
 
+        public double order_throttle;
+
         public decimal markup;
         public decimal min_markup;
         public decimal baseCcyQuantity;
@@ -118,6 +120,7 @@ namespace Crypto_Trading
             this.name = "";
             this.enabled = false;
             this.ready = false;
+            this.order_throttle = 0;
             this.markup = 0;
             this.min_markup = 0;
             this.baseCcyQuantity = 0;
@@ -149,6 +152,8 @@ namespace Crypto_Trading
 
             this.live_sellorder_id = "";
             this.live_buyorder_id = "";
+            this.live_buyorder_time = DateTime.UtcNow; 
+            this.live_sellorder_time = DateTime.UtcNow;
             this.stg_orders = new List<string>();
             this.executed_Orders = new Dictionary<string, DataSpotOrderUpdate>();
 
@@ -316,6 +321,14 @@ namespace Crypto_Trading
             }
 
             //Not mandatory
+            if (root.TryGetProperty("orderThrottle", out item))
+            {
+                this.order_throttle = item.GetDouble();
+            }
+            else
+            {
+                this.order_throttle = 0;
+            }
             if (root.TryGetProperty("skewWidening", out item))
             {
                 this.skewWidening = item.GetDecimal();
@@ -405,6 +418,7 @@ namespace Crypto_Trading
             this.name = setting.name;
             this.baseCcy = setting.baseCcy;
             this.quoteCcy = setting.quoteCcy;
+            this.order_throttle = setting.order_throttle;
             this.markup = setting.markup;
             this.min_markup = setting.min_markup;
             this.baseCcyQuantity = setting.baseCcy_quantity;
@@ -430,6 +444,7 @@ namespace Crypto_Trading
             bool ret = true;
             if (this.enabled)
             {
+                DateTime current = DateTime.UtcNow;
                 if (this.ready == false)
                 {
                     if(this.maker.readyToTrade && this.taker.readyToTrade)
@@ -450,7 +465,6 @@ namespace Crypto_Trading
 
                 }
 
-                DateTime current = DateTime.UtcNow;
                 bool buyFirst = true;
                 this.skew_point = this.skew();
                 decimal modTh_buffer = 100 * Math.Abs(this.skew_point) / this.maxSkew / 1000000;
@@ -477,6 +491,11 @@ namespace Crypto_Trading
                     taker_VR = (taker_VR + this.taker.prev_RV) / 2;
                 }
                 decimal vr_markup = this. markup + ((decimal)(taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000) - this.markup) * this.RVMarkup_multiplier;
+
+                if(vr_markup > this.markup)
+                {
+                    vr_markup = Math.Ceiling(vr_markup / this.markup) + this.markup;
+                }
 
                 if (vr_markup >= this.prev_markup)
                 {
@@ -777,12 +796,14 @@ namespace Crypto_Trading
                         cancelling_ord.Add(this.live_buyorder_id);
                         this.cancelling_qty_buy += ord.order_quantity - ord.filled_quantity;
                         this.live_buyorder_id = "";
+                        this.live_bidprice = 0;
                     }
                     else if ((isPriceChanged || bid_price > this.live_bidprice) && ord.status == orderStatus.Open && this.live_bidprice != bid_price)
                     {
                         cancelling_ord.Add(this.live_buyorder_id);
                         this.cancelling_qty_buy += ord.order_quantity - ord.filled_quantity;
                         this.live_buyorder_id = "";
+                        this.live_bidprice = 0;
                         newBuyOrder = true;
                     }
                 }
@@ -805,12 +826,14 @@ namespace Crypto_Trading
                         cancelling_ord.Add(this.live_sellorder_id);
                         this.cancelling_qty_sell += ord.order_quantity - ord.filled_quantity;
                         this.live_sellorder_id = "";
+                        this.live_askprice = 0;
                     }
                     else if ((isPriceChanged || ask_price < this.live_askprice) && ord.status == orderStatus.Open && this.live_askprice != ask_price)
                     {
                         cancelling_ord.Add(this.live_sellorder_id);
                         this.cancelling_qty_sell += ord.order_quantity - ord.filled_quantity;
                         this.live_sellorder_id = "";
+                        this.live_askprice = 0;
                         newSellOrder = true;
                     }
                 }
@@ -828,7 +851,15 @@ namespace Crypto_Trading
 
                 this.oManager.placeCancelSpotOrders(this.maker, cancelling_ord);
 
-                if(this.maker.baseBalance.total - this.maker.baseBalance.inuse < ordersize_ask)
+                if ((current - this.live_buyorder_time).TotalMilliseconds < this.order_throttle || (current - this.live_sellorder_time).TotalMilliseconds < this.order_throttle)
+                {
+                    //Only do cancelling orders to avoid excessive orders
+                    //addLog("Order throttle triggered. Buy Time:" + (current - this.live_buyorder_time).TotalMilliseconds.ToString("N0") + "   Sell Time:" + (current - this.live_sellorder_time).TotalMilliseconds.ToString("N0"));
+                    Volatile.Write(ref this.updating, 0); 
+                    return ret;
+                }
+
+                if (this.maker.baseBalance.total - this.maker.baseBalance.inuse < ordersize_ask)
                 {
                     ask_price = 0;
                 }
@@ -877,14 +908,14 @@ namespace Crypto_Trading
                         this.live_buyorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, ordersize_bid, bid_price, null, true, false);
                         this.live_bidprice = bid_price;
                         this.stg_orders.Add(this.live_buyorder_id);
-                        this.live_buyorder_time = DateTime.UtcNow;
+                        this.live_buyorder_time = current;
                     }
                     if(newSellOrder)
                     {
                         this.live_sellorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, ordersize_ask, ask_price, null, true, false);
                         this.live_askprice = ask_price;
                         this.stg_orders.Add(this.live_sellorder_id);
-                        this.live_sellorder_time = DateTime.UtcNow;
+                        this.live_sellorder_time = current;
                     }
                 }
                 else
@@ -894,14 +925,14 @@ namespace Crypto_Trading
                         this.live_sellorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, ordersize_ask, ask_price, null, true, false);
                         this.live_askprice = ask_price;
                         this.stg_orders.Add(this.live_sellorder_id);
-                        this.live_sellorder_time = DateTime.UtcNow;
+                        this.live_sellorder_time = current;
                     }
                     if (newBuyOrder)
                     {
                         this.live_buyorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, ordersize_bid, bid_price, null, true, false);
                         this.live_bidprice = bid_price;
                         this.stg_orders.Add(this.live_buyorder_id);
-                        this.live_buyorder_time = DateTime.UtcNow;
+                        this.live_buyorder_time = current;
                     }
                 }
                 Volatile.Write(ref this.updating, 0);
@@ -934,8 +965,8 @@ namespace Crypto_Trading
                 ret = false;
             }
 
-            theoLatency = this.maker.getTheoLatency(this.taker.last_quote_updated_time.Value);
-            currentLatency = (this.maker.last_quote_updated_time.Value - this.taker.quoteTime).TotalMilliseconds;
+            theoLatency = this.maker.getTheoLatency(this.maker.last_quote_updated_time.Value);
+            currentLatency = (this.maker.last_quote_updated_time.Value - this.maker.quoteTime).TotalMilliseconds;
 
             if (this.maker.market == "coincheck")
             {

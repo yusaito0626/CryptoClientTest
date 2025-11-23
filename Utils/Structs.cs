@@ -30,6 +30,7 @@ namespace Utils
         public string? quoteCcy { get; set; }
         public string? taker_market { get; set; }
         public string? maker_market { get; set; }
+        public double order_throttle { get; set; }
         public decimal markup { get; set; }
         public decimal min_markup { get; set; }
         public decimal max_skew { get; set; }

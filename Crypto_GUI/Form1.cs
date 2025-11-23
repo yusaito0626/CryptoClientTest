@@ -127,6 +127,7 @@ namespace Crypto_GUI
             comboStgVariables.Items.Add("Decaying Time");
             comboStgVariables.Items.Add("ToB Multiplier");
             comboStgVariables.Items.Add("Markup Multiplier");
+            comboStgVariables.Items.Add("Order Throttle");
 
             this.button_receiveFeed.Enabled = false;
             this.button_startTrading.Enabled = false;
@@ -801,8 +802,15 @@ namespace Crypto_GUI
                                             {
                                                 Strategy stg = this.strategies[update.stg_name];
                                                 decimal newvalue;
+                                                double dblvalue;
                                                 switch (update.type.ToLower())
                                                 {
+                                                    case "orderthrottle":
+                                                        if (double.TryParse(update.value, out dblvalue))
+                                                        {
+                                                            stg.order_throttle = dblvalue;
+                                                        }
+                                                        break;
                                                     case "markup":
                                                         if (decimal.TryParse(update.value, out newvalue))
                                                         {
@@ -2094,6 +2102,7 @@ namespace Crypto_GUI
                 this.lbl_makerfee_taker.Text = this.selected_stg.taker.maker_fee.ToString("N5");
                 this.lbl_takerfee_taker.Text = this.selected_stg.taker.taker_fee.ToString("N5");
                 this.lbl_stgSymbol.Text = this.selected_stg.baseCcy + this.selected_stg.quoteCcy;
+                this.lbl_ordthrottle.Text = this.selected_stg.order_throttle.ToString("N2");
                 this.lbl_markup.Text = this.selected_stg.markup.ToString("N0");
                 this.lbl_minMarkup.Text = this.selected_stg.min_markup.ToString("N0");
                 this.lbl_maxSkew.Text = this.selected_stg.maxSkew.ToString("N0");
@@ -2126,6 +2135,55 @@ namespace Crypto_GUI
             Dictionary<string, string> dict;
             switch ( this.comboStgVariables.Text)
             {
+                case "Order Throttle":
+                    if (!decimal.TryParse(this.txtBox_newValue.Text, out value))
+                    {
+                        DialogResult result = MessageBox.Show(
+                            "The value must be a number",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                    }
+                    else
+                    {
+                        if (this.selected_stg == null)
+                        {
+                            DialogResult result = MessageBox.Show(
+                            "Select a strategy",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                        }
+                        else
+                        {
+                            DialogResult result = MessageBox.Show(
+                                "You're changing the order throttle of " + this.selected_stg.name + " from " + this.selected_stg.order_throttle.ToString("N2") + " to " + this.txtBox_newValue.Text + ".",
+                                "Updating a variable",
+                                MessageBoxButtons.OKCancel,
+                                MessageBoxIcon.Question
+                                );
+                            if (result == DialogResult.OK)
+                            {
+                                variableUpdate upd = new variableUpdate();
+                                upd.stg_name = this.selected_stg.name;
+                                upd.type = "orderthrottle";
+                                upd.value = this.txtBox_newValue.Text;
+                                string body = JsonSerializer.Serialize(upd);
+                                dict = new Dictionary<string, string>();
+                                dict["data_type"] = data_type;
+                                dict["data"] = body;
+                                string msg = JsonSerializer.Serialize(dict);
+                                var bytes = Encoding.UTF8.GetBytes(msg);
+                                if (this.info_receiver.State == WebSocketState.Open)
+                                {
+                                    await this.info_receiver.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                                }
+                            }
+                        }
+                    }
+                    break;
                 case "Markup":
                     if(!decimal.TryParse(this.txtBox_newValue.Text, out value))
                     {
@@ -2766,6 +2824,7 @@ namespace Crypto_GUI
                 default:
                     break;
             }
+            this.txtBox_newValue.Text = "";
         }
     }
 }

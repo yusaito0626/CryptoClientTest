@@ -50,6 +50,15 @@ namespace Crypto_Trading
         public int count_LatentOrderUpdates;
         public int count_AllFill;
         public int count_LatentFill;
+
+        public int cum_Allquotes;
+        public int cum_Latentquotes;
+        public int cum_AllTrade;
+        public int cum_LatentTrade;
+        public int cum_AllOrderUpdates;
+        public int cum_LatentOrderUpdates;
+        public int cum_AllFill;
+        public int cum_LatentFill;
         public double latencyTh = 1000;
 
         public ValueTuple<decimal, decimal> bestask;
@@ -201,6 +210,15 @@ namespace Crypto_Trading
             this.count_LatentOrderUpdates = 0;
             this.count_AllFill = 0;
             this.count_LatentFill = 0;
+
+            this.cum_Allquotes = 0;
+            this.cum_Latentquotes = 0;
+            this.cum_AllTrade = 0;
+            this.cum_LatentTrade = 0;
+            this.cum_AllOrderUpdates = 0;
+            this.cum_LatentOrderUpdates = 0;
+            this.cum_AllFill = 0;
+            this.cum_LatentFill = 0;
         }
 
         public void initialize(string line)
@@ -397,15 +415,17 @@ namespace Crypto_Trading
                     break;
             }
 
-            if (this.readyToTrade)
+            if (this.readyToTrade && update.timestamp.HasValue && update.orderbookTime.HasValue)
             {
                 ++(this.count_Allquotes);
+                ++(this.cum_Allquotes);
                 double theo = this.getTheoLatency(update.timestamp.Value);
                 double latency = (update.timestamp.Value - update.orderbookTime.Value).TotalMilliseconds;
 
                 if (latency - theo > this.latencyTh)
                 {
                     ++(this.count_Latentquotes);
+                    ++(this.cum_Latentquotes);
                 }
             }
         }
@@ -425,15 +445,17 @@ namespace Crypto_Trading
                     break;
             }
 
-            if (this.readyToTrade)
+            if (this.readyToTrade && update.timestamp.HasValue && update.filled_time.HasValue)
             {
                 ++(this.count_AllTrade);
+                ++(this.cum_AllTrade);
                 double theo = this.getTheoLatency(update.timestamp.Value);
                 double latency = (update.timestamp.Value - update.filled_time.Value).TotalMilliseconds;
 
                 if (latency - theo > this.latencyTh)
                 {
                     ++(this.count_LatentTrade);
+                    ++(this.cum_LatentTrade);
                 }
             }
         }
@@ -830,15 +852,17 @@ namespace Crypto_Trading
 
             this.orders[ord.internal_order_id] = ord;
 
-            if (this.readyToTrade)
+            if (this.readyToTrade && ord.timestamp.HasValue && ord.update_time.HasValue)
             {
                 ++(this.count_AllOrderUpdates);
+                ++(this.cum_AllOrderUpdates);
                 double theo = this.getTheoLatency(ord.timestamp.Value);
                 double latency = (ord.timestamp.Value - ord.update_time.Value).TotalMilliseconds;
 
                 if (latency - theo > this.latencyTh)
                 {
                     ++(this.count_LatentOrderUpdates);
+                    ++(this.cum_LatentOrderUpdates);
                 }
             }
         }
@@ -865,15 +889,17 @@ namespace Crypto_Trading
             this.base_fee += fill.fee_base;
             this.unknown_fee += fill.fee_unknown;
 
-            if(this.readyToTrade)
+            if(this.readyToTrade && fill.timestamp.HasValue && fill.filled_time.HasValue)
             {
                 ++(this.count_AllFill);
+                ++(this.cum_AllFill);
                 double theo = this.getTheoLatency(fill.timestamp.Value);
                 double latency = (fill.timestamp.Value - fill.filled_time.Value).TotalMilliseconds;
 
                 if(latency - theo > this.latencyTh)
                 {
                     ++(this.count_LatentFill);
+                    ++(this.cum_LatentFill);
                 }
             }
         }

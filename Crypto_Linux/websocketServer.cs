@@ -101,59 +101,39 @@ namespace Crypto_Linux
 
             foreach (var stg in Program.strategies)
             {
-                if(this.strategySetting.ContainsKey(stg.Key))
+                strategySetting setting;
+                if (this.strategySetting.ContainsKey(stg.Key))
                 {
-                    strategySetting setting = this.strategySetting[stg.Key];
-                    setting.name = stg.Value.name;
-                    setting.baseCcy = stg.Value.baseCcy;
-                    setting.quoteCcy = stg.Value.quoteCcy;
-                    setting.taker_market = stg.Value.taker_market;
-                    setting.maker_market = stg.Value.maker_market;
-                    setting.markup = stg.Value.markup;
-                    setting.min_markup = stg.Value.min_markup;
-                    setting.max_skew = stg.Value.maxSkew;
-                    setting.skew_widening = stg.Value.skewWidening;
-                    setting.baseCcy_quantity = stg.Value.baseCcyQuantity;
-                    setting.ToBsize = stg.Value.ToBsize;
-                    setting.ToBsizeMultiplier = stg.Value.ToBsizeMultiplier;
-                    setting.intervalAfterFill = stg.Value.intervalAfterFill;
-                    setting.modThreshold = stg.Value.modThreshold;
-                    setting.skewThreshold = stg.Value.skewThreshold;
-                    setting.oneSideThreshold = stg.Value.oneSideThreshold;
-                    setting.decaying_time = stg.Value.markup_decay_basetime;
-                    setting.markupMultiplier = stg.Value.RVMarkup_multiplier;
-                    setting.predictFill = stg.Value.predictFill;
-                    setting.skew_type = stg.Value.skew_type.ToString();
-                    setting.skew_step = stg.Value.skew_step;
-                    this.strategySetting[stg.Key] = setting;
+                    setting = this.strategySetting[stg.Key];
                 }
                 else
                 {
-                    strategySetting setting = new strategySetting();
-                    setting.name = stg.Value.name;
-                    setting.baseCcy = stg.Value.baseCcy;
-                    setting.quoteCcy = stg.Value.quoteCcy;
-                    setting.taker_market = stg.Value.taker_market;
-                    setting.maker_market = stg.Value.maker_market;
-                    setting.markup = stg.Value.markup;
-                    setting.min_markup = stg.Value.min_markup;
-                    setting.max_skew = stg.Value.maxSkew;
-                    setting.skew_widening = stg.Value.skewWidening;
-                    setting.baseCcy_quantity = stg.Value.baseCcyQuantity;
-                    setting.ToBsize = stg.Value.ToBsize;
-                    setting.ToBsizeMultiplier = stg.Value.ToBsizeMultiplier;
-                    setting.intervalAfterFill = stg.Value.intervalAfterFill;
-                    setting.modThreshold = stg.Value.modThreshold;
-                    setting.skewThreshold = stg.Value.skewThreshold;
-                    setting.oneSideThreshold = stg.Value.oneSideThreshold;
-                    setting.decaying_time = stg.Value.markup_decay_basetime;
-                    setting.markupMultiplier = stg.Value.RVMarkup_multiplier;
-                    setting.predictFill = stg.Value.predictFill;
-                    setting.skew_type = stg.Value.skew_type.ToString();
-                    setting.skew_step = stg.Value.skew_step;
-                    this.strategySetting[stg.Key] = setting;
+                    setting = new strategySetting();
                 }
-                    
+
+                setting.name = stg.Value.name;
+                setting.baseCcy = stg.Value.baseCcy;
+                setting.quoteCcy = stg.Value.quoteCcy;
+                setting.taker_market = stg.Value.taker_market;
+                setting.maker_market = stg.Value.maker_market;
+                setting.order_throttle = stg.Value.order_throttle;
+                setting.markup = stg.Value.markup;
+                setting.min_markup = stg.Value.min_markup;
+                setting.max_skew = stg.Value.maxSkew;
+                setting.skew_widening = stg.Value.skewWidening;
+                setting.baseCcy_quantity = stg.Value.baseCcyQuantity;
+                setting.ToBsize = stg.Value.ToBsize;
+                setting.ToBsizeMultiplier = stg.Value.ToBsizeMultiplier;
+                setting.intervalAfterFill = stg.Value.intervalAfterFill;
+                setting.modThreshold = stg.Value.modThreshold;
+                setting.skewThreshold = stg.Value.skewThreshold;
+                setting.oneSideThreshold = stg.Value.oneSideThreshold;
+                setting.decaying_time = stg.Value.markup_decay_basetime;
+                setting.markupMultiplier = stg.Value.RVMarkup_multiplier;
+                setting.predictFill = stg.Value.predictFill;
+                setting.skew_type = stg.Value.skew_type.ToString();
+                setting.skew_step = stg.Value.skew_step;
+                this.strategySetting[stg.Key] = setting;
             }
             json = JsonSerializer.Serialize(this.strategySetting);
             item["data_type"] = "strategySetting";
@@ -259,9 +239,18 @@ namespace Crypto_Linux
                                     if(Program.strategies.ContainsKey(newVar.stg_name))
                                     {
                                         decimal newvalue;
+                                        double dblvalue;
                                         Strategy stg = Program.strategies[newVar.stg_name];
                                         switch (newVar.type.ToLower())
                                         {
+                                            case "orderthrottle":
+                                                if (double.TryParse(newVar.value, out dblvalue))
+                                                {
+                                                    addLog("The order throttle of " + stg.name + " has been changed from " + stg.order_throttle.ToString("N0") + " to " + newVar.value);
+                                                    stg.order_throttle = dblvalue;
+                                                    await BroadcastAsync(message);
+                                                }
+                                                break;
                                             case "markup":
                                                 if(decimal.TryParse(newVar.value,out newvalue))
                                                 {

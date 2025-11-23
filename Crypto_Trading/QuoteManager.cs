@@ -448,6 +448,7 @@ namespace Crypto_Trading
                 this.addLog("Requesting order list....", Enums.logType.WARNING);
                 foreach (string mkt in this._markets.Keys)
                 {
+                    addLog("Order List of " + mkt,logType.WARNING);
                     List<DataSpotOrderUpdate> ordList = await this.crypto_client.getActiveOrders(mkt);
                     int i = 0;
                     while (ordList == null)
@@ -634,7 +635,7 @@ namespace Crypto_Trading
                             }
                             Task t = Task.Run(async () =>
                             {
-                                await this.refreshAndCancelAllorders();
+                                await this.refreshAndCancelAllorders(stg.maker.market);
                             });
                             foreach (var stg_obj in this.strategies.Values)
                             {
@@ -690,14 +691,14 @@ namespace Crypto_Trading
 
         public async void optimizeOnClosing()
         {
-            Strategy stg;
-            while(this.optQueue.Count() > 0)
-            {
-                if (this.optQueue.TryDequeue(out stg))
-                {
-                    await stg.updateOrders();
-                }
-            }
+            //Strategy stg;
+            //while(this.optQueue.Count() > 0)
+            //{
+            //    if (this.optQueue.TryDequeue(out stg))
+            //    {
+            //        await stg.updateOrders();
+            //    }
+            //}
         }
         public void optimizeOnError()
         {

@@ -236,6 +236,7 @@ namespace Crypto_Linux
                 setting.quoteCcy = stg.Value.quoteCcy;
                 setting.taker_market = stg.Value.taker_market;
                 setting.maker_market = stg.Value.maker_market;
+                setting.order_throttle = stg.Value.order_throttle;
                 setting.markup = stg.Value.markup;
                 setting.min_markup = stg.Value.min_markup;
                 setting.max_skew = stg.Value.maxSkew;
@@ -394,6 +395,12 @@ namespace Crypto_Linux
                     stg.maker.count_LatentOrderUpdates = 0;
                     stg.maker.count_AllFill = 0;
                     stg.maker.count_LatentFill = 0;
+                    msg += "Cumulative Count:\n";
+                    msg += "<QuotesUpdate> All count:" + stg.maker.cum_Allquotes.ToString("N0") + "  Latent Feed:" + stg.maker.cum_Latentquotes.ToString("N0") + "\n";
+                    msg += "<Trades> All count:" + stg.maker.cum_AllTrade.ToString("N0") + "  Latent Feed:" + stg.maker.cum_LatentTrade.ToString("N0") + "\n";
+                    msg += "<OrderUpdate> All count:" + stg.maker.cum_AllOrderUpdates.ToString("N0") + "  Latent Feed:" + stg.maker.cum_LatentOrderUpdates.ToString("N0") + "\n";
+                    msg += "<Fill> All count:" + stg.maker.cum_AllFill.ToString("N0") + "  Latent Feed:" + stg.maker.cum_LatentFill.ToString("N0") + "\n";
+
                 }
             }
             msg += DateTime.UtcNow.ToString() + " - All -    \nNotional Volume:" + volumeAll.ToString("N2") + "\nPosition PnL:" + posPnLAll.ToString("N2") + "\nTrading PnL:" + tradingPLAll.ToString("N2") + "\nFee:" + feeAll.ToString("N2") + "\nTotal:" + totalAll.ToString("N2") + "\n";

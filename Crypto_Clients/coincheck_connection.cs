@@ -121,7 +121,7 @@ namespace Crypto_Clients
 
                 Exception last = null;
 
-                foreach (var ip in ips)
+                foreach (var ip in ips.Where(x => x.AddressFamily == AddressFamily.InterNetwork))
                 {
                     try
                     {

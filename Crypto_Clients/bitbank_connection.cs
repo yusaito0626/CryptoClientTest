@@ -114,7 +114,7 @@ namespace Crypto_Clients
 
                 Exception last = null;
 
-                foreach (var ip in ips)
+                foreach (var ip in ips.Where(x => x.AddressFamily == AddressFamily.InterNetwork))
                 {
                     try
                     {
@@ -731,8 +731,23 @@ namespace Crypto_Clients
                 request.Content = new StringContent(string.Empty, Encoding.UTF8, "application/json");
                 
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                
-                var response = await this.http_client.SendAsync(request,cts.Token);
+                using var watchDogCts = new CancellationTokenSource();
+
+                var watchDog = Task.Delay(TimeSpan.FromSeconds(10),watchDogCts.Token);
+                var task = this.http_client.SendAsync(request, cts.Token);
+
+                var compleretedTask = await Task.WhenAny(task, watchDog);
+
+                if(compleretedTask == watchDog)
+                {
+                    this.addLog("The request has timed out.(WatchDog)", Enums.logType.WARNING);
+                    return "{\"success\":0,\"data\":{\"code\":80001}}";
+                }
+
+                watchDogCts.Cancel();
+                var response = await task;
+
+                //var response = await this.http_client.SendAsync(request,cts.Token);
                 var resString = await response.Content.ReadAsStringAsync();
                 return resString;
             }
@@ -770,21 +785,38 @@ namespace Crypto_Clients
                 request.Headers.Add("ACCESS-SIGNATURE", ToSha256(this.secretKey, message));
 
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                using var watchDogCts = new CancellationTokenSource();
+
                 if (this.logging)
                 {
                     this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   POST " + endpoint + " " + body);
                     //this.logFilePublic.Flush();
                 }
 
+                var watchDog = Task.Delay(TimeSpan.FromSeconds(10), watchDogCts.Token);
                 sw_POST.Restart();
-                var response = await this.http_client.SendAsync(request,cts.Token);
+                var task = this.http_client.SendAsync(request, cts.Token);
+
+                var compleretedTask = await Task.WhenAny(task, watchDog);
+
                 sw_POST.Stop();
                 this.elapsedTime_POST = (this.elapsedTime_POST * this.count + sw_POST.Elapsed.TotalNanoseconds / 1000) / (this.count + 1);
                 ++this.count;
+
+                if (compleretedTask == watchDog)
+                {
+                    this.addLog("The request has timed out.(WatchDog)", Enums.logType.WARNING);
+                    return "{\"success\":0,\"data\":{\"code\":80001}}";
+                }
+                watchDogCts.Cancel();
+                
                 if (sw_POST.Elapsed.TotalNanoseconds > 3_000_000_000)
                 {
                     this.addLog("The roundtrip time exceeded 3 sec.    Time:" + (sw_POST.Elapsed.TotalNanoseconds / 1_000_000_000).ToString("N3") + "[sec]", Enums.logType.WARNING);
                 }
+
+                var response = await task;
+
                 //sw_POST.Reset();
                 var resString = await response.Content.ReadAsStringAsync();
 
