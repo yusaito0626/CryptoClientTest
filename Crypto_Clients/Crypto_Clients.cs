@@ -482,10 +482,10 @@ namespace Crypto_Clients
             switch (market)
             {
                 case "bitbank":
-                    this.addLog("getActiveOrders bitbank");
+                    //this.addLog("getActiveOrders bitbank");
                     js = await this.bitbank_client.getActiveOrders();
                     //this.addLog("REST API");
-                    this.addLog(JsonSerializer.Serialize(js));
+                    //this.addLog(JsonSerializer.Serialize(js));
                     if (js.RootElement.GetProperty("success").GetInt16() == 1)
                     {
                         this.addLog("Order found");
@@ -1625,6 +1625,8 @@ namespace Crypto_Clients
         public decimal profit_loss;
         public decimal interest;
 
+        public double downStreamLatency;
+
         public string msg;
         public int queued_count;
 
@@ -1650,6 +1652,7 @@ namespace Crypto_Clients
             this.interest = 0;
             this.msg = "";
             this.queued_count = 0;
+            this.downStreamLatency = 0;
         }
 
         public void setCoincheckFill(JsonElement js)
@@ -1828,7 +1831,7 @@ namespace Crypto_Clients
             {
                 line += "";
             }
-            line += "," + this.msg;
+            line += "," + this.downStreamLatency.ToString() + "," + this.msg;
             return line;
         }
 
@@ -1852,6 +1855,7 @@ namespace Crypto_Clients
             this.order_type = orderType.NONE;
             this.profit_loss = 0;
             this.interest = 0;
+            this.downStreamLatency = 0;
             this.msg = "";
             this.queued_count = 0;
         }

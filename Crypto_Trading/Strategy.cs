@@ -593,8 +593,19 @@ namespace Crypto_Trading
                 {
                     markup_bid += Math.Max(markup_decay, -1) * this.markup;
                     markup_ask += Math.Max(markup_decay, -1) * this.markup;
-                    ordersize_ask *= this.ToBsizeMultiplier;
-                    ordersize_bid *= this.ToBsizeMultiplier;
+                    decimal temp_askSize = ordersize_ask * this.ToBsizeMultiplier;
+                    if(this.maker.baseBalance.total - temp_askSize >= this.baseCcyQuantity * ((decimal)0.5 - this.skewThreshold / 200))
+                    {
+                        ordersize_ask = temp_askSize;
+                    }
+
+                    decimal temp_bidSize = ordersize_bid * this.ToBsizeMultiplier;
+                    if (this.maker.baseBalance.total + temp_bidSize <= this.baseCcyQuantity * ((decimal)0.5 + this.skewThreshold / 200))
+                    {
+                        ordersize_ask = temp_bidSize;
+                    }
+                    //ordersize_ask *= this.ToBsizeMultiplier;
+                    //ordersize_bid *= this.ToBsizeMultiplier;
                 }
                 this.temp_markup_ask = markup_ask;
                 this.temp_markup_bid = markup_bid;

@@ -1775,6 +1775,10 @@ namespace Crypto_Trading
                                 }
                                 ins = this.Instruments[fill.symbol_market];
                                 ins.updateFills(fill);
+                                if(ins.readyToTrade && fill.timestamp.HasValue && fill.filled_time.HasValue)
+                                {
+                                    fill.downStreamLatency = (fill.timestamp.Value - fill.filled_time.Value).TotalMilliseconds - ins.getTheoLatency(fill.timestamp.Value) + ins.base_latency;
+                                }
                             }
                             this.ordLogQueue.Enqueue(fill.ToString());
                             this.filledOrderQueue.Enqueue(fill);

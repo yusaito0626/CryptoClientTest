@@ -42,6 +42,7 @@ namespace Crypto_Trading
         int count = 0;
         int NofSample = 100;
         public double coef;
+        public double base_latency = 20;
 
         public int count_Allquotes;
         public int count_Latentquotes;
