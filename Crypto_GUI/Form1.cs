@@ -1011,6 +1011,16 @@ namespace Crypto_GUI
                 this.gridView_orders.Rows[0].Cells[4].Value = f.fill_price;
                 this.gridView_orders.Rows[0].Cells[5].Value = f.quantity;
                 this.gridView_orders.Rows[0].Cells[7].Value = f.fee;
+
+
+                this.gridView_InsFills.Rows.Insert(0);
+                this.gridView_InsFills.Rows[0].Cells[0].Value = f.timestamp;
+                this.gridView_InsFills.Rows[0].Cells[1].Value = f.market;
+                this.gridView_InsFills.Rows[0].Cells[2].Value = f.symbol;
+                this.gridView_InsFills.Rows[0].Cells[3].Value = f.side;
+                this.gridView_InsFills.Rows[0].Cells[4].Value = f.fill_price;
+                this.gridView_InsFills.Rows[0].Cells[5].Value = f.quantity;
+                this.gridView_InsFills.Rows[0].Cells[7].Value = f.fee;
             }
         }
         private void updateQueueInfo(Dictionary<string, queueInfo> queueInfos)
@@ -1245,25 +1255,39 @@ namespace Crypto_GUI
                 this.lbl_quoteFee.Text = this.selected_ins.quote_fee.ToString("N" + this.selected_ins.quantity_scale);
                 this.updateQuotesView(this.gridView_Ins, this.selected_ins);
 
-                //while (Interlocked.CompareExchange(ref this.selected_ins.orders_lock, 1, 0) != 0)
-                //{
-                //    bool stop = true;
-                //}
-                //this.gridView_insOrders.Rows.Clear();
-                //foreach (var item in this.selected_ins.live_orders)
-                //{
-                //    DataSpotOrderUpdate ord = item.Value;
-                //    this.gridView_insOrders.Rows.Insert(0);
-                //    this.gridView_insOrders.Rows[0].Cells[0].Value = ((DateTime)ord.timestamp).ToString("HH:mm:ss.fff");
-                //    this.gridView_insOrders.Rows[0].Cells[1].Value = ord.market;
-                //    this.gridView_insOrders.Rows[0].Cells[2].Value = ord.symbol;
-                //    this.gridView_insOrders.Rows[0].Cells[3].Value = ord.side.ToString();
-                //    this.gridView_insOrders.Rows[0].Cells[4].Value = ord.order_price.ToString("N" + this.selected_ins.price_scale);
-                //    this.gridView_insOrders.Rows[0].Cells[5].Value = ord.order_quantity.ToString("N" + this.selected_ins.quantity_scale);
-                //    this.gridView_insOrders.Rows[0].Cells[6].Value = ord.filled_quantity.ToString("N" + this.selected_ins.quantity_scale);
-                //    this.gridView_insOrders.Rows[0].Cells[7].Value = ord.status.ToString();
-                //}
-                //Volatile.Write(ref this.selected_ins.orders_lock, 0);
+
+                foreach (DataGridViewRow row in this.gridView_InsFills.Rows)
+                {
+                    string symbol_market = row.Cells[2].Value + "@" + row.Cells[1].Value;
+                    if (symbol_market == this.selected_ins.symbol_market)
+                    {
+                        row.Visible = true;
+                    }
+                    else if (!row.IsNewRow)
+                    {
+                        row.Visible = false;
+                    }
+                }
+
+                    //while (Interlocked.CompareExchange(ref this.selected_ins.orders_lock, 1, 0) != 0)
+                    //{
+                    //    bool stop = true;
+                    //}
+                    //this.gridView_insOrders.Rows.Clear();
+                    //foreach (var item in this.selected_ins.live_orders)
+                    //{
+                    //    DataSpotOrderUpdate ord = item.Value;
+                    //    this.gridView_insOrders.Rows.Insert(0);
+                    //    this.gridView_insOrders.Rows[0].Cells[0].Value = ((DateTime)ord.timestamp).ToString("HH:mm:ss.fff");
+                    //    this.gridView_insOrders.Rows[0].Cells[1].Value = ord.market;
+                    //    this.gridView_insOrders.Rows[0].Cells[2].Value = ord.symbol;
+                    //    this.gridView_insOrders.Rows[0].Cells[3].Value = ord.side.ToString();
+                    //    this.gridView_insOrders.Rows[0].Cells[4].Value = ord.order_price.ToString("N" + this.selected_ins.price_scale);
+                    //    this.gridView_insOrders.Rows[0].Cells[5].Value = ord.order_quantity.ToString("N" + this.selected_ins.quantity_scale);
+                    //    this.gridView_insOrders.Rows[0].Cells[6].Value = ord.filled_quantity.ToString("N" + this.selected_ins.quantity_scale);
+                    //    this.gridView_insOrders.Rows[0].Cells[7].Value = ord.status.ToString();
+                    //}
+                    //Volatile.Write(ref this.selected_ins.orders_lock, 0);
             }
         }
         private void update_strategy()

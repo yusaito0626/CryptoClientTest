@@ -26,7 +26,6 @@ namespace Crypto_Linux
     internal class Program
     {
         static string defaultConfigPath = Path.Combine(AppContext.BaseDirectory, "config.json");
-        //static string defaultConfigPath = "C:\\Users\\yusai\\Crypto_Project\\configs\\config_linuxtest.json";
         static string logPath = Path.Combine(AppContext.BaseDirectory, "crypto.log");
         static string outputPath = AppContext.BaseDirectory;
         static string outputPath_org = AppContext.BaseDirectory;
@@ -50,7 +49,7 @@ namespace Crypto_Linux
             WriteIndented = true
         };
         static int logSize = 50000;
-        static Stack<logEntry> logEntryStack;
+        static ConcurrentStack<logEntry> logEntryStack;
         static Stack<fillInfo> fillInfoStack;
 
         static Strategy selected_stg;
@@ -142,7 +141,7 @@ namespace Crypto_Linux
             msgLogging = false;
 
             filledOrderQueue = new ConcurrentQueue<DataFill>();
-            logEntryStack = new Stack<logEntry>();
+            logEntryStack = new ConcurrentStack<logEntry>();
             fillInfoStack = new Stack<fillInfo>();
             int i = 0;
             while (i < logSize)
@@ -1586,6 +1585,16 @@ namespace Crypto_Linux
 
             crypto_client.checkStackCount();
 
+            if(logEntryStack.Count < logSize / 10)
+            {
+                int i = 0;
+                while(i < logSize / 5)
+                {
+                    logEntryStack.Push(new logEntry());
+                    ++i;
+                }
+            }
+
             if (DateTime.UtcNow > nextMsgTime)
             {
                 msg = stgPnLMsg();
@@ -1619,8 +1628,17 @@ namespace Crypto_Linux
                     break;
 
             }
-            
-            logEntry log = logEntryStack.Pop();
+
+            logEntry log;
+            int i = 0;
+            while(logEntryStack.TryPop(out log))
+            {
+                ++i;
+                if(i > 100000)
+                {
+                    log = new logEntry();
+                }
+            }
             log.logtype = logtype.ToString();
             log.msg = messageline;
             ws_server.processLog(log);

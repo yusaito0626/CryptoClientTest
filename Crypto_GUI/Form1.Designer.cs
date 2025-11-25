@@ -114,11 +114,7 @@
             col_price = new DataGridViewTextBoxColumn();
             col_Bid = new DataGridViewTextBoxColumn();
             tabPage2 = new TabPage();
-            lbl_avgRV = new Label();
-            label49 = new Label();
-            lbl_RV = new Label();
-            label42 = new Label();
-            gridView_insOrders = new DataGridView();
+            gridView_InsFills = new DataGridView();
             dataGridViewTextBoxColumn12 = new DataGridViewTextBoxColumn();
             dataGridViewTextBoxColumn13 = new DataGridViewTextBoxColumn();
             dataGridViewTextBoxColumn14 = new DataGridViewTextBoxColumn();
@@ -127,6 +123,10 @@
             dataGridViewTextBoxColumn17 = new DataGridViewTextBoxColumn();
             dataGridViewTextBoxColumn18 = new DataGridViewTextBoxColumn();
             dataGridViewTextBoxColumn19 = new DataGridViewTextBoxColumn();
+            lbl_avgRV = new Label();
+            label49 = new Label();
+            lbl_RV = new Label();
+            label42 = new Label();
             groupBox3 = new GroupBox();
             lbl_quoteCcyInuse = new Label();
             lbl_baseCcyInuse = new Label();
@@ -233,7 +233,7 @@
             ((System.ComponentModel.ISupportInitialize)gridView_Maker).BeginInit();
             ((System.ComponentModel.ISupportInitialize)gridView_Taker).BeginInit();
             tabPage2.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)gridView_insOrders).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)gridView_InsFills).BeginInit();
             groupBox3.SuspendLayout();
             groupBox2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridView_Ins).BeginInit();
@@ -248,7 +248,7 @@
             // 
             // button_receiveFeed
             // 
-            button_receiveFeed.Location = new Point(859, 140);
+            button_receiveFeed.Location = new Point(865, 156);
             button_receiveFeed.Margin = new Padding(2);
             button_receiveFeed.Name = "button_receiveFeed";
             button_receiveFeed.Size = new Size(169, 42);
@@ -268,7 +268,7 @@
             tabControl.Margin = new Padding(2);
             tabControl.Name = "tabControl";
             tabControl.SelectedIndex = 0;
-            tabControl.Size = new Size(1048, 871);
+            tabControl.Size = new Size(1048, 1017);
             tabControl.TabIndex = 4;
             // 
             // tabPage1
@@ -286,7 +286,7 @@
             tabPage1.Margin = new Padding(2);
             tabPage1.Name = "tabPage1";
             tabPage1.Padding = new Padding(2);
-            tabPage1.Size = new Size(1040, 838);
+            tabPage1.Size = new Size(1040, 984);
             tabPage1.TabIndex = 0;
             tabPage1.Text = "Main";
             // 
@@ -308,7 +308,7 @@
             // 
             // button_stopTrading
             // 
-            button_stopTrading.Location = new Point(859, 252);
+            button_stopTrading.Location = new Point(865, 268);
             button_stopTrading.Margin = new Padding(2);
             button_stopTrading.Name = "button_stopTrading";
             button_stopTrading.Size = new Size(169, 42);
@@ -346,7 +346,7 @@
             gridView_PnL.RowHeadersWidth = 82;
             dataGridViewCellStyle3.Alignment = DataGridViewContentAlignment.MiddleRight;
             gridView_PnL.RowsDefaultCellStyle = dataGridViewCellStyle3;
-            gridView_PnL.Size = new Size(839, 219);
+            gridView_PnL.Size = new Size(839, 290);
             gridView_PnL.TabIndex = 5;
             // 
             // col_strategyName
@@ -393,7 +393,7 @@
             // 
             // button_startTrading
             // 
-            button_startTrading.Location = new Point(859, 195);
+            button_startTrading.Location = new Point(865, 211);
             button_startTrading.Margin = new Padding(2);
             button_startTrading.Name = "button_startTrading";
             button_startTrading.Size = new Size(169, 42);
@@ -405,17 +405,17 @@
             // textBoxMainLog
             // 
             textBoxMainLog.Font = new Font("Calibri", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            textBoxMainLog.Location = new Point(6, 384);
+            textBoxMainLog.Location = new Point(6, 411);
             textBoxMainLog.Margin = new Padding(2);
             textBoxMainLog.Name = "textBoxMainLog";
             textBoxMainLog.ScrollBars = RichTextBoxScrollBars.Vertical;
-            textBoxMainLog.Size = new Size(1028, 453);
+            textBoxMainLog.Size = new Size(1028, 569);
             textBoxMainLog.TabIndex = 3;
             textBoxMainLog.Text = "";
             // 
             // button_orderTest
             // 
-            button_orderTest.Location = new Point(859, 307);
+            button_orderTest.Location = new Point(865, 323);
             button_orderTest.Margin = new Padding(2);
             button_orderTest.Name = "button_orderTest";
             button_orderTest.Size = new Size(169, 41);
@@ -465,7 +465,7 @@
             tabPage3.Margin = new Padding(2);
             tabPage3.Name = "tabPage3";
             tabPage3.Padding = new Padding(2);
-            tabPage3.Size = new Size(1040, 838);
+            tabPage3.Size = new Size(1040, 984);
             tabPage3.TabIndex = 2;
             tabPage3.Text = "Strategy";
             // 
@@ -522,7 +522,7 @@
             gridView_orders.RowHeadersWidth = 82;
             dataGridViewCellStyle5.Alignment = DataGridViewContentAlignment.MiddleRight;
             gridView_orders.RowsDefaultCellStyle = dataGridViewCellStyle5;
-            gridView_orders.Size = new Size(1023, 227);
+            gridView_orders.Size = new Size(1023, 373);
             gridView_orders.TabIndex = 32;
             // 
             // col_time
@@ -978,11 +978,11 @@
             // tabPage2
             // 
             tabPage2.BackColor = Color.WhiteSmoke;
+            tabPage2.Controls.Add(gridView_InsFills);
             tabPage2.Controls.Add(lbl_avgRV);
             tabPage2.Controls.Add(label49);
             tabPage2.Controls.Add(lbl_RV);
             tabPage2.Controls.Add(label42);
-            tabPage2.Controls.Add(gridView_insOrders);
             tabPage2.Controls.Add(groupBox3);
             tabPage2.Controls.Add(groupBox2);
             tabPage2.Controls.Add(gridView_Ins);
@@ -999,9 +999,89 @@
             tabPage2.Margin = new Padding(2);
             tabPage2.Name = "tabPage2";
             tabPage2.Padding = new Padding(2);
-            tabPage2.Size = new Size(1040, 838);
+            tabPage2.Size = new Size(1040, 984);
             tabPage2.TabIndex = 1;
             tabPage2.Text = "Instrument";
+            // 
+            // gridView_InsFills
+            // 
+            gridView_InsFills.BackgroundColor = SystemColors.Window;
+            dataGridViewCellStyle8.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle8.BackColor = SystemColors.Control;
+            dataGridViewCellStyle8.Font = new Font("Yu Gothic UI", 9F);
+            dataGridViewCellStyle8.ForeColor = SystemColors.WindowText;
+            dataGridViewCellStyle8.SelectionBackColor = SystemColors.Highlight;
+            dataGridViewCellStyle8.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle8.WrapMode = DataGridViewTriState.True;
+            gridView_InsFills.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle8;
+            gridView_InsFills.ColumnHeadersHeight = 29;
+            gridView_InsFills.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            gridView_InsFills.Columns.AddRange(new DataGridViewColumn[] { dataGridViewTextBoxColumn12, dataGridViewTextBoxColumn13, dataGridViewTextBoxColumn14, dataGridViewTextBoxColumn15, dataGridViewTextBoxColumn16, dataGridViewTextBoxColumn17, dataGridViewTextBoxColumn18, dataGridViewTextBoxColumn19 });
+            gridView_InsFills.Location = new Point(4, 573);
+            gridView_InsFills.Margin = new Padding(2);
+            gridView_InsFills.Name = "gridView_InsFills";
+            gridView_InsFills.RowHeadersVisible = false;
+            gridView_InsFills.RowHeadersWidth = 82;
+            dataGridViewCellStyle9.Alignment = DataGridViewContentAlignment.MiddleRight;
+            gridView_InsFills.RowsDefaultCellStyle = dataGridViewCellStyle9;
+            gridView_InsFills.Size = new Size(1023, 415);
+            gridView_InsFills.TabIndex = 37;
+            // 
+            // dataGridViewTextBoxColumn12
+            // 
+            dataGridViewTextBoxColumn12.HeaderText = "Time";
+            dataGridViewTextBoxColumn12.MinimumWidth = 10;
+            dataGridViewTextBoxColumn12.Name = "dataGridViewTextBoxColumn12";
+            dataGridViewTextBoxColumn12.Width = 150;
+            // 
+            // dataGridViewTextBoxColumn13
+            // 
+            dataGridViewTextBoxColumn13.HeaderText = "Market";
+            dataGridViewTextBoxColumn13.MinimumWidth = 10;
+            dataGridViewTextBoxColumn13.Name = "dataGridViewTextBoxColumn13";
+            dataGridViewTextBoxColumn13.Width = 125;
+            // 
+            // dataGridViewTextBoxColumn14
+            // 
+            dataGridViewTextBoxColumn14.HeaderText = "Symbol";
+            dataGridViewTextBoxColumn14.MinimumWidth = 10;
+            dataGridViewTextBoxColumn14.Name = "dataGridViewTextBoxColumn14";
+            dataGridViewTextBoxColumn14.Width = 125;
+            // 
+            // dataGridViewTextBoxColumn15
+            // 
+            dataGridViewTextBoxColumn15.HeaderText = "Side";
+            dataGridViewTextBoxColumn15.MinimumWidth = 10;
+            dataGridViewTextBoxColumn15.Name = "dataGridViewTextBoxColumn15";
+            dataGridViewTextBoxColumn15.Width = 125;
+            // 
+            // dataGridViewTextBoxColumn16
+            // 
+            dataGridViewTextBoxColumn16.HeaderText = "Fill Price";
+            dataGridViewTextBoxColumn16.MinimumWidth = 10;
+            dataGridViewTextBoxColumn16.Name = "dataGridViewTextBoxColumn16";
+            dataGridViewTextBoxColumn16.Width = 125;
+            // 
+            // dataGridViewTextBoxColumn17
+            // 
+            dataGridViewTextBoxColumn17.HeaderText = "Quantity";
+            dataGridViewTextBoxColumn17.MinimumWidth = 10;
+            dataGridViewTextBoxColumn17.Name = "dataGridViewTextBoxColumn17";
+            dataGridViewTextBoxColumn17.Width = 125;
+            // 
+            // dataGridViewTextBoxColumn18
+            // 
+            dataGridViewTextBoxColumn18.HeaderText = "Fee Ccy";
+            dataGridViewTextBoxColumn18.MinimumWidth = 10;
+            dataGridViewTextBoxColumn18.Name = "dataGridViewTextBoxColumn18";
+            dataGridViewTextBoxColumn18.Width = 125;
+            // 
+            // dataGridViewTextBoxColumn19
+            // 
+            dataGridViewTextBoxColumn19.HeaderText = "Fee";
+            dataGridViewTextBoxColumn19.MinimumWidth = 10;
+            dataGridViewTextBoxColumn19.Name = "dataGridViewTextBoxColumn19";
+            dataGridViewTextBoxColumn19.Width = 120;
             // 
             // lbl_avgRV
             // 
@@ -1042,86 +1122,6 @@
             label42.Size = new Size(128, 20);
             label42.TabIndex = 31;
             label42.Text = "Realized Volatility";
-            // 
-            // gridView_insOrders
-            // 
-            gridView_insOrders.BackgroundColor = SystemColors.Window;
-            dataGridViewCellStyle8.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle8.BackColor = SystemColors.Control;
-            dataGridViewCellStyle8.Font = new Font("Yu Gothic UI", 9F);
-            dataGridViewCellStyle8.ForeColor = SystemColors.WindowText;
-            dataGridViewCellStyle8.SelectionBackColor = SystemColors.Highlight;
-            dataGridViewCellStyle8.SelectionForeColor = SystemColors.HighlightText;
-            dataGridViewCellStyle8.WrapMode = DataGridViewTriState.True;
-            gridView_insOrders.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle8;
-            gridView_insOrders.ColumnHeadersHeight = 29;
-            gridView_insOrders.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            gridView_insOrders.Columns.AddRange(new DataGridViewColumn[] { dataGridViewTextBoxColumn12, dataGridViewTextBoxColumn13, dataGridViewTextBoxColumn14, dataGridViewTextBoxColumn15, dataGridViewTextBoxColumn16, dataGridViewTextBoxColumn17, dataGridViewTextBoxColumn18, dataGridViewTextBoxColumn19 });
-            gridView_insOrders.Location = new Point(11, 607);
-            gridView_insOrders.Margin = new Padding(2);
-            gridView_insOrders.Name = "gridView_insOrders";
-            gridView_insOrders.RowHeadersVisible = false;
-            gridView_insOrders.RowHeadersWidth = 82;
-            dataGridViewCellStyle9.Alignment = DataGridViewContentAlignment.MiddleRight;
-            gridView_insOrders.RowsDefaultCellStyle = dataGridViewCellStyle9;
-            gridView_insOrders.Size = new Size(1023, 227);
-            gridView_insOrders.TabIndex = 33;
-            // 
-            // dataGridViewTextBoxColumn12
-            // 
-            dataGridViewTextBoxColumn12.HeaderText = "Time";
-            dataGridViewTextBoxColumn12.MinimumWidth = 10;
-            dataGridViewTextBoxColumn12.Name = "dataGridViewTextBoxColumn12";
-            dataGridViewTextBoxColumn12.Width = 150;
-            // 
-            // dataGridViewTextBoxColumn13
-            // 
-            dataGridViewTextBoxColumn13.HeaderText = "Market";
-            dataGridViewTextBoxColumn13.MinimumWidth = 10;
-            dataGridViewTextBoxColumn13.Name = "dataGridViewTextBoxColumn13";
-            dataGridViewTextBoxColumn13.Width = 125;
-            // 
-            // dataGridViewTextBoxColumn14
-            // 
-            dataGridViewTextBoxColumn14.HeaderText = "Symbol";
-            dataGridViewTextBoxColumn14.MinimumWidth = 10;
-            dataGridViewTextBoxColumn14.Name = "dataGridViewTextBoxColumn14";
-            dataGridViewTextBoxColumn14.Width = 125;
-            // 
-            // dataGridViewTextBoxColumn15
-            // 
-            dataGridViewTextBoxColumn15.HeaderText = "Side";
-            dataGridViewTextBoxColumn15.MinimumWidth = 10;
-            dataGridViewTextBoxColumn15.Name = "dataGridViewTextBoxColumn15";
-            dataGridViewTextBoxColumn15.Width = 125;
-            // 
-            // dataGridViewTextBoxColumn16
-            // 
-            dataGridViewTextBoxColumn16.HeaderText = "Order Price";
-            dataGridViewTextBoxColumn16.MinimumWidth = 10;
-            dataGridViewTextBoxColumn16.Name = "dataGridViewTextBoxColumn16";
-            dataGridViewTextBoxColumn16.Width = 125;
-            // 
-            // dataGridViewTextBoxColumn17
-            // 
-            dataGridViewTextBoxColumn17.HeaderText = "Quantity";
-            dataGridViewTextBoxColumn17.MinimumWidth = 10;
-            dataGridViewTextBoxColumn17.Name = "dataGridViewTextBoxColumn17";
-            dataGridViewTextBoxColumn17.Width = 125;
-            // 
-            // dataGridViewTextBoxColumn18
-            // 
-            dataGridViewTextBoxColumn18.HeaderText = "Filled Quantity";
-            dataGridViewTextBoxColumn18.MinimumWidth = 10;
-            dataGridViewTextBoxColumn18.Name = "dataGridViewTextBoxColumn18";
-            dataGridViewTextBoxColumn18.Width = 125;
-            // 
-            // dataGridViewTextBoxColumn19
-            // 
-            dataGridViewTextBoxColumn19.HeaderText = "State";
-            dataGridViewTextBoxColumn19.MinimumWidth = 10;
-            dataGridViewTextBoxColumn19.Name = "dataGridViewTextBoxColumn19";
-            dataGridViewTextBoxColumn19.Width = 120;
             // 
             // groupBox3
             // 
@@ -1557,7 +1557,7 @@
             tabPage4.Margin = new Padding(2);
             tabPage4.Name = "tabPage4";
             tabPage4.Padding = new Padding(2);
-            tabPage4.Size = new Size(1040, 838);
+            tabPage4.Size = new Size(1040, 984);
             tabPage4.TabIndex = 3;
             tabPage4.Text = "Setting";
             tabPage4.UseVisualStyleBackColor = true;
@@ -2040,7 +2040,7 @@
             tabPage5.Location = new Point(4, 29);
             tabPage5.Name = "tabPage5";
             tabPage5.Padding = new Padding(3);
-            tabPage5.Size = new Size(1040, 838);
+            tabPage5.Size = new Size(1040, 984);
             tabPage5.TabIndex = 4;
             tabPage5.Text = "Status";
             tabPage5.UseVisualStyleBackColor = true;
@@ -2218,7 +2218,7 @@
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1056, 883);
+            ClientSize = new Size(1056, 1036);
             Controls.Add(tabControl);
             Margin = new Padding(2);
             Name = "Form1";
@@ -2236,7 +2236,7 @@
             ((System.ComponentModel.ISupportInitialize)gridView_Taker).EndInit();
             tabPage2.ResumeLayout(false);
             tabPage2.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)gridView_insOrders).EndInit();
+            ((System.ComponentModel.ISupportInitialize)gridView_InsFills).EndInit();
             groupBox3.ResumeLayout(false);
             groupBox3.PerformLayout();
             groupBox2.ResumeLayout(false);
@@ -2368,15 +2368,6 @@
         private Label label6;
         private Label label5;
         private Button button_stopTrading;
-        private DataGridView gridView_insOrders;
-        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn12;
-        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn13;
-        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn14;
-        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn15;
-        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn16;
-        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn17;
-        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn18;
-        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn19;
         private Label lbl_maxSkew;
         private Label label36;
         private Label lbl_minMarkup;
@@ -2435,5 +2426,14 @@
         private Label label51;
         private Label lbl_stgmarkup;
         private Label label52;
+        private DataGridView gridView_InsFills;
+        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn12;
+        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn13;
+        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn14;
+        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn15;
+        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn16;
+        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn17;
+        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn18;
+        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn19;
     }
 }

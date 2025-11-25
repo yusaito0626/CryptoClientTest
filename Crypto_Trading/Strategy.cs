@@ -604,7 +604,7 @@ namespace Crypto_Trading
                     decimal temp_bidSize = ordersize_bid * this.ToBsizeMultiplier;
                     if (this.maker.baseBalance.total + temp_bidSize <= this.baseCcyQuantity * ((decimal)0.5 + this.skewThreshold / 200))
                     {
-                        ordersize_ask = temp_bidSize;
+                        ordersize_bid = temp_bidSize;
                     }
                     //ordersize_ask *= this.ToBsizeMultiplier;
                     //ordersize_bid *= this.ToBsizeMultiplier;
@@ -612,7 +612,7 @@ namespace Crypto_Trading
                 this.temp_markup_ask = markup_ask;
                 this.temp_markup_bid = markup_bid;
 
-                if(vr_markup > 5000)
+                if(this.base_markup > 2000 || this.base_markup < 0)
                 {
                     bid_price = 0;
                     ask_price = 0;
@@ -648,48 +648,56 @@ namespace Crypto_Trading
                 decimal maker_adjustedbid = this.maker.getPriceAfterSweep(orderSide.Buy, ordersize_bid);
                 decimal maker_adjustedask = this.maker.getPriceAfterSweep(orderSide.Sell, ordersize_ask);
 
-                if (bid_price > maker_adjustedbid + this.maker.price_unit)
+                if(bid_price > 0)
                 {
-                    if(maker_adjustedbid == live_bidprice)
+                    if (bid_price > maker_adjustedbid + this.maker.price_unit)
                     {
-                        bid_price = maker_adjustedbid;
-                    }
-                    else
-                    {
-                        bid_price = maker_adjustedbid + this.maker.price_unit;
-                    }
-                        
-                    if (bid_price >= maker_ask)
-                    {
-                        bid_price = maker_bid;
-                    }
-                }
+                        if (maker_adjustedbid == live_bidprice)
+                        {
+                            bid_price = maker_adjustedbid;
+                        }
+                        else
+                        {
+                            bid_price = maker_adjustedbid + this.maker.price_unit;
+                        }
 
-                if (ask_price < maker_adjustedask - this.maker.price_unit)
-                {
-                    if (maker_adjustedask == live_askprice)
-                    {
-                        ask_price = maker_adjustedask;
-                    }
-                    else
-                    {
-                        ask_price = maker_adjustedask - this.maker.price_unit;
+                        if (bid_price >= maker_ask)
+                        {
+                            bid_price = maker_bid;
+                        }
                     }
 
-                    if (ask_price <= maker_bid)
+                    if (bid_price > min_markup_bid)
                     {
-                        ask_price = maker_ask;
+                        bid_price = min_markup_bid;
                     }
                 }
+                
+                if(ask_price > 0)
+                {
+                    if (ask_price < maker_adjustedask - this.maker.price_unit)
+                    {
+                        if (maker_adjustedask == live_askprice)
+                        {
+                            ask_price = maker_adjustedask;
+                        }
+                        else
+                        {
+                            ask_price = maker_adjustedask - this.maker.price_unit;
+                        }
 
-                if (bid_price > min_markup_bid)
-                {
-                    bid_price = min_markup_bid;
+                        if (ask_price <= maker_bid)
+                        {
+                            ask_price = maker_ask;
+                        }
+                    }
+
+                    if (ask_price < min_markup_ask)
+                    {
+                        ask_price = min_markup_ask;
+                    }
                 }
-                if (ask_price < min_markup_ask)
-                {
-                    ask_price = min_markup_ask;
-                }
+                
 
                 bid_price = Math.Floor(bid_price / this.maker.price_unit) * this.maker.price_unit;
                 ask_price = Math.Ceiling(ask_price / this.maker.price_unit) * this.maker.price_unit;
@@ -700,6 +708,28 @@ namespace Crypto_Trading
                 }
                 if (taker_ask * ordersize_ask * (1 + this.taker.taker_fee) * 2 > this.taker.quoteBalance.available)
                 {
+                    ask_price = 0;
+                }
+
+                if(bid_price < 0)
+                {
+                    addLog($"Invalid bid price. bid:{bid_price} skew:{this.skew_point} base markup:{this.base_markup}", logType.WARNING);
+                    bid_price = 0;
+                }
+                else if(bid_price > 0 && maker_bid > 0 && (bid_price / maker_bid > (decimal)1.1 || bid_price / maker_bid < (decimal)0.9))
+                {
+                    addLog($"The bid price is too far from the market price. bid:{bid_price} skew:{this.skew_point} base markup:{this.base_markup}", logType.WARNING);
+                    bid_price = 0;
+                }
+
+                if (ask_price < 0)
+                {
+                    addLog($"Invalid ask price. ask:{ask_price} skew:{this.skew_point} base markup:{this.base_markup}", logType.WARNING);
+                    ask_price = 0;
+                }
+                else if (ask_price > 0 && maker_ask > 0 && (ask_price / maker_ask > (decimal)1.1 || ask_price / maker_ask < (decimal)0.9))
+                {
+                    addLog($"The ask price is too far from the market price. ask:{ask_price} skew:{this.skew_point} base markup:{this.base_markup}", logType.WARNING);
                     ask_price = 0;
                 }
 
