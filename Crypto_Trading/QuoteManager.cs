@@ -619,6 +619,12 @@ namespace Crypto_Trading
                                 stg_obj.live_sellorder_id = "";
                             }
                             t.Wait();
+                            Thread.Sleep(1000);
+                            addLog("Resetting positions...");
+                            foreach (var m in _markets)
+                            {
+                                setBalance(await crypto_client.getBalance([m.Key]));
+                            }
                             foreach (var stg_obj in this.strategies.Values)
                             {
                                 stg.adjustPosition();
@@ -654,6 +660,12 @@ namespace Crypto_Trading
                                 stg_obj.live_sellorder_id = "";
                             }
                             t.Wait();
+                            addLog("Resetting positions...");
+                            Thread.Sleep(1000);
+                            foreach (var m in _markets)
+                            {
+                                setBalance(await crypto_client.getBalance([m.Key]));
+                            }
                             foreach (var stg_obj in this.strategies.Values)
                             {
                                 stg.adjustPosition();
