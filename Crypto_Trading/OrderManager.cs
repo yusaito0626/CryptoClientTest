@@ -27,6 +27,7 @@ using System.Threading.Tasks;
 using XT.Net.Objects.Models;
 
 using Enums;
+using Utils;
 
 namespace Crypto_Trading
 {

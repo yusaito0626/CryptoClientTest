@@ -385,6 +385,16 @@ namespace Crypto_Trading
                         }
                     }
                 }
+                else
+                {
+                    double currentValue = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
+                    if(currentValue < this.intercept)
+                    {
+                        this.coef = (currentValue - this.sample_latency1) / (this.last_quote_updated_time.Value - this.sample1Time).TotalSeconds;
+                        this.intercept = currentValue;
+                        this.intercept_time = this.last_quote_updated_time.Value;
+                    }
+                }
             }
 
             switch (update.updateType)
