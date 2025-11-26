@@ -112,8 +112,12 @@ namespace Crypto_Trading
         public decimal totalFee;
         public decimal totalPnL;
 
-        public double onFill_latency;
-        public int onFill_count;
+        public double onFill_latency1;
+        public double onFill_latency2;
+        public double onFill_latency3;
+        public int onFill_count1;
+        public int onFill_count2;
+        public int onFill_count3;
         Stopwatch sw;
 
         public Action<string, Enums.logType> _addLog;
@@ -186,7 +190,12 @@ namespace Crypto_Trading
             this.totalPnL = 0;
 
             this.oManager = OrderManager.GetInstance();
-            this.onFill_latency = 0;
+            this.onFill_latency1 = 0;
+            this.onFill_latency2 = 0;
+            this.onFill_latency3 = 0;
+            this.onFill_count1 = 0;
+            this.onFill_count2 = 0;
+            this.onFill_count3 = 0;
             this.sw = new Stopwatch();
             this.sw.Start();
             Thread.Sleep(1);
@@ -1492,6 +1501,8 @@ namespace Crypto_Trading
                 DataSpotOrderUpdate ord;
                 if (fill.market != this.maker.market)
                 {
+                    this.sw.Stop();
+                    this.sw.Reset();
                     return;
                 }
                 if (this.stg_orders.Contains(fill.internal_order_id) == false && this.stg_orders.Contains(fill.market + fill.order_id))
@@ -1504,6 +1515,8 @@ namespace Crypto_Trading
                     }
                     else
                     {
+                        this.sw.Stop();
+                        this.sw.Reset();
                         return;
                     }
                     //this.addLog("Unknown order order:" + fill.ToString());
@@ -1512,6 +1525,10 @@ namespace Crypto_Trading
 
                 if (this.predictFill)
                 {
+                    this.sw.Stop();
+                    this.onFill_latency1 = (this.sw.Elapsed.TotalNanoseconds + this.onFill_latency1 * 1000 * this.onFill_count1) / (this.onFill_count1 + 1) / 1000;
+                    ++(this.onFill_count1);
+                    this.sw.Restart();
                     while (Interlocked.CompareExchange(ref this.fill_lock, 1, 0) != 0)
                     {
 
@@ -1539,8 +1556,13 @@ namespace Crypto_Trading
                         }
                         
                         filled_quantity = Math.Round(filled_quantity / this.taker.quantity_unit) * this.taker.quantity_unit;
+
+                        this.sw.Stop();
+                        this.onFill_latency2 = (this.sw.Elapsed.TotalNanoseconds + this.onFill_latency2 * 1000 * this.onFill_count2) / (this.onFill_count2 + 1) / 1000;
+                        ++(this.onFill_count2);
                         if (filled_quantity > 0)
                         {
+                            this.sw.Restart();
                             switch (fill.side)
                             {
                                 case orderSide.Buy:
@@ -1601,6 +1623,10 @@ namespace Crypto_Trading
                             }
                             //Once onFill triggered, onFill has the responsibility to hedge the entire order.
                             this.executed_OrderIds[fill.internal_order_id] = fillType.onFill;
+
+                            this.sw.Stop();
+                            this.onFill_latency3 = (this.sw.Elapsed.TotalNanoseconds + this.onFill_latency3 * 1000 * this.onFill_count3) / (this.onFill_count3 + 1) / 1000;
+                            ++(this.onFill_count3);
                         }
                         
                     }
@@ -1663,9 +1689,6 @@ namespace Crypto_Trading
                         }
                     }
                 }
-                this.sw.Stop();
-                this.onFill_latency = (this.sw.Elapsed.TotalNanoseconds + this.onFill_latency * 1000 * this.onFill_count) / (this.onFill_count + 1) / 1000;
-                ++(this.onFill_count);
                 this.sw.Reset();
             }
         }

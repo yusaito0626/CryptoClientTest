@@ -318,7 +318,7 @@ namespace Crypto_Linux
                                             case "modthreashold":
                                                 if (decimal.TryParse(newVar.value, out newvalue))
                                                 {
-                                                    addLog("The mod threshold of " + stg.name + " has been changed from " + stg.modThreshold.ToString("N0") + " to " + newVar.value);
+                                                    addLog("The mod threshold of " + stg.name + " has been changed from " + stg.modThreshold.ToString("N6") + " to " + newVar.value);
                                                     stg.modThreshold = newvalue;
                                                     await BroadcastAsync(message);
                                                 }

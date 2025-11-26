@@ -1690,6 +1690,14 @@ namespace Crypto_Linux
                 msg = stgPnLMsg();
                 await MsgDeliverer.sendMessage(msg);
                 nextMsgTime += TimeSpan.FromMinutes(msg_Interval);
+
+                foreach (var stg in strategies.Values)
+                {
+                    addLog("Internal Latency of onFill");
+                    addLog("Part1:" + stg.onFill_latency1.ToString("N3") + "micro sec");
+                    addLog("Part2:" + stg.onFill_latency2.ToString("N3") + "micro sec");
+                    addLog("Part3:" + stg.onFill_latency3.ToString("N3") + "micro sec");
+                }
             }
 
 
