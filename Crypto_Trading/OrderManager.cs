@@ -41,7 +41,7 @@ namespace Crypto_Trading
         public Dictionary<string, DataSpotOrderUpdate> orders;
         public Dictionary<string, DataSpotOrderUpdate> live_orders;
 
-        public Queue<DataSpotOrderUpdate> order_pool;
+        public ConcurrentQueue<DataSpotOrderUpdate> order_pool;
         public int orderLifeTime = 60; 
 
         const int SENDINGORD_STACK_SIZE = 1000;
@@ -106,7 +106,7 @@ namespace Crypto_Trading
             this.virtual_liveorders = new Dictionary<string, DataSpotOrderUpdate>();
             this.disposed_orders = new Dictionary<string, DataSpotOrderUpdate>();
 
-            this.order_pool = new Queue<DataSpotOrderUpdate>();
+            this.order_pool = new ConcurrentQueue<DataSpotOrderUpdate>();
 
             this.strategies = new Dictionary<string, Strategy>();
 
@@ -1938,11 +1938,15 @@ namespace Crypto_Trading
                         else if (ord.status == orderStatus.WaitOpen)
                         {
                             this.ordLogQueue.Enqueue(ord.ToString());
+                            ord.update_time = DateTime.UtcNow;
+                            this.order_pool.Enqueue(ord);
                         }
                         else if (ord.status == orderStatus.WaitMod)
                         {
                             //Undefined
                             this.ordLogQueue.Enqueue(ord.ToString());
+                            ord.update_time = DateTime.UtcNow;
+                            this.order_pool.Enqueue(ord);
                         }
                         else if (ord.status == orderStatus.WaitCancel)
                         {
@@ -2295,21 +2299,6 @@ namespace Crypto_Trading
                             }
                         }
 
-                        DateTime currentTime = DateTime.UtcNow;
-                        while(this.order_pool.Count > 0)
-                        {
-                            ord = this.order_pool.Peek();
-                            if(currentTime - ord.update_time > TimeSpan.FromSeconds(this.orderLifeTime))
-                            {
-                                ord = this.order_pool.Dequeue();
-                                ord.init();
-                                this.ord_client.ordUpdateStack.Push(ord);
-                            }
-                            else
-                            {
-                                break;
-                            }
-                        }
                         spinner.Reset();
                         end();
                     }

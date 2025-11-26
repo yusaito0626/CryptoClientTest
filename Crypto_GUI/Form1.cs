@@ -1513,6 +1513,10 @@ namespace Crypto_GUI
                 this.BeginInvoke(() => { this.button_receiveFeed.Enabled = false; });
                 this.addLog("An error occured while initializing the platforms.", Enums.logType.ERROR);
                 this.addLog(ex.Message, Enums.logType.ERROR);
+                if(ex.StackTrace != null)
+                {
+                    this.addLog(ex.StackTrace, Enums.logType.ERROR);
+                }
                 return false;
             }
 

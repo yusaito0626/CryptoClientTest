@@ -6,6 +6,7 @@ using CryptoExchange.Net.Logging.Extensions;
 using CryptoExchange.Net.SharedApis;
 using Discord;
 using Enums;
+using PubnubApi.EndPoint;
 using System;
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
@@ -15,6 +16,7 @@ using System.Linq;
 using System.Net.WebSockets;
 using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
+using System.Security.Cryptography;
 using System.Text.Json;
 //using Terminal.Gui;
 using Utils;
@@ -110,7 +112,7 @@ namespace Crypto_Linux
             {
                 addLog("Terminating the app...");
                 e.Cancel = true;
-                await stopTrading();
+                await EoDProcess();
                 isRunning = false;
             };
 
@@ -118,7 +120,7 @@ namespace Crypto_Linux
             {
                 addLog("SIGTERM detected");
 
-                await stopTrading();
+                await EoDProcess();
                 isRunning = false;
             };
             
@@ -1177,12 +1179,64 @@ namespace Crypto_Linux
                     addLog(msg);
                     Thread.Sleep(1000);
 
+                    addLog("Updating the performance file...");
+                    string performanceFile = outputPath_org + "/performance.csv";
+
+                    List<string> lines;
+                    if (!File.Exists(performanceFile))
+                    {
+                        lines = new List<string>();
+                        lines.Add("date,strategy,baseBalance_open,quoteBalance_open,baseBalance_close,quoteBalance_close,baseHedge_quantity,open_mid,close_mid,TotalPnL,pos_diff");
+
+                    }
+                    else
+                    {
+                        lines = File.ReadAllLines(performanceFile).ToList();
+                    }
+                    string today = DateTime.UtcNow.ToString("yyyy-MM-dd");
+                    lines = lines
+                        .Where(line =>
+                        {
+                            var cols = line.Split(',');
+                            return cols.Length > 0 && cols[0] != today;
+                        })
+                        .ToList();
+
+                    foreach (var stg in strategies.Values)
+                    {
+                        decimal baseBalance_open = stg.maker.SoD_baseBalance.total + stg.taker.SoD_baseBalance.total;
+                        decimal quoteBalance_open = stg.maker.SoD_quoteBalance.total + stg.taker.SoD_quoteBalance.total;
+                        decimal baseBalance_close = stg.maker.baseBalance.total + stg.taker.baseBalance.total;
+                        decimal quoteBalance_close = stg.maker.quoteBalance.total + stg.taker.quoteBalance.total;
+                        decimal baseHedge_quantity = stg.baseCcyQuantity;
+                        decimal open_mid = stg.taker.open_mid;
+                        stg.taker.mid = await crypto_client.getCurrentMid(stg.taker.market, stg.taker.symbol);
+                        stg.maker.mid = await crypto_client.getCurrentMid(stg.maker.market, stg.taker.symbol);
+
+                        decimal totalPnL = (baseBalance_open - baseHedge_quantity) * (stg.taker.mid - stg.taker.open_mid)
+                            + (stg.taker.my_sell_notional - stg.taker.my_sell_quantity * stg.taker.mid) + (stg.taker.my_buy_quantity * stg.taker.mid - stg.taker.my_buy_notional)
+                            + (stg.maker.my_sell_notional - stg.maker.my_sell_quantity * stg.taker.mid) + (stg.maker.my_buy_quantity * stg.taker.mid - stg.maker.my_buy_notional)
+                            - (stg.taker.base_fee * stg.taker.mid + stg.taker.quote_fee + stg.maker.base_fee * stg.taker.mid + stg.maker.quote_fee);
+                        decimal pos_diff = baseBalance_close * stg.taker.mid - baseBalance_open * stg.taker.open_mid - stg.baseCcyQuantity * (stg.taker.mid - stg.taker.open_mid)
+                            + quoteBalance_close - quoteBalance_open;
+
+                        string line = today + "," + stg.name + "," + baseBalance_open.ToString() + "," + quoteBalance_open.ToString() + ","
+                            + baseBalance_close.ToString() + "," + quoteBalance_close.ToString() + "," + stg.baseCcyQuantity.ToString() + "," + stg.taker.open_mid.ToString() + "," + stg.taker.mid.ToString() + ","
+                            + totalPnL.ToString() + "," + pos_diff.ToString();
+
+                        lines.Add(line);
+                    }
+
+                    File.WriteAllLines(performanceFile, lines);
+
                     string dt = (DateTime.UtcNow + TimeSpan.FromDays(1)).ToString("yyyy-MM-dd");
                     string newpath = outputPath_org + "/" + dt;
                     if (!Directory.Exists(newpath))
                     {
                         Directory.CreateDirectory(newpath);
                     }
+                    
+                    addLog("Exporting SoD position file...");
                     string SoDPosFile = newpath + "/SoD_Position.csv";
                     qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys));
 
@@ -1191,15 +1245,15 @@ namespace Crypto_Linux
                     string currentTime = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
                     foreach (var ins in qManager.instruments.Values)
                     {
-                        decimal mid = await crypto_client.getCurrentMid(ins.market, ins.symbol);
-                        string line = currentTime + "," + ins.symbol + "," + ins.market + "," + ins.symbol_market + "," + ins.baseCcy + "," + ins.quoteCcy + "," + ins.baseBalance.total.ToString() + "," + ins.quoteBalance.total.ToString() + "," + mid.ToString();
-                        ins.SoD_baseBalance.total = ins.baseBalance.total;
-                        ins.SoD_baseBalance.ccy = ins.baseBalance.ccy;
-                        ins.SoD_baseBalance.market = ins.baseBalance.market;
-                        ins.SoD_quoteBalance.total = ins.quoteBalance.total;
-                        ins.SoD_quoteBalance.ccy = ins.quoteBalance.ccy;
-                        ins.SoD_quoteBalance.market = ins.quoteBalance.market;
-                        ins.open_mid = mid;
+                        //decimal mid = await crypto_client.getCurrentMid(ins.market, ins.symbol);
+                        string line = currentTime + "," + ins.symbol + "," + ins.market + "," + ins.symbol_market + "," + ins.baseCcy + "," + ins.quoteCcy + "," + ins.baseBalance.total.ToString() + "," + ins.quoteBalance.total.ToString() + "," + ins.mid.ToString();
+                        //ins.SoD_baseBalance.total = ins.baseBalance.total;
+                        //ins.SoD_baseBalance.ccy = ins.baseBalance.ccy;
+                        //ins.SoD_baseBalance.market = ins.baseBalance.market;
+                        //ins.SoD_quoteBalance.total = ins.quoteBalance.total;
+                        //ins.SoD_quoteBalance.ccy = ins.quoteBalance.ccy;
+                        //ins.SoD_quoteBalance.market = ins.quoteBalance.market;
+                        //ins.open_mid = mid;
                         sw.WriteLine(line);
                         sw.Flush();
                     }
@@ -1581,6 +1635,42 @@ namespace Crypto_Linux
             {
                 addLog("Error occured during keepalive request", logType.WARNING);
                 addLog(e.Message, logType.WARNING);
+            }
+
+            DateTime currentTime = DateTime.UtcNow;
+            DataSpotOrderUpdate ord;
+            while (oManager.order_pool.Count > 0)
+            {
+                while (!oManager.order_pool.TryPeek(out ord))
+                {
+                }
+                if(ord.update_time.HasValue)
+                {
+                    if (currentTime - ord.update_time.Value > TimeSpan.FromSeconds(oManager.orderLifeTime))
+                    {
+                        while (!oManager.order_pool.TryDequeue(out ord))
+                        {
+                        }
+                        ord.init();
+                        crypto_client.ordUpdateStack.Push(ord);
+                    }
+                    else
+                    {
+                        if (oManager.order_pool.Count > 10000)
+                        {
+                            addLog("Something wrong in order_pool. timestamp of the head:" + ord.update_time.Value.ToString(GlobalVariables.tmMsecFormat));
+                        }
+                        break;
+                    }
+                }
+                else
+                {
+                    while (!oManager.order_pool.TryDequeue(out ord))
+                    {
+                    }
+                    ord.init();
+                    crypto_client.ordUpdateStack.Push(ord);
+                }
             }
 
             crypto_client.checkStackCount();
