@@ -446,8 +446,6 @@ namespace Crypto_Trading
                 //await this.oManager.cancelAllOrders();
                 //Thread.Sleep(1000);
                 this.addLog("Requesting order list....", Enums.logType.WARNING);
-                this.addLog("ordUpdateStack.Count:" + this.crypto_client.ordUpdateStack.Count.ToString("N0"));
-                this.addLog("order_pool.Count:" + this.oManager.order_pool.Count.ToString("N0"));
                 foreach (string mkt in this._markets.Keys)
                 {
                     addLog("Order List of " + mkt,logType.WARNING);
@@ -627,7 +625,7 @@ namespace Crypto_Trading
                             }
                             foreach (var stg_obj in this.strategies.Values)
                             {
-                                stg.adjustPosition();
+                                stg_obj.adjustPosition();
                             }
                             addLog("All the strategy orders have been reset.");
                         }
@@ -666,7 +664,7 @@ namespace Crypto_Trading
                             }
                             foreach (var stg_obj in this.strategies.Values)
                             {
-                                stg.adjustPosition();
+                                stg_obj.adjustPosition();
                             }
                             this.crypto_client.bitbank_client.pubnubReconnected = false;
                             addLog("All the strategy orders have been reset.");

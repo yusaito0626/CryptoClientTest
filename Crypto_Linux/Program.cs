@@ -1386,9 +1386,27 @@ namespace Crypto_Linux
                         }
                         else
                         {
+                            Task t = Task.Run(async () =>
+                            {
+                                await qManager.refreshAndCancelAllorders();
+                            });
+                            foreach (var stg_obj in qManager.strategies.Values)
+                            {
+                                stg_obj.maker.baseBalance.inuse = 0;
+                                stg_obj.maker.quoteBalance.inuse = 0;
+                                stg_obj.live_bidprice = 0;
+                                stg_obj.live_buyorder_id = "";
+                                stg_obj.live_askprice = 0;
+                                stg_obj.live_sellorder_id = "";
+                            }
+                            t.Wait();
                             if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys)))
                             {
 
+                            }
+                            foreach (var stg_obj in qManager.strategies.Values)
+                            {
+                                stg_obj.adjustPosition();
                             }
                         }
                         addLog("Reconnection completed.");
@@ -1417,9 +1435,27 @@ namespace Crypto_Linux
                         }
                         else
                         {
+                            Task t = Task.Run(async () =>
+                            {
+                                await qManager.refreshAndCancelAllorders();
+                            });
+                            foreach (var stg_obj in qManager.strategies.Values)
+                            {
+                                stg_obj.maker.baseBalance.inuse = 0;
+                                stg_obj.maker.quoteBalance.inuse = 0;
+                                stg_obj.live_bidprice = 0;
+                                stg_obj.live_buyorder_id = "";
+                                stg_obj.live_askprice = 0;
+                                stg_obj.live_sellorder_id = "";
+                            }
+                            t.Wait();
                             if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys)))
                             {
 
+                            }
+                            foreach (var stg_obj in qManager.strategies.Values)
+                            {
+                                stg_obj.adjustPosition();
                             }
                         }
                         addLog("Reconnection completed.");
