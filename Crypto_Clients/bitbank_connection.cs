@@ -753,6 +753,13 @@ namespace Crypto_Clients
 
                     //var response = await this.http_client.SendAsync(request,cts.Token);
                     var resString = await response.Content.ReadAsStringAsync();
+
+                    if (this.logging)
+                    {
+                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   GET ack " + resString);
+                        //this.logFilePublic.Flush();
+                    }
+
                     return resString;
                 }
                 else
@@ -831,6 +838,13 @@ namespace Crypto_Clients
 
                     //sw_POST.Reset();
                     var resString = await response.Content.ReadAsStringAsync();
+
+
+                    if (this.logging)
+                    {
+                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   POST ack " + resString);
+                        //this.logFilePublic.Flush();
+                    }
 
                     return resString;
                 }

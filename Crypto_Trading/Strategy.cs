@@ -742,6 +742,10 @@ namespace Crypto_Trading
                         switch (ord.status)
                         {
                             case orderStatus.NONE:
+                                addLog("Something wrong. " + ord.ToString(), logType.WARNING);
+                                this.live_buyorder_id = "";
+                                this.live_bidprice = 0;
+                                break;
                             case orderStatus.Filled:
                             case orderStatus.Canceled:
                             case orderStatus.INVALID:
@@ -773,6 +777,10 @@ namespace Crypto_Trading
                         switch (ord.status)
                         {
                             case orderStatus.NONE:
+                                addLog("Something wrong. " + ord.ToString(), logType.WARNING);
+                                this.live_sellorder_id = "";
+                                this.live_askprice = 0;
+                                break;
                             case orderStatus.Filled:
                             case orderStatus.Canceled:
                             case orderStatus.INVALID:
@@ -815,7 +823,7 @@ namespace Crypto_Trading
                 if (this.oManager.orders.ContainsKey(this.live_buyorder_id))
                 {
                     ord = this.oManager.orders[this.live_buyorder_id];
-                    if (bid_price == 0 || (this.maker.baseBalance.total > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200)))
+                    if (ord.status == orderStatus.Open && (bid_price == 0 || (this.maker.baseBalance.total > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200))))
                     {
                         cancelling_ord.Add(this.live_buyorder_id);
                         this.cancelling_qty_buy += ord.order_quantity - ord.filled_quantity;
@@ -845,7 +853,7 @@ namespace Crypto_Trading
                 if (this.oManager.orders.ContainsKey(this.live_sellorder_id))
                 {
                     ord = this.oManager.orders[this.live_sellorder_id];
-                    if (ask_price == 0 || (this.maker.baseBalance.total < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200)))
+                    if (ord.status == orderStatus.Open && (ask_price == 0 || (this.maker.baseBalance.total < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200))))
                     {
                         cancelling_ord.Add(this.live_sellorder_id);
                         this.cancelling_qty_sell += ord.order_quantity - ord.filled_quantity;
@@ -886,29 +894,18 @@ namespace Crypto_Trading
                 this.cancelling_qty_sell = 0;
                 this.cancelling_qty_buy = 0;
 
-                if (this.live_buyorder_id != "" && this.live_sellorder_id != "")//Both orders exist
+                if (newBuyOrder && newSellOrder)//Both orders exist
                 {
-                    if(bid_price == 0)
+                    if (ask_price - maker_ask > maker_bid - bid_price)
                     {
                         buyFirst = true;
                     }
-                    else if(ask_price == 0)
+                    else
                     {
                         buyFirst = false;
                     }
-                    else
-                    {
-                        if(ask_price - maker_ask > maker_bid - bid_price)
-                        {
-                            buyFirst = true;
-                        }
-                        else
-                        {
-                            buyFirst = false;
-                        }
-                    }
                 }
-                else if(this.live_buyorder_id != "")//Only buy order exists
+                else if(newBuyOrder)//Only buy order exists
                 {
                     buyFirst = true;
                 }
@@ -1047,49 +1044,46 @@ namespace Crypto_Trading
 
         public async Task checkLiveOrders()
         {
-            if(this.oManager.live_orders.Count > 2)
-            {
-                List<string> maker_orders = new List<string>();
-                List<string> taker_orders = new List<string>();
+            List<string> maker_orders = new List<string>();
+            List<string> taker_orders = new List<string>();
 
-                while (Interlocked.CompareExchange(ref this.oManager.order_lock, 1, 0) != 0)
+            while (Interlocked.CompareExchange(ref this.oManager.order_lock, 1, 0) != 0)
+            {
+            }
+            foreach (var ord in this.oManager.live_orders)
+            {
+                if (ord.Key != this.live_buyorder_id && ord.Key != this.live_sellorder_id && ord.Value.status == orderStatus.Open)
                 {
-                }
-                foreach(var ord in this.oManager.live_orders)
-                {
-                    if(ord.Key != this.live_buyorder_id && ord.Key != this.live_sellorder_id && ord.Value.status == orderStatus.Open)
+                    if (this.maker.symbol_market == ord.Value.symbol_market)
                     {
-                        if(this.maker.symbol_market == ord.Value.symbol_market)
+                        maker_orders.Add(ord.Key);
+                        switch (ord.Value.side)
                         {
-                            maker_orders.Add(ord.Key);
-                            switch(ord.Value.side)
-                            {
-                                case orderSide.Buy:
-                                    this.cancelling_qty_buy += ord.Value.order_quantity - ord.Value.filled_quantity;
-                                    break;
-                                case orderSide.Sell:
-                                    this.cancelling_qty_sell += ord.Value.order_quantity - ord.Value.filled_quantity;
-                                    break;
-                            }
-                        }
-                        else if (this.taker.symbol_market == ord.Value.symbol_market)
-                        {
-                            taker_orders.Add(ord.Key);
-                        }
-                        else
-                        {
+                            case orderSide.Buy:
+                                this.cancelling_qty_buy += ord.Value.order_quantity - ord.Value.filled_quantity;
+                                break;
+                            case orderSide.Sell:
+                                this.cancelling_qty_sell += ord.Value.order_quantity - ord.Value.filled_quantity;
+                                break;
                         }
                     }
+                    else if (this.taker.symbol_market == ord.Value.symbol_market)
+                    {
+                        taker_orders.Add(ord.Key);
+                    }
+                    else
+                    {
+                    }
                 }
-                Volatile.Write(ref this.oManager.order_lock, 0);
-                if(maker_orders.Count > 0)
-                {
-                    this.oManager.placeCancelSpotOrders(this.maker, maker_orders, true);
-                }
-                if(taker_orders.Count > 0)
-                {
-                    this.oManager.placeCancelSpotOrders(this.taker, taker_orders, true);
-                }
+            }
+            Volatile.Write(ref this.oManager.order_lock, 0);
+            if (maker_orders.Count > 0)
+            {
+                this.oManager.placeCancelSpotOrders(this.maker, maker_orders, true);
+            }
+            if (taker_orders.Count > 0)
+            {
+                this.oManager.placeCancelSpotOrders(this.taker, taker_orders, true);
             }
         }
         public decimal skew()

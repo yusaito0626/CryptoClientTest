@@ -702,28 +702,28 @@ namespace Crypto_Trading
                     switch (code)
                     {
                         case 10000:
-                            this.addLog("New order failed. The URL doesn't exist. Error code: 10000   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
+                            this.addLog("[bitbank]New order failed. The URL doesn't exist. Error code: 10000   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
                             break;
                         case 10001:
-                            this.addLog("New order failed. System error, Contact support Error code:10001   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                            this.addLog("[bitbank]New order failed. System error, Contact support Error code:10001   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                             break;
                         case 10002:
-                            this.addLog("New order failed. Improper Json format. Error code:10002   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
+                            this.addLog("[bitbank]New order failed. Improper Json format. Error code:10002   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
                             break;
                         case 10003:
-                            this.addLog("New order failed.  System error, Contact support Error code:10003   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                            this.addLog("[bitbank]New order failed.  System error, Contact support Error code:10003   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                             break;
                         case 10005:
-                            this.addLog("New order failed.  Timeout error. Error code:10005   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                            this.addLog("[bitbank]New order failed.  Timeout error. Error code:10005   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                             break;
                         case 10007:
-                            this.addLog("New order failed.  Under maintenance. Error code:10007   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
+                            this.addLog("[bitbank]New order failed.  Under maintenance. Error code:10007   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
                             break;
                         case 10008:
-                            this.addLog("New order failed. The system is busy. Error code:10008   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                            this.addLog("[bitbank]New order failed. The system is busy. Error code:10008   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                             break;
                         case 10009:
-                            this.addLog("New order failed. Too many request. Error code:10009   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                            this.addLog("[bitbank]New order failed. Too many request. Error code:10009   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                             break;
                         case 70010:
                         case 70011:
@@ -731,19 +731,19 @@ namespace Crypto_Trading
                         case 70013:
                         case 70014:
                         case 70015:
-                            this.addLog("New order failed. The system is busy Error code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId , Enums.logType.WARNING);
+                            this.addLog("[bitbank]New order failed. The system is busy Error code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId , Enums.logType.WARNING);
                             break;
                         case 80001:
-                            this.addLog("New order failed. Operation timed out. code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                            this.addLog("[bitbank]New order failed. Operation timed out. code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                             output.err_code = code;
                             this.refreshHttpClient("bitbank");
                             break;
                         case 80002:
-                            this.addLog("New order failed. The http client is not ready. code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                            this.addLog("[bitbank]New order failed. The http client is not ready. code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                             output.err_code = code;
                             break;
                         default:
-                            this.addLog("New Order Failed   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
+                            this.addLog("[bitbank]New Order Failed   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
                             this.addLog(js.RootElement.GetRawText(), Enums.logType.ERROR);
                             break;
                     }
@@ -923,27 +923,27 @@ namespace Crypto_Trading
                     string err = js.RootElement.GetProperty("error").GetString();
                     if (err.StartsWith("Amount"))
                     {
-                        this.addLog(err, Enums.logType.WARNING);
+                        this.addLog("[coincheck] New order failed. " + err, Enums.logType.WARNING);
                     }
                     else if(err.StartsWith("Nonce"))//Nonce must be incremented
                     {
                         output.err_code = (int)Enums.ordError.NONCE_ERROR;
-                        this.addLog(err, Enums.logType.WARNING);
+                        this.addLog("[coincheck] New order failed. " + err, Enums.logType.WARNING);
                     }
                     else if(err.StartsWith("Rate limit"))
                     {
                         output.err_code = (int)Enums.ordError.RATE_LIMIT_EXCEEDED;
-                        this.addLog(err, Enums.logType.WARNING);
+                        this.addLog("[coincheck] New order failed. " + err, Enums.logType.WARNING);
                     }
                     else if(err.StartsWith("The httpclient"))
                     {
                         output.err_code = (int)Enums.ordError.HTTP_NOT_READY;
-                        this.addLog(err, Enums.logType.WARNING);
+                        this.addLog("[coincheck] New order failed. " + err, Enums.logType.WARNING);
                     }
                     else
                     {
                         string msg = JsonSerializer.Serialize(js);
-                        this.addLog(msg, Enums.logType.ERROR);
+                        this.addLog("[coincheck] New order failed. " + msg, Enums.logType.ERROR);
                     }
                     
                     this.ord_client.ordUpdateQueue.Enqueue(output);
@@ -1247,25 +1247,25 @@ namespace Crypto_Trading
                             this.addLog("Cancel order failed. The URL doesn't exist. Error code: 10000   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
                             break;
                         case 10001:
-                            this.addLog("Cancel order failed. System error, Contact support Error code:10001   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                            this.addLog("[bitbank] Cancel order failed. System error, Contact support Error code:10001   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                             break;
                         case 10002:
-                            this.addLog("Cancel order failed. Improper Json format. Error code:10002   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
+                            this.addLog("[bitbank] Cancel order failed. Improper Json format. Error code:10002   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
                             break;
                         case 10003:
-                            this.addLog("Cancel order failed.  System error, Contact support Error code:10003   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                            this.addLog("[bitbank] Cancel order failed.  System error, Contact support Error code:10003   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                             break;
                         case 10005:
-                            this.addLog("Cancel order failed.  Timeout error. Error code:10005   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                            this.addLog("[bitbank] Cancel order failed.  Timeout error. Error code:10005   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                             break;
                         case 10007:
-                            this.addLog("Cancel order failed.  Under maintenance. Error code:10007   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
+                            this.addLog("[bitbank] Cancel order failed.  Under maintenance. Error code:10007   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
                             break;
                         case 10008:
-                            this.addLog("Cancel order failed. The system is busy. Error code:10008   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                            this.addLog("[bitbank] Cancel order failed. The system is busy. Error code:10008   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                             break;
                         case 10009:
-                            this.addLog("Cancel order failed. Too many request. Error code:10009   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                            this.addLog("[bitbank] Cancel order failed. Too many request. Error code:10009   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                             break;
                         case 50026://Already Canceled
                         case 50027://Already filled
@@ -1276,19 +1276,19 @@ namespace Crypto_Trading
                         case 70013:
                         case 70014:
                         case 70015:
-                            this.addLog("Cancel order failed. The system is busy Error code:   ord_id:" + sndOrd.internalOrdId + code.ToString(), Enums.logType.WARNING);
+                            this.addLog("[bitbank] Cancel order failed. The system is busy Error code:   ord_id:" + sndOrd.internalOrdId + code.ToString(), Enums.logType.WARNING);
                             break;
                         case 80001:
-                            this.addLog("Cancel order failed. Operation timed out. code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                            this.addLog("[bitbank] Cancel order failed. Operation timed out. code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                             this.refreshHttpClient("bitbank");
                             //output.err_code = code;
                             break;
                         case 80002:
-                            this.addLog("New order failed. The http client is not ready. code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                            this.addLog("[bitbank] Cancel order failed. The http client is not ready. code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                             //output.err_code = code;
                             break;
                         default:
-                            this.addLog("Cancel Order Failed   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
+                            this.addLog("[bitbank] Cancel Order Failed   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
                             this.addLog(js.RootElement.GetRawText(), Enums.logType.ERROR);
                             break;
                     }
@@ -1342,22 +1342,22 @@ namespace Crypto_Trading
                     string err = js.RootElement.GetProperty("error").GetString();
                     if (err.StartsWith("Amount"))
                     {
-                        this.addLog(err, Enums.logType.WARNING);
+                        this.addLog("[coincheck] Cancel order failed. " + err, Enums.logType.WARNING);
                     }
                     else if (err.StartsWith("Nonce"))//Nonce must be incremented
                     {
                         output.err_code = (int)Enums.ordError.NONCE_ERROR;
-                        this.addLog(err, Enums.logType.WARNING);
+                        this.addLog("[coincheck] Cancel order failed. " + err, Enums.logType.WARNING);
                     }
                     else if (err.StartsWith("Rate limit"))
                     {
                         output.err_code = (int)Enums.ordError.RATE_LIMIT_EXCEEDED;
-                        this.addLog(err, Enums.logType.WARNING);
+                        this.addLog("[coincheck] Cancel order failed. " + err, Enums.logType.WARNING);
                     }
                     else if (err.StartsWith("The httpclient"))
                     {
                         output.err_code = (int)Enums.ordError.HTTP_NOT_READY;
-                        this.addLog(err, Enums.logType.WARNING);
+                        this.addLog("[coincheck] Cancel order failed. " + err, Enums.logType.WARNING);
                     }
                     else
                     {
@@ -1512,28 +1512,28 @@ namespace Crypto_Trading
                         switch (code)
                         {
                             case 10000:
-                                this.addLog("Cancel order failed. The URL doesn't exist. Error code: 10000   orderCount:" + ord_ids.Count.ToString(), Enums.logType.ERROR);
+                                this.addLog("[bitbank]Cancel order failed. The URL doesn't exist. Error code: 10000   orderCount:" + ord_ids.Count.ToString(), Enums.logType.ERROR);
                                 break;
                             case 10001:
-                                this.addLog("Cancel order failed. System error, Contact support Error code:10001   orderCount:" + ord_ids.Count.ToString(), Enums.logType.WARNING);
+                                this.addLog("[bitbank]Cancel order failed. System error, Contact support Error code:10001   orderCount:" + ord_ids.Count.ToString(), Enums.logType.WARNING);
                                 break;
                             case 10002:
-                                this.addLog("Cancel order failed. Improper Json format. Error code:10002   orderCount:" + ord_ids.Count.ToString(), Enums.logType.ERROR);
+                                this.addLog("[bitbank]Cancel order failed. Improper Json format. Error code:10002   orderCount:" + ord_ids.Count.ToString(), Enums.logType.ERROR);
                                 break;
                             case 10003:
-                                this.addLog("Cancel order failed.  System error, Contact support Error code:10003   orderCount:" + ord_ids.Count.ToString(), Enums.logType.WARNING);
+                                this.addLog("[bitbank]Cancel order failed.  System error, Contact support Error code:10003   orderCount:" + ord_ids.Count.ToString(), Enums.logType.WARNING);
                                 break;
                             case 10005:
-                                this.addLog("Cancel order failed.  Timeout error. Error code:10005   orderCount:" + ord_ids.Count.ToString(), Enums.logType.WARNING);
+                                this.addLog("[bitbank]Cancel order failed.  Timeout error. Error code:10005   orderCount:" + ord_ids.Count.ToString(), Enums.logType.WARNING);
                                 break;
                             case 10007:
-                                this.addLog("Cancel order failed.  Under maintenance. Error code:10007   orderCount:" + ord_ids.Count.ToString(), Enums.logType.ERROR);
+                                this.addLog("[bitbank]Cancel order failed.  Under maintenance. Error code:10007   orderCount:" + ord_ids.Count.ToString(), Enums.logType.ERROR);
                                 break;
                             case 10008:
-                                this.addLog("Cancel order failed. The system is busy. Error code:10008   orderCount:" + ord_ids.Count.ToString(), Enums.logType.WARNING);
+                                this.addLog("[bitbank]Cancel order failed. The system is busy. Error code:10008   orderCount:" + ord_ids.Count.ToString(), Enums.logType.WARNING);
                                 break;
                             case 10009:
-                                this.addLog("Cancel order failed. Too many request. Error code:10009   orderCount:" + ord_ids.Count.ToString(), Enums.logType.WARNING);
+                                this.addLog("[bitbank]Cancel order failed. Too many request. Error code:10009   orderCount:" + ord_ids.Count.ToString(), Enums.logType.WARNING);
                                 break;
                             case 50026://Already Canceled
                             case 50027://Already filled
@@ -1544,19 +1544,19 @@ namespace Crypto_Trading
                             case 70013:
                             case 70014:
                             case 70015:
-                                this.addLog("Cancel order failed. The system is busy Error code:" + code.ToString() + "   orderCount:" + ord_ids.Count.ToString(), Enums.logType.WARNING);
+                                this.addLog("[bitbank]Cancel order failed. The system is busy Error code:" + code.ToString() + "   orderCount:" + ord_ids.Count.ToString(), Enums.logType.WARNING);
                                 break;
                             case 80001:
-                                this.addLog("Cancel order failed. Operation timed out. code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                                this.addLog("[bitbank]Cancel order failed. Operation timed out. code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                                 this.refreshHttpClient("bitbank");
                                 //output.err_code = code;
                                 break;
                             case 80002:
-                                this.addLog("New order failed. The http client is not ready. code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                                this.addLog("[bitbank]Cancel order failed. The http client is not ready. code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                                 //output.err_code = code;
                                 break;
                             default:
-                                this.addLog("Cancel Order Failed   orderCount:" + ord_ids.Count.ToString(), Enums.logType.ERROR);
+                                this.addLog("[bitbank]Cancel Order Failed   orderCount:" + ord_ids.Count.ToString(), Enums.logType.ERROR);
                                 this.addLog(elem.RootElement.GetRawText(), Enums.logType.ERROR);
                                 break;
                         }
@@ -1629,19 +1629,19 @@ namespace Crypto_Trading
                         string err = elem.RootElement.GetProperty("error").GetString();
                         if (err.StartsWith("Amount"))
                         {
-                            this.addLog(err, Enums.logType.WARNING);
+                            this.addLog("[coincheck] Cancel order failed. " + err, Enums.logType.WARNING);
                         }
                         else if (err.StartsWith("Nonce"))//Nonce must be incremented
                         {
-                            this.addLog(err, Enums.logType.WARNING);
+                            this.addLog("[coincheck] Cancel order failed. " + err, Enums.logType.WARNING);
                         }
                         else if (err.StartsWith("Rate limit"))
                         {
-                            this.addLog(err, Enums.logType.WARNING);
+                            this.addLog("[coincheck] Cancel order failed. " + err, Enums.logType.WARNING);
                         }
                         else if (err.StartsWith("The httpclient"))
                         {
-                            this.addLog(err, Enums.logType.WARNING);
+                            this.addLog("[coincheck] Cancel order failed. " + err, Enums.logType.WARNING);
                         }
                         else
                         {
