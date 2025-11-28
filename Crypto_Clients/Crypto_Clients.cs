@@ -483,13 +483,9 @@ namespace Crypto_Clients
             switch (market)
             {
                 case "bitbank":
-                    //this.addLog("getActiveOrders bitbank");
                     js = await this.bitbank_client.getActiveOrders();
-                    //this.addLog("REST API");
-                    //this.addLog(JsonSerializer.Serialize(js));
                     if (js.RootElement.GetProperty("success").GetInt16() == 1)
                     {
-                        this.addLog("Order found");
                         var data = js.RootElement.GetProperty("data").GetProperty("orders");
                         foreach(var item in data.EnumerateArray())
                         {
@@ -510,7 +506,6 @@ namespace Crypto_Clients
                     break;
                 case "coincheck":
                     js = await this.coincheck_client.getActiveOrders();
-                    //this.addLog(JsonSerializer.Serialize(js));
                     if (js.RootElement.GetProperty("success").GetBoolean())
                     {
                         var data = js.RootElement.GetProperty("orders");

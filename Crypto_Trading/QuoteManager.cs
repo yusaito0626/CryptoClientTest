@@ -446,6 +446,7 @@ namespace Crypto_Trading
                 //await this.oManager.cancelAllOrders();
                 //Thread.Sleep(1000);
                 this.addLog("Requesting order list....", Enums.logType.WARNING);
+                
                 foreach (string mkt in this._markets.Keys)
                 {
                     addLog("Order List of " + mkt,logType.WARNING);
@@ -497,16 +498,6 @@ namespace Crypto_Trading
                             this.addLog("Cancelling...", Enums.logType.WARNING);
                             await this.oManager.placeCancelSpotOrders(keyValue.Key, keyValue.Value, true, true);
                         }
-                        //Thread.Sleep(1000);//Make sure the cancel orders are executed
-                        //this.addLog("Cancelling...", Enums.logType.WARNING);
-                        //await this.oManager.cancelAllOrders();
-                        //await this.oManager.placeCancelSpotOrders(stg.maker, id_list, true, true);
-                        //stg.maker.baseBalance.inuse = 0;
-                        //stg.maker.quoteBalance.inuse = 0;
-                        //stg.live_bidprice = 0;
-                        //stg.live_buyorder_id = "";
-                        //stg.live_askprice = 0;
-                        //stg.live_sellorder_id = "";
                         this.addLog("Order cancelled.", Enums.logType.WARNING);
                     }
                     else
@@ -514,6 +505,13 @@ namespace Crypto_Trading
                         addLog("Active order not found");
                     }
                 }
+                Thread.Sleep(1000);
+                while(Interlocked.CompareExchange(ref this.oManager.order_lock,1,0) != 0)
+                {
+
+                }
+                this.oManager.live_orders.Clear();
+                Volatile.Write(ref this.oManager.order_lock, 0);
             }
             else
             {
@@ -576,6 +574,24 @@ namespace Crypto_Trading
                 {
                     addLog("Active order not found");
                 }
+                Thread.Sleep(1000);
+                while (Interlocked.CompareExchange(ref this.oManager.order_lock, 1, 0) != 0)
+                {
+
+                }
+                List<string> removing = new List<string>();
+                foreach(var ord in this.oManager.live_orders)
+                {
+                    if(ord.Value.market == market)
+                    {
+                        removing.Add(ord.Key);
+                    }
+                }
+                foreach(var id in removing)
+                {
+                    this.oManager.live_orders.Remove(id);
+                }
+                Volatile.Write(ref this.oManager.order_lock, 0);
             }
         }
         public async Task<bool> optimize(Action start, Action end, CancellationToken ct, int spinningMax)

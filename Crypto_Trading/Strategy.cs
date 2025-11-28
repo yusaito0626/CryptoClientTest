@@ -1163,8 +1163,6 @@ namespace Crypto_Trading
                     if(i > 1000000000)
                     {
                         addLog("Locked in updating. value:" + this.updating.ToString());
-                        addLog("sendingOrder Stack. " + this.oManager.sendingOrdersStack.Count().ToString());
-                        addLog("Push count:" + this.oManager.push_count.ToString() + "   Pop count:" + this.oManager.pop_count.ToString());
                         Thread.Sleep(1);
                         //return;
                         i = 0;
@@ -1492,7 +1490,7 @@ namespace Crypto_Trading
 
         public async Task onFill(DataFill fill)
         {
-            if (this.enabled && this.abook)
+            if (/*this.enabled && */this.abook)//onFill should work even if the strategy disabled
             {
                 if (!this.oManager.ready)
                 {

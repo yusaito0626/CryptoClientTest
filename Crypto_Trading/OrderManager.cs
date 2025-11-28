@@ -28,6 +28,7 @@ using XT.Net.Objects.Models;
 
 using Enums;
 using Utils;
+using Discord;
 
 namespace Crypto_Trading
 {
@@ -48,8 +49,6 @@ namespace Crypto_Trading
         const int SENDINGORD_STACK_SIZE = 1000;
         public ConcurrentQueue<sendingOrder> sendingOrders;
         public ConcurrentStack<sendingOrder> sendingOrdersStack;
-        public volatile int push_count;
-        public volatile int pop_count;
         Thread processingOrdTh;
         CancellationTokenSource OrderProcessingStop;
         public Dictionary<string, string> ordIdMapping;
@@ -126,8 +125,6 @@ namespace Crypto_Trading
 
             this.sendingOrders = new ConcurrentQueue<sendingOrder>();
             this.sendingOrdersStack = new ConcurrentStack<sendingOrder>();
-            this.push_count = 0;
-            this.pop_count = 0;
 
             while(i < SENDINGORD_STACK_SIZE)
             {
@@ -270,7 +267,6 @@ namespace Crypto_Trading
                 {
 
                 }
-                Interlocked.Increment(ref this.pop_count);
                 ordid = this.getInternalOrdId(ins.market);
                 ord.internalOrdId = ordid;
                 ord.action = orderAction.New;
@@ -314,7 +310,6 @@ namespace Crypto_Trading
                 {
 
                 }
-                Interlocked.Increment(ref this.pop_count);
                 //ordid = this.getInternalOrdId(ins.market);
                 //ord.internalOrdId = ordid;
                 ord.action = orderAction.Can;
@@ -355,7 +350,6 @@ namespace Crypto_Trading
                 {
 
                 }
-                Interlocked.Increment(ref this.pop_count);
                 ord.action = orderAction.Can;
                 ord.ins = ins;
 
@@ -395,7 +389,6 @@ namespace Crypto_Trading
                 {
 
                 }
-                Interlocked.Increment(ref this.pop_count);
                 ordid = this.getInternalOrdId(ins.market);
                 ord.internalOrdId = ordid;
                 ord.ref_IntOrdId = orderId;
@@ -1079,7 +1072,6 @@ namespace Crypto_Trading
             }
             sndOrd.init();
             this.sendingOrdersStack.Push(sndOrd);
-            Interlocked.Increment(ref this.push_count);
             return output;
         }
         async public Task<DataSpotOrderUpdate?> processModOrder(sendingOrder sndOrd)
@@ -1114,7 +1106,6 @@ namespace Crypto_Trading
                 {
                     sndOrd.init();
                     this.sendingOrdersStack.Push(sndOrd);
-                    Interlocked.Increment(ref this.push_count);
                     return null;
                 }
             }
@@ -1132,7 +1123,6 @@ namespace Crypto_Trading
                         {
 
                         }
-                        Interlocked.Increment(ref this.pop_count);
                         sndOrd2.copy(sndOrd);
                         sndOrd2.msg += " ModOrder from " + sndOrd.ref_IntOrdId + " ";
                         this.processCanOrder(sndOrd);
@@ -1143,7 +1133,6 @@ namespace Crypto_Trading
                     {
                         sndOrd.init();
                         this.sendingOrdersStack.Push(sndOrd);
-                        Interlocked.Increment(ref this.push_count);
                         output = null;
                     }
                     return output;
@@ -1153,7 +1142,6 @@ namespace Crypto_Trading
                     addLog("Order not found. order id:" + sndOrd.ref_IntOrdId);
                     sndOrd.init();
                     this.sendingOrdersStack.Push(sndOrd);
-                    Interlocked.Increment(ref this.push_count);
                     return null;
                 }
             }
@@ -1401,7 +1389,6 @@ namespace Crypto_Trading
             }
             sndOrd.init();
             this.sendingOrdersStack.Push(sndOrd);
-            Interlocked.Increment(ref this.push_count);
             return output;
         }
 
@@ -1708,7 +1695,6 @@ namespace Crypto_Trading
             }
             sndOrd.init();
             this.sendingOrdersStack.Push(sndOrd);
-            Interlocked.Increment(ref this.push_count);
             return output;
         }
         public void processingOrders(CancellationToken cancellationToken)
@@ -1953,410 +1939,446 @@ namespace Crypto_Trading
                         {
                             ins = this.Instruments[ord.symbol_market];
                         }
-                        if (ord.status == orderStatus.INVALID)
-                        {
-                            foreach(var stg in this.strategies)
-                            {
-                                if(stg.Value.taker.symbol_market == ord.symbol_market)
-                                {
-                                    if(ord.err_code == (int)Enums.ordError.NONCE_ERROR)
-                                    {
-                                        addLog("Taker order failed. Resending.", logType.WARNING);
-                                        this.placeNewSpotOrder(stg.Value.taker, ord.side, ord.order_type, ord.order_quantity, ord.order_price);
-                                    }
-                                    else if(ord.err_code == (int)Enums.ordError.RATE_LIMIT_EXCEEDED)
-                                    {
-                                        if (DateTime.UtcNow - takerPosAdjustment > TimeSpan.FromSeconds(1))
-                                        {
-                                            takerPosAdjustment = DateTime.UtcNow;
-                                            stg.Value.lastPosAdjustment = DateTime.UtcNow;
-                                            Thread.Sleep(1000);
-                                            decimal diff_amount = stg.Value.maker.baseBalance.total + stg.Value.taker.baseBalance.total - stg.Value.baseCcyQuantity;
-                                            orderSide side = orderSide.Sell;
-                                            if(diff_amount < 0)
-                                            {
-                                                side = orderSide.Buy;
-                                                diff_amount *= -1;
-                                            }
-                                            diff_amount = Math.Round(diff_amount / stg.Value.taker.quantity_unit) * stg.Value.taker.quantity_unit;
-                                            this.placeNewSpotOrder(stg.Value.taker, side, orderType.Market, diff_amount, 0, null, true);
-                                        }
-                                    }
-                                }
-                            }
-                            this.orders[ord.internal_order_id] = ord;
-                            this.ordLogQueue.Enqueue(ord.ToString());
-                        }
-                        else if (ord.status == orderStatus.WaitOpen)
-                        {
-                            this.ordLogQueue.Enqueue(ord.ToString());
-                            ord.update_time = DateTime.UtcNow;
-                            this.order_pool.Enqueue(ord);
-                        }
-                        else if (ord.status == orderStatus.WaitMod)
-                        {
-                            //Undefined
-                            this.ordLogQueue.Enqueue(ord.ToString());
-                            ord.update_time = DateTime.UtcNow;
-                            this.order_pool.Enqueue(ord);
-                        }
-                        else if (ord.status == orderStatus.WaitCancel)
-                        {
-                            if (this.orders.ContainsKey(ord.internal_order_id))
-                            {
-                                prevord = this.orders[ord.internal_order_id];
-                                if (prevord.status != orderStatus.Canceled)
-                                {
-                                    ord.filled_quantity = prevord.filled_quantity;
-                                    ord.order_price = prevord.order_price;
-                                    ord.order_quantity = prevord.order_quantity;
-                                    this.orders[ord.internal_order_id] = ord;
-                                    if (this.live_orders.ContainsKey(ord.internal_order_id))
-                                    {
-                                        this.live_orders[ord.internal_order_id] = ord;
-                                    }
-                                    if(ins != null)
-                                    {
-                                        ins.live_orders[ord.internal_order_id] = ord;
-                                    }
-                                }
-                                prevord.update_time = DateTime.UtcNow;
-                                this.order_pool.Enqueue(prevord);
-                            }
-                            else
-                            {
-                                ord.update_time = DateTime.UtcNow;
-                                this.order_pool.Enqueue(ord);
-                            }
-                            this.ordLogQueue.Enqueue(ord.ToString());
-                        }
                         else
                         {
-                            if (this.ordIdMapping.ContainsKey(ord.market + ord.order_id))
-                            {
-                                ord.internal_order_id = this.ordIdMapping[ord.market + ord.order_id];
-                                if (this.orders.ContainsKey(ord.internal_order_id))
-                                {
-                                    prevord = this.orders[ord.internal_order_id];
-                                    foreach (var stg in this.strategies)
-                                    {
-                                        if (stg.Value.enabled)
-                                        {
-                                            if (ord.symbol_market == stg.Value.maker.symbol_market)
-                                            {
-                                                stg.Value.onOrdUpdate(ord, prevord);
-                                            }
-                                        }
-
-                                    }
-
-                                    if ((ord.status < prevord.status || ord.filled_quantity < prevord.filled_quantity) && !(prevord.status == orderStatus.WaitCancel && ord.status == orderStatus.Open))
-                                    {
-                                        //if(prevord.status == orderStatus.WaitCancel && ord.status == orderStatus.Open)
-                                        //{
-                                        //    this.orders[ord.internal_order_id] = ord;
-                                        //    this.live_orders[ord.internal_order_id] = ord;
-                                        //    if (ins != null)
-                                        //    {
-                                        //        ins.live_orders[ord.internal_order_id] = ord;
-                                        //    }
-                                        //    prevord.update_time = DateTime.UtcNow;
-                                        //    this.order_pool.Enqueue(prevord);
-                                        //}
-                                        //else
-                                        //{
-                                        //    ord.update_time = DateTime.UtcNow;
-                                        //    this.order_pool.Enqueue(ord);
-                                        //}
-                                        ord.update_time = DateTime.UtcNow;
-                                        this.order_pool.Enqueue(ord);
-                                    }
-                                    else
-                                    {
-                                        this.orders[ord.internal_order_id] = ord;
-                                        if (ins != null)
-                                        {
-                                            ins.updateOrders(ord);
-                                            ins.orders[ord.internal_order_id] = ord;
-                                        }
-                                        if (ord.status == orderStatus.Open)
-                                        {
-                                            if (this.live_orders.ContainsKey(ord.internal_order_id))
-                                            {
-                                                this.live_orders[ord.internal_order_id] = ord;
-                                            }
-                                            else
-                                            {
-                                                while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
-                                                {
-                                                }
-                                                this.live_orders[ord.internal_order_id] = ord;
-                                                Volatile.Write(ref this.order_lock, 0);
-                                            }
-                                            if (ins != null)
-                                            {
-                                                //ins.live_orders[ord.client_order_id] = ord;
-                                                if (ins.live_orders.ContainsKey(ord.internal_order_id))
-                                                {
-                                                    ins.live_orders[ord.internal_order_id] = ord;
-                                                }
-                                                else
-                                                {
-                                                    while (Interlocked.CompareExchange(ref ins.order_lock, 1, 0) != 0)
-                                                    {
-                                                    }
-                                                    ins.live_orders[ord.internal_order_id] = ord;
-                                                    Volatile.Write(ref ins.order_lock, 0);
-                                                }
-                                                decimal filled_quantity = ord.filled_quantity - prevord.filled_quantity;
-                                                if (filled_quantity > 0 && ord.order_type != orderType.Market)
-                                                {
-                                                    switch (ord.side)
-                                                    {
-                                                        case orderSide.Buy:
-                                                            ins.quoteBalance.AddBalance(0, -filled_quantity * ord.order_price);
-                                                            break;
-                                                        case orderSide.Sell:
-                                                            ins.baseBalance.AddBalance(0, -filled_quantity);
-                                                            break;
-
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        else if (this.live_orders.ContainsKey(ord.internal_order_id))
-                                        {
-                                            while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
-                                            {
-                                            }
-                                            this.live_orders.Remove(ord.internal_order_id);
-                                            Volatile.Write(ref this.order_lock, 0);
-                                            if (ins != null)
-                                            {
-                                                if(ins.live_orders.ContainsKey(ord.internal_order_id))
-                                                {
-                                                    while (Interlocked.CompareExchange(ref ins.order_lock, 1, 0) != 0)
-                                                    {
-                                                    }
-                                                    ins.live_orders.Remove(ord.internal_order_id);
-                                                    Volatile.Write(ref ins.order_lock, 0);
-                                                }
-                                                decimal filled_quantity = ord.order_quantity - prevord.filled_quantity;//cancelled quantity + unprocessed filled quantity
-                                                if (filled_quantity > 0 && ord.order_type != orderType.Market)
-                                                {
-                                                    switch (ord.side)
-                                                    {
-                                                        case orderSide.Buy:
-                                                            ins.quoteBalance.AddBalance(0, -filled_quantity * ord.order_price);
-                                                            break;
-                                                        case orderSide.Sell:
-                                                            ins.baseBalance.AddBalance(0, -filled_quantity);
-                                                            break;
-
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        if (this.modifingOrders.ContainsKey(ord.internal_order_id))
-                                        {
-                                            mod = this.modifingOrders[ord.internal_order_id];
-
-                                            if (ord.status == orderStatus.Canceled)
-                                            {
-                                                this.placeNewSpotOrder(mod.ins, mod.side, mod.order_type, mod.newQuantity, mod.newPrice, mod.time_in_force,true);
-                                                this.modifingOrders.Remove(ord.internal_order_id);
-                                                mod.init();
-                                                this.modifingOrdStack.Push(mod);
-                                            }
-                                            else if (ord.status == orderStatus.Filled)
-                                            {
-                                                this.modifingOrders.Remove(ord.internal_order_id);
-                                                mod.init();
-                                                this.modifingOrdStack.Push(mod);
-                                            }
-                                        }
-
-                                        prevord.update_time = DateTime.UtcNow;
-                                        this.order_pool.Enqueue(prevord);
-                                        //prevord.init();
-                                        //this.ord_client.ordUpdateStack.Push(prevord);
-                                    }
-
-                                }
-                                else
-                                {
-                                    this.orders[ord.internal_order_id] = ord;
-                                    if (ord.status == orderStatus.Open)
-                                    {
-                                        if (this.live_orders.ContainsKey(ord.internal_order_id))
-                                        {
-                                            this.live_orders[ord.internal_order_id] = ord;
-                                        }
-                                        else
-                                        {
-                                            while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
-                                            {
-                                            }
-                                            this.live_orders[ord.internal_order_id] = ord;
-                                            Volatile.Write(ref this.order_lock, 0);
-                                        }
-                                        if (ins != null)
-                                        {
-                                            //ins.live_orders[ord.client_order_id] = ord;
-                                            if (ins.live_orders.ContainsKey(ord.internal_order_id))
-                                            {
-                                                ins.live_orders[ord.internal_order_id] = ord;
-                                            }
-                                            else
-                                            {
-                                                while (Interlocked.CompareExchange(ref ins.order_lock, 1, 0) != 0)
-                                                {
-                                                }
-                                                ins.live_orders[ord.internal_order_id] = ord;
-                                                Volatile.Write(ref ins.order_lock, 0);
-                                            }
-                                            decimal filled_quantity = ord.filled_quantity;
-                                            if (filled_quantity > 0 && ord.order_type != orderType.Market)
-                                            {
-                                                switch (ord.side)
-                                                {
-                                                    case orderSide.Buy:
-                                                        ins.quoteBalance.AddBalance(0, -filled_quantity * ord.order_price);
-                                                        break;
-                                                    case orderSide.Sell:
-                                                        ins.baseBalance.AddBalance(0, -filled_quantity);
-                                                        break;
-
-                                                }
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        foreach (var stg in this.strategies)
-                                        {
-                                            if (stg.Value.enabled)
-                                            {
-                                                if (ord.symbol_market == stg.Value.maker.symbol_market)
-                                                {
-                                                    stg.Value.onOrdUpdate(ord, ord);
-                                                }
-                                            }
-
-                                        }
-                                        if (ins != null)
-                                        {
-                                            decimal filled_quantity = ord.order_quantity;
-                                            if (filled_quantity > 0)
-                                            {
-                                                switch (ord.side)
-                                                {
-                                                    case orderSide.Buy:
-                                                        ins.quoteBalance.AddBalance(0, -filled_quantity * ord.order_price);
-                                                        break;
-                                                    case orderSide.Sell:
-                                                        ins.baseBalance.AddBalance(0, -filled_quantity);
-                                                        break;
-
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                this.ordLogQueue.Enqueue(ord.ToString());
-                            }
-                            else
-                            {//If the mapping doesn't exist, which means the order from the exchange reaches here before the new order processing.
-                                if (!this.Instruments.ContainsKey(ord.symbol_market))
-                                {
-                                    ord.init();
-                                    this.ord_client.ordUpdateStack.Push(ord);
-                                }
-                                else if (ord.queued_count % 200001 == 200000)
-                                {
-                                    addLog("Unknown Order", Enums.logType.WARNING);
-                                    addLog(ord.ToString());
-                                    if (ord.queued_count > 1_000_000)
-                                    {
-                                        if (ord.status == orderStatus.Open)
-                                        {
-                                            addLog("Cancelling the order and removing from strategies...");
-                                            ins = this.Instruments[ord.symbol_market];
-                                            ord.internal_order_id = ord.market + ord.order_id;
-                                            this.ordIdMapping[ord.internal_order_id] = ord.market + ord.order_id;
-                                            //Add the order_id in the mapping and queue it again.
-                                            foreach (var stg in this.strategies.Values)
-                                            {
-                                                if (stg.maker.symbol_market == ord.symbol_market)
-                                                {
-                                                    while(Interlocked.CompareExchange(ref stg.updating,1,0) != 0)
-                                                    {
-
-                                                    }
-                                                    switch (ord.side)
-                                                    {
-                                                        case orderSide.Buy:
-                                                            stg.live_buyorder_id = "";
-                                                            break;
-                                                        case orderSide.Sell:
-                                                            stg.live_sellorder_id = "";
-                                                            break;
-                                                    }
-                                                    Volatile.Write(ref stg.updating, 0);
-                                                }
-                                            }
-                                            this.placeCancelSpotOrder(ins, ord.market + ord.order_id, true, false);
-
-                                            ++(ord.queued_count);
-                                            this.ord_client.ordUpdateQueue.Enqueue(ord);                                            
-                                        }
-                                        else
-                                        {
-                                            decimal filled_quantity = 0;
-                                            ins = this.Instruments[ord.symbol_market];
-                                            if (this.orders.ContainsKey(ord.market + ord.order_id))
-                                            {
-                                                DataSpotOrderUpdate prev = this.orders[ord.market + ord.order_id];
-                                                filled_quantity = ord.order_quantity - prev.filled_quantity;
-                                            }
-                                            else
-                                            {
-                                                filled_quantity = ord.order_quantity;
-                                            }
-                                            if (filled_quantity > 0 && ord.order_type != orderType.Market)
-                                            {
-                                                switch (ord.side)
-                                                {
-                                                    case orderSide.Buy:
-                                                        ins.quoteBalance.AddBalance(0, -filled_quantity * ord.order_price);
-                                                        break;
-                                                    case orderSide.Sell:
-                                                        ins.baseBalance.AddBalance(0, -filled_quantity);
-                                                        break;
-
-                                                }
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        DataSpotOrderUpdate localord = ord;
-                                        Task.Run(() =>
-                                        {
-                                            Thread.Sleep(10);
-                                            ++(localord.queued_count);
-                                            this.ord_client.ordUpdateQueue.Enqueue(localord);
-                                        });
-                                    }
-                                }
-                                else
-                                {
-                                    ++(ord.queued_count);
-                                    this.ord_client.ordUpdateQueue.Enqueue(ord);
-                                }
-                                break;
-                            }
+                            continue;
                         }
+
+                        switch (ord.status)
+                        {
+                            case orderStatus.INVALID:
+                                this.handleINVALID(ord);
+                                break;
+                            case orderStatus.WaitOpen:
+                                this.handleWaitOpen(ord);
+                                break;
+                            case orderStatus.WaitMod:
+                                //Undefined
+                                this.handleWaitMod(ord);
+                                break;
+                            case orderStatus.WaitCancel:
+                                this.handleWaitCancel(ord);
+                                break;
+                            case orderStatus.Open:
+                                this.handleOpen(ord);
+                                break;
+                            case orderStatus.Canceled:
+                                this.handleCancel(ord);
+                                break;
+                            case orderStatus.Filled:
+                                this.handleFilled(ord);
+                                break;
+                            default:
+                                addLog("Unknown type of order.", logType.WARNING);
+                                addLog(ord.ToString(), logType.WARNING);
+                                break;
+                        }
+                        //if (ord.status == orderStatus.INVALID)
+                        //{
+                        //    foreach (var stg in this.strategies)
+                        //    {
+                        //        if (stg.Value.taker.symbol_market == ord.symbol_market)
+                        //        {
+                        //            if (ord.err_code == (int)Enums.ordError.NONCE_ERROR)
+                        //            {
+                        //                addLog("Taker order failed. Resending.", logType.WARNING);
+                        //                this.placeNewSpotOrder(stg.Value.taker, ord.side, ord.order_type, ord.order_quantity, ord.order_price);
+                        //            }
+                        //            else if (ord.err_code == (int)Enums.ordError.RATE_LIMIT_EXCEEDED)
+                        //            {
+                        //                if (DateTime.UtcNow - takerPosAdjustment > TimeSpan.FromSeconds(1))
+                        //                {
+                        //                    takerPosAdjustment = DateTime.UtcNow;
+                        //                    stg.Value.lastPosAdjustment = DateTime.UtcNow;
+                        //                    Thread.Sleep(1000);
+                        //                    decimal diff_amount = stg.Value.maker.baseBalance.total + stg.Value.taker.baseBalance.total - stg.Value.baseCcyQuantity;
+                        //                    orderSide side = orderSide.Sell;
+                        //                    if (diff_amount < 0)
+                        //                    {
+                        //                        side = orderSide.Buy;
+                        //                        diff_amount *= -1;
+                        //                    }
+                        //                    diff_amount = Math.Round(diff_amount / stg.Value.taker.quantity_unit) * stg.Value.taker.quantity_unit;
+                        //                    this.placeNewSpotOrder(stg.Value.taker, side, orderType.Market, diff_amount, 0, null, true);
+                        //                }
+                        //            }
+                        //        }
+                        //    }
+                        //    this.orders[ord.internal_order_id] = ord;
+                        //    this.ordLogQueue.Enqueue(ord.ToString());
+                        //}
+                        //else if (ord.status == orderStatus.WaitOpen)
+                        //{
+                        //    this.ordLogQueue.Enqueue(ord.ToString());
+                        //    ord.update_time = DateTime.UtcNow;
+                        //    this.order_pool.Enqueue(ord);
+                        //}
+                        //else if (ord.status == orderStatus.WaitMod)
+                        //{
+                        //    //Undefined
+                        //    this.ordLogQueue.Enqueue(ord.ToString());
+                        //    ord.update_time = DateTime.UtcNow;
+                        //    this.order_pool.Enqueue(ord);
+                        //}
+                        //else if (ord.status == orderStatus.WaitCancel)
+                        //{
+                        //    if (this.orders.ContainsKey(ord.internal_order_id))
+                        //    {
+                        //        prevord = this.orders[ord.internal_order_id];
+                        //        if (prevord.status != orderStatus.Canceled)
+                        //        {
+                        //            ord.filled_quantity = prevord.filled_quantity;
+                        //            ord.order_price = prevord.order_price;
+                        //            ord.order_quantity = prevord.order_quantity;
+                        //            this.orders[ord.internal_order_id] = ord;
+                        //            if (this.live_orders.ContainsKey(ord.internal_order_id))
+                        //            {
+                        //                this.live_orders[ord.internal_order_id] = ord;
+                        //            }
+                        //            if (ins != null)
+                        //            {
+                        //                ins.live_orders[ord.internal_order_id] = ord;
+                        //            }
+                        //        }
+                        //        prevord.update_time = DateTime.UtcNow;
+                        //        this.order_pool.Enqueue(prevord);
+                        //    }
+                        //    else
+                        //    {
+                        //        ord.update_time = DateTime.UtcNow;
+                        //        this.order_pool.Enqueue(ord);
+                        //    }
+                        //    this.ordLogQueue.Enqueue(ord.ToString());
+                        //}
+                        //else
+                        //{
+                        //    if (this.ordIdMapping.ContainsKey(ord.market + ord.order_id))
+                        //    {
+                        //        ord.internal_order_id = this.ordIdMapping[ord.market + ord.order_id];
+                        //        if (this.orders.ContainsKey(ord.internal_order_id))
+                        //        {
+                        //            prevord = this.orders[ord.internal_order_id];
+                        //            foreach (var stg in this.strategies)
+                        //            {
+                        //                if (stg.Value.enabled)
+                        //                {
+                        //                    if (ord.symbol_market == stg.Value.maker.symbol_market)
+                        //                    {
+                        //                        stg.Value.onOrdUpdate(ord, prevord);
+                        //                    }
+                        //                }
+
+                        //            }
+
+                        //            if ((ord.status < prevord.status || ord.filled_quantity < prevord.filled_quantity) && !(prevord.status == orderStatus.WaitCancel && ord.status == orderStatus.Open))
+                        //            {
+                        //                //if(prevord.status == orderStatus.WaitCancel && ord.status == orderStatus.Open)
+                        //                //{
+                        //                //    this.orders[ord.internal_order_id] = ord;
+                        //                //    this.live_orders[ord.internal_order_id] = ord;
+                        //                //    if (ins != null)
+                        //                //    {
+                        //                //        ins.live_orders[ord.internal_order_id] = ord;
+                        //                //    }
+                        //                //    prevord.update_time = DateTime.UtcNow;
+                        //                //    this.order_pool.Enqueue(prevord);
+                        //                //}
+                        //                //else
+                        //                //{
+                        //                //    ord.update_time = DateTime.UtcNow;
+                        //                //    this.order_pool.Enqueue(ord);
+                        //                //}
+                        //                ord.update_time = DateTime.UtcNow;
+                        //                this.order_pool.Enqueue(ord);
+                        //            }
+                        //            else
+                        //            {
+                        //                this.orders[ord.internal_order_id] = ord;
+                        //                if (ins != null)
+                        //                {
+                        //                    ins.updateOrders(ord);
+                        //                    ins.orders[ord.internal_order_id] = ord;
+                        //                }
+                        //                if (ord.status == orderStatus.Open)
+                        //                {
+                        //                    if (this.live_orders.ContainsKey(ord.internal_order_id))
+                        //                    {
+                        //                        this.live_orders[ord.internal_order_id] = ord;
+                        //                    }
+                        //                    else
+                        //                    {
+                        //                        while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
+                        //                        {
+                        //                        }
+                        //                        addLog("[New live order at 2093] " + ord.ToString());
+                        //                        this.live_orders[ord.internal_order_id] = ord;
+                        //                        Volatile.Write(ref this.order_lock, 0);
+                        //                    }
+                        //                    if (ins != null)
+                        //                    {
+                        //                        //ins.live_orders[ord.client_order_id] = ord;
+                        //                        if (ins.live_orders.ContainsKey(ord.internal_order_id))
+                        //                        {
+                        //                            ins.live_orders[ord.internal_order_id] = ord;
+                        //                        }
+                        //                        else
+                        //                        {
+                        //                            while (Interlocked.CompareExchange(ref ins.order_lock, 1, 0) != 0)
+                        //                            {
+                        //                            }
+                        //                            ins.live_orders[ord.internal_order_id] = ord;
+                        //                            Volatile.Write(ref ins.order_lock, 0);
+                        //                        }
+                        //                        decimal filled_quantity = ord.filled_quantity - prevord.filled_quantity;
+                        //                        if (filled_quantity > 0 && ord.order_type != orderType.Market)
+                        //                        {
+                        //                            switch (ord.side)
+                        //                            {
+                        //                                case orderSide.Buy:
+                        //                                    ins.quoteBalance.AddBalance(0, -filled_quantity * ord.order_price);
+                        //                                    break;
+                        //                                case orderSide.Sell:
+                        //                                    ins.baseBalance.AddBalance(0, -filled_quantity);
+                        //                                    break;
+
+                        //                            }
+                        //                        }
+                        //                    }
+                        //                }
+                        //                else if (this.live_orders.ContainsKey(ord.internal_order_id))
+                        //                {
+                        //                    while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
+                        //                    {
+                        //                    }
+                        //                    this.live_orders.Remove(ord.internal_order_id);
+                        //                    addLog("[Live order removed at 2134] " + ord.ToString());
+                        //                    Volatile.Write(ref this.order_lock, 0);
+                        //                    if (ins != null)
+                        //                    {
+                        //                        if (ins.live_orders.ContainsKey(ord.internal_order_id))
+                        //                        {
+                        //                            while (Interlocked.CompareExchange(ref ins.order_lock, 1, 0) != 0)
+                        //                            {
+                        //                            }
+                        //                            ins.live_orders.Remove(ord.internal_order_id);
+                        //                            Volatile.Write(ref ins.order_lock, 0);
+                        //                        }
+                        //                        decimal filled_quantity = ord.order_quantity - prevord.filled_quantity;//cancelled quantity + unprocessed filled quantity
+                        //                        if (filled_quantity > 0 && ord.order_type != orderType.Market)
+                        //                        {
+                        //                            switch (ord.side)
+                        //                            {
+                        //                                case orderSide.Buy:
+                        //                                    ins.quoteBalance.AddBalance(0, -filled_quantity * ord.order_price);
+                        //                                    break;
+                        //                                case orderSide.Sell:
+                        //                                    ins.baseBalance.AddBalance(0, -filled_quantity);
+                        //                                    break;
+
+                        //                            }
+                        //                        }
+                        //                    }
+                        //                }
+                        //                if (this.modifingOrders.ContainsKey(ord.internal_order_id))
+                        //                {
+                        //                    mod = this.modifingOrders[ord.internal_order_id];
+
+                        //                    if (ord.status == orderStatus.Canceled)
+                        //                    {
+                        //                        this.placeNewSpotOrder(mod.ins, mod.side, mod.order_type, mod.newQuantity, mod.newPrice, mod.time_in_force, true);
+                        //                        this.modifingOrders.Remove(ord.internal_order_id);
+                        //                        mod.init();
+                        //                        this.modifingOrdStack.Push(mod);
+                        //                    }
+                        //                    else if (ord.status == orderStatus.Filled)
+                        //                    {
+                        //                        this.modifingOrders.Remove(ord.internal_order_id);
+                        //                        mod.init();
+                        //                        this.modifingOrdStack.Push(mod);
+                        //                    }
+                        //                }
+
+                        //                prevord.update_time = DateTime.UtcNow;
+                        //                this.order_pool.Enqueue(prevord);
+                        //                //prevord.init();
+                        //                //this.ord_client.ordUpdateStack.Push(prevord);
+                        //            }
+
+                        //        }
+                        //        else
+                        //        {
+                        //            this.orders[ord.internal_order_id] = ord;
+                        //            if (ord.status == orderStatus.Open)
+                        //            {
+                        //                if (this.live_orders.ContainsKey(ord.internal_order_id))
+                        //                {
+                        //                    this.live_orders[ord.internal_order_id] = ord;
+                        //                }
+                        //                else
+                        //                {
+                        //                    while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
+                        //                    {
+                        //                    }
+                        //                    addLog("[New live order at 2201] " + ord.ToString());
+                        //                    this.live_orders[ord.internal_order_id] = ord;
+                        //                    Volatile.Write(ref this.order_lock, 0);
+                        //                }
+                        //                if (ins != null)
+                        //                {
+                        //                    //ins.live_orders[ord.client_order_id] = ord;
+                        //                    if (ins.live_orders.ContainsKey(ord.internal_order_id))
+                        //                    {
+                        //                        ins.live_orders[ord.internal_order_id] = ord;
+                        //                    }
+                        //                    else
+                        //                    {
+                        //                        while (Interlocked.CompareExchange(ref ins.order_lock, 1, 0) != 0)
+                        //                        {
+                        //                        }
+                        //                        ins.live_orders[ord.internal_order_id] = ord;
+                        //                        Volatile.Write(ref ins.order_lock, 0);
+                        //                    }
+                        //                    decimal filled_quantity = ord.filled_quantity;
+                        //                    if (filled_quantity > 0 && ord.order_type != orderType.Market)
+                        //                    {
+                        //                        switch (ord.side)
+                        //                        {
+                        //                            case orderSide.Buy:
+                        //                                ins.quoteBalance.AddBalance(0, -filled_quantity * ord.order_price);
+                        //                                break;
+                        //                            case orderSide.Sell:
+                        //                                ins.baseBalance.AddBalance(0, -filled_quantity);
+                        //                                break;
+
+                        //                        }
+                        //                    }
+                        //                }
+                        //            }
+                        //            else
+                        //            {
+                        //                foreach (var stg in this.strategies)
+                        //                {
+                        //                    if (stg.Value.enabled)
+                        //                    {
+                        //                        if (ord.symbol_market == stg.Value.maker.symbol_market)
+                        //                        {
+                        //                            stg.Value.onOrdUpdate(ord, ord);
+                        //                        }
+                        //                    }
+
+                        //                }
+                        //                if (ins != null)
+                        //                {
+                        //                    decimal filled_quantity = ord.order_quantity;
+                        //                    if (filled_quantity > 0)
+                        //                    {
+                        //                        switch (ord.side)
+                        //                        {
+                        //                            case orderSide.Buy:
+                        //                                ins.quoteBalance.AddBalance(0, -filled_quantity * ord.order_price);
+                        //                                break;
+                        //                            case orderSide.Sell:
+                        //                                ins.baseBalance.AddBalance(0, -filled_quantity);
+                        //                                break;
+
+                        //                        }
+                        //                    }
+                        //                }
+                        //            }
+                        //        }
+                        //        this.ordLogQueue.Enqueue(ord.ToString());
+                        //    }
+                        //    else
+                        //    {//If the mapping doesn't exist, which means the order from the exchange reaches here before the new order processing.
+                        //        if (!this.Instruments.ContainsKey(ord.symbol_market))
+                        //        {
+                        //            ord.init();
+                        //            this.ord_client.ordUpdateStack.Push(ord);
+                        //        }
+                        //        else if (ord.queued_count % 200001 == 200000)
+                        //        {
+                        //            addLog("Unknown Order", Enums.logType.WARNING);
+                        //            addLog(ord.ToString());
+                        //            if (ord.queued_count > 1_000_000)
+                        //            {
+                        //                if (ord.status == orderStatus.Open)
+                        //                {
+                        //                    addLog("Cancelling the order and removing from strategies...");
+                        //                    ins = this.Instruments[ord.symbol_market];
+                        //                    ord.internal_order_id = ord.market + ord.order_id;
+                        //                    this.ordIdMapping[ord.internal_order_id] = ord.market + ord.order_id;
+                        //                    //Add the order_id in the mapping and queue it again.
+                        //                    foreach (var stg in this.strategies.Values)
+                        //                    {
+                        //                        if (stg.maker.symbol_market == ord.symbol_market)
+                        //                        {
+                        //                            while (Interlocked.CompareExchange(ref stg.updating, 1, 0) != 0)
+                        //                            {
+
+                        //                            }
+                        //                            switch (ord.side)
+                        //                            {
+                        //                                case orderSide.Buy:
+                        //                                    stg.live_buyorder_id = "";
+                        //                                    break;
+                        //                                case orderSide.Sell:
+                        //                                    stg.live_sellorder_id = "";
+                        //                                    break;
+                        //                            }
+                        //                            Volatile.Write(ref stg.updating, 0);
+                        //                        }
+                        //                    }
+                        //                    this.placeCancelSpotOrder(ins, ord.market + ord.order_id, true, false);
+
+                        //                    ++(ord.queued_count);
+                        //                    this.ord_client.ordUpdateQueue.Enqueue(ord);
+                        //                }
+                        //                else
+                        //                {
+                        //                    decimal filled_quantity = 0;
+                        //                    ins = this.Instruments[ord.symbol_market];
+                        //                    if (this.orders.ContainsKey(ord.market + ord.order_id))
+                        //                    {
+                        //                        DataSpotOrderUpdate prev = this.orders[ord.market + ord.order_id];
+                        //                        filled_quantity = ord.order_quantity - prev.filled_quantity;
+                        //                    }
+                        //                    else
+                        //                    {
+                        //                        filled_quantity = ord.order_quantity;
+                        //                    }
+                        //                    if (filled_quantity > 0 && ord.order_type != orderType.Market)
+                        //                    {
+                        //                        switch (ord.side)
+                        //                        {
+                        //                            case orderSide.Buy:
+                        //                                ins.quoteBalance.AddBalance(0, -filled_quantity * ord.order_price);
+                        //                                break;
+                        //                            case orderSide.Sell:
+                        //                                ins.baseBalance.AddBalance(0, -filled_quantity);
+                        //                                break;
+
+                        //                        }
+                        //                    }
+                        //                }
+                        //            }
+                        //            else
+                        //            {
+                        //                DataSpotOrderUpdate localord = ord;
+                        //                Task.Run(() =>
+                        //                {
+                        //                    Thread.Sleep(10);
+                        //                    ++(localord.queued_count);
+                        //                    this.ord_client.ordUpdateQueue.Enqueue(localord);
+                        //                });
+                        //            }
+                        //        }
+                        //        else
+                        //        {
+                        //            ++(ord.queued_count);
+                        //            this.ord_client.ordUpdateQueue.Enqueue(ord);
+                        //        }
+                        //    }
+                        //}
 
                         spinner.Reset();
                         end();
@@ -2394,6 +2416,583 @@ namespace Crypto_Trading
             return ret;
         }
 
+        public void handleINVALID(DataSpotOrderUpdate ord)
+        {
+            foreach (var stg in this.strategies)
+            {
+                if (stg.Value.taker.symbol_market == ord.symbol_market)
+                {
+                    if (ord.err_code == (int)Enums.ordError.NONCE_ERROR)
+                    {
+                        addLog("Taker order failed. Resending.", logType.WARNING);
+                        this.placeNewSpotOrder(stg.Value.taker, ord.side, ord.order_type, ord.order_quantity, ord.order_price);
+                    }
+                    else if (ord.err_code == (int)Enums.ordError.RATE_LIMIT_EXCEEDED)
+                    {
+                        if (DateTime.UtcNow - stg.Value.lastPosAdjustment > TimeSpan.FromSeconds(1))
+                        {
+                            stg.Value.lastPosAdjustment = DateTime.UtcNow;
+                            Thread.Sleep(1000);
+                            decimal diff_amount = stg.Value.maker.baseBalance.total + stg.Value.taker.baseBalance.total - stg.Value.baseCcyQuantity;
+                            orderSide side = orderSide.Sell;
+                            if (diff_amount < 0)
+                            {
+                                side = orderSide.Buy;
+                                diff_amount *= -1;
+                            }
+                            diff_amount = Math.Round(diff_amount / stg.Value.taker.quantity_unit) * stg.Value.taker.quantity_unit;
+                            this.placeNewSpotOrder(stg.Value.taker, side, orderType.Market, diff_amount, 0, null, true);
+                        }
+                    }
+                }
+            }
+            this.orders[ord.internal_order_id] = ord;
+            this.ordLogQueue.Enqueue(ord.ToString());
+        }
+        public void handleWaitOpen(DataSpotOrderUpdate ord)
+        {
+            this.ordLogQueue.Enqueue(ord.ToString());
+            ord.update_time = DateTime.UtcNow;
+            this.order_pool.Enqueue(ord);
+        }
+        public void handleWaitMod(DataSpotOrderUpdate ord)
+        {
+            this.ordLogQueue.Enqueue(ord.ToString());
+            ord.update_time = DateTime.UtcNow;
+            this.order_pool.Enqueue(ord);
+        }
+        public void handleWaitCancel(DataSpotOrderUpdate ord)
+        {
+            DataSpotOrderUpdate prevord;
+
+            if (this.orders.ContainsKey(ord.internal_order_id))
+            {
+                prevord = this.orders[ord.internal_order_id];
+                if (prevord.status != orderStatus.Canceled)
+                {
+                    ord.filled_quantity = prevord.filled_quantity;
+                    ord.order_price = prevord.order_price;
+                    ord.order_quantity = prevord.order_quantity;
+                    this.orders[ord.internal_order_id] = ord;
+                    //while(Interlocked.CompareExchange(ref this.order_lock,1,0) != 0)
+                    //{
+
+                    //}
+                    //live_orders.Remove or .Add is only called in this thread.
+                    if (this.live_orders.ContainsKey(ord.internal_order_id))
+                    {
+                        this.live_orders[ord.internal_order_id] = ord;
+                    }
+                    //Volatile.Write(ref this.order_lock, 0);
+                    if (this.Instruments.ContainsKey(ord.symbol_market) && this.Instruments[ord.symbol_market].live_orders.ContainsKey(ord.internal_order_id))
+                    {
+                        this.Instruments[ord.symbol_market].live_orders[ord.internal_order_id] = ord;
+                    }
+                    prevord.update_time = DateTime.UtcNow;
+                    this.order_pool.Enqueue(prevord);
+                }
+                else
+                {
+                    ord.update_time = DateTime.UtcNow;
+                    this.order_pool.Enqueue(ord);
+                }
+            }
+            else
+            {
+                ord.update_time = DateTime.UtcNow;
+                this.order_pool.Enqueue(ord);
+            }
+            this.ordLogQueue.Enqueue(ord.ToString());
+        }
+        public void handleOpen(DataSpotOrderUpdate ord)
+        {
+            DataSpotOrderUpdate prevord = null;
+            Instrument ins = null;
+
+            if(this.Instruments.ContainsKey(ord.symbol_market))
+            {
+                ins = this.Instruments[ord.symbol_market];
+            }
+
+            if (this.ordIdMapping.ContainsKey(ord.market + ord.order_id))
+            {
+                //1. Get if there is an older order.
+                //2. If the order doesn't exist in live_order, add it othewise update from the previous.
+                //3. If the order is filled, update the balance
+                ord.internal_order_id = this.ordIdMapping[ord.market + ord.order_id];
+                if (this.orders.ContainsKey(ord.internal_order_id))
+                {
+                    prevord = this.orders[ord.internal_order_id];
+                    if ((ord.status < prevord.status || ord.filled_quantity < prevord.filled_quantity) && !(prevord.status == orderStatus.WaitCancel && ord.status == orderStatus.Open))
+                    {
+                        ord.update_time = DateTime.UtcNow;
+                        this.order_pool.Enqueue(ord);
+                        this.ordLogQueue.Enqueue(ord.ToString());
+                        return;
+                    }
+
+                    foreach (var stg in this.strategies)
+                    {
+                        if (stg.Value.enabled)
+                        {
+                            if (ord.symbol_market == stg.Value.maker.symbol_market)
+                            {
+                                stg.Value.onOrdUpdate(ord, prevord);
+                            }
+                        }
+
+                    }
+                }
+                else
+                {
+                    prevord = null;
+                }
+
+                this.orders[ord.internal_order_id] = ord;
+
+                if (this.live_orders.ContainsKey(ord.internal_order_id))
+                {
+                    this.live_orders[ord.internal_order_id] = ord;
+                }
+                else
+                {
+                    while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
+                    {
+                    }
+                    //addLog("[New live order at handleOpen] " + ord.ToString());
+                    this.live_orders[ord.internal_order_id] = ord;
+                    Volatile.Write(ref this.order_lock, 0);
+                }
+                if (ins != null)
+                {
+                    ins.updateOrders(ord);
+                    if (ins.live_orders.ContainsKey(ord.internal_order_id))
+                    {
+                        ins.live_orders[ord.internal_order_id] = ord;
+                    }
+                    else
+                    {
+                        while (Interlocked.CompareExchange(ref ins.order_lock, 1, 0) != 0)
+                        {
+                        }
+                        ins.live_orders[ord.internal_order_id] = ord;
+                        Volatile.Write(ref ins.order_lock, 0);
+                    }
+                    decimal filled_quantity;
+                    if(prevord != null)
+                    {
+                        filled_quantity = ord.filled_quantity - prevord.filled_quantity;
+                    }
+                    else
+                    {
+                        filled_quantity = ord.filled_quantity;
+                    }
+                    if (filled_quantity > 0 && ord.order_type != orderType.Market)
+                    {
+                        switch (ord.side)
+                        {
+                            case orderSide.Buy:
+                                ins.quoteBalance.AddBalance(0, -filled_quantity * ord.order_price);
+                                break;
+                            case orderSide.Sell:
+                                ins.baseBalance.AddBalance(0, -filled_quantity);
+                                break;
+
+                        }
+                    }
+                }
+                if (prevord != null)
+                {
+                    prevord.update_time = DateTime.UtcNow;
+                    this.order_pool.Enqueue(prevord);
+                }
+                this.ordLogQueue.Enqueue(ord.ToString());
+            }
+            else
+            {//If the mapping doesn't exist, which means the order from the exchange reaches here before the new order processing.
+                if (!this.Instruments.ContainsKey(ord.symbol_market))
+                {
+                    ord.init();
+                    this.ord_client.ordUpdateStack.Push(ord);
+                }
+                else if (ord.queued_count % 200001 == 200000)
+                {
+                    addLog("Unknown Order", Enums.logType.WARNING);
+                    addLog(ord.ToString());
+                    if (ord.queued_count > 1_000_000)
+                    {
+                        addLog("Cancelling the order and removing from strategies...");
+                        ins = this.Instruments[ord.symbol_market];
+                        ord.internal_order_id = ord.market + ord.order_id;
+                        this.ordIdMapping[ord.internal_order_id] = ord.market + ord.order_id;
+                        //Add the order_id in the mapping and queue it again.
+                        foreach (var stg in this.strategies.Values)
+                        {
+                            if (stg.maker.symbol_market == ord.symbol_market)
+                            {
+                                while (Interlocked.CompareExchange(ref stg.updating, 1, 0) != 0)
+                                {
+
+                                }
+                                switch (ord.side)
+                                {
+                                    case orderSide.Buy:
+                                        stg.live_buyorder_id = "";
+                                        break;
+                                    case orderSide.Sell:
+                                        stg.live_sellorder_id = "";
+                                        break;
+                                }
+                                Volatile.Write(ref stg.updating, 0);
+                            }
+                        }
+                        this.placeCancelSpotOrder(ins, ord.market + ord.order_id, true, false);
+
+                        ++(ord.queued_count);
+                        this.ord_client.ordUpdateQueue.Enqueue(ord);
+                    }
+                    else
+                    {
+                        DataSpotOrderUpdate localord = ord;
+                        Task.Run(() =>
+                        {
+                            Thread.Sleep(10);
+                            ++(localord.queued_count);
+                            this.ord_client.ordUpdateQueue.Enqueue(localord);
+                        });
+                    }
+                }
+                else
+                {
+                    ++(ord.queued_count);
+                    this.ord_client.ordUpdateQueue.Enqueue(ord);
+                }
+            }
+        }
+        public void handleCancel(DataSpotOrderUpdate ord)
+        {
+            DataSpotOrderUpdate prevord = null;
+            Instrument ins = null;
+            modifingOrd mod = null;
+            if(this.Instruments.ContainsKey(ord.symbol_market))
+            {
+                ins = this.Instruments[ord.symbol_market];
+            }
+            if (this.ordIdMapping.ContainsKey(ord.market + ord.order_id))
+            {
+                //1. Update order dictionary
+                //2. Remove from live_orders
+                //3. Call ins.updateOrders, remove from ins.live_orders, adjust balance
+                ord.internal_order_id = this.ordIdMapping[ord.market + ord.order_id];
+                if (this.orders.ContainsKey(ord.internal_order_id))
+                {
+                    prevord = this.orders[ord.internal_order_id];
+                }
+                else
+                {
+                    prevord = null;
+                }
+                this.orders[ord.internal_order_id] = ord;
+
+                if (this.live_orders.ContainsKey(ord.internal_order_id))
+                {
+                    while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
+                    {
+                    }
+                    this.live_orders.Remove(ord.internal_order_id);
+                    //addLog("[Live order removed at handleCancel] " + ord.ToString());
+                    Volatile.Write(ref this.order_lock, 0);
+                }
+
+                if (ins != null)
+                {
+                    ins.updateOrders(ord);
+                    
+                    if (ins.live_orders.ContainsKey(ord.internal_order_id))
+                    {
+                        while (Interlocked.CompareExchange(ref ins.order_lock, 1, 0) != 0)
+                        {
+                        }
+                        ins.live_orders.Remove(ord.internal_order_id);
+                        Volatile.Write(ref ins.order_lock, 0);
+                    }
+                    decimal filled_quantity;//cancelled quantity + unprocessed filled quantity
+                    if (prevord != null)
+                    {
+                        filled_quantity = ord.order_quantity - prevord.filled_quantity;
+                    }
+                    else
+                    {
+                        filled_quantity = ord.order_quantity;
+                    }
+                    if (filled_quantity > 0 && ord.order_type != orderType.Market)
+                    {
+                        switch (ord.side)
+                        {
+                            case orderSide.Buy:
+                                ins.quoteBalance.AddBalance(0, -filled_quantity * ord.order_price);
+                                break;
+                            case orderSide.Sell:
+                                ins.baseBalance.AddBalance(0, -filled_quantity);
+                                break;
+
+                        }
+                    }
+                }
+
+
+                if (this.modifingOrders.ContainsKey(ord.internal_order_id))
+                {
+                    mod = this.modifingOrders[ord.internal_order_id];
+
+                    if (ord.status == orderStatus.Canceled)
+                    {
+                        this.placeNewSpotOrder(mod.ins, mod.side, mod.order_type, mod.newQuantity, mod.newPrice, mod.time_in_force, true);
+                        this.modifingOrders.Remove(ord.internal_order_id);
+                        mod.init();
+                        this.modifingOrdStack.Push(mod);
+                    }
+                    else if (ord.status == orderStatus.Filled)
+                    {
+                        this.modifingOrders.Remove(ord.internal_order_id);
+                        mod.init();
+                        this.modifingOrdStack.Push(mod);
+                    }
+                }
+                if (prevord != null)
+                {
+                    prevord.update_time = DateTime.UtcNow;
+                    this.order_pool.Enqueue(prevord);
+                    prevord = null;
+                }
+                this.ordLogQueue.Enqueue(ord.ToString());
+            }
+            else
+            {//If the mapping doesn't exist, which means the order from the exchange reaches here before the new order processing.
+                if (!this.Instruments.ContainsKey(ord.symbol_market))
+                {
+                    ord.init();
+                    this.ord_client.ordUpdateStack.Push(ord);
+                }
+                else if (ord.queued_count % 200001 == 200000)
+                {
+                    addLog("Unknown Order", Enums.logType.WARNING);
+                    addLog(ord.ToString());
+                    if (ord.queued_count > 1_000_000)
+                    {
+                        decimal filled_quantity = 0;
+                        ins = this.Instruments[ord.symbol_market];
+                        if (this.orders.ContainsKey(ord.market + ord.order_id))
+                        {
+                            DataSpotOrderUpdate prev = this.orders[ord.market + ord.order_id];
+                            filled_quantity = ord.order_quantity - prev.filled_quantity;
+                        }
+                        else
+                        {
+                            filled_quantity = ord.order_quantity;
+                        }
+                        if (filled_quantity > 0 && ord.order_type != orderType.Market)
+                        {
+                            switch (ord.side)
+                            {
+                                case orderSide.Buy:
+                                    ins.quoteBalance.AddBalance(0, -filled_quantity * ord.order_price);
+                                    break;
+                                case orderSide.Sell:
+                                    ins.baseBalance.AddBalance(0, -filled_quantity);
+                                    break;
+
+                            }
+                        }
+                    }
+                    else
+                    {
+                        DataSpotOrderUpdate localord = ord;
+                        Task.Run(() =>
+                        {
+                            Thread.Sleep(10);
+                            ++(localord.queued_count);
+                            this.ord_client.ordUpdateQueue.Enqueue(localord);
+                        });
+                    }
+                }
+                else
+                {
+                    ++(ord.queued_count);
+                    this.ord_client.ordUpdateQueue.Enqueue(ord);
+                }
+            }
+        }
+        public void handleFilled(DataSpotOrderUpdate ord)
+        {
+            DataSpotOrderUpdate prevord = null;
+            Instrument ins = null;
+
+            if(this.Instruments.ContainsKey(ord.symbol_market))
+            {
+                ins = this.Instruments[ord.symbol_market];
+            }
+
+            if (this.ordIdMapping.ContainsKey(ord.market + ord.order_id))
+            {
+                //1. Strategy update
+                //2. Update orders
+                //3. Remove from live_orders
+                //4. Update on the ins side.
+                //5. update balance
+                ord.internal_order_id = this.ordIdMapping[ord.market + ord.order_id];
+                if (this.orders.ContainsKey(ord.internal_order_id))
+                {
+                    prevord = this.orders[ord.internal_order_id];
+                    foreach (var stg in this.strategies)
+                    {
+                        if (stg.Value.enabled)
+                        {
+                            if (ord.symbol_market == stg.Value.maker.symbol_market)
+                            {
+                                stg.Value.onOrdUpdate(ord, prevord);
+                            }
+                        }
+                    }
+
+                    if ((ord.status < prevord.status || ord.filled_quantity < prevord.filled_quantity) && !(prevord.status == orderStatus.WaitCancel && ord.status == orderStatus.Open))
+                    {
+                        ord.update_time = DateTime.UtcNow;
+                        this.order_pool.Enqueue(ord);
+                        this.ordLogQueue.Enqueue(ord.ToString());
+                        return;
+                    }
+
+                }
+                else
+                {
+                    prevord = null;
+                    foreach (var stg in this.strategies)
+                    {
+                        if (stg.Value.enabled)
+                        {
+                            if (ord.symbol_market == stg.Value.maker.symbol_market)
+                            {
+                                stg.Value.onOrdUpdate(ord, ord);
+                            }
+                        }
+
+                    }
+                }
+                
+                this.orders[ord.internal_order_id] = ord;
+                if (ins != null)
+                {
+                    ins.updateOrders(ord);
+                }
+
+                if (this.live_orders.ContainsKey(ord.internal_order_id))
+                {
+                    while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
+                    {
+                    }
+                    this.live_orders.Remove(ord.internal_order_id);
+                    //addLog("[Live order removed at handleFilled] " + ord.ToString());
+                    Volatile.Write(ref this.order_lock, 0);
+
+                }
+                if (ins != null)
+                {
+                    if (ins.live_orders.ContainsKey(ord.internal_order_id))
+                    {
+                        while (Interlocked.CompareExchange(ref ins.order_lock, 1, 0) != 0)
+                        {
+                        }
+                        ins.live_orders.Remove(ord.internal_order_id);
+                        Volatile.Write(ref ins.order_lock, 0);
+                    }
+                    decimal filled_quantity;
+                    if(prevord != null)
+                    {
+                        filled_quantity = ord.order_quantity - prevord.filled_quantity;
+                    }
+                    else
+                    {
+                        filled_quantity = ord.order_quantity;
+                    }
+                    if (filled_quantity > 0 && ord.order_type != orderType.Market)
+                    {
+                        switch (ord.side)
+                        {
+                            case orderSide.Buy:
+                                ins.quoteBalance.AddBalance(0, -filled_quantity * ord.order_price);
+                                break;
+                            case orderSide.Sell:
+                                ins.baseBalance.AddBalance(0, -filled_quantity);
+                                break;
+
+                        }
+                    }
+                }
+
+                if(prevord != null)
+                {
+                    prevord.update_time = DateTime.UtcNow;
+                    this.order_pool.Enqueue(prevord);
+                }
+                this.ordLogQueue.Enqueue(ord.ToString());
+            }
+            else
+            {//If the mapping doesn't exist, which means the order from the exchange reaches here before the new order processing.
+                if (!this.Instruments.ContainsKey(ord.symbol_market))
+                {
+                    ord.init();
+                    this.ord_client.ordUpdateStack.Push(ord);
+                }
+                else if (ord.queued_count % 200001 == 200000)
+                {
+                    addLog("Unknown Order", Enums.logType.WARNING);
+                    addLog(ord.ToString());
+                    if (ord.queued_count > 1_000_000)
+                    {
+                        decimal filled_quantity = 0;
+                        ins = this.Instruments[ord.symbol_market];
+                        if (this.orders.ContainsKey(ord.market + ord.order_id))
+                        {
+                            DataSpotOrderUpdate prev = this.orders[ord.market + ord.order_id];
+                            filled_quantity = ord.order_quantity - prev.filled_quantity;
+                        }
+                        else
+                        {
+                            filled_quantity = ord.order_quantity;
+                        }
+                        if (filled_quantity > 0 && ord.order_type != orderType.Market)
+                        {
+                            switch (ord.side)
+                            {
+                                case orderSide.Buy:
+                                    ins.quoteBalance.AddBalance(0, -filled_quantity * ord.order_price);
+                                    break;
+                                case orderSide.Sell:
+                                    ins.baseBalance.AddBalance(0, -filled_quantity);
+                                    break;
+
+                            }
+                        }
+                    }
+                    else
+                    {
+                        DataSpotOrderUpdate localord = ord;
+                        Task.Run(() =>
+                        {
+                            Thread.Sleep(10);
+                            ++(localord.queued_count);
+                            this.ord_client.ordUpdateQueue.Enqueue(localord);
+                        });
+                    }
+                }
+                else
+                {
+                    ++(ord.queued_count);
+                    this.ord_client.ordUpdateQueue.Enqueue(ord);
+                }
+            }
+        }
         public async void updateOrdersOnClosing()
         {
             //while(this.ord_client.ordUpdateQueue.Count() > 0)

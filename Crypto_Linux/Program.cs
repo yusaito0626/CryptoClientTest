@@ -1662,11 +1662,26 @@ namespace Crypto_Linux
             decimal feeAll = 0;
             decimal totalAll = 0;
             string msg = "";
+            List<DataSpotOrderUpdate> ordList = new List<DataSpotOrderUpdate>();
 
             //To keep http_client alive.
             try
             {
                 await crypto_client.getBalance(qManager._markets.Keys);
+
+
+                foreach(var stg in strategies.Values)
+                {
+                    ordList = await crypto_client.getActiveOrders(stg.maker.market);
+                    if(ordList != null)
+                    {
+                        int live_orders_count = oManager.live_orders.Count;
+                        if(ordList.Count != live_orders_count)
+                        {
+                            addLog("Order count didn't match " + stg.maker.market + ":" + ordList.Count.ToString() + " live_orders:" + live_orders_count.ToString(),logType.WARNING);
+                        }
+                    }
+                }
             }
             catch(Exception e)
             {
