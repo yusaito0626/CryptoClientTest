@@ -20,6 +20,8 @@ using System.Security.Cryptography;
 using System.Text.Json;
 //using Terminal.Gui;
 using Utils;
+using LockFreeStack;
+using LockFreeQueue;
 //using static Terminal.Gui.View;
 
 
@@ -410,58 +412,285 @@ namespace Crypto_Linux
 
         static private async Task testFunc()
         {
-            addLog("Testing batch cancel...");
+            Console.WriteLine("New stack and queue");
 
-            string symbol_market = "btc_jpy@bitbank";
-            if(qManager.instruments.ContainsKey(symbol_market))
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+            Thread.Sleep(1);
+            sw.Stop();
+            sw.Reset();
+            sw.Start();
+            Thread.Sleep(1);
+            sw.Stop();
+            sw.Reset();
+            sw.Start();
+            Thread.Sleep(1);
+            sw.Stop();
+            sw.Reset();
+
+            LockFreeStack<logEntry> stack = new LockFreeStack<logEntry>(300000);
+            MIMOQueue<logEntry> queue = new MIMOQueue<logEntry>(300000);
+
+            int i = 0;
+            while(i < 300000)
             {
-                decimal qt = (decimal)0.01;
-                decimal pr = 15_000_000;
-                Instrument ins = qManager.instruments[symbol_market];
-
-
-                addLog("Placing 2 new orders");
-                List<string> order_ids = new List<string>();
-                string order_id;
-                order_id = await oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Limit, qt, pr, null, true, true);
-                order_ids.Add(order_id);
-                Thread.Sleep(1000);
-                order_id = await oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Limit, qt, pr, null, true, true);
-                order_ids.Add(order_id);
-
-                Thread.Sleep(1000);
-                foreach (string id in order_ids)
+                stack.push(new logEntry());
+                ++i;
+            }
+            Console.WriteLine(stack.Count().ToString());
+            sw.Start();
+            var t1 = Task.Run(() =>
+            {
+                Console.WriteLine("Task1 started");
+                int j = 0;
+                while( j < 500000)
                 {
-                    if (oManager.orders.ContainsKey(id))
+                    if(stack.Count() < 1000)
                     {
-                        addLog(oManager.orders[id].ToString());
+                        int m = 0;
+                        while(m < 1000)
+                        {
+                            stack.push(new logEntry());
+                            ++m;
+                        }
                     }
-                    else
+                    logEntry l = stack.pop();
+                    //Console.WriteLine(stack.Count().ToString());
+                    l.msg = "A-" + j.ToString();
+                    ++j;
+                    queue.Enqueue(l);
+                }
+                Console.WriteLine("Task1 completed");
+            });
+            var t2 = Task.Run(() =>
+            {
+                Console.WriteLine("Task2 started");
+                int j = 0;
+                while (j < 500000)
+                {
+                    if (stack.Count() < 1000)
                     {
-                        addLog("Order not found id:" + id);
+                        int m = 0;
+                        while (m < 1000)
+                        {
+                            stack.push(new logEntry());
+                            ++m;
+                        }
+                    }
+                    logEntry l = stack.pop();
+                    //Console.WriteLine(stack.Count().ToString());
+                    l.msg = "B-" + j.ToString();
+                    ++j;
+                    queue.Enqueue(l);
+                }
+                Console.WriteLine("Task2 completed");
+            });
+            var t3 = Task.Run(() =>
+            {
+                Console.WriteLine("Task3 started");
+                int k = 0;
+                int prev_msg_A = -1;
+                int current_msg_A = -1;
+                int prev_msg_B = -1;
+                int current_msg_B = -1;
+                string[] msg;
+                while (true)
+                {
+                    logEntry l = queue.Dequeue();
+                    if(l != null)
+                    {
+                        msg = l.msg.Split("-");
+                        if (msg[0] == "A")
+                        {
+                            current_msg_A = int.Parse(msg[1]);
+                            if (prev_msg_A >= 0 && current_msg_A != prev_msg_A + 1)
+                            {
+                                Console.WriteLine("A prev_msg:" + prev_msg_A.ToString() + " current:" + current_msg_A.ToString());
+                            }
+                            prev_msg_A = current_msg_A;
+                        }
+                        else if (msg[0] == "B")
+                        {
+                            current_msg_B = int.Parse(msg[1]);
+                            if (prev_msg_B >= 0 && current_msg_B != prev_msg_B + 1)
+                            {
+                                Console.WriteLine("B prev_msg:" + prev_msg_B.ToString() + " current:" + current_msg_B.ToString());
+                            }
+                            prev_msg_B = current_msg_B;
+                        }
+                        else
+                        {
+                            Console.WriteLine("Something wrong.");
+                        }
+                            
+                        l.msg = "";
+                        stack.push(l);
+                        ++k;
+                        if(k >= 1000000)
+                        {
+                            break;
+                        }
                     }
                 }
-                addLog("Batch cancelling...");
-                await oManager.placeCancelSpotOrders(ins, order_ids, true, true);
+                Console.WriteLine("Task3 completed");
+            });
+            t1.Wait();
+            t2.Wait();
+            t3.Wait();
+            sw.Stop();
 
-                Thread.Sleep(1000);
-                foreach (string id in order_ids)
+            Console.WriteLine("Time:" + sw.Elapsed.TotalMilliseconds + " msec");
+            sw.Reset();
+            Console.WriteLine("Concurrent Queue and Stack");
+            ConcurrentStack<logEntry> cstack = new ConcurrentStack<logEntry>();
+            ConcurrentQueue<logEntry> cqueue = new ConcurrentQueue<logEntry>();
+
+            i = 0;
+            while (i < 300000)
+            {
+                cstack.Push(new logEntry());
+                ++i;
+            }
+
+            sw.Start();
+            var t4 = Task.Run(() =>
+            {
+                Console.WriteLine("Task1 started");
+                int j = 0;
+                while (j < 500000)
                 {
-                    if (oManager.orders.ContainsKey(id))
+                    if (cstack.Count < 1000)
                     {
-                        addLog(oManager.orders[id].ToString());
+                        int m = 0;
+                        while (m < 1000)
+                        {
+                            cstack.Push(new logEntry());
+                            ++m;
+                        }
                     }
-                    else
+                    logEntry l;
+                    int chk = 0;
+                    while(!cstack.TryPop(out l))
                     {
-                        addLog("Order not found id:" + id);
+                        ++chk;
+                        if(chk > 10000000)
+                        {
+                            Console.WriteLine("Stuck in the loop");
+                            Console.WriteLine(cstack.Count.ToString());
+                            break;
+                        }
+                    }
+                    chk = 0;
+                    l.msg = "A-" + j.ToString();
+                    ++j;
+                    cqueue.Enqueue(l);
+                }
+                Console.WriteLine("Task1 completed");
+            });
+            var t5 = Task.Run(() =>
+            {
+                Console.WriteLine("Task2 started");
+                int j = 0;
+                while (j < 500000)
+                {
+                    if (cstack.Count < 1000)
+                    {
+                        int m = 0;
+                        while (m < 1000)
+                        {
+                            cstack.Push(new logEntry());
+                            ++m;
+                        }
+                    }
+                    logEntry l;
+
+                    int chk = 0;
+                    while (!cstack.TryPop(out l))
+                    {
+                        ++chk;
+                        if (chk > 10000000)
+                        {
+                            Console.WriteLine("Stuck in the loop");
+                            Console.WriteLine(cstack.Count.ToString());
+                            break;
+                        }
+                    }
+                    chk = 0;
+                    //Console.WriteLine(stack.Count().ToString());
+                    l.msg = "B-" + j.ToString();
+                    ++j;
+                    cqueue.Enqueue(l);
+                }
+                Console.WriteLine("Task2 completed");
+            });
+            var t6 = Task.Run(() =>
+            {
+                Console.WriteLine("Task3 started");
+                int k = 0;
+                int prev_msg_A = -1;
+                int current_msg_A = -1;
+                int prev_msg_B = -1;
+                int current_msg_B = -1;
+                string[] msg;
+                while (true)
+                {
+                    logEntry l;
+                    int chk = 0;
+                    while(!cqueue.TryDequeue(out l))
+                    {
+                        ++chk;
+                        if(chk == 10000)
+                        {
+                            chk = 0;
+                            Thread.Yield();
+                        }
+                    }
+                    if (l != null)
+                    {
+                        msg = l.msg.Split("-");
+                        if (msg[0] == "A")
+                        {
+                            current_msg_A = int.Parse(msg[1]);
+                            if (prev_msg_A >= 0 && current_msg_A != prev_msg_A + 1)
+                            {
+                                Console.WriteLine("A prev_msg:" + prev_msg_A.ToString() + " current:" + current_msg_A.ToString());
+                            }
+                            prev_msg_A = current_msg_A;
+                        }
+                        else if (msg[0] == "B")
+                        {
+                            current_msg_B = int.Parse(msg[1]);
+                            if (prev_msg_B >= 0 && current_msg_B != prev_msg_B + 1)
+                            {
+                                Console.WriteLine("B prev_msg:" + prev_msg_B.ToString() + " current:" + current_msg_B.ToString());
+                            }
+                            prev_msg_B = current_msg_B;
+                        }
+                        else
+                        {
+                            Console.WriteLine("Something wrong.");
+                        }
+
+                        l.msg = "";
+                        cstack.Push(l);
+                        ++k;
+                        if (k >= 1000000)
+                        {
+                            break;
+                        }
                     }
                 }
-            }
-            else
-            {
-                addLog("Symbol not found. symbol_market:" + symbol_market);
-            }
+                Console.WriteLine("Task3 completed");
+            });
+            t4.Wait();
+            t5.Wait();
+            t6.Wait();
+            sw.Stop();
+            Console.WriteLine("Time:" + sw.Elapsed.TotalMilliseconds + " msec");
 
+            Console.WriteLine("Completed");
+
+            isRunning = false;
         }
 
 
