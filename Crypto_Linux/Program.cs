@@ -47,6 +47,9 @@ namespace Crypto_Linux
         static MessageDeliverer MsgDeliverer = MessageDeliverer.GetInstance();
         static websocketServer ws_server = websocketServer.GetInstance();
 
+        static msgType msg_type = msgType.NOTIFICATION;
+        static msgType err_msg_type = msgType.ERROR;
+
         static Dictionary<string, string> sendingItem = new Dictionary<string, string>();
         static JsonSerializerOptions js_option = new JsonSerializerOptions
         {
@@ -764,12 +767,12 @@ namespace Crypto_Linux
             if (root.TryGetProperty("live", out elem))
             {
                 live = elem.GetBoolean();
+                
             }
             else
             {
                 live = false;
             }
-
             if (root.TryGetProperty("test", out elem))
             {
                 test = elem.GetBoolean();
@@ -880,6 +883,16 @@ namespace Crypto_Linux
                 oManager.latency = elem.GetInt32();
             }
 
+            if(live)
+            {
+                msg_type = msgType.NOTIFICATION;
+                err_msg_type = msgType.ERROR;
+            }
+            else
+            {
+                msg_type = msgType.TEST;
+                err_msg_type = msgType.TEST;
+            }
             string dt = DateTime.UtcNow.ToString("yyyy-MM-dd");
             string newpath = outputPath + "/" + dt;
             if (!Directory.Exists(newpath))
@@ -1404,7 +1417,8 @@ namespace Crypto_Linux
 
                     string msg = "EoD PnL\n" + stgPnLMsg();
 
-                    await MsgDeliverer.sendMessage(msg);
+                    await MsgDeliverer.sendMessage(msg, msg_type);
+
                     addLog(msg);
                     Thread.Sleep(1000);
 
@@ -1898,16 +1912,18 @@ namespace Crypto_Linux
             {
                 await crypto_client.getBalance(qManager._markets.Keys);
 
-
-                foreach(var stg in strategies.Values)
+                if(live)
                 {
-                    ordList = await crypto_client.getActiveOrders(stg.maker.market);
-                    if(ordList != null)
+                    foreach (var stg in strategies.Values)
                     {
-                        int live_orders_count = oManager.live_orders.Count;
-                        if(ordList.Count != live_orders_count)
+                        ordList = await crypto_client.getActiveOrders(stg.maker.market);
+                        if (ordList != null)
                         {
-                            addLog("Order count didn't match " + stg.maker.market + ":" + ordList.Count.ToString() + " live_orders:" + live_orders_count.ToString(),logType.WARNING);
+                            int live_orders_count = oManager.live_orders.Count;
+                            if (ordList.Count != live_orders_count)
+                            {
+                                addLog("Order count didn't match " + stg.maker.market + ":" + ordList.Count.ToString() + " live_orders:" + live_orders_count.ToString(), logType.WARNING);
+                            }
                         }
                     }
                 }
@@ -1969,7 +1985,7 @@ namespace Crypto_Linux
             if (DateTime.UtcNow > nextMsgTime)
             {
                 msg = stgPnLMsg();
-                await MsgDeliverer.sendMessage(msg);
+                await MsgDeliverer.sendMessage(msg,msg_type);
                 nextMsgTime += TimeSpan.FromMinutes(msg_Interval);
 
                 foreach (var stg in strategies.Values)
@@ -2001,7 +2017,7 @@ namespace Crypto_Linux
             {
                 case Enums.logType.ERROR:
                 case Enums.logType.FATAL:
-                    MsgDeliverer.sendMessage(messageline);
+                    MsgDeliverer.sendMessage(messageline, err_msg_type);
                     onError();
                     break;
                 default:

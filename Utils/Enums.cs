@@ -72,4 +72,11 @@
         HTTP_NOT_READY = 80002,
         NONCE_ERROR = 90001
     }
+    public enum msgType
+    {
+        NONE = 0,
+        NOTIFICATION = 1,
+        ERROR = 2,
+        TEST = 3
+    }
 }

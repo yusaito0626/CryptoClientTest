@@ -1256,26 +1256,18 @@ namespace Crypto_GUI
                 this.lbl_quoteFee.Text = this.selected_ins.quote_fee.ToString("N" + this.selected_ins.quantity_scale);
                 this.updateQuotesView(this.gridView_Ins, this.selected_ins);
 
-
-                int firstRow = -1;
                 foreach (DataGridViewRow row in this.gridView_InsFills.Rows)
                 {
                     string symbol_market = row.Cells[2].Value + "@" + row.Cells[1].Value;
                     if (symbol_market == this.selected_ins.symbol_market)
                     {
                         row.Visible = true;
-                        if(firstRow < 0)
-                        {
-                            firstRow = row.Index;
-                        }
                     }
                     else if (!row.IsNewRow)
                     {
                         row.Visible = false;
                     }
                 }
-
-                this.gridView_InsFills.FirstDisplayedScrollingRowIndex = firstRow;
                 //while (Interlocked.CompareExchange(ref this.selected_ins.orders_lock, 1, 0) != 0)
                 //{
                 //    bool stop = true;
@@ -1348,24 +1340,19 @@ namespace Crypto_GUI
                     this.lbl_skewpoint.Text = this.selected_stg.skew_point.ToString("N2");
                     this.lbl_stgmarkup.Text = this.selected_stg.base_markup.ToString("N2");
                 }
-                int firstRow = -1;
+                
                 foreach (DataGridViewRow row in this.gridView_orders.Rows)
                 {
                     string symbol_market = row.Cells[2].Value + "@" + row.Cells[1].Value;
                     if (symbol_market == this.selected_stg.maker.symbol_market || symbol_market == this.selected_stg.taker.symbol_market)
                     {
                         row.Visible = true;
-                        if(firstRow < 0)
-                        {
-                            firstRow = row.Index;
-                        }
                     }
                     else if (!row.IsNewRow)
                     {
                         row.Visible = false;
                     }
                 }
-                this.gridView_orders.FirstDisplayedScrollingRowIndex = firstRow;
             }
 
 
@@ -1420,6 +1407,27 @@ namespace Crypto_GUI
             if (this.qManager.instruments.ContainsKey(this.comboSymbols.Text))
             {
                 this.selected_ins = this.qManager.instruments[this.comboSymbols.Text];
+                int firstRow = -1;
+                foreach (DataGridViewRow row in this.gridView_InsFills.Rows)
+                {
+                    string symbol_market = row.Cells[2].Value + "@" + row.Cells[1].Value;
+                    if (symbol_market == this.selected_ins.symbol_market)
+                    {
+                        row.Visible = true;
+                        if (firstRow < 0)
+                        {
+                            firstRow = row.Index;
+                        }
+                    }
+                    else if (!row.IsNewRow)
+                    {
+                        row.Visible = false;
+                    }
+                }
+                if (firstRow >= 0)
+                {
+                    this.gridView_InsFills.FirstDisplayedScrollingRowIndex = firstRow;
+                }
             }
             else
             {
@@ -2121,6 +2129,27 @@ namespace Crypto_GUI
             {
                 this.combo_StgSetting.Text = this.comboStrategy.Text;
                 this.selected_stg = this.strategies[this.comboStrategy.Text];
+                int firstRow = -1;
+                foreach (DataGridViewRow row in this.gridView_orders.Rows)
+                {
+                    string symbol_market = row.Cells[2].Value + "@" + row.Cells[1].Value;
+                    if (symbol_market == this.selected_stg.maker.symbol_market || symbol_market == this.selected_stg.taker.symbol_market)
+                    {
+                        row.Visible = true;
+                        if (firstRow < 0)
+                        {
+                            firstRow = row.Index;
+                        }
+                    }
+                    else if (!row.IsNewRow)
+                    {
+                        row.Visible = false;
+                    }
+                }
+                if (firstRow >= 0)
+                {
+                    this.gridView_orders.FirstDisplayedScrollingRowIndex = firstRow;
+                }
                 this.update_StgInfo();
             }
         }
@@ -2131,6 +2160,27 @@ namespace Crypto_GUI
             {
                 this.comboStrategy.Text = this.combo_StgSetting.Text;
                 this.selected_stg = this.strategies[this.comboStrategy.Text];
+                int firstRow = -1;
+                foreach (DataGridViewRow row in this.gridView_orders.Rows)
+                {
+                    string symbol_market = row.Cells[2].Value + "@" + row.Cells[1].Value;
+                    if (symbol_market == this.selected_stg.maker.symbol_market || symbol_market == this.selected_stg.taker.symbol_market)
+                    {
+                        row.Visible = true;
+                        if (firstRow < 0)
+                        {
+                            firstRow = row.Index;
+                        }
+                    }
+                    else if (!row.IsNewRow)
+                    {
+                        row.Visible = false;
+                    }
+                }
+                if (firstRow >= 0)
+                {
+                    this.gridView_orders.FirstDisplayedScrollingRowIndex = firstRow;
+                }
                 this.update_StgInfo();
             }
         }
