@@ -520,7 +520,7 @@ namespace Crypto_Trading
                 Thread.Sleep(1000);
                 this.addLog("Requesting order list....", Enums.logType.WARNING);
                 this.addLog("ordUpdateStack.Count:" + this.crypto_client.ordUpdateStack.Count.ToString("N0"));
-                this.addLog("order_pool.Count:" + this.oManager.order_pool.Count.ToString("N0"));
+                this.addLog("order_pool.Count:" + this.oManager.order_pool.Count().ToString("N0"));
                 List<DataSpotOrderUpdate> ordList = await this.crypto_client.getActiveOrders(market);
                 int i = 0;
                 while (ordList == null)

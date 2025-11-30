@@ -44,7 +44,7 @@ namespace Crypto_Trading
         public Dictionary<string, DataSpotOrderUpdate> orders;
         public Dictionary<string, DataSpotOrderUpdate> live_orders;
 
-        public ConcurrentQueue<DataSpotOrderUpdate> order_pool;
+        public SISOQueue<DataSpotOrderUpdate> order_pool;
         public int orderLifeTime = 60; 
 
         const int SENDINGORD_STACK_SIZE = 1000;
@@ -109,7 +109,7 @@ namespace Crypto_Trading
             this.virtual_liveorders = new Dictionary<string, DataSpotOrderUpdate>();
             this.disposed_orders = new Dictionary<string, DataSpotOrderUpdate>();
 
-            this.order_pool = new ConcurrentQueue<DataSpotOrderUpdate>();
+            this.order_pool = new SISOQueue<DataSpotOrderUpdate>();
 
             this.strategies = new Dictionary<string, Strategy>();
 

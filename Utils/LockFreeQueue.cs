@@ -621,7 +621,7 @@ namespace LockFreeQueue
             }
         }
 
-        int Count() { return this._Enqueues - this._Dequeues; }
+        public int Count() { return this._Enqueues - this._Dequeues; }
     }
     internal class LockFreePool<T> : IDisposable
     {

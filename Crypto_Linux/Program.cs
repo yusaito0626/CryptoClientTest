@@ -1936,24 +1936,26 @@ namespace Crypto_Linux
 
             DateTime currentTime = DateTime.UtcNow;
             DataSpotOrderUpdate ord;
-            while (oManager.order_pool.Count > 0)
+            while (oManager.order_pool.Count() > 0)
             {
-                while (!oManager.order_pool.TryPeek(out ord))
-                {
-                }
-                if(ord.update_time.HasValue)
+                //while (!oManager.SISO_order_pool.TryPeek(out ord))
+                //{
+                //}
+                ord = oManager.order_pool.Peak();
+                if (ord.update_time.HasValue)
                 {
                     if (currentTime - ord.update_time.Value > TimeSpan.FromSeconds(oManager.orderLifeTime))
                     {
-                        while (!oManager.order_pool.TryDequeue(out ord))
-                        {
-                        }
+                        //while (!oManager.SISO_order_pool.TryDequeue(out ord))
+                        //{
+                        //}
+                        ord = oManager.order_pool.Dequeue();
                         ord.init();
                         crypto_client.ordUpdateStack.Push(ord);
                     }
                     else
                     {
-                        if (oManager.order_pool.Count > 10000)
+                        if (oManager.order_pool.Count() > 10000)
                         {
                             addLog("Something wrong in order_pool. timestamp of the head:" + ord.update_time.Value.ToString(GlobalVariables.tmMsecFormat));
                         }
@@ -1962,9 +1964,10 @@ namespace Crypto_Linux
                 }
                 else
                 {
-                    while (!oManager.order_pool.TryDequeue(out ord))
-                    {
-                    }
+                    //while (!oManager.SISO_order_pool.TryDequeue(out ord))
+                    //{
+                    //}
+                    ord = oManager.order_pool.Dequeue();
                     ord.init();
                     crypto_client.ordUpdateStack.Push(ord);
                 }
