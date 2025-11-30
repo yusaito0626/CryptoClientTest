@@ -48,7 +48,7 @@ namespace Crypto_Trading
         public int orderLifeTime = 60; 
 
         const int SENDINGORD_STACK_SIZE = 1000;
-        public ConcurrentQueue<sendingOrder> sendingOrders;
+        public MISOQueue<sendingOrder> sendingOrders;
         //public ConcurrentStack<sendingOrder> sendingOrdersStack;
         public LockFreeStack<sendingOrder> sendingOrdersStack;
         //public ConcurrentQueue<sendingOrder> sendingOrdersStack;
@@ -126,7 +126,7 @@ namespace Crypto_Trading
 
             int i = 0;
 
-            this.sendingOrders = new ConcurrentQueue<sendingOrder>();
+            this.sendingOrders = new MISOQueue<sendingOrder>();
             //this.sendingOrdersStack = new ConcurrentStack<sendingOrder>();
             //this.sendingOrdersStack = new ConcurrentQueue<sendingOrder>();
             this.sendingOrdersStack = new LockFreeStack<sendingOrder>();
@@ -1719,9 +1719,10 @@ namespace Crypto_Trading
             sendingOrder ord;
             while (true)
             {
-                if(this.sendingOrders.TryDequeue(out ord))
+                ord = this.sendingOrders.Dequeue();
+                if(ord != null)
                 {
-                    switch(ord.action)
+                    switch (ord.action)
                     {
                         case orderAction.New:
                             this.processNewOrder(ord);
@@ -1733,23 +1734,52 @@ namespace Crypto_Trading
                             this.processCanOrder(ord);
                             break;
                     }
-                    //ord.init();
-                    //this.sendingOrdersStack.Push(ord);
                     i = 0;
                 }
                 else
                 {
-                    if(cancellationToken.IsCancellationRequested)
+                    if (cancellationToken.IsCancellationRequested)
                     {
                         break;
                     }
                     ++i;
-                    if(i > 1000)
+                    if (i > 1000)
                     {
                         i = 0;
                         Thread.Sleep(0);
                     }
                 }
+                //if (this.sendingOrders.TryDequeue(out ord))
+                //{
+                //    switch (ord.action)
+                //    {
+                //        case orderAction.New:
+                //            this.processNewOrder(ord);
+                //            break;
+                //        case orderAction.Mod:
+                //            this.processModOrder(ord);
+                //            break;
+                //        case orderAction.Can:
+                //            this.processCanOrder(ord);
+                //            break;
+                //    }
+                //    //ord.init();
+                //    //this.sendingOrdersStack.Push(ord);
+                //    i = 0;
+                //}
+                //else
+                //{
+                //    if (cancellationToken.IsCancellationRequested)
+                //    {
+                //        break;
+                //    }
+                //    ++i;
+                //    if (i > 1000)
+                //    {
+                //        i = 0;
+                //        Thread.Sleep(0);
+                //    }
+                //}
             }
         }
 

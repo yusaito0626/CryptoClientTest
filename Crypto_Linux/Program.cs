@@ -1942,9 +1942,29 @@ namespace Crypto_Linux
                 //{
                 //}
                 ord = oManager.order_pool.Peak();
-                if (ord.update_time.HasValue)
+                if(ord != null)
                 {
-                    if (currentTime - ord.update_time.Value > TimeSpan.FromSeconds(oManager.orderLifeTime))
+                    if (ord.update_time.HasValue)
+                    {
+                        if (currentTime - ord.update_time.Value > TimeSpan.FromSeconds(oManager.orderLifeTime))
+                        {
+                            //while (!oManager.SISO_order_pool.TryDequeue(out ord))
+                            //{
+                            //}
+                            ord = oManager.order_pool.Dequeue();
+                            ord.init();
+                            crypto_client.ordUpdateStack.Push(ord);
+                        }
+                        else
+                        {
+                            if (oManager.order_pool.Count() > 10000)
+                            {
+                                addLog("Something wrong in order_pool. timestamp of the head:" + ord.update_time.Value.ToString(GlobalVariables.tmMsecFormat));
+                            }
+                            break;
+                        }
+                    }
+                    else
                     {
                         //while (!oManager.SISO_order_pool.TryDequeue(out ord))
                         //{
@@ -1953,23 +1973,6 @@ namespace Crypto_Linux
                         ord.init();
                         crypto_client.ordUpdateStack.Push(ord);
                     }
-                    else
-                    {
-                        if (oManager.order_pool.Count() > 10000)
-                        {
-                            addLog("Something wrong in order_pool. timestamp of the head:" + ord.update_time.Value.ToString(GlobalVariables.tmMsecFormat));
-                        }
-                        break;
-                    }
-                }
-                else
-                {
-                    //while (!oManager.SISO_order_pool.TryDequeue(out ord))
-                    //{
-                    //}
-                    ord = oManager.order_pool.Dequeue();
-                    ord.init();
-                    crypto_client.ordUpdateStack.Push(ord);
                 }
             }
 
