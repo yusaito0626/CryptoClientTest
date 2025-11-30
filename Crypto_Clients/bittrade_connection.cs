@@ -32,11 +32,6 @@ namespace Crypto_Clients
         private const string private_URL = "wss://api-cloud.bittrade.co.jp";
         private const string private_Path = "/ws/v2";
 
-        
-
-        public ConcurrentQueue<JsonElement> orderQueue;
-        public ConcurrentQueue<JsonElement> fillQueue;
-
         ClientWebSocket websocket_client;
         ClientWebSocket private_client;
         HttpClient http_client;
@@ -92,9 +87,6 @@ namespace Crypto_Clients
                 BaseAddress = new Uri(URL),
                 Timeout = TimeSpan.FromSeconds(10)
             };
-
-            this.orderQueue = new ConcurrentQueue<JsonElement>();
-            this.fillQueue = new ConcurrentQueue<JsonElement>();
 
             this.closeSentPublic = false;
             this.closeSentPrivate = false;

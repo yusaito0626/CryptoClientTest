@@ -8,6 +8,7 @@ using Discord;
 using Discord.Audio.Streams;
 using Enums;
 using HTX.Net.Enums;
+using LockFreeQueue;
 using LockFreeStack;
 using PubnubApi;
 using System.Collections.Concurrent;
@@ -43,22 +44,18 @@ namespace Crypto_Clients
 
         const int STACK_SIZE = 100000;
 
-        public ConcurrentQueue<DataOrderBook> ordBookQueue;
+        public MIMOQueue<DataOrderBook> ordBookQueue;
         public LockFreeStack<DataOrderBook> ordBookStack;
 
-        public ConcurrentQueue<DataTrade> tradeQueue;
+        public MIMOQueue<DataTrade> tradeQueue;
         public LockFreeStack<DataTrade> tradeStack;
 
-        public ConcurrentQueue<DataFill> fillQueue;
+        public MIMOQueue<DataFill> fillQueue;
         public LockFreeStack<DataFill> fillStack;
 
         const int ORDUPDATE_STACK_SIZE = 300000;
-        public ConcurrentQueue<DataSpotOrderUpdate> ordUpdateQueue;
+        public MIMOQueue<DataSpotOrderUpdate> ordUpdateQueue;
         public LockFreeStack<DataSpotOrderUpdate> ordUpdateStack;
-
-        public ConcurrentQueue<string> strQueue;
-
-        public Thread bitbankOrderUpdateTh;
 
         public Action<string,Enums.logType> _addLog;
 
@@ -76,19 +73,17 @@ namespace Crypto_Clients
 
             this.creds = new CryptoClients.Net.Models.ExchangeCredentials();
 
-            this.ordBookQueue = new ConcurrentQueue<DataOrderBook>();
+            this.ordBookQueue = new MIMOQueue<DataOrderBook>();
             this.ordBookStack = new LockFreeStack<DataOrderBook>();
 
-            this.ordUpdateQueue = new ConcurrentQueue<DataSpotOrderUpdate>();
+            this.ordUpdateQueue = new MIMOQueue<DataSpotOrderUpdate>();
             this.ordUpdateStack = new LockFreeStack<DataSpotOrderUpdate>();
 
-            this.tradeQueue = new ConcurrentQueue<DataTrade>();
+            this.tradeQueue = new MIMOQueue<DataTrade>();
             this.tradeStack = new LockFreeStack<DataTrade>();
 
-            this.fillQueue = new ConcurrentQueue<DataFill>();
+            this.fillQueue = new MIMOQueue<DataFill>();
             this.fillStack = new LockFreeStack<DataFill>();
-
-            this.strQueue = new ConcurrentQueue<string>();
 
             this.bitbank_client.setQueues(this);
 

@@ -29,9 +29,9 @@ namespace Crypto_Clients
         private const string URL = "https://api.bitbank.cc";
         private const string ws_URL = "wss://stream.bitbank.cc/socket.io/?EIO=4&transport=websocket";
 
-        public ConcurrentQueue<DataSpotOrderUpdate> orderQueue;
+        public MIMOQueue<DataSpotOrderUpdate> orderQueue;
         public LockFreeStack<DataSpotOrderUpdate> orderStack;
-        public ConcurrentQueue<DataFill> fillQueue;
+        public MIMOQueue<DataFill> fillQueue;
         public LockFreeStack<DataFill> fillStack;
 
         public MISOQueue<string> msgLogQueue;

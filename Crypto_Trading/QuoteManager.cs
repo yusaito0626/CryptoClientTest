@@ -29,13 +29,13 @@ namespace Crypto_Trading
 
         public Dictionary<string, WebSocketState> _markets;
 
-        public ConcurrentQueue<DataOrderBook> ordBookQueue;
+        public MIMOQueue<DataOrderBook> ordBookQueue;
         private LockFreeStack<DataOrderBook> ordBookStack;
 
-        public ConcurrentQueue<DataTrade> tradeQueue;
+        public MIMOQueue<DataTrade> tradeQueue;
         private LockFreeStack<DataTrade> tradeStack;
 
-        public ConcurrentQueue<Strategy> optQueue;
+        public MIMOQueue<Strategy> optQueue;
 
         public Strategy? stg;
         public Dictionary<string, Strategy> strategies;
@@ -59,7 +59,7 @@ namespace Crypto_Trading
             this.balances = new Dictionary<string, Balance>();
             this._markets = new Dictionary<string, WebSocketState>();
             this.strategies = new Dictionary<string, Strategy>();
-            this.optQueue = new ConcurrentQueue<Strategy>();
+            this.optQueue = new MIMOQueue<Strategy>();
             this.oManager = OrderManager.GetInstance();
             this.ready = false;
             //this._addLog = Console.WriteLine;
@@ -329,7 +329,9 @@ namespace Crypto_Trading
             {
                 while (true)
                 {
-                    while (this.ordBookQueue.TryDequeue(out msg))
+                    msg = this.ordBookQueue.Dequeue();
+                    //while (this.ordBookQueue.TryDequeue(out msg))
+                    while(msg != null)
                     {
                         start();
                         symbol_market = msg.symbol + "@" + msg.market;
@@ -367,6 +369,7 @@ namespace Crypto_Trading
                         }
                         msg.init();
                         this.ordBookStack.push(msg);
+                        msg = this.ordBookQueue.Dequeue();
                         spinner.Reset();
                         end();
                     }
@@ -411,7 +414,8 @@ namespace Crypto_Trading
             string symbol_market;
             while (this.ordBookQueue.Count() > 0)
             {
-                if (this.ordBookQueue.TryDequeue(out msg))
+                msg = this.ordBookQueue.Dequeue();
+                if (msg != null)
                 {
                     symbol_market = msg.symbol + "@" + msg.market;
                     if (this.instruments.ContainsKey(symbol_market))
@@ -426,6 +430,10 @@ namespace Crypto_Trading
                     }
                     msg.init();
                     this.ordBookStack.push(msg);
+                }
+                else
+                {
+                    break;
                 }
             }
         }
@@ -605,7 +613,9 @@ namespace Crypto_Trading
             {
                 while (true)
                 {
-                    while (this.optQueue.TryDequeue(out stg))
+                    stg =  this.optQueue.Dequeue();
+                    //while (this.optQueue.TryDequeue(out stg))
+                    while(stg != null)
                     {
                         if(!this.oManager.ready)
                         {
@@ -742,6 +752,7 @@ namespace Crypto_Trading
                             }
                             addLog("All the strategy orders have been reset.");
                         }
+                        stg = this.optQueue.Dequeue();
                     }
                     if (ct.IsCancellationRequested)
                     {
@@ -811,7 +822,9 @@ namespace Crypto_Trading
             {
                 while (true)
                 {
-                    while (this.tradeQueue.TryDequeue(out msg))
+                    msg = this.tradeQueue.Dequeue();
+                    //while (this.tradeQueue.TryDequeue(out msg))
+                    while(msg != null)
                     {
                         start();
                         this.sw_updateTrades.Start();
@@ -841,6 +854,7 @@ namespace Crypto_Trading
                         msg.init();
                         this.tradeStack.push(msg);
                         spinner.Reset();
+                        msg = this.tradeQueue.Dequeue();
                         end();
                     }
                     if (ct.IsCancellationRequested)
@@ -876,46 +890,6 @@ namespace Crypto_Trading
             }
             return ret;
         }
-        public async Task<(bool,double)> _updateTrades()
-        {
-            Instrument ins;
-            DataTrade msg;
-            string symbol_market;
-            double latency = 0;
-            if (this.tradeQueue.TryDequeue(out msg))
-            {
-                this.sw_updateTrades.Start();
-                symbol_market = msg.symbol + "@" + msg.market;
-                foreach (var stg in this.strategies)
-                {
-                    if (stg.Value.enabled)
-                    {
-                        if (symbol_market == stg.Value.maker.symbol_market)
-                        {
-                            stg.Value.onTrades(msg);
-                        }
-                    }
-
-                }
-                if (this.instruments.ContainsKey(symbol_market))
-                {
-                    ins = instruments[symbol_market];
-                    ins.updateTrade(msg);
-
-                    this.oManager.checkVirtualOrders(ins, msg);
-                }
-                else
-                {
-                    this.addLog("The symbol doesn't exist. Instrument:" + symbol_market, Enums.logType.WARNING);
-                }
-                msg.init();
-                this.tradeStack.push(msg);
-                this.sw_updateTrades.Stop();
-                latency = this.sw_updateTrades.Elapsed.TotalNanoseconds / 1000;
-                this.sw_updateTrades.Reset();
-            }
-            return (true, latency);
-        }
 
         public void updateTradesOnClosing()
         {
@@ -924,7 +898,8 @@ namespace Crypto_Trading
             string symbol_market;
             while (this.tradeQueue.Count() > 0)
             {
-                if (this.tradeQueue.TryDequeue(out msg))
+                msg = this.tradeQueue.Dequeue();
+                if (msg != null)
                 {
                     symbol_market = msg.symbol + "@" + msg.market;
                     if (this.instruments.ContainsKey(symbol_market))
@@ -939,6 +914,10 @@ namespace Crypto_Trading
                     }
                     msg.init();
                     this.tradeStack.push(msg);
+                }
+                else
+                {
+                    break;
                 }
             }
         }

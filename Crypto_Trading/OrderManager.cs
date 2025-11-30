@@ -1920,7 +1920,9 @@ namespace Crypto_Trading
             {
                 while (true)
                 {
-                    while (this.ord_client.fillQueue.TryDequeue(out fill))
+                    fill = this.ord_client.fillQueue.Dequeue();
+                    //while (this.ord_client.fillQueue.TryDequeue(out fill))
+                    while(fill != null)
                     {
                         if (this.ordIdMapping.ContainsKey(fill.market + fill.order_id))
                         {
@@ -2008,6 +2010,7 @@ namespace Crypto_Trading
                             }
                             break;
                         }
+                        fill = this.ord_client.fillQueue.Dequeue();
 
                     }
                     if(ct.IsCancellationRequested)
@@ -2063,7 +2066,9 @@ namespace Crypto_Trading
             {
                 while (true)
                 {
-                    while (this.ord_client.ordUpdateQueue.TryDequeue(out ord))
+                    ord = this.ord_client.ordUpdateQueue.Dequeue();
+                    //while (this.ord_client.ordUpdateQueue.TryDequeue(out ord))
+                    while(ord != null)
                     {
                         start();
 
@@ -2073,6 +2078,7 @@ namespace Crypto_Trading
                         }
                         else
                         {
+                            ord = this.ord_client.ordUpdateQueue.Dequeue();
                             continue;
                         }
 
@@ -2105,6 +2111,7 @@ namespace Crypto_Trading
                                 addLog(ord.ToString(), logType.WARNING);
                                 break;
                         }
+                        ord = this.ord_client.ordUpdateQueue.Dequeue();
                         //if (ord.status == orderStatus.INVALID)
                         //{
                         //    foreach (var stg in this.strategies)
