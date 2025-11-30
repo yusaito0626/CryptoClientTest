@@ -15,7 +15,8 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 using Enums;
 using System.Diagnostics;
 using Utils;
-using PubnubApi.EventEngine.Subscribe.Effects;
+using LockFreeStack;
+using LockFreeQueue;
 
 namespace Crypto_Trading
 {
@@ -29,10 +30,10 @@ namespace Crypto_Trading
         public Dictionary<string, WebSocketState> _markets;
 
         public ConcurrentQueue<DataOrderBook> ordBookQueue;
-        private ConcurrentStack<DataOrderBook> ordBookStack;
+        private LockFreeStack<DataOrderBook> ordBookStack;
 
         public ConcurrentQueue<DataTrade> tradeQueue;
-        private ConcurrentStack<DataTrade> tradeStack;
+        private LockFreeStack<DataTrade> tradeStack;
 
         public ConcurrentQueue<Strategy> optQueue;
 
@@ -365,7 +366,7 @@ namespace Crypto_Trading
                             this.addLog("The symbol doesn't exist. Instrument:" + symbol_market, Enums.logType.WARNING);
                         }
                         msg.init();
-                        this.ordBookStack.Push(msg);
+                        this.ordBookStack.push(msg);
                         spinner.Reset();
                         end();
                     }
@@ -424,7 +425,7 @@ namespace Crypto_Trading
                         this.addLog("The symbol doesn't exist. Instrument:" + symbol_market, Enums.logType.WARNING);
                     }
                     msg.init();
-                    this.ordBookStack.Push(msg);
+                    this.ordBookStack.push(msg);
                 }
             }
         }
@@ -838,7 +839,7 @@ namespace Crypto_Trading
                             this.addLog("The symbol doesn't exist. Instrument:" + symbol_market, Enums.logType.WARNING);
                         }
                         msg.init();
-                        this.tradeStack.Push(msg);
+                        this.tradeStack.push(msg);
                         spinner.Reset();
                         end();
                     }
@@ -908,7 +909,7 @@ namespace Crypto_Trading
                     this.addLog("The symbol doesn't exist. Instrument:" + symbol_market, Enums.logType.WARNING);
                 }
                 msg.init();
-                this.tradeStack.Push(msg);
+                this.tradeStack.push(msg);
                 this.sw_updateTrades.Stop();
                 latency = this.sw_updateTrades.Elapsed.TotalNanoseconds / 1000;
                 this.sw_updateTrades.Reset();
@@ -937,7 +938,7 @@ namespace Crypto_Trading
                         this.addLog("The symbol doesn't exist. Instrument:" + symbol_market, Enums.logType.WARNING);
                     }
                     msg.init();
-                    this.tradeStack.Push(msg);
+                    this.tradeStack.push(msg);
                 }
             }
         }

@@ -13,6 +13,7 @@ using PubnubApi;
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.Design;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
@@ -43,10 +44,10 @@ namespace Crypto_Clients
         const int STACK_SIZE = 100000;
 
         public ConcurrentQueue<DataOrderBook> ordBookQueue;
-        public ConcurrentStack<DataOrderBook> ordBookStack;
+        public LockFreeStack<DataOrderBook> ordBookStack;
 
         public ConcurrentQueue<DataTrade> tradeQueue;
-        public ConcurrentStack<DataTrade> tradeStack;
+        public LockFreeStack<DataTrade> tradeStack;
 
         public ConcurrentQueue<DataFill> fillQueue;
         public LockFreeStack<DataFill> fillStack;
@@ -76,13 +77,13 @@ namespace Crypto_Clients
             this.creds = new CryptoClients.Net.Models.ExchangeCredentials();
 
             this.ordBookQueue = new ConcurrentQueue<DataOrderBook>();
-            this.ordBookStack = new ConcurrentStack<DataOrderBook>();
+            this.ordBookStack = new LockFreeStack<DataOrderBook>();
 
             this.ordUpdateQueue = new ConcurrentQueue<DataSpotOrderUpdate>();
             this.ordUpdateStack = new LockFreeStack<DataSpotOrderUpdate>();
 
             this.tradeQueue = new ConcurrentQueue<DataTrade>();
-            this.tradeStack = new ConcurrentStack<DataTrade>();
+            this.tradeStack = new LockFreeStack<DataTrade>();
 
             this.fillQueue = new ConcurrentQueue<DataFill>();
             this.fillStack = new LockFreeStack<DataFill>();
@@ -99,9 +100,9 @@ namespace Crypto_Clients
 
             while (i < STACK_SIZE)
             {
-                this.ordBookStack.Push(new DataOrderBook());
+                this.ordBookStack.push(new DataOrderBook());
                 this.ordUpdateStack.push(new DataSpotOrderUpdate());
-                this.tradeStack.Push(new DataTrade());
+                this.tradeStack.push(new DataTrade());
                 this.fillStack.push(new DataFill());
                 ++i;
             }
@@ -115,23 +116,23 @@ namespace Crypto_Clients
 
         public void checkStackCount()
         {
-            if(this.ordBookStack.Count < STACK_SIZE / 10)
+            if(this.ordBookStack.Count() < STACK_SIZE / 10)
             {
                 addLog("Pushing new objects into ordBookStack.");
                 int i = 0;
                 while(i < STACK_SIZE / 2)
                 {
-                    this.ordBookStack.Push(new DataOrderBook());
+                    this.ordBookStack.push(new DataOrderBook());
                     ++i;
                 }
             }
-            if (this.tradeStack.Count < STACK_SIZE / 10)
+            if (this.tradeStack.Count() < STACK_SIZE / 10)
             {
                 addLog("Pushing new objects into tradeStack.");
                 int i = 0;
                 while (i < STACK_SIZE / 2)
                 {
-                    this.tradeStack.Push(new DataTrade());
+                    this.tradeStack.push(new DataTrade());
                     ++i;
                 }
             }
@@ -240,12 +241,12 @@ namespace Crypto_Clients
         public void pushToOrderBookStack(DataOrderBook msg)
         {
             msg.init();
-            this.ordBookStack.Push(msg);
+            this.ordBookStack.push(msg);
         }
         public void pushToTradeStack(DataTrade msg)
         {
             msg.init();
-            this.tradeStack.Push(msg);
+            this.tradeStack.push(msg);
         }
         public void pushToOrderUpdateStack(DataSpotOrderUpdate msg)
         {
@@ -668,8 +669,13 @@ namespace Crypto_Clients
                             var data = js.RootElement.GetProperty("data").GetProperty("transactions");
                             foreach (var item in data.EnumerateArray())
                             {
-                                while (!this.tradeStack.TryPop(out trade))
+                                //while (!this.tradeStack.TryPop(out trade))
+                                //{
+                                //}
+                                trade = this.tradeStack.pop();
+                                if(trade == null)
                                 {
+                                    trade = new DataTrade();
                                 }
                                 trade.setBitbankTrade(item, market, symbol);
                                 trade.timestamp = trade.filled_time;
@@ -697,8 +703,13 @@ namespace Crypto_Clients
                                 var data = js.RootElement.GetProperty("data").GetProperty("transactions");
                                 foreach (var item in data.EnumerateArray())
                                 {
-                                    while (!this.tradeStack.TryPop(out trade))
+                                    //while (!this.tradeStack.TryPop(out trade))
+                                    //{
+                                    //}
+                                    trade = this.tradeStack.pop();
+                                    if (trade == null)
                                     {
+                                        trade = new DataTrade();
                                     }
                                     trade.setBitbankTrade(item, market, symbol);
                                     if (trade.filled_time >= (DateTime)startTime && trade.filled_time <= (DateTime)endTime)
@@ -709,7 +720,7 @@ namespace Crypto_Clients
                                     else
                                     {
                                         trade.init();
-                                        this.tradeStack.Push(trade);
+                                        this.tradeStack.push(trade);
                                     }
                                 }
                             }
@@ -727,8 +738,13 @@ namespace Crypto_Clients
                     js_list = await this.coincheck_client.getVolumeHistory(symbol,startTime, endTime);
                     foreach (var js_elem in js_list)
                     {
-                        while (!this.tradeStack.TryPop(out trade))
+                        //while (!this.tradeStack.TryPop(out trade))
+                        //{
+                        //}
+                        trade = this.tradeStack.pop();
+                        if (trade == null)
                         {
+                            trade = new DataTrade();
                         }
                         trade.market = "coincheck";
                         trade.symbol = js_elem.GetProperty("pair").GetString();
@@ -1096,9 +1112,14 @@ namespace Crypto_Clients
             DataTrade trd;
             foreach (var item in update.Data)
             {
-                while (!this.tradeStack.TryPop(out trd))
-                {
+                //while (!this.tradeStack.TryPop(out trd))
+                //{
 
+                //}
+                trd = this.tradeStack.pop();
+                if (trd == null)
+                {
+                    trd = new DataTrade();
                 }
                 trd.setSharedTrade(item, update.Exchange, update.Symbol, update.DataTime);
                 this.tradeQueue.Enqueue(trd);
@@ -1119,9 +1140,14 @@ namespace Crypto_Clients
                         string coincheck_symbol = baseCcy.ToLower() + "_" + quoteCcy.ToLower();
                         var js = await this.coincheck_client.getOrderBooks(coincheck_symbol);
                         DataOrderBook ord;
-                        while(!this.ordBookStack.TryPop(out ord))
-                        {
+                        //while(!this.ordBookStack.TryPop(out ord))
+                        //{
 
+                        //}
+                        ord = this.ordBookStack.pop();
+                        if (ord == null)
+                        {
+                            ord = new DataOrderBook();
                         }
                         ord.setCoincheckOrderBook(js.RootElement, coincheck_symbol);
                         this.ordBookQueue.Enqueue(ord);
@@ -1140,9 +1166,14 @@ namespace Crypto_Clients
         void LogOrderBook(ExchangeEvent<SharedOrderBook> update)
         {
             DataOrderBook msg;
-            while (!this.ordBookStack.TryPop(out msg))
-            {
+            //while (!this.ordBookStack.TryPop(out msg))
+            //{
 
+            //}
+            msg = this.ordBookStack.pop();
+            if (msg == null)
+            {
+                msg = new DataOrderBook();
             }
             msg.setSharedOrderBook(update);
             this.ordBookQueue.Enqueue(msg);
@@ -1156,9 +1187,14 @@ namespace Crypto_Clients
         {
             DataOrderBook msg;
 
-            while (!this.ordBookStack.TryPop(out msg))
-            {
+            //while (!this.ordBookStack.TryPop(out msg))
+            //{
 
+            //}
+            msg = this.ordBookStack.pop();
+            if (msg == null)
+            {
+                msg = new DataOrderBook();
             }
             msg.setCoinbaseOrderBook(update);
             this.ordBookQueue.Enqueue(msg);
@@ -1172,9 +1208,14 @@ namespace Crypto_Clients
         void LogBybitOrderBook(DataEvent<Bybit.Net.Objects.Models.V5.BybitOrderbook> update)
         {
             DataOrderBook msg;
-            while (!this.ordBookStack.TryPop(out msg))
-            {
+            //while (!this.ordBookStack.TryPop(out msg))
+            //{
 
+            //}
+            msg = this.ordBookStack.pop();
+            if (msg == null)
+            {
+                msg = new DataOrderBook();
             }
             msg.setBybitOrderBook(update);
             this.ordBookQueue.Enqueue(msg);
@@ -1198,9 +1239,14 @@ namespace Crypto_Clients
                 {
                     string symbol = roomName.Substring("depth_diff_".Length);
                     DataOrderBook ord;
-                    while (!this.ordBookStack.TryPop(out ord))
-                    {
+                    //while (!this.ordBookStack.TryPop(out ord))
+                    //{
 
+                    //}
+                    ord = this.ordBookStack.pop();
+                    if (ord == null)
+                    {
+                        ord = new DataOrderBook();
                     }
                     ord.setBitbankOrderBook(payload.GetProperty("message").GetProperty("data"), symbol, false);
                     this.ordBookQueue.Enqueue(ord);
@@ -1209,9 +1255,14 @@ namespace Crypto_Clients
                 {
                     string symbol = roomName.Substring("depth_whole_".Length);
                     DataOrderBook ord;
-                    while (!this.ordBookStack.TryPop(out ord))
-                    {
+                    //while (!this.ordBookStack.TryPop(out ord))
+                    //{
 
+                    //}
+                    ord = this.ordBookStack.pop();
+                    if (ord == null)
+                    {
+                        ord = new DataOrderBook();
                     }
                     ord.setBitbankOrderBook(payload.GetProperty("message").GetProperty("data"), symbol, true);
                     this.ordBookQueue.Enqueue(ord);
@@ -1223,9 +1274,14 @@ namespace Crypto_Clients
                     foreach (var element in payload.GetProperty("message").GetProperty("data").GetProperty("transactions").EnumerateArray())
                     {
                         DataTrade trd;
-                        while (!this.tradeStack.TryPop(out trd))
-                        {
+                        //while (!this.tradeStack.TryPop(out trd))
+                        //{
 
+                        //}
+                        trd = this.tradeStack.pop();
+                        if (trd == null)
+                        {
+                            trd = new DataTrade();
                         }
                         trd.setBitbankTrade(element, "bitbank", symbol);
                         this.tradeQueue.Enqueue(trd);
@@ -1249,9 +1305,14 @@ namespace Crypto_Clients
                 string symbol = root[0].GetString();
                 var obj = root[1];
                 DataOrderBook ord;
-                while (!this.ordBookStack.TryPop(out ord))
-                {
+                //while (!this.ordBookStack.TryPop(out ord))
+                //{
 
+                //}
+                ord = this.ordBookStack.pop();
+                if (ord == null)
+                {
+                    ord = new DataOrderBook();
                 }
                 ord.setCoincheckOrderBook(obj,symbol);
                 this.ordBookQueue.Enqueue(ord);
@@ -1261,9 +1322,11 @@ namespace Crypto_Clients
                 foreach( var item in root.EnumerateArray())
                 {
                     DataTrade trd;
-                    while (!this.tradeStack.TryPop(out trd))
-                    {
 
+                    trd = this.tradeStack.pop();
+                    if (trd == null)
+                    {
+                        trd = new DataTrade();
                     }
                     trd.setCoincheckTrade(item);
                     this.tradeQueue.Enqueue(trd);
@@ -1322,9 +1385,14 @@ namespace Crypto_Clients
                         case "depth":
                             var data = js.GetProperty("tick");
                             DataOrderBook ord;
-                            while (!this.ordBookStack.TryPop(out ord))
-                            {
+                            //while (!this.ordBookStack.TryPop(out ord))
+                            //{
 
+                            //}
+                            ord = this.ordBookStack.pop();
+                            if (ord == null)
+                            {
+                                ord = new DataOrderBook();
                             }
                             ord.setBitTradeOrderBook(data, channel[1], js.GetProperty("ts").GetInt64());
                             this.ordBookQueue.Enqueue(ord);
@@ -1335,9 +1403,14 @@ namespace Crypto_Clients
                             foreach (var item in root.EnumerateArray())
                             {
                                 DataTrade trd;
-                                while (!this.tradeStack.TryPop(out trd))
-                                {
+                                //while (!this.tradeStack.TryPop(out trd))
+                                //{
 
+                                //}
+                                trd = this.tradeStack.pop();
+                                if (trd == null)
+                                {
+                                    trd = new DataTrade();
                                 }
                                 trd.setBitTradeTrade(item, channel[1]);
                                 this.tradeQueue.Enqueue(trd);
