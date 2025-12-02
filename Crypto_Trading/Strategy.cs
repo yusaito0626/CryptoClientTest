@@ -44,6 +44,7 @@ namespace Crypto_Trading
         public decimal oneSideThreshold;
         public decimal skewWidening;
         public decimal markupAdjustment;
+        public decimal max_baseMarkup = 2000;
 
         public bool abook;
 
@@ -424,6 +425,14 @@ namespace Crypto_Trading
             {
                 this.markupAdjustment = 0;
             }
+            if (root.TryGetProperty("MaxBaseMarkup", out item))
+            {
+                this.max_baseMarkup = item.GetDecimal();
+            }
+            else
+            {
+                this.max_baseMarkup = 2000;
+            }
 
             if (root.TryGetProperty("skew_type", out item))
             {
@@ -485,6 +494,7 @@ namespace Crypto_Trading
             this.markup_decay_basetime = setting.decaying_time;
             this.RVMarkup_multiplier = setting.markupMultiplier;
             this.markupAdjustment = setting.markup_adjustment;
+            this.max_baseMarkup = setting.maxBaseMarkup;
             this.taker_market = setting.taker_market;
             this.maker_market = setting.maker_market;
             this.predictFill = setting.predictFill;
@@ -669,7 +679,7 @@ namespace Crypto_Trading
                 this.temp_markup_ask = markup_ask;
                 this.temp_markup_bid = markup_bid;
 
-                if(this.base_markup > 2000 || this.base_markup < 0)
+                if(this.base_markup > this.max_baseMarkup || this.base_markup < 0)
                 {
                     bid_price = 0;
                     ask_price = 0;

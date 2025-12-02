@@ -261,6 +261,7 @@ namespace Crypto_Linux
                 setting.decaying_time = stg.Value.markup_decay_basetime;
                 setting.markupMultiplier = stg.Value.RVMarkup_multiplier;
                 setting.markup_adjustment = stg.Value.markupAdjustment;
+                setting.maxBaseMarkup = stg.Value.max_baseMarkup;
                 setting.predictFill = stg.Value.predictFill;
                 setting.skew_type = stg.Value.skew_type.ToString();
                 setting.skew_step = stg.Value.skew_step;

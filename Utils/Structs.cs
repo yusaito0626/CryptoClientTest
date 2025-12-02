@@ -1402,6 +1402,7 @@ namespace Utils
         public decimal oneSideThreshold { get; set; }
         public decimal decaying_time { get; set; }
         public decimal markupMultiplier { get; set; }
+        public decimal maxBaseMarkup { get; set; }
         public Boolean predictFill { get; set; }
         public string? skew_type { get; set; }
         public decimal skew_step { get; set; }
