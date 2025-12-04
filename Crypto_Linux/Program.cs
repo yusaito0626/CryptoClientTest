@@ -378,8 +378,9 @@ namespace Crypto_Linux
             decimal totalAll = 0;
             decimal prev_notionalAll = 0;
             string msg = "";
-            bool sendingPnL = false;
+            bool sendingNotional = false;
             DateTime current = DateTime.UtcNow;
+            intradayPnL pnl;
             List<intradayPnL> pnls = new List<intradayPnL>();
             if (intradayPnLTime == null ||  (intradayPnLTime.HasValue && current > intradayPnLTime.Value + TimeSpan.FromMinutes(30)))
             {
@@ -391,7 +392,7 @@ namespace Crypto_Linux
                 {
                     intradayPnLTime = new DateTime(current.Year, current.Month, current.Day, current.Hour, 30, 0);
                 }
-                sendingPnL = true;
+                sendingNotional = true;
             }
             foreach (var stg in strategies.Values)
             {
@@ -425,22 +426,48 @@ namespace Crypto_Linux
                     stg.totalPnL = stg.posPnL + stg.tradingPnL - stg.totalFee;
 
                     msg += DateTime.UtcNow.ToString() + " - Strategy " + stg.name + " -    \nNotional Volume:" + stg.notionalVolume.ToString("N2") + "\nNet Exposure:" + stg.netExposure.ToString("N" + stg.maker.quantity_scale) + "    [Maker Balance:" + stg.maker.baseBalance.total.ToString("N" + stg.maker.quantity_scale) + "]\nPosition PnL:" + stg.posPnL.ToString("N2") + "\nTrading PnL:" + stg.tradingPnL.ToString("N2") + "\nFee:" + stg.totalFee.ToString("N2") + "\nTotal:" + stg.totalPnL.ToString("N2") + "\n";
-                    
-                    if(sendingPnL)
-                    {
-                        intradayPnL pnl = new intradayPnL();
-                        pnl.strategy_name = stg.name;
-                        pnl.OADatetime = ((DateTime)intradayPnLTime).ToOADate();
-                        pnl.PnL = (double)stg.totalPnL;
-                        prev_notionalAll += stg.prev_notionalVolume;
-                        pnl.notionalVolume = (double)(stg.notionalVolume - stg.prev_notionalVolume);
-                        stg.prev_notionalVolume = stg.notionalVolume;
-                        if(!ws_server.intradayPnLList.ContainsKey(((DateTime)intradayPnLTime,pnl.strategy_name)))
-                        {
-                            pnls.Add(pnl);
-                        }
-                    }
-                    
+
+                    pnl = new intradayPnL();
+                    pnl.strategy_name = stg.name;
+                    pnl.OADatetime = ((DateTime)intradayPnLTime).ToOADate();
+                    pnl.PnL = (double)stg.totalPnL;
+                    pnl.notionalVolume = (double)stg.notionalVolume;
+                    pnls.Add(pnl);
+                    //if (sendingNotional)
+                    //{
+                    //    intradayPnL pnl = new intradayPnL();
+                    //    pnl.strategy_name = stg.name;
+                    //    pnl.OADatetime = ((DateTime)intradayPnLTime).ToOADate();
+                    //    pnl.PnL = (double)stg.totalPnL;
+                    //    if(stg.prev_notionalVolume >= 0)
+                    //    {
+                    //        prev_notionalAll += stg.prev_notionalVolume;
+                    //        pnl.notionalVolume = (double)(stg.notionalVolume - stg.prev_notionalVolume);
+                    //        stg.prev_notionalVolume = stg.notionalVolume;
+                    //    }
+                    //    else
+                    //    {
+                    //        pnl.notionalVolume = 0;
+                    //        stg.prev_notionalVolume = stg.notionalVolume;
+                    //    }
+                    //    if (!ws_server.intradayPnLList.ContainsKey(((DateTime)intradayPnLTime, pnl.strategy_name)))
+                    //    {
+                    //        pnls.Add(pnl);
+                    //    }
+                    //}
+                    //else
+                    //{
+                    //    intradayPnL pnl = new intradayPnL();
+                    //    pnl.strategy_name = stg.name;
+                    //    pnl.OADatetime = current.ToOADate();
+                    //    pnl.PnL = (double)stg.totalPnL;
+                    //    pnl.notionalVolume = -1;
+                    //    if (!ws_server.intradayPnLList.ContainsKey((current, pnl.strategy_name)))
+                    //    {
+                    //        pnls.Add(pnl);
+                    //    }
+                    //}
+
                     volumeAll += stg.notionalVolume;
                     posPnLAll += stg.posPnL;
                     tradingPLAll += stg.tradingPnL;
@@ -450,22 +477,50 @@ namespace Crypto_Linux
 
                 }
             }
-            if(sendingPnL)
+
+            pnl = new intradayPnL();
+            pnl.strategy_name = "Total";
+            pnl.OADatetime = current.ToOADate();
+            pnl.PnL = (double)totalAll;
+            pnl.notionalVolume = (double)volumeAll;
+            pnls.Add(pnl);
+            if (pnls.Count > 0)
             {
-                intradayPnL pnl = new intradayPnL();
-                pnl.strategy_name = "Total";
-                pnl.OADatetime = ((DateTime)intradayPnLTime).ToOADate();
-                pnl.PnL = (double)totalAll;
-                pnl.notionalVolume = (double)(volumeAll - prev_notionalAll);
-                if (!ws_server.intradayPnLList.ContainsKey(((DateTime)intradayPnLTime, pnl.strategy_name)))
-                {
-                    pnls.Add(pnl);
-                }
-                if(pnls.Count > 0)
-                {
-                    ws_server.processIntradayPnL(pnls);
-                }
+                ws_server.processIntradayPnL(pnls);
             }
+
+            //if (sendingNotional)
+            //{
+            //    pnl = new intradayPnL();
+            //    pnl.strategy_name = "Total";
+            //    pnl.OADatetime = ((DateTime)intradayPnLTime).ToOADate();
+            //    pnl.PnL = (double)totalAll;
+            //    pnl.notionalVolume = (double)(volumeAll - prev_notionalAll);
+            //    if (!ws_server.intradayPnLList.ContainsKey(((DateTime)intradayPnLTime, pnl.strategy_name)))
+            //    {
+            //        pnls.Add(pnl);
+            //    }
+            //    if(pnls.Count > 0)
+            //    {
+            //        ws_server.processIntradayPnL(pnls);
+            //    }
+            //}
+            //else
+            //{
+            //    pnl = new intradayPnL();
+            //    pnl.strategy_name = "Total";
+            //    pnl.OADatetime = current.ToOADate();
+            //    pnl.PnL = (double)totalAll;
+            //    pnl.notionalVolume = -1;
+            //    if (!ws_server.intradayPnLList.ContainsKey((current, pnl.strategy_name)))
+            //    {
+            //        pnls.Add(pnl);
+            //    }
+            //    if (pnls.Count > 0)
+            //    {
+            //        ws_server.processIntradayPnL(pnls);
+            //    }
+            //}
             msg += DateTime.UtcNow.ToString() + " - All -    \nNotional Volume:" + volumeAll.ToString("N2") + "\nPosition PnL:" + posPnLAll.ToString("N2") + "\nTrading PnL:" + tradingPLAll.ToString("N2") + "\nFee:" + feeAll.ToString("N2") + "\nTotal:" + totalAll.ToString("N2") + "\n";
             return msg;
         }
@@ -1732,10 +1787,10 @@ namespace Crypto_Linux
                         }
                         if (oManager.getVirtualMode())
                         {
-                            if (!qManager.setVirtualBalance(virtualBalanceFile))
-                            {
+                            //if (!qManager.setVirtualBalance(virtualBalanceFile))
+                            //{
 
-                            }
+                            //}
                         }
                         else
                         {
@@ -1781,10 +1836,10 @@ namespace Crypto_Linux
                         }
                         if (oManager.getVirtualMode())
                         {
-                            if (!qManager.setVirtualBalance(virtualBalanceFile))
-                            {
+                            //if (!qManager.setVirtualBalance(virtualBalanceFile))
+                            //{
 
-                            }
+                            //}
                         }
                         else
                         {

@@ -84,7 +84,7 @@ namespace Crypto_Linux
 
         private async Task HandleClient(WebSocket socket, CancellationToken token)
         {
-            int PageSize = 10;
+            int PageSize = 100;
             int i = 0;
             string json = "";
 

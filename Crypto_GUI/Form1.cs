@@ -98,6 +98,8 @@ namespace Crypto_GUI
 
         private DateTime startOfDay;
         private List<intradayPnL> chartData = new List<intradayPnL>();
+        private double notionalBar_Period = 30;
+        private int chartData_lock = 0;
 
         public Form1()
         {
@@ -280,30 +282,75 @@ namespace Crypto_GUI
                 return;
             }
             string selectedStg = this.combo_pnlStrategy.SelectedItem.ToString();
-            List<double> xs = new List<double>();
+            List<double> pnl_xs = new List<double>();
+            List<double> notional_xs = new List<double>();
             List<double> pnl_ys = new List<double>();
             List<double> notional_ys = new List<double>();
+            SortedDictionary<DateTime, double> notional = new SortedDictionary<DateTime, double>();
+            while(Interlocked.CompareExchange(ref chartData_lock,1,0) != 0)
+            {
+
+            }
             foreach (var data in this.chartData)
             {
                 if (data.strategy_name == selectedStg)
                 {
-                    xs.Add(data.OADatetime);
+                    pnl_xs.Add(data.OADatetime);
                     pnl_ys.Add(data.PnL);
-                    notional_ys.Add(data.notionalVolume);
+                    if(data.notionalVolume >= 0)
+                    {
+                        DateTime temp_dt = DateTime.FromOADate(data.OADatetime);
+                        DateTime dt = new DateTime(temp_dt.Year,temp_dt.Month,temp_dt.Day,temp_dt.Hour,(int)(Math.Floor(temp_dt.Minute / notionalBar_Period) * notionalBar_Period),0);
+                        if(notional.ContainsKey(dt))
+                        {
+                            if(data.notionalVolume > notional[dt])
+                            {
+                                notional[dt] = data.notionalVolume;
+                            }
+                        }
+                        else
+                        {
+                            notional[dt] = data.notionalVolume;
+                        }
+                        //notional_xs.Add(data.OADatetime);
+                        //notional_ys.Add(data.notionalVolume);
+                    }
 
                 }
             }
+            KeyValuePair<DateTime, double>? prev = null;
+            foreach(var n in notional)
+            {
+                notional_xs.Add(n.Key.ToOADate());
+                if(prev == null)
+                {
+                    notional_ys.Add(n.Value);
+                }
+                else
+                {
+                    notional_ys.Add(n.Value - prev.Value.Value);
+                }
+                prev = n;
+            }
+            Volatile.Write(ref chartData_lock, 0);
             this.plot_pnl.Plot.Clear();
-            this.plot_pnl.Plot.Add.Scatter(xs.ToArray(), pnl_ys.ToArray());
+            var scatters = this.plot_pnl.Plot.Add.Scatter(pnl_xs.ToArray(), pnl_ys.ToArray());
             //this.plot_pnl.Plot.Axes.SetLimitsX(this.startOfDay.ToOADate(), this.startOfDay.AddDays(1).AddSeconds(-1).ToOADate());
             //this.plot_pnl.Plot.Axes.Left.Range.Reset();
+            scatters.LineColor = ScottPlot.Color.FromColor(System.Drawing.Color.Green);
+            scatters.LineWidth = 2;
+            scatters.MarkerColor = ScottPlot.Color.FromColor(System.Drawing.Color.Green);
+            scatters.MarkerFillColor = ScottPlot.Color.FromColor(System.Drawing.Color.Green);
+            scatters.MarkerSize = 1;
             this.plot_pnl.Plot.Axes.AutoScaleExpandY();
             this.plot_pnl.Refresh();
             this.plot_notional.Plot.Clear();
-            var barPlots = this.plot_notional.Plot.Add.Bars(xs.ToArray(), notional_ys.ToArray());
+            var barPlots = this.plot_notional.Plot.Add.Bars(notional_xs.ToArray(), notional_ys.ToArray());
             foreach (var bar in barPlots.Bars)
             {
-                bar.Size = 1/24;
+                bar.Size = 1.0 / 24.0 / (60.0 / notionalBar_Period) / 1.5;
+                bar.FillColor = ScottPlot.Color.FromColor(System.Drawing.Color.Lime);
+                bar.LineColor = ScottPlot.Color.FromColor(System.Drawing.Color.Green);
                 //bar.LineWidth = 1 / 48;
             }
             //this.plot_notional.Plot.Axes.SetLimitsX(this.startOfDay.ToOADate(), this.startOfDay.AddDays(1).AddSeconds(-1).ToOADate());
@@ -317,7 +364,12 @@ namespace Crypto_GUI
             {
                 this.chartData = new List<intradayPnL>();
             }
+            while (Interlocked.CompareExchange(ref chartData_lock, 1, 0) != 0)
+            {
+
+            }
             this.chartData.AddRange(data);
+            Volatile.Write(ref chartData_lock, 0);
             this.BeginInvoke(this.update_charts);
         }
         private bool readConfig()

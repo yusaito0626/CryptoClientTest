@@ -91,10 +91,9 @@ namespace Crypto_Trading
 
         public int latency = 0;
 
-        Stopwatch sw_updateOrders;
-        Stopwatch sw_updateFills;
-
         volatile int refreshing_httpClient = 0;
+
+        Stopwatch coincheck_sw;
 
         private OrderManager() 
         {
@@ -144,9 +143,8 @@ namespace Crypto_Trading
                 ++i;
             }
 
-            //this._addLog = Console.WriteLine;
-            this.sw_updateOrders = new Stopwatch();
-            this.sw_updateFills = new Stopwatch();
+
+            this.coincheck_sw = new Stopwatch();
 
             this.OrderProcessingStop = new CancellationTokenSource();
             //this.processingOrdTh = new Thread(()=>
@@ -255,6 +253,10 @@ namespace Crypto_Trading
 
         public async Task<string> placeNewSpotOrder(Instrument ins, orderSide side, orderType ordtype, decimal quantity, decimal price, timeInForce? timeinforce = null,bool sendNow = true,bool wait = true,string msg = "")
         {
+            if(ins.market == "coincheck")
+            {
+                this.coincheck_sw.Start();
+            }
             sendingOrder ord;
             string ordid;
             if(this.ready)
@@ -276,6 +278,12 @@ namespace Crypto_Trading
                 ord.msg = msg;
                 if (sendNow)
                 {
+                    if (ins.market == "coincheck")
+                    {
+                        this.coincheck_sw.Stop();
+                        addLog("[coincheck] Time before sending new order: " + this.coincheck_sw.Elapsed.TotalMicroseconds.ToString() + " us");
+                        this.coincheck_sw.Reset();
+                    }
                     if (wait)
                     {
                         await this.processNewOrder(ord);
@@ -423,129 +431,14 @@ namespace Crypto_Trading
             }
         }
 
-        async public Task<DataSpotOrderUpdate?> processNewOrder(sendingOrder sndOrd)
-        {
-            DataSpotOrderUpdate? output = null;
-            JsonDocument js;
-            decimal quantity;
-            if (this.virtualMode)
+            async public Task<DataSpotOrderUpdate?> processNewOrder(sendingOrder sndOrd)
             {
-                quantity = Math.Round(sndOrd.quantity / sndOrd.ins.quantity_unit) * sndOrd.ins.quantity_unit;
-                //while (!this.ord_client.ordUpdateStack.TryPop(out output))
-                //{
-
-                //}
-                output = this.ord_client.ordUpdateStack.pop();
-                if (output == null)
+                DataSpotOrderUpdate? output = null;
+                JsonDocument js;
+                decimal quantity;
+                if (this.virtualMode)
                 {
-                    output = new DataSpotOrderUpdate();
-                }
-                output.isVirtual = true;
-                output.order_id = this.getVirtualOrdId();
-                output.symbol = sndOrd.ins.symbol;
-                output.market = sndOrd.ins.market;
-                output.symbol_market = sndOrd.ins.symbol_market;
-                output.internal_order_id = sndOrd.internalOrdId;
-                output.side = sndOrd.side;
-                output.order_type = sndOrd.order_type;
-                output.order_quantity = quantity;
-                output.order_price = sndOrd.price;
-                output.create_time = DateTime.UtcNow;
-                output.is_trigger_order = true;
-                output.last_trade = "";
-                if (sndOrd.time_in_force == null)
-                {
-                    output.time_in_force = timeInForce.GoodTillCanceled;
-                }
-                else
-                {
-                    output.time_in_force = (timeInForce)sndOrd.time_in_force;
-                }
-                output.timestamp = DateTime.UtcNow;
-                output.trigger_price = 0;
-                output.update_time = DateTime.UtcNow;
-                output.msg = sndOrd.msg;
-                this.ordIdMapping[output.market + output.order_id] = sndOrd.internalOrdId;
-                Thread.Sleep(this.latency);
-                if (sndOrd.order_type == orderType.Market || (sndOrd.side == orderSide.Buy && sndOrd.price > sndOrd.ins.bestask.Item1) || (sndOrd.side == orderSide.Sell && sndOrd.price < sndOrd.ins.bestbid.Item1))
-                {
-                    DataFill fill;
-                    //while (!this.ord_client.fillStack.TryPop(out fill))
-                    //{
-
-                    //}
-                    fill = this.ord_client.fillStack.pop();
-                    if (fill == null)
-                    {
-                        fill = new DataFill();
-                    }
-                    output.timestamp = DateTime.UtcNow;
-                    output.update_time = DateTime.UtcNow;
-                    output.status = orderStatus.Filled;
-                    output.filled_quantity = quantity;
-                    if(sndOrd.order_type == orderType.Limit || sndOrd.order_type == orderType.LimitMaker)
-                    {
-                        switch (sndOrd.side)
-                        {
-                            case orderSide.Buy:
-                                sndOrd.ins.quoteBalance.AddBalance(0, output.order_price * output.order_quantity);
-                                break;
-                            case orderSide.Sell:
-                                sndOrd.ins.baseBalance.AddBalance(0, output.order_quantity);
-                                break;
-                        }
-                    }
-                    decimal feetype = 0;
-                    if (sndOrd.order_type == orderType.Market)
-                    {
-                        feetype = sndOrd.ins.taker_fee;
-                    }
-                    else
-                    {
-                        feetype = sndOrd.ins.maker_fee;
-                    }
-                    switch (sndOrd.side)
-                    {
-                        case orderSide.Buy:
-                            output.average_price = sndOrd.ins.adjusted_bestask.Item1;
-                            output.fee = feetype * output.filled_quantity * output.average_price;
-                            output.fee_asset = sndOrd.ins.quoteCcy;
-                            fill.fee_quote = output.fee;
-                            fill.fee_base = 0;
-                            fill.fee_unknown = 0;
-                            break;
-                        case orderSide.Sell:
-                            output.average_price = sndOrd.ins.adjusted_bestbid.Item1;
-                            output.fee = feetype * output.filled_quantity;
-                            output.fee_asset = sndOrd.ins.baseCcy;
-                            fill.fee_quote = 0;
-                            fill.fee_base = output.fee;
-                            fill.fee_unknown = 0;
-                            break;
-                    }
-                    fill.order_id = output.order_id;
-                    fill.internal_order_id = output.internal_order_id;
-                    fill.symbol = sndOrd.ins.symbol;
-                    fill.market = sndOrd.ins.market;
-                    fill.symbol_market = sndOrd.ins.symbol_market;
-                    fill.side = output.side;
-                    fill.quantity = output.filled_quantity;
-                    fill.price = output.average_price;
-                    fill.timestamp = output.timestamp;
-                    fill.filled_time = fill.timestamp;
-                    fill.order_type = output.order_type;
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
-                    this.ord_client.fillQueue.Enqueue(fill);
-                }
-                else
-                {
-                    output.status = orderStatus.WaitOpen;
-                    output.filled_quantity = 0;
-                    output.average_price = 0;
-                    output.fee = 0;
-                    output.fee_asset = "";
-                    this.orders[output.internal_order_id] = output;
-                    string ordId = output.order_id;
+                    quantity = Math.Round(sndOrd.quantity / sndOrd.ins.quantity_unit) * sndOrd.ins.quantity_unit;
                     //while (!this.ord_client.ordUpdateStack.TryPop(out output))
                     //{
 
@@ -556,11 +449,11 @@ namespace Crypto_Trading
                         output = new DataSpotOrderUpdate();
                     }
                     output.isVirtual = true;
-                    output.order_id = ordId;
+                    output.order_id = this.getVirtualOrdId();
                     output.symbol = sndOrd.ins.symbol;
                     output.market = sndOrd.ins.market;
-                    output.internal_order_id = sndOrd.internalOrdId;
                     output.symbol_market = sndOrd.ins.symbol_market;
+                    output.internal_order_id = sndOrd.internalOrdId;
                     output.side = sndOrd.side;
                     output.order_type = sndOrd.order_type;
                     output.order_quantity = quantity;
@@ -579,556 +472,693 @@ namespace Crypto_Trading
                     output.timestamp = DateTime.UtcNow;
                     output.trigger_price = 0;
                     output.update_time = DateTime.UtcNow;
-                    output.status = orderStatus.Open;
-                    output.filled_quantity = 0;
-                    output.average_price = 0;
-                    output.fee = 0;
-                    output.fee_asset = "";
-                    switch (sndOrd.side)
+                    output.msg = sndOrd.msg;
+                    this.ordIdMapping[output.market + output.order_id] = sndOrd.internalOrdId;
+                    Thread.Sleep(this.latency);
+                    if (sndOrd.order_type == orderType.Market || (sndOrd.side == orderSide.Buy && sndOrd.price > sndOrd.ins.bestask.Item1) || (sndOrd.side == orderSide.Sell && sndOrd.price < sndOrd.ins.bestbid.Item1))
                     {
-                        case orderSide.Buy:
-                            sndOrd.ins.quoteBalance.AddBalance(0, output.order_price * output.order_quantity);
-                            break;
-                        case orderSide.Sell:
-                            sndOrd.ins.baseBalance.AddBalance(0, output.order_quantity);
-                            break;
-                    }
-                    if (this.virtual_liveorders.ContainsKey(output.internal_order_id))
-                    {
-                        this.virtual_liveorders[output.internal_order_id] = output;
+                        DataFill fill;
+                        //while (!this.ord_client.fillStack.TryPop(out fill))
+                        //{
+
+                        //}
+                        fill = this.ord_client.fillStack.pop();
+                        if (fill == null)
+                        {
+                            fill = new DataFill();
+                        }
+                        output.timestamp = DateTime.UtcNow;
+                        output.update_time = DateTime.UtcNow;
+                        output.status = orderStatus.Filled;
+                        output.filled_quantity = quantity;
+                        if(sndOrd.order_type == orderType.Limit || sndOrd.order_type == orderType.LimitMaker)
+                        {
+                            switch (sndOrd.side)
+                            {
+                                case orderSide.Buy:
+                                    sndOrd.ins.quoteBalance.AddBalance(0, output.order_price * output.order_quantity);
+                                    break;
+                                case orderSide.Sell:
+                                    sndOrd.ins.baseBalance.AddBalance(0, output.order_quantity);
+                                    break;
+                            }
+                        }
+                        decimal feetype = 0;
+                        if (sndOrd.order_type == orderType.Market)
+                        {
+                            feetype = sndOrd.ins.taker_fee;
+                        }
+                        else
+                        {
+                            feetype = sndOrd.ins.maker_fee;
+                        }
+                        switch (sndOrd.side)
+                        {
+                            case orderSide.Buy:
+                                output.average_price = sndOrd.ins.adjusted_bestask.Item1;
+                                output.fee = feetype * output.filled_quantity * output.average_price;
+                                output.fee_asset = sndOrd.ins.quoteCcy;
+                                fill.fee_quote = output.fee;
+                                fill.fee_base = 0;
+                                fill.fee_unknown = 0;
+                                break;
+                            case orderSide.Sell:
+                                output.average_price = sndOrd.ins.adjusted_bestbid.Item1;
+                                output.fee = feetype * output.filled_quantity;
+                                output.fee_asset = sndOrd.ins.baseCcy;
+                                fill.fee_quote = 0;
+                                fill.fee_base = output.fee;
+                                fill.fee_unknown = 0;
+                                break;
+                        }
+                        fill.order_id = output.order_id;
+                        fill.internal_order_id = output.internal_order_id;
+                        fill.symbol = sndOrd.ins.symbol;
+                        fill.market = sndOrd.ins.market;
+                        fill.symbol_market = sndOrd.ins.symbol_market;
+                        fill.side = output.side;
+                        fill.quantity = output.filled_quantity;
+                        fill.price = output.average_price;
+                        fill.timestamp = output.timestamp;
+                        fill.filled_time = fill.timestamp;
+                        fill.order_type = output.order_type;
+                        this.ord_client.ordUpdateQueue.Enqueue(output);
+                        this.ord_client.fillQueue.Enqueue(fill);
                     }
                     else
                     {
-                        while (Interlocked.CompareExchange(ref this.virtual_order_lock, 1, 0) != 0)
+                        output.status = orderStatus.WaitOpen;
+                        output.filled_quantity = 0;
+                        output.average_price = 0;
+                        output.fee = 0;
+                        output.fee_asset = "";
+                        this.orders[output.internal_order_id] = output;
+                        string ordId = output.order_id;
+                        //while (!this.ord_client.ordUpdateStack.TryPop(out output))
+                        //{
+
+                        //}
+                        output = this.ord_client.ordUpdateStack.pop();
+                        if (output == null)
                         {
+                            output = new DataSpotOrderUpdate();
                         }
-                        this.virtual_liveorders[output.internal_order_id] = output;
-                        Volatile.Write(ref this.virtual_order_lock, 0);
+                        output.isVirtual = true;
+                        output.order_id = ordId;
+                        output.symbol = sndOrd.ins.symbol;
+                        output.market = sndOrd.ins.market;
+                        output.internal_order_id = sndOrd.internalOrdId;
+                        output.symbol_market = sndOrd.ins.symbol_market;
+                        output.side = sndOrd.side;
+                        output.order_type = sndOrd.order_type;
+                        output.order_quantity = quantity;
+                        output.order_price = sndOrd.price;
+                        output.create_time = DateTime.UtcNow;
+                        output.is_trigger_order = true;
+                        output.last_trade = "";
+                        if (sndOrd.time_in_force == null)
+                        {
+                            output.time_in_force = timeInForce.GoodTillCanceled;
+                        }
+                        else
+                        {
+                            output.time_in_force = (timeInForce)sndOrd.time_in_force;
+                        }
+                        output.timestamp = DateTime.UtcNow;
+                        output.trigger_price = 0;
+                        output.update_time = DateTime.UtcNow;
+                        output.status = orderStatus.Open;
+                        output.filled_quantity = 0;
+                        output.average_price = 0;
+                        output.fee = 0;
+                        output.fee_asset = "";
+                        switch (sndOrd.side)
+                        {
+                            case orderSide.Buy:
+                                sndOrd.ins.quoteBalance.AddBalance(0, output.order_price * output.order_quantity);
+                                break;
+                            case orderSide.Sell:
+                                sndOrd.ins.baseBalance.AddBalance(0, output.order_quantity);
+                                break;
+                        }
+                        if (this.virtual_liveorders.ContainsKey(output.internal_order_id))
+                        {
+                            this.virtual_liveorders[output.internal_order_id] = output;
+                        }
+                        else
+                        {
+                            while (Interlocked.CompareExchange(ref this.virtual_order_lock, 1, 0) != 0)
+                            {
+                            }
+                            this.virtual_liveorders[output.internal_order_id] = output;
+                            Volatile.Write(ref this.virtual_order_lock, 0);
+                        }
+                        this.ord_client.ordUpdateQueue.Enqueue(output);
                     }
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
                 }
-            }
-            else if (sndOrd.ins.market == "bitbank")
-            {
-                quantity = Math.Round(sndOrd.quantity / sndOrd.ins.quantity_unit) * sndOrd.ins.quantity_unit;
-                DateTime sendTime = DateTime.UtcNow;
-                if (sndOrd.order_type == orderType.Limit)
-                {
-                    js = await this.ord_client.bitbank_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.order_type.ToString().ToLower(), sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, true);
-                }
-                else
-                {
-                    js = await this.ord_client.bitbank_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.order_type.ToString().ToLower(), sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, false);
-                }
-
-                if (js.RootElement.GetProperty("success").GetUInt16() == 1)
-                {
-                    var ord_obj = js.RootElement.GetProperty("data");
-                    //while (!this.ord_client.ordUpdateStack.TryPop(out output))
-                    //{
-
-                    //}
-                    output = this.ord_client.ordUpdateStack.pop();
-                    if (output == null)
-                    {
-                        output = new DataSpotOrderUpdate();
-                    }
-                    output.order_id = ord_obj.GetProperty("order_id").GetInt64().ToString();
-                    this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
-                    output.timestamp = sendTime;
-                    output.symbol = ord_obj.GetProperty("pair").GetString();
-                    output.market = sndOrd.ins.market;
-                    output.internal_order_id = sndOrd.internalOrdId;
-                    output.symbol_market = sndOrd.ins.symbol_market;
-                    string str_side = ord_obj.GetProperty("side").GetString();
-                    if (str_side == "buy")
-                    {
-                        output.side = orderSide.Buy;
-                    }
-                    else if (str_side == "sell")
-                    {
-                        output.side = orderSide.Sell;
-                    }
-                    string str_type = ord_obj.GetProperty("type").GetString();
-                    switch (str_type)
-                    {
-                        case "limit":
-                            output.order_type = orderType.Limit;
-                            output.order_price = decimal.Parse(ord_obj.GetProperty("price").GetString());
-                            break;
-                        case "market":
-                            output.order_type = orderType.Market;
-                            output.order_price = 0;
-                            break;
-                        default:
-                            output.order_type = orderType.Other;
-                            break;
-                    }
-                    output.order_quantity = decimal.Parse(ord_obj.GetProperty("start_amount").GetString());
-                    output.filled_quantity = 0;//Even if an executed order is passed, output 0 executed quantity as the execution will be streamed anyway.
-                    output.average_price = 0;
-                    output.create_time = DateTimeOffset.FromUnixTimeMilliseconds(ord_obj.GetProperty("ordered_at").GetInt64()).UtcDateTime;
-                    output.update_time = output.create_time;
-                    output.status = orderStatus.WaitOpen;
-                    output.fee = 0;
-                    output.fee_asset = "";
-                    output.is_trigger_order = true;
-                    output.last_trade = "";
-                    output.msg = sndOrd.msg;
-                    switch (sndOrd.side)
-                    {
-                        case orderSide.Buy:
-                            sndOrd.ins.quoteBalance.AddBalance(0, output.order_price * output.order_quantity);
-                            break;
-                        case orderSide.Sell:
-                            sndOrd.ins.baseBalance.AddBalance(0, output.order_quantity);
-                            break;
-                    }
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
-                }
-                else
-                {
-                    int code = js.RootElement.GetProperty("data").GetProperty("code").GetInt32();
-
-                    //while (!this.ord_client.ordUpdateStack.TryPop(out output))
-                    //{
-
-                    //}
-                    output = this.ord_client.ordUpdateStack.pop();
-                    if (output == null)
-                    {
-                        output = new DataSpotOrderUpdate();
-                    }
-                    output.status = orderStatus.INVALID;
-                    output.timestamp = sendTime;
-                    output.internal_order_id = sndOrd.internalOrdId;
-                    output.side = sndOrd.side;
-                    output.symbol = sndOrd.ins.symbol;
-                    output.market = sndOrd.ins.market;
-                    output.symbol_market = sndOrd.ins.symbol_market;
-                    output.order_quantity = sndOrd.quantity;
-                    output.order_price = sndOrd.price;
-                    output.filled_quantity = 0;
-                    output.average_price = 0;
-                    output.fee = 0;
-                    output.fee_asset = "";
-                    output.is_trigger_order = true;
-                    output.last_trade = "";
-                    output.msg = sndOrd.msg;
-                    output.err_code = code;
-                    switch (code)
-                    {
-                        case 10000:
-                            this.addLog("[bitbank]New order failed. The URL doesn't exist. Error code: 10000   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
-                            break;
-                        case 10001:
-                            this.addLog("[bitbank]New order failed. System error, Contact support Error code:10001   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
-                            break;
-                        case 10002:
-                            this.addLog("[bitbank]New order failed. Improper Json format. Error code:10002   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
-                            break;
-                        case 10003:
-                            this.addLog("[bitbank]New order failed.  System error, Contact support Error code:10003   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
-                            break;
-                        case 10005:
-                            this.addLog("[bitbank]New order failed.  Timeout error. Error code:10005   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
-                            break;
-                        case 10007:
-                            this.addLog("[bitbank]New order failed.  Under maintenance. Error code:10007   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
-                            break;
-                        case 10008:
-                            this.addLog("[bitbank]New order failed. The system is busy. Error code:10008   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
-                            break;
-                        case 10009:
-                            this.addLog("[bitbank]New order failed. Too many request. Error code:10009   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
-                            break;
-                        case 70010:
-                        case 70011:
-                        case 70012:
-                        case 70013:
-                        case 70014:
-                        case 70015:
-                            this.addLog("[bitbank]New order failed. The system is busy Error code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId , Enums.logType.WARNING);
-                            break;
-                        case 80001:
-                            this.addLog("[bitbank]New order failed. Operation timed out. code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
-                            output.err_code = code;
-                            this.refreshHttpClient("bitbank");
-                            break;
-                        case 80002:
-                            this.addLog("[bitbank]New order failed. The http client is not ready. code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
-                            output.err_code = code;
-                            break;
-                        default:
-                            this.addLog("[bitbank]New Order Failed   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
-                            this.addLog(js.RootElement.GetRawText(), Enums.logType.ERROR);
-                            break;
-                    }
-                    
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
-                }
-            }
-            else if (sndOrd.ins.market == "coincheck")
-            {
-                DateTime sendTime = DateTime.UtcNow;
-                if (sndOrd.order_type == orderType.Limit)
+                else if (sndOrd.ins.market == "bitbank")
                 {
                     quantity = Math.Round(sndOrd.quantity / sndOrd.ins.quantity_unit) * sndOrd.ins.quantity_unit;
-                    js = await this.ord_client.coincheck_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, "post_only");
-                }
-                else
-                {
-                    //decimal order_price;
-                    if (sndOrd.side == orderSide.Buy)
+                    DateTime sendTime = DateTime.UtcNow;
+                    if (sndOrd.order_type == orderType.Limit)
                     {
-                        if (sndOrd.quantity < sndOrd.ins.quantity_unit * (decimal)1.1)
-                        {
-                            quantity = sndOrd.ins.quantity_unit * (decimal)1.1;
-                        }
-                        else
-                        {
-                            quantity = sndOrd.quantity;
-                        }
-                        quantity = quantity * sndOrd.ins.adjusted_bestask.Item1;
-                        js = await this.ord_client.coincheck_client.placeMarketNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), 0, quantity);
+                        js = await this.ord_client.bitbank_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.order_type.ToString().ToLower(), sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, true);
                     }
                     else
+                    {
+                        js = await this.ord_client.bitbank_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.order_type.ToString().ToLower(), sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, false);
+                    }
+
+                    if (js.RootElement.GetProperty("success").GetUInt16() == 1)
+                    {
+                        var ord_obj = js.RootElement.GetProperty("data");
+                        //while (!this.ord_client.ordUpdateStack.TryPop(out output))
+                        //{
+
+                        //}
+                        output = this.ord_client.ordUpdateStack.pop();
+                        if (output == null)
+                        {
+                            output = new DataSpotOrderUpdate();
+                        }
+                        output.order_id = ord_obj.GetProperty("order_id").GetInt64().ToString();
+                        this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
+                        output.timestamp = sendTime;
+                        output.symbol = ord_obj.GetProperty("pair").GetString();
+                        output.market = sndOrd.ins.market;
+                        output.internal_order_id = sndOrd.internalOrdId;
+                        output.symbol_market = sndOrd.ins.symbol_market;
+                        string str_side = ord_obj.GetProperty("side").GetString();
+                        if (str_side == "buy")
+                        {
+                            output.side = orderSide.Buy;
+                        }
+                        else if (str_side == "sell")
+                        {
+                            output.side = orderSide.Sell;
+                        }
+                        string str_type = ord_obj.GetProperty("type").GetString();
+                        switch (str_type)
+                        {
+                            case "limit":
+                                output.order_type = orderType.Limit;
+                                output.order_price = decimal.Parse(ord_obj.GetProperty("price").GetString());
+                                break;
+                            case "market":
+                                output.order_type = orderType.Market;
+                                output.order_price = 0;
+                                break;
+                            default:
+                                output.order_type = orderType.Other;
+                                break;
+                        }
+                        output.order_quantity = decimal.Parse(ord_obj.GetProperty("start_amount").GetString());
+                        output.filled_quantity = 0;//Even if an executed order is passed, output 0 executed quantity as the execution will be streamed anyway.
+                        output.average_price = 0;
+                        output.create_time = DateTimeOffset.FromUnixTimeMilliseconds(ord_obj.GetProperty("ordered_at").GetInt64()).UtcDateTime;
+                        output.update_time = output.create_time;
+                        output.status = orderStatus.WaitOpen;
+                        output.fee = 0;
+                        output.fee_asset = "";
+                        output.is_trigger_order = true;
+                        output.last_trade = "";
+                        output.msg = sndOrd.msg;
+                        switch (sndOrd.side)
+                        {
+                            case orderSide.Buy:
+                                sndOrd.ins.quoteBalance.AddBalance(0, output.order_price * output.order_quantity);
+                                break;
+                            case orderSide.Sell:
+                                sndOrd.ins.baseBalance.AddBalance(0, output.order_quantity);
+                                break;
+                        }
+                        this.ord_client.ordUpdateQueue.Enqueue(output);
+                    }
+                    else
+                    {
+                        int code = js.RootElement.GetProperty("data").GetProperty("code").GetInt32();
+
+                        //while (!this.ord_client.ordUpdateStack.TryPop(out output))
+                        //{
+
+                        //}
+                        output = this.ord_client.ordUpdateStack.pop();
+                        if (output == null)
+                        {
+                            output = new DataSpotOrderUpdate();
+                        }
+                        output.status = orderStatus.INVALID;
+                        output.timestamp = sendTime;
+                        output.internal_order_id = sndOrd.internalOrdId;
+                        output.side = sndOrd.side;
+                        output.symbol = sndOrd.ins.symbol;
+                        output.market = sndOrd.ins.market;
+                        output.symbol_market = sndOrd.ins.symbol_market;
+                        output.order_quantity = sndOrd.quantity;
+                        output.order_price = sndOrd.price;
+                        output.filled_quantity = 0;
+                        output.average_price = 0;
+                        output.fee = 0;
+                        output.fee_asset = "";
+                        output.is_trigger_order = true;
+                        output.last_trade = "";
+                        output.msg = sndOrd.msg;
+                        output.err_code = code;
+                        switch (code)
+                        {
+                            case 10000:
+                                this.addLog("[bitbank]New order failed. The URL doesn't exist. Error code: 10000   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
+                                break;
+                            case 10001:
+                                this.addLog("[bitbank]New order failed. System error, Contact support Error code:10001   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                                break;
+                            case 10002:
+                                this.addLog("[bitbank]New order failed. Improper Json format. Error code:10002   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
+                                break;
+                            case 10003:
+                                this.addLog("[bitbank]New order failed.  System error, Contact support Error code:10003   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                                break;
+                            case 10005:
+                                this.addLog("[bitbank]New order failed.  Timeout error. Error code:10005   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                                break;
+                            case 10007:
+                                this.addLog("[bitbank]New order failed.  Under maintenance. Error code:10007   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
+                                break;
+                            case 10008:
+                                this.addLog("[bitbank]New order failed. The system is busy. Error code:10008   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                                break;
+                            case 10009:
+                                this.addLog("[bitbank]New order failed. Too many request. Error code:10009   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                                break;
+                            case 70010:
+                            case 70011:
+                            case 70012:
+                            case 70013:
+                            case 70014:
+                            case 70015:
+                                this.addLog("[bitbank]New order failed. The system is busy Error code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId , Enums.logType.WARNING);
+                                break;
+                            case 80001:
+                                this.addLog("[bitbank]New order failed. Operation timed out. code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                                output.err_code = code;
+                                this.refreshHttpClient("bitbank");
+                                break;
+                            case 80002:
+                                this.addLog("[bitbank]New order failed. The http client is not ready. code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                                output.err_code = code;
+                                break;
+                            default:
+                                this.addLog("[bitbank]New Order Failed   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
+                                this.addLog(js.RootElement.GetRawText(), Enums.logType.ERROR);
+                                break;
+                        }
+                    
+                        this.ord_client.ordUpdateQueue.Enqueue(output);
+                    }
+                }
+                else if (sndOrd.ins.market == "coincheck")
+                {
+                    this.coincheck_sw.Start();
+                    DateTime sendTime = DateTime.UtcNow;
+                    if (sndOrd.order_type == orderType.Limit)
                     {
                         quantity = Math.Round(sndOrd.quantity / sndOrd.ins.quantity_unit) * sndOrd.ins.quantity_unit;
-                        js = await this.ord_client.coincheck_client.placeMarketNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), 0, quantity);
+                        js = await this.ord_client.coincheck_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, "post_only");
                     }
-                    //Market Order
-                }
-                if (js.RootElement.GetProperty("success").GetBoolean())
-                {
-                    JsonElement ord_obj = js.RootElement;
-                    string line = JsonSerializer.Serialize(ord_obj);
-                    //while (!this.ord_client.ordUpdateStack.TryPop(out output))
-                    //{
-
-                    //}
-                    output = this.ord_client.ordUpdateStack.pop();
-                    if (output == null)
+                    else
                     {
-                        output = new DataSpotOrderUpdate();
-                    }
-                    output.order_id = ord_obj.GetProperty("id").GetInt64().ToString();
-                    this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
-                    output.timestamp = sendTime;
-                    output.symbol = ord_obj.GetProperty("pair").GetString();
-                    output.market = sndOrd.ins.market;
-                    output.symbol_market = sndOrd.ins.symbol_market;
-                    output.internal_order_id = sndOrd.internalOrdId;
-                    string str_side = ord_obj.GetProperty("order_type").GetString();
-                    if (str_side == "buy" || str_side == "market_buy")
-                    {
-                        output.side = orderSide.Buy;
-                    }
-                    else if (str_side == "sell" || str_side == "market_sell")
-                    {
-                        output.side = orderSide.Sell;
-                    }
-                    if (str_side.StartsWith("market_"))//market order
-                    {
-                        output.order_type = orderType.Market;
-                        if (str_side == "market_buy")
+                        //decimal order_price;
+                        this.coincheck_sw.Stop();
+                        addLog("[coincheck:Buy] Time before side check: " + this.coincheck_sw.Elapsed.TotalMicroseconds.ToString() + " ms");
+                        this.coincheck_sw.Restart();
+                        if (sndOrd.side == orderSide.Buy)
                         {
-                            output.order_price = 0;
-                            output.order_quantity = 0;
+                            if (sndOrd.quantity < sndOrd.ins.quantity_unit * (decimal)1.1)
+                            {
+                                quantity = sndOrd.ins.quantity_unit * (decimal)1.1;
+                            }
+                            else
+                            {
+                                quantity = sndOrd.quantity;
+                            }
+
+                            this.coincheck_sw.Stop();
+                            addLog("[coincheck:Buy] Time after quantity adjsutment: " + this.coincheck_sw.Elapsed.TotalMicroseconds.ToString() + " us");
+                            this.coincheck_sw.Restart();
+                            if (sndOrd.price > 0)
+                            {
+                                quantity = quantity * sndOrd.price;
+                            }
+                            else
+                            {
+                                quantity = quantity * sndOrd.ins.bestask.Item1;
+                            }
+
+                            this.coincheck_sw.Stop();
+                            addLog("[coincheck:Buy] Time after price adjsutment: " + this.coincheck_sw.Elapsed.TotalMicroseconds.ToString() + " us");
+                            this.coincheck_sw.Reset();
+                            js = await this.ord_client.coincheck_client.placeMarketNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), 0, quantity);
                         }
                         else
                         {
-                            output.order_price = 0;
+                            quantity = Math.Round(sndOrd.quantity / sndOrd.ins.quantity_unit) * sndOrd.ins.quantity_unit;
+                            this.coincheck_sw.Stop();
+                            addLog("[coincheck:Sell] Time after quantity adjsutment: " + this.coincheck_sw.Elapsed.TotalMicroseconds.ToString() + " us");
+                            this.coincheck_sw.Reset();
+                            js = await this.ord_client.coincheck_client.placeMarketNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), 0, quantity);
+                        }
+                        //Market Order
+                    }
+                    if (js.RootElement.GetProperty("success").GetBoolean())
+                    {
+                        JsonElement ord_obj = js.RootElement;
+                        string line = JsonSerializer.Serialize(ord_obj);
+                        //while (!this.ord_client.ordUpdateStack.TryPop(out output))
+                        //{
+
+                        //}
+                        output = this.ord_client.ordUpdateStack.pop();
+                        if (output == null)
+                        {
+                            output = new DataSpotOrderUpdate();
+                        }
+                        output.order_id = ord_obj.GetProperty("id").GetInt64().ToString();
+                        this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
+                        output.timestamp = sendTime;
+                        output.symbol = ord_obj.GetProperty("pair").GetString();
+                        output.market = sndOrd.ins.market;
+                        output.symbol_market = sndOrd.ins.symbol_market;
+                        output.internal_order_id = sndOrd.internalOrdId;
+                        string str_side = ord_obj.GetProperty("order_type").GetString();
+                        if (str_side == "buy" || str_side == "market_buy")
+                        {
+                            output.side = orderSide.Buy;
+                        }
+                        else if (str_side == "sell" || str_side == "market_sell")
+                        {
+                            output.side = orderSide.Sell;
+                        }
+                        if (str_side.StartsWith("market_"))//market order
+                        {
+                            output.order_type = orderType.Market;
+                            if (str_side == "market_buy")
+                            {
+                                output.order_price = 0;
+                                output.order_quantity = 0;
+                            }
+                            else
+                            {
+                                output.order_price = 0;
+                                output.order_quantity = decimal.Parse(ord_obj.GetProperty("amount").GetString());
+                            }
+                        }
+                        else
+                        {
+                            output.order_type = orderType.Limit;
+                            output.order_price = decimal.Parse(ord_obj.GetProperty("rate").GetString());
                             output.order_quantity = decimal.Parse(ord_obj.GetProperty("amount").GetString());
                         }
-                    }
-                    else
-                    {
-                        output.order_type = orderType.Limit;
-                        output.order_price = decimal.Parse(ord_obj.GetProperty("rate").GetString());
-                        output.order_quantity = decimal.Parse(ord_obj.GetProperty("amount").GetString());
-                    }
 
-                    output.filled_quantity = 0;//Even if an executed order is passed, output 0 executed quantity as the execution will be streamed anyway.
-                    output.average_price = 0;
-                    output.create_time = DateTime.Parse(ord_obj.GetProperty("created_at").GetString(), null, System.Globalization.DateTimeStyles.RoundtripKind);
-                    output.update_time = output.create_time;
+                        output.filled_quantity = 0;//Even if an executed order is passed, output 0 executed quantity as the execution will be streamed anyway.
+                        output.average_price = 0;
+                        output.create_time = DateTime.Parse(ord_obj.GetProperty("created_at").GetString(), null, System.Globalization.DateTimeStyles.RoundtripKind);
+                        output.update_time = output.create_time;
 
-                    output.status = orderStatus.WaitOpen;
-                    output.fee = 0;
-                    output.fee_asset = "";
-                    output.is_trigger_order = true;
-                    output.last_trade = "";
-                    output.msg = sndOrd.msg;
-                    //this.orders.TryAdd(output.order_id, output);
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
-                    //while (!this.ord_client.ordUpdateStack.TryPop(out output))
-                    //{
+                        output.status = orderStatus.WaitOpen;
+                        output.fee = 0;
+                        output.fee_asset = "";
+                        output.is_trigger_order = true;
+                        output.last_trade = "";
+                        output.msg = sndOrd.msg;
+                        //this.orders.TryAdd(output.order_id, output);
+                        this.ord_client.ordUpdateQueue.Enqueue(output);
+                        //while (!this.ord_client.ordUpdateStack.TryPop(out output))
+                        //{
 
-                    //}
-                    output = this.ord_client.ordUpdateStack.pop();
-                    if (output == null)
-                    {
-                        output = new DataSpotOrderUpdate();
-                    }
-                    output.timestamp = DateTime.UtcNow;
-                    output.order_id = ord_obj.GetProperty("id").GetInt64().ToString();
-                    output.symbol = ord_obj.GetProperty("pair").GetString();
-                    output.market = sndOrd.ins.market;
-                    output.symbol_market = sndOrd.ins.symbol_market;
-                    output.internal_order_id = sndOrd.internalOrdId;
-                    str_side = ord_obj.GetProperty("order_type").GetString();
-                    if (str_side == "buy" || str_side == "market_buy")
-                    {
-                        output.side = orderSide.Buy;
-                    }
-                    else if (str_side == "sell" || str_side == "market_sell")
-                    {
-                        output.side = orderSide.Sell;
-                    }
-                    if (str_side.StartsWith("market_"))//market order
-                    {
-                        output.order_type = orderType.Market;
-                        if (str_side == "market_buy")
+                        //}
+                        output = this.ord_client.ordUpdateStack.pop();
+                        if (output == null)
                         {
-                            output.order_price = 0;
-                            output.order_quantity = 0;
+                            output = new DataSpotOrderUpdate();
                         }
+                        output.timestamp = DateTime.UtcNow;
+                        output.order_id = ord_obj.GetProperty("id").GetInt64().ToString();
+                        output.symbol = ord_obj.GetProperty("pair").GetString();
+                        output.market = sndOrd.ins.market;
+                        output.symbol_market = sndOrd.ins.symbol_market;
+                        output.internal_order_id = sndOrd.internalOrdId;
+                        str_side = ord_obj.GetProperty("order_type").GetString();
+                        if (str_side == "buy" || str_side == "market_buy")
+                        {
+                            output.side = orderSide.Buy;
+                        }
+                        else if (str_side == "sell" || str_side == "market_sell")
+                        {
+                            output.side = orderSide.Sell;
+                        }
+                        if (str_side.StartsWith("market_"))//market order
+                        {
+                            output.order_type = orderType.Market;
+                            if (str_side == "market_buy")
+                            {
+                                output.order_price = 0;
+                                output.order_quantity = 0;
+                            }
+                        }
+                        else
+                        {
+                            output.order_type = orderType.Limit;
+                            output.order_price = decimal.Parse(ord_obj.GetProperty("rate").GetString());
+                            output.order_quantity = decimal.Parse(ord_obj.GetProperty("amount").GetString());
+                        }
+                        output.filled_quantity = 0;//Even if an executed order is passed, output 0 executed quantity as the execution will be streamed anyway.
+                        output.average_price = 0;
+                        output.create_time = DateTime.Parse(ord_obj.GetProperty("created_at").GetString(), null, System.Globalization.DateTimeStyles.RoundtripKind);
+                        output.update_time = output.create_time;
+
+                        output.status = orderStatus.Open;
+                        output.fee = 0;
+                        output.fee_asset = "";
+                        output.is_trigger_order = true;
+                        output.last_trade = "";
+                        switch (sndOrd.side)
+                        {
+                            case orderSide.Buy:
+                                sndOrd.ins.quoteBalance.AddBalance(0, output.order_price * output.order_quantity);
+                                break;
+                            case orderSide.Sell:
+                                sndOrd.ins.baseBalance.AddBalance(0, output.order_quantity);
+                                break;
+                        }
+                        output.msg = sndOrd.msg;
+
+                        this.ord_client.ordUpdateQueue.Enqueue(output);
                     }
                     else
                     {
-                        output.order_type = orderType.Limit;
-                        output.order_price = decimal.Parse(ord_obj.GetProperty("rate").GetString());
-                        output.order_quantity = decimal.Parse(ord_obj.GetProperty("amount").GetString());
-                    }
-                    output.filled_quantity = 0;//Even if an executed order is passed, output 0 executed quantity as the execution will be streamed anyway.
-                    output.average_price = 0;
-                    output.create_time = DateTime.Parse(ord_obj.GetProperty("created_at").GetString(), null, System.Globalization.DateTimeStyles.RoundtripKind);
-                    output.update_time = output.create_time;
+                        //while (!this.ord_client.ordUpdateStack.TryPop(out output))
+                        //{
 
-                    output.status = orderStatus.Open;
-                    output.fee = 0;
-                    output.fee_asset = "";
-                    output.is_trigger_order = true;
-                    output.last_trade = "";
-                    switch (sndOrd.side)
-                    {
-                        case orderSide.Buy:
-                            sndOrd.ins.quoteBalance.AddBalance(0, output.order_price * output.order_quantity);
-                            break;
-                        case orderSide.Sell:
-                            sndOrd.ins.baseBalance.AddBalance(0, output.order_quantity);
-                            break;
-                    }
-                    output.msg = sndOrd.msg;
+                        //}
+                        output = this.ord_client.ordUpdateStack.pop();
+                        if (output == null)
+                        {
+                            output = new DataSpotOrderUpdate();
+                        }
+                        output.status = orderStatus.INVALID;
+                        output.timestamp = sendTime;
+                        output.internal_order_id = sndOrd.internalOrdId;
+                        output.side = sndOrd.side;
+                        output.symbol = sndOrd.ins.symbol;
+                        output.market = sndOrd.ins.market;
+                        output.symbol_market = sndOrd.ins.symbol_market;
+                        output.order_quantity = sndOrd.quantity;
+                        output.order_price = sndOrd.price;
+                        output.filled_quantity = 0;
+                        output.average_price = 0;
+                        output.fee = 0;
+                        output.fee_asset = "";
+                        output.is_trigger_order = true;
+                        output.last_trade = "";
+                        output.msg = sndOrd.msg;
 
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
+                        string err = js.RootElement.GetProperty("error").GetString();
+                        if (err.StartsWith("Amount"))
+                        {
+                            this.addLog("[coincheck] New order failed. " + err, Enums.logType.WARNING);
+                        }
+                        else if(err.StartsWith("Nonce"))//Nonce must be incremented
+                        {
+                            output.err_code = (int)Enums.ordError.NONCE_ERROR;
+                            this.addLog("[coincheck] New order failed. " + err, Enums.logType.WARNING);
+                        }
+                        else if(err.StartsWith("Rate limit"))
+                        {
+                            output.err_code = (int)Enums.ordError.RATE_LIMIT_EXCEEDED;
+                            this.addLog("[coincheck] New order failed. " + err, Enums.logType.WARNING);
+                        }
+                        else if(err.StartsWith("The httpclient"))
+                        {
+                            output.err_code = (int)Enums.ordError.HTTP_NOT_READY;
+                            this.addLog("[coincheck] New order failed. " + err, Enums.logType.WARNING);
+                        }
+                        else
+                        {
+                            string msg = JsonSerializer.Serialize(js);
+                            this.addLog("[coincheck] New order failed. " + msg, Enums.logType.ERROR);
+                        }
+                    
+                        this.ord_client.ordUpdateQueue.Enqueue(output);
+                    }
                 }
-                else
+                else if (sndOrd.ins.market == "bittrade")
                 {
-                    //while (!this.ord_client.ordUpdateStack.TryPop(out output))
-                    //{
+                    quantity = Math.Round(sndOrd.quantity / sndOrd.ins.quantity_unit) * sndOrd.ins.quantity_unit;
+                    decimal order_price = sndOrd.price;
+                    DateTime sendTime = DateTime.UtcNow;
+                    if (sndOrd.order_type== orderType.Limit)
+                    {
+                        js = await this.ord_client.bittrade_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, true);
+                    }
+                    else
+                    {
+                        if (sndOrd.side == orderSide.Buy)
+                        {
+                            order_price = Math.Round(sndOrd.ins.bestask.Item1 * (decimal)1.05 / sndOrd.ins.price_unit) * sndOrd.ins.price_unit;
+                        }
+                        else
+                        {
+                            order_price = Math.Round(sndOrd.ins.bestbid.Item1 * (decimal)0.95 / sndOrd.ins.price_unit) * sndOrd.ins.price_unit;
+                        }
+                        //Market Order
+                        js = await this.ord_client.bittrade_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), order_price, quantity, false);
+                    }
 
-                    //}
-                    output = this.ord_client.ordUpdateStack.pop();
-                    if (output == null)
+                    if (js.RootElement.GetProperty("status").GetString() == "ok")
                     {
-                        output = new DataSpotOrderUpdate();
-                    }
-                    output.status = orderStatus.INVALID;
-                    output.timestamp = sendTime;
-                    output.internal_order_id = sndOrd.internalOrdId;
-                    output.side = sndOrd.side;
-                    output.symbol = sndOrd.ins.symbol;
-                    output.market = sndOrd.ins.market;
-                    output.symbol_market = sndOrd.ins.symbol_market;
-                    output.order_quantity = sndOrd.quantity;
-                    output.order_price = sndOrd.price;
-                    output.filled_quantity = 0;
-                    output.average_price = 0;
-                    output.fee = 0;
-                    output.fee_asset = "";
-                    output.is_trigger_order = true;
-                    output.last_trade = "";
-                    output.msg = sndOrd.msg;
+                        //while (!this.ord_client.ordUpdateStack.TryPop(out output))
+                        //{
 
-                    string err = js.RootElement.GetProperty("error").GetString();
-                    if (err.StartsWith("Amount"))
-                    {
-                        this.addLog("[coincheck] New order failed. " + err, Enums.logType.WARNING);
-                    }
-                    else if(err.StartsWith("Nonce"))//Nonce must be incremented
-                    {
-                        output.err_code = (int)Enums.ordError.NONCE_ERROR;
-                        this.addLog("[coincheck] New order failed. " + err, Enums.logType.WARNING);
-                    }
-                    else if(err.StartsWith("Rate limit"))
-                    {
-                        output.err_code = (int)Enums.ordError.RATE_LIMIT_EXCEEDED;
-                        this.addLog("[coincheck] New order failed. " + err, Enums.logType.WARNING);
-                    }
-                    else if(err.StartsWith("The httpclient"))
-                    {
-                        output.err_code = (int)Enums.ordError.HTTP_NOT_READY;
-                        this.addLog("[coincheck] New order failed. " + err, Enums.logType.WARNING);
+                        //}
+                        output = this.ord_client.ordUpdateStack.pop();
+                        if (output == null)
+                        {
+                            output = new DataSpotOrderUpdate();
+                        }
+                        output.order_id = js.RootElement.GetProperty("data").GetString();
+                        this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
+                        output.timestamp = sendTime;
+                        output.symbol = sndOrd.ins.symbol;
+                        output.market = sndOrd.ins.market;
+                        output.symbol_market = sndOrd.ins.symbol_market;
+                        output.internal_order_id = sndOrd.internalOrdId;
+                        output.side = sndOrd.side;
+                        output.order_type = sndOrd.order_type;
+                        output.order_price = order_price;
+                        output.order_quantity = quantity;
+                        output.filled_quantity = 0;//Even if an executed order is passed, output 0 executed quantity as the execution will be streamed anyway.
+                        output.average_price = 0;
+                        output.create_time = DateTime.UtcNow;
+                        output.update_time = output.create_time;
+
+                        output.status = orderStatus.WaitOpen;
+                        output.fee = 0;
+                        output.fee_asset = "";
+                        output.is_trigger_order = true;
+                        output.last_trade = "";
+                        switch (sndOrd.side)
+                        {
+                            case orderSide.Buy:
+                                sndOrd.ins.quoteBalance.AddBalance(0, output.order_price * output.order_quantity);
+                                break;
+                            case orderSide.Sell:
+                                sndOrd.ins.baseBalance.AddBalance(0, output.order_quantity);
+                                break;
+                        }
+                        output.msg = sndOrd.msg;
+                        this.ord_client.ordUpdateQueue.Enqueue(output);
                     }
                     else
                     {
                         string msg = JsonSerializer.Serialize(js);
-                        this.addLog("[coincheck] New order failed. " + msg, Enums.logType.ERROR);
+                        this.addLog(msg, Enums.logType.ERROR);
+                        //while (!this.ord_client.ordUpdateStack.TryPop(out output))
+                        //{
+
+                        //}
+                        output = this.ord_client.ordUpdateStack.pop();
+                        if (output == null)
+                        {
+                            output = new DataSpotOrderUpdate();
+                        }
+                        output.status = orderStatus.INVALID;
+                        output.timestamp = sendTime;
+                        output.internal_order_id = sndOrd.internalOrdId;
+                        output.side = sndOrd.side;
+                        output.symbol = sndOrd.ins.symbol;
+                        output.market = sndOrd.ins.market;
+                        output.symbol_market = sndOrd.ins.symbol_market;
+                        output.order_quantity = sndOrd.quantity;
+                        output.order_price = sndOrd.price;
+                        output.filled_quantity = 0;
+                        output.average_price = 0;
+                        output.fee = 0;
+                        output.fee_asset = "";
+                        output.is_trigger_order = true;
+                        output.last_trade = "";
+                        output.msg = sndOrd.msg;
+                        this.ord_client.ordUpdateQueue.Enqueue(output);
                     }
-                    
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
-                }
-            }
-            else if (sndOrd.ins.market == "bittrade")
-            {
-                quantity = Math.Round(sndOrd.quantity / sndOrd.ins.quantity_unit) * sndOrd.ins.quantity_unit;
-                decimal order_price = sndOrd.price;
-                DateTime sendTime = DateTime.UtcNow;
-                if (sndOrd.order_type== orderType.Limit)
-                {
-                    js = await this.ord_client.bittrade_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, true);
                 }
                 else
                 {
-                    if (sndOrd.side == orderSide.Buy)
+                    quantity = Math.Round(sndOrd.quantity / sndOrd.ins.quantity_unit) * sndOrd.ins.quantity_unit;
+                    DateTime sendTime = DateTime.UtcNow;
+                    output = await this.ord_client.placeNewSpotOrder(sndOrd.ins.market, sndOrd.ins.baseCcy, sndOrd.ins.quoteCcy, sndOrd.side, sndOrd.order_type, quantity, sndOrd.price, sndOrd.time_in_force);
+                    if (output != null)
                     {
-                        order_price = Math.Round(sndOrd.ins.bestask.Item1 * (decimal)1.05 / sndOrd.ins.price_unit) * sndOrd.ins.price_unit;
+                        this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
+                        output.timestamp = sendTime;
+                        output.symbol_market = sndOrd.ins.symbol_market;
+                        output.internal_order_id = sndOrd.internalOrdId;
+                        output.msg = sndOrd.msg;
+                        this.ord_client.ordUpdateQueue.Enqueue(output);
                     }
                     else
                     {
-                        order_price = Math.Round(sndOrd.ins.bestbid.Item1 * (decimal)0.95 / sndOrd.ins.price_unit) * sndOrd.ins.price_unit;
+                        //while (!this.ord_client.ordUpdateStack.TryPop(out output))
+                        //{
+
+                        //}
+                        output = this.ord_client.ordUpdateStack.pop();
+                        if (output == null)
+                        {
+                            output = new DataSpotOrderUpdate();
+                        }
+                        output.status = orderStatus.INVALID;
+                        output.timestamp = sendTime;
+                        output.internal_order_id = sndOrd.internalOrdId;
+                        output.side = sndOrd.side;
+                        output.symbol = sndOrd.ins.symbol;
+                        output.market = sndOrd.ins.market;
+                        output.symbol_market = sndOrd.ins.symbol_market;
+                        output.order_quantity = sndOrd.quantity;
+                        output.order_price = sndOrd.price;
+                        output.filled_quantity = 0;
+                        output.average_price = 0;
+                        output.fee = 0;
+                        output.fee_asset = "";
+                        output.is_trigger_order = true;
+                        output.last_trade = "";
+                        output.msg = sndOrd.msg;
+                        this.ord_client.ordUpdateQueue.Enqueue(output);
                     }
-                    //Market Order
-                    js = await this.ord_client.bittrade_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), order_price, quantity, false);
                 }
-
-                if (js.RootElement.GetProperty("status").GetString() == "ok")
-                {
-                    //while (!this.ord_client.ordUpdateStack.TryPop(out output))
-                    //{
-
-                    //}
-                    output = this.ord_client.ordUpdateStack.pop();
-                    if (output == null)
-                    {
-                        output = new DataSpotOrderUpdate();
-                    }
-                    output.order_id = js.RootElement.GetProperty("data").GetString();
-                    this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
-                    output.timestamp = sendTime;
-                    output.symbol = sndOrd.ins.symbol;
-                    output.market = sndOrd.ins.market;
-                    output.symbol_market = sndOrd.ins.symbol_market;
-                    output.internal_order_id = sndOrd.internalOrdId;
-                    output.side = sndOrd.side;
-                    output.order_type = sndOrd.order_type;
-                    output.order_price = order_price;
-                    output.order_quantity = quantity;
-                    output.filled_quantity = 0;//Even if an executed order is passed, output 0 executed quantity as the execution will be streamed anyway.
-                    output.average_price = 0;
-                    output.create_time = DateTime.UtcNow;
-                    output.update_time = output.create_time;
-
-                    output.status = orderStatus.WaitOpen;
-                    output.fee = 0;
-                    output.fee_asset = "";
-                    output.is_trigger_order = true;
-                    output.last_trade = "";
-                    switch (sndOrd.side)
-                    {
-                        case orderSide.Buy:
-                            sndOrd.ins.quoteBalance.AddBalance(0, output.order_price * output.order_quantity);
-                            break;
-                        case orderSide.Sell:
-                            sndOrd.ins.baseBalance.AddBalance(0, output.order_quantity);
-                            break;
-                    }
-                    output.msg = sndOrd.msg;
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
-                }
-                else
-                {
-                    string msg = JsonSerializer.Serialize(js);
-                    this.addLog(msg, Enums.logType.ERROR);
-                    //while (!this.ord_client.ordUpdateStack.TryPop(out output))
-                    //{
-
-                    //}
-                    output = this.ord_client.ordUpdateStack.pop();
-                    if (output == null)
-                    {
-                        output = new DataSpotOrderUpdate();
-                    }
-                    output.status = orderStatus.INVALID;
-                    output.timestamp = sendTime;
-                    output.internal_order_id = sndOrd.internalOrdId;
-                    output.side = sndOrd.side;
-                    output.symbol = sndOrd.ins.symbol;
-                    output.market = sndOrd.ins.market;
-                    output.symbol_market = sndOrd.ins.symbol_market;
-                    output.order_quantity = sndOrd.quantity;
-                    output.order_price = sndOrd.price;
-                    output.filled_quantity = 0;
-                    output.average_price = 0;
-                    output.fee = 0;
-                    output.fee_asset = "";
-                    output.is_trigger_order = true;
-                    output.last_trade = "";
-                    output.msg = sndOrd.msg;
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
-                }
+                sndOrd.init();
+                //this.sendingOrdersStack.Enqueue(sndOrd);
+                this.sendingOrdersStack.push(sndOrd);
+                return output;
             }
-            else
-            {
-                quantity = Math.Round(sndOrd.quantity / sndOrd.ins.quantity_unit) * sndOrd.ins.quantity_unit;
-                DateTime sendTime = DateTime.UtcNow;
-                output = await this.ord_client.placeNewSpotOrder(sndOrd.ins.market, sndOrd.ins.baseCcy, sndOrd.ins.quoteCcy, sndOrd.side, sndOrd.order_type, quantity, sndOrd.price, sndOrd.time_in_force);
-                if (output != null)
-                {
-                    this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
-                    output.timestamp = sendTime;
-                    output.symbol_market = sndOrd.ins.symbol_market;
-                    output.internal_order_id = sndOrd.internalOrdId;
-                    output.msg = sndOrd.msg;
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
-                }
-                else
-                {
-                    //while (!this.ord_client.ordUpdateStack.TryPop(out output))
-                    //{
-
-                    //}
-                    output = this.ord_client.ordUpdateStack.pop();
-                    if (output == null)
-                    {
-                        output = new DataSpotOrderUpdate();
-                    }
-                    output.status = orderStatus.INVALID;
-                    output.timestamp = sendTime;
-                    output.internal_order_id = sndOrd.internalOrdId;
-                    output.side = sndOrd.side;
-                    output.symbol = sndOrd.ins.symbol;
-                    output.market = sndOrd.ins.market;
-                    output.symbol_market = sndOrd.ins.symbol_market;
-                    output.order_quantity = sndOrd.quantity;
-                    output.order_price = sndOrd.price;
-                    output.filled_quantity = 0;
-                    output.average_price = 0;
-                    output.fee = 0;
-                    output.fee_asset = "";
-                    output.is_trigger_order = true;
-                    output.last_trade = "";
-                    output.msg = sndOrd.msg;
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
-                }
-            }
-            sndOrd.init();
-            //this.sendingOrdersStack.Enqueue(sndOrd);
-            this.sendingOrdersStack.push(sndOrd);
-            return output;
-        }
         async public Task<DataSpotOrderUpdate?> processModOrder(sendingOrder sndOrd)
         {
             DataSpotOrderUpdate ord;

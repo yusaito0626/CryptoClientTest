@@ -1643,7 +1643,7 @@ namespace Crypto_Trading
                             {
                                 case orderSide.Buy:
                                     this.sw2.Start();
-                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, null,true,false);
+                                    await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, null,true,false);
                                     this.sw2.Stop();
                                     this.placingOrderLatencyOnFill = (this.sw2.Elapsed.TotalNanoseconds + this.placingOrderLatencyOnFill * 1000 * this.placingOrdercountOnFill) / (this.placingOrdercountOnFill+ 1) / 1000;
                                     ++(this.placingOrdercountOnFill);
@@ -1675,7 +1675,7 @@ namespace Crypto_Trading
                                     break;
                                 case orderSide.Sell:
                                     this.sw2.Start();
-                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, null, true,false);
+                                    await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, null, true,false);
                                     this.sw2.Stop();
                                     this.placingOrderLatencyOnFill = (this.sw2.Elapsed.TotalNanoseconds + this.placingOrderLatencyOnFill * 1000 * this.placingOrdercountOnFill) / (this.placingOrdercountOnFill + 1) / 1000;
                                     ++(this.placingOrdercountOnFill);
