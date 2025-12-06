@@ -626,41 +626,57 @@ namespace Crypto_Trading
                     //    this.prev_markup = this.markup;
                     //}
                 }
+                decimal elapsedTimeFromLastfill = (decimal)(DateTime.UtcNow - (this.last_filled_time ?? DateTime.UtcNow)).TotalMinutes - 5;
+                if (elapsedTimeFromLastfill < 0)
+                {
+                    elapsedTimeFromLastfill = 0;
+                }
+
+                decimal min_basemarkup = this.markup * this.RVMarkup_multiplier + this.markupAdjustment;
+                decimal markup_decay = -elapsedTimeFromLastfill / this.markup_decay_basetime * this.markup * this.RVMarkup_multiplier;
+
+                if (this.base_markup + markup_decay < min_basemarkup)
+                {
+                    markup_decay = min_basemarkup - this.base_markup;
+                }
+
+                this.base_markup += markup_decay;
+
                 markup_bid = this.base_markup;
                 markup_ask = this.base_markup;
 
                 decimal ordersize_bid = this.ToBsize;
                 decimal ordersize_ask = this.ToBsize;
 
-                decimal elapsedTimeFromLastfill = (decimal)(DateTime.UtcNow - (this.last_filled_time ?? DateTime.UtcNow)).TotalMinutes - 5;
-                if(elapsedTimeFromLastfill < 0)
-                {
-                    elapsedTimeFromLastfill = 0;
-                }
-                decimal markup_decay = - elapsedTimeFromLastfill / this.markup_decay_basetime;
+                
+
                 if (this.skew_point > 0)
                 {
-                    markup_ask += (decimal)(1 + this.skewWidening) * this.skew_point + Math.Max(markup_decay,-1) * this.markup;
-                    if(this.skew_point == this.maxSkew)
-                    {
-                        markup_bid += -this.skew_point + markup_decay * this.markup;
-                    }
-                    else
-                    {
-                        markup_bid += -this.skew_point + Math.Max(markup_decay, -1) * this.markup;
-                    }
+                    markup_ask += (decimal)(1 + this.skewWidening) * this.skew_point;
+                    markup_bid += -this.skew_point;
+                    //markup_ask += (decimal)(1 + this.skewWidening) * this.skew_point + Math.Max(markup_decay,-1) * this.markup;
+                    //if(this.skew_point == this.maxSkew)
+                    //{
+                    //    markup_bid += -this.skew_point + markup_decay * this.markup;
+                    //}
+                    //else
+                    //{
+                    //    markup_bid += -this.skew_point + Math.Max(markup_decay, -1) * this.markup;
+                    //}
                 }
                 else if (this.skew_point < 0)
                 {
-                    markup_bid += - (decimal)(1 + this.skewWidening) * this.skew_point + Math.Max(markup_decay, -1) * this.markup;
-                    if(this.skew_point == - this.maxSkew)
-                    {
-                        markup_ask += this.skew_point + markup_decay * this.markup;
-                    }
-                    else
-                    {
-                        markup_ask += this.skew_point + Math.Max(markup_decay, -1) * this.markup;
-                    }
+                    markup_bid += -(decimal)(1 + this.skewWidening) * this.skew_point;
+                    markup_ask += this.skew_point;
+                    //markup_bid += - (decimal)(1 + this.skewWidening) * this.skew_point + Math.Max(markup_decay, -1) * this.markup;
+                    //if(this.skew_point == - this.maxSkew)
+                    //{
+                    //    markup_ask += this.skew_point + markup_decay * this.markup;
+                    //}
+                    //else
+                    //{
+                    //    markup_ask += this.skew_point + Math.Max(markup_decay, -1) * this.markup;
+                    //}
                 }
                 else
                 {

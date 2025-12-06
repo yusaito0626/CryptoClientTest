@@ -116,6 +116,8 @@ namespace Crypto_Linux
         static int log_index = 0;
 
         static int mismatch_count = 0;
+
+        static int EoDProcessCalled = 0;
         static async Task Main(string[] args)
         {
 
@@ -127,7 +129,7 @@ namespace Crypto_Linux
                 isRunning = false;
             };
 
-            AssemblyLoadContext.Default.Unloading += async ctx =>
+            AppDomain.CurrentDomain.ProcessExit += async (sender, eventArgs) =>
             {
                 addLog("SIGTERM detected");
 
@@ -1266,6 +1268,10 @@ namespace Crypto_Linux
                         }
                     }
                 }
+                else
+                {
+                    addLog("Intraday PnL file not found");
+                }
 
                 if (liveTrading || privateConnect)
                 {
@@ -1432,6 +1438,10 @@ namespace Crypto_Linux
 
         static private async Task EoDProcess()
         {
+            if(Interlocked.CompareExchange(ref EoDProcessCalled,1,0) != 0)
+            {
+                return;
+            }
             stopStrategies();
             if (threadsStarted)
             {
@@ -1519,57 +1529,60 @@ namespace Crypto_Linux
 
                     Thread.Sleep(1000);
 
-                    addLog("Updating the performance file...");
-                    string performanceFile = outputPath_org + "/performance.csv";
-
-                    List<string> lines;
-                    if (!File.Exists(performanceFile))
+                    if(live)
                     {
-                        lines = new List<string>();
-                        lines.Add("date,strategy,baseBalance_open,quoteBalance_open,baseBalance_close,quoteBalance_close,baseHedge_quantity,notional_volume,open_mid,close_mid,TotalPnL,pos_diff");
+                        addLog("Updating the performance file...");
+                        string performanceFile = outputPath_org + "/performance.csv";
 
-                    }
-                    else
-                    {
-                        lines = File.ReadAllLines(performanceFile).ToList();
-                    }
-                    string today = DateTime.UtcNow.ToString("yyyy-MM-dd");
-                    lines = lines
-                        .Where(line =>
+                        List<string> lines;
+                        if (!File.Exists(performanceFile))
                         {
-                            var cols = line.Split(',');
-                            return cols.Length > 0 && cols[0] != today;
-                        })
-                        .ToList();
+                            lines = new List<string>();
+                            lines.Add("date,strategy,baseBalance_open,quoteBalance_open,baseBalance_close,quoteBalance_close,baseHedge_quantity,notional_volume,open_mid,close_mid,TotalPnL,pos_diff");
 
-                    foreach (var stg in strategies.Values)
-                    {
-                        decimal baseBalance_open = stg.maker.SoD_baseBalance.total + stg.taker.SoD_baseBalance.total;
-                        decimal quoteBalance_open = stg.maker.SoD_quoteBalance.total + stg.taker.SoD_quoteBalance.total;
-                        decimal baseBalance_close = stg.maker.baseBalance.total + stg.taker.baseBalance.total;
-                        decimal quoteBalance_close = stg.maker.quoteBalance.total + stg.taker.quoteBalance.total;
-                        
-                        stg.taker.mid = await crypto_client.getCurrentMid(stg.taker.market, stg.taker.symbol);
-                        stg.maker.mid = await crypto_client.getCurrentMid(stg.maker.market, stg.taker.symbol);
+                        }
+                        else
+                        {
+                            lines = File.ReadAllLines(performanceFile).ToList();
+                        }
+                        string today = DateTime.UtcNow.ToString("yyyy-MM-dd");
+                        lines = lines
+                            .Where(line =>
+                            {
+                                var cols = line.Split(',');
+                                return cols.Length > 0 && cols[0] != today;
+                            })
+                            .ToList();
 
-                        decimal notionalVolume = stg.maker.my_buy_notional + stg.maker.my_sell_notional;
+                        foreach (var stg in strategies.Values)
+                        {
+                            decimal baseBalance_open = stg.maker.SoD_baseBalance.total + stg.taker.SoD_baseBalance.total;
+                            decimal quoteBalance_open = stg.maker.SoD_quoteBalance.total + stg.taker.SoD_quoteBalance.total;
+                            decimal baseBalance_close = stg.maker.baseBalance.total + stg.taker.baseBalance.total;
+                            decimal quoteBalance_close = stg.maker.quoteBalance.total + stg.taker.quoteBalance.total;
 
-                        decimal totalPnL = (baseBalance_open - stg.baseCcyQuantity) * (stg.taker.mid - stg.taker.open_mid)
-                            + (stg.taker.my_sell_notional - stg.taker.my_sell_quantity * stg.taker.mid) + (stg.taker.my_buy_quantity * stg.taker.mid - stg.taker.my_buy_notional)
-                            + (stg.maker.my_sell_notional - stg.maker.my_sell_quantity * stg.taker.mid) + (stg.maker.my_buy_quantity * stg.taker.mid - stg.maker.my_buy_notional)
-                            - (stg.taker.base_fee * stg.taker.mid + stg.taker.quote_fee + stg.maker.base_fee * stg.taker.mid + stg.maker.quote_fee);
-                        decimal pos_diff = baseBalance_close * stg.taker.mid - baseBalance_open * stg.taker.open_mid - stg.baseCcyQuantity * (stg.taker.mid - stg.taker.open_mid)
-                            + quoteBalance_close - quoteBalance_open;
+                            stg.taker.mid = await crypto_client.getCurrentMid(stg.taker.market, stg.taker.symbol);
+                            stg.maker.mid = await crypto_client.getCurrentMid(stg.maker.market, stg.taker.symbol);
 
-                        string line = today + "," + stg.name + "," + baseBalance_open.ToString() + "," + quoteBalance_open.ToString() + ","
-                            + baseBalance_close.ToString() + "," + quoteBalance_close.ToString() + "," + stg.baseCcyQuantity.ToString() + "," + notionalVolume.ToString() + "," + stg.taker.open_mid.ToString() + "," + stg.taker.mid.ToString() + ","
-                            + totalPnL.ToString() + "," + pos_diff.ToString();
+                            decimal notionalVolume = stg.maker.my_buy_notional + stg.maker.my_sell_notional;
 
-                        lines.Add(line);
+                            decimal totalPnL = (baseBalance_open - stg.baseCcyQuantity) * (stg.taker.mid - stg.taker.open_mid)
+                                + (stg.taker.my_sell_notional - stg.taker.my_sell_quantity * stg.taker.mid) + (stg.taker.my_buy_quantity * stg.taker.mid - stg.taker.my_buy_notional)
+                                + (stg.maker.my_sell_notional - stg.maker.my_sell_quantity * stg.taker.mid) + (stg.maker.my_buy_quantity * stg.taker.mid - stg.maker.my_buy_notional)
+                                - (stg.taker.base_fee * stg.taker.mid + stg.taker.quote_fee + stg.maker.base_fee * stg.taker.mid + stg.maker.quote_fee);
+                            decimal pos_diff = baseBalance_close * stg.taker.mid - baseBalance_open * stg.taker.open_mid - stg.baseCcyQuantity * (stg.taker.mid - stg.taker.open_mid)
+                                + quoteBalance_close - quoteBalance_open;
+
+                            string line = today + "," + stg.name + "," + baseBalance_open.ToString() + "," + quoteBalance_open.ToString() + ","
+                                + baseBalance_close.ToString() + "," + quoteBalance_close.ToString() + "," + stg.baseCcyQuantity.ToString() + "," + notionalVolume.ToString() + "," + stg.taker.open_mid.ToString() + "," + stg.taker.mid.ToString() + ","
+                                + totalPnL.ToString() + "," + pos_diff.ToString();
+
+                            lines.Add(line);
+                        }
+
+                        File.WriteAllLines(performanceFile, lines);
                     }
-
-                    File.WriteAllLines(performanceFile, lines);
-
+                    
                     string dt = (DateTime.UtcNow + TimeSpan.FromDays(1)).ToString("yyyy-MM-dd");
                     string newpath = outputPath_org + "/" + dt;
                     if (!Directory.Exists(newpath))
@@ -2117,10 +2130,10 @@ namespace Crypto_Linux
                 }
             }
 
-            foreach(var l in oManager.Latency)
-            {
-                addLog($"Process Time[{l.Key}]    average:{l.Value.avgLatency.ToString("N3")} count:{l.Value.count.ToString("N0")}");
-            }
+            //foreach(var l in oManager.Latency)
+            //{
+            //    addLog($"Process Time[{l.Key}]    average:{l.Value.avgLatency.ToString("N3")} count:{l.Value.count.ToString("N0")}");
+            //}
 
             if (DateTime.UtcNow > endTime)
             {
