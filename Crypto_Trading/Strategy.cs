@@ -101,6 +101,7 @@ namespace Crypto_Trading
         public DateTime? last_filled_time_sell;
 
         public decimal markup_decay_basetime = 60; //minutes
+        public decimal markup_decay;
 
         public decimal temp_markup_bid = 0;
         public decimal temp_markup_ask = 0;
@@ -200,6 +201,8 @@ namespace Crypto_Trading
             this.tradingPnL = 0;
             this.totalFee = 0;
             this.totalPnL = 0;
+
+            this.last_filled_time = DateTime.UtcNow;
 
             this.oManager = OrderManager.GetInstance();
             this.onFill_latency1 = 0;
@@ -633,14 +636,14 @@ namespace Crypto_Trading
                 }
 
                 decimal min_basemarkup = this.markup * this.RVMarkup_multiplier + this.markupAdjustment;
-                decimal markup_decay = -elapsedTimeFromLastfill / this.markup_decay_basetime * this.markup * this.RVMarkup_multiplier;
+                this.markup_decay = -elapsedTimeFromLastfill / this.markup_decay_basetime * this.markup * this.RVMarkup_multiplier;
 
-                if (this.base_markup + markup_decay < min_basemarkup)
+                if (this.base_markup + this.markup_decay < min_basemarkup)
                 {
-                    markup_decay = min_basemarkup - this.base_markup;
+                    this.markup_decay = min_basemarkup - this.base_markup;
                 }
 
-                this.base_markup += markup_decay;
+                this.base_markup += this.markup_decay;
 
                 markup_bid = this.base_markup;
                 markup_ask = this.base_markup;
@@ -680,8 +683,8 @@ namespace Crypto_Trading
                 }
                 else
                 {
-                    markup_bid += Math.Max(markup_decay, -1) * this.markup;
-                    markup_ask += Math.Max(markup_decay, -1) * this.markup;
+                    //markup_bid += Math.Max(markup_decay, -1) * this.markup;
+                    //markup_ask += Math.Max(markup_decay, -1) * this.markup;
 
                     decimal temp_askSize = ordersize_ask * this.ToBsizeMultiplier;
                     if(this.maker.baseBalance.total - temp_askSize >= this.baseCcyQuantity * ((decimal)0.5 - this.skewThreshold / 200))

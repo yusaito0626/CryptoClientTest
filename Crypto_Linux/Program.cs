@@ -440,7 +440,7 @@ namespace Crypto_Linux
                     tradingPLAll += stg.tradingPnL;
                     feeAll += stg.totalFee;
                     totalAll += stg.totalPnL;
-                    msg += "markup_bid:" + stg.temp_markup_bid.ToString("N2") + "  markup_ask:" + stg.temp_markup_ask.ToString("N2") + "   Base markup:" + stg.prev_markup.ToString("N2")  + "\n";
+                    msg += "markup_bid:" + stg.temp_markup_bid.ToString("N2") + "  markup_ask:" + stg.temp_markup_ask.ToString("N2") + "   Base markup:" + stg.base_markup.ToString("N2") + "   Markup decay:" + stg.markup_decay.ToString("N2") + "\n";
 
                 }
             }
