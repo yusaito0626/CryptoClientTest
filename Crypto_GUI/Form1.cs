@@ -1474,7 +1474,7 @@ namespace Crypto_GUI
         {
             DataFill fill;
             //DataSpotOrderUpdate ord;
-            while (this.filledOrderQueue.Count() > 0)
+            while (this.filledOrderQueue.Count > 0)
             {
                 fill = this.filledOrderQueue.Dequeue();
                 //if (this.filledOrderQueue.TryDequeue(out fill))
@@ -2215,19 +2215,19 @@ namespace Crypto_GUI
                     this.addLog("Updating thread stopped. Stopping all the process", Enums.logType.ERROR);
                 }
             }
-            if (this.qManager.ordBookQueue.Count() > 1000)
+            if (this.qManager.ordBookQueue.Count > 1000)
             {
                 this.addLog("The order book queue count exceeds 1000.", Enums.logType.WARNING);
-                if (this.qManager.ordBookQueue.Count() > 10000)
+                if (this.qManager.ordBookQueue.Count > 10000)
                 {
 
                 }
             }
-            if (this.crypto_client.ordUpdateQueue.Count() > 1000)
+            if (this.crypto_client.ordUpdateQueue.Count > 1000)
             {
                 this.addLog("The order update queue count exceeds 1000.", Enums.logType.WARNING);
             }
-            if (this.crypto_client.fillQueue.Count() > 1000)
+            if (this.crypto_client.fillQueue.Count > 1000)
             {
                 this.addLog("The fill queue count exceeds 1000.", Enums.logType.WARNING);
             }

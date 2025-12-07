@@ -111,7 +111,7 @@ namespace Crypto_Clients
 
         public void checkStackCount()
         {
-            if(this.ordBookStack.Count() < STACK_SIZE / 10)
+            if(this.ordBookStack.Count < STACK_SIZE / 10)
             {
                 addLog("Pushing new objects into ordBookStack.");
                 int i = 0;
@@ -121,7 +121,7 @@ namespace Crypto_Clients
                     ++i;
                 }
             }
-            if (this.tradeStack.Count() < STACK_SIZE / 10)
+            if (this.tradeStack.Count < STACK_SIZE / 10)
             {
                 addLog("Pushing new objects into tradeStack.");
                 int i = 0;
@@ -131,7 +131,7 @@ namespace Crypto_Clients
                     ++i;
                 }
             }
-            if (this.fillStack.Count() < STACK_SIZE / 10)
+            if (this.fillStack.Count < STACK_SIZE / 10)
             {
                 addLog("Pushing new objects into fillStack.");
                 int i = 0;
@@ -141,7 +141,7 @@ namespace Crypto_Clients
                     ++i;
                 }
             }
-            if (this.ordUpdateStack.Count() < ORDUPDATE_STACK_SIZE / 10)
+            if (this.ordUpdateStack.Count < ORDUPDATE_STACK_SIZE / 10)
             {
                 addLog("Pushing new objects into ordUpdateStack.");
                 int i = 0;

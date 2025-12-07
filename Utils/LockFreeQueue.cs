@@ -91,7 +91,8 @@ namespace LockFreeStack
             }
             return () => { Volatile.Write(ref this._lock, 0); };
         }
-        public int Count() { return this._pushes - this._pops; }
+        //public int Count() { return this._pushes - this._pops; }
+        public int Count => this._pushes - this._pops;
     }
     internal class LockFreePool<T> : IDisposable
     {
@@ -164,7 +165,8 @@ namespace LockFreeStack
             return ReturningNode;
         }
 
-        public int size() { return _pushes - _pops; }
+        //public int size() { return _pushes - _pops; }
+        public int size => this._pushes - this._pops;
     }
     internal class Node<T> : IDisposable
     {
@@ -292,7 +294,8 @@ namespace LockFreeQueue
                 }
             }
         }
-        public int Count() { return this._Enqueues - this._Dequeues; }
+        //public int Count() { return this._Enqueues - this._Dequeues; }
+        public int Count => this._Enqueues - this._Dequeues;
         Action getEnqueueLock()
         {
             while (Interlocked.CompareExchange(ref this._EnqueueLock, 1, 0) != 0)
@@ -404,7 +407,9 @@ namespace LockFreeQueue
                 return this._pTail.Back.value;
             }
         }
-        public int Count() { return this._Enqueues - this._Dequeues; }
+        //public int Count() { return this._Enqueues - this._Dequeues; }
+        //public int Count { get { return this._Enqueues - this._Dequeues; } }
+        public int Count => this._Enqueues - this._Dequeues;
         Action getEnqueueLock()
         {
             while (Interlocked.CompareExchange(ref this._EnqueueLock, 1, 0) != 0)
@@ -511,7 +516,8 @@ namespace LockFreeQueue
                 }
             }
         }
-        public int Count() { return this._Enqueues - this._Dequeues; }
+        //public int Count() { return this._Enqueues - this._Dequeues; }
+        public int Count => this._Enqueues - this._Dequeues;
         Action getDequeueLock()
         {
             while (Interlocked.CompareExchange(ref this._DequeueLock, 1, 0) != 0)
@@ -609,7 +615,8 @@ namespace LockFreeQueue
             }
         }
 
-        public int Count() { return this._Enqueues - this._Dequeues; }
+        //public int Count() { return this._Enqueues - this._Dequeues; }
+        public int Count => this._Enqueues - this._Dequeues;
     }
     internal class LockFreePool<T> : IDisposable
     {
@@ -682,7 +689,8 @@ namespace LockFreeQueue
             return ReturningNode;
         }
 
-        public int size() { return _pushes - _pops; }
+        //public int size() { return _pushes - _pops; }
+        public int size => this._pushes - this._pops;
     }
     internal class Node<T> : IDisposable
     {

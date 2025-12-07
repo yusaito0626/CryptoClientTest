@@ -486,7 +486,7 @@ namespace Crypto_Linux
                 stack.push(new logEntry());
                 ++i;
             }
-            Console.WriteLine(stack.Count().ToString());
+            Console.WriteLine(stack.Count.ToString());
             sw.Start();
             var t1 = Task.Run(() =>
             {
@@ -494,7 +494,7 @@ namespace Crypto_Linux
                 int j = 0;
                 while( j < 500000)
                 {
-                    if(stack.Count() < 1000)
+                    if(stack.Count < 1000)
                     {
                         int m = 0;
                         while(m < 1000)
@@ -517,7 +517,7 @@ namespace Crypto_Linux
                 int j = 0;
                 while (j < 500000)
                 {
-                    if (stack.Count() < 1000)
+                    if (stack.Count < 1000)
                     {
                         int m = 0;
                         while (m < 1000)
@@ -747,7 +747,7 @@ namespace Crypto_Linux
         {
             DataFill fill;
             fillInfo fInfo;
-            while (filledOrderQueue.Count() > 0)
+            while (filledOrderQueue.Count > 0)
             {
                 fill = filledOrderQueue.Dequeue();
                 //while(!filledOrderQueue.TryDequeue(out fill))
@@ -756,7 +756,7 @@ namespace Crypto_Linux
                 //}
                 if(fill != null)
                 {
-                    if (fillInfoStack.Count() > 0)
+                    if (fillInfoStack.Count > 0)
                     {
                         fInfo = fillInfoStack.pop();
                     }
@@ -1827,32 +1827,32 @@ namespace Crypto_Linux
             }
 
 
-             queueInfos["updateQuotes"].count = qManager.ordBookQueue.Count();
-            if(qManager.ordBookQueue.Count() > 10)
+             queueInfos["updateQuotes"].count = qManager.ordBookQueue.Count;
+            if(qManager.ordBookQueue.Count > 10)
             {
                 addLog("updateQuotes  " + queueInfos["updateQuotes"].count.ToString());
             }
 
-            queueInfos["updateTrades"].count = qManager.tradeQueue.Count();
-            if (qManager.tradeQueue.Count() > 10)
+            queueInfos["updateTrades"].count = qManager.tradeQueue.Count;
+            if (qManager.tradeQueue.Count > 10)
             {
                 addLog("updateTrades  " + queueInfos["updateTrades"].count.ToString());
             }
 
-            queueInfos["updateOrders"].count = crypto_client.ordUpdateQueue.Count();
-            if (crypto_client.ordUpdateQueue.Count() > 10)
+            queueInfos["updateOrders"].count = crypto_client.ordUpdateQueue.Count;
+            if (crypto_client.ordUpdateQueue.Count > 10)
             {
                 addLog("updateOrders  " + queueInfos["updateOrders"].count.ToString());
             }
 
-            queueInfos["updateFills"].count = crypto_client.fillQueue.Count();
-            if (crypto_client.fillQueue.Count() > 10)
+            queueInfos["updateFills"].count = crypto_client.fillQueue.Count;
+            if (crypto_client.fillQueue.Count > 10)
             {
                 addLog("updateFills  " + queueInfos["updateFills"].count.ToString());
             }
 
-            queueInfos["optimize"].count = qManager.optQueue.Count();
-            if (qManager.optQueue.Count() > 10)
+            queueInfos["optimize"].count = qManager.optQueue.Count;
+            if (qManager.optQueue.Count > 10)
             {
                 addLog("optimize  " + queueInfos["optimize"].count.ToString());
             }
@@ -2061,7 +2061,7 @@ namespace Crypto_Linux
 
             DateTime currentTime = DateTime.UtcNow;
             DataSpotOrderUpdate ord;
-            while (oManager.order_pool.Count() > 0)
+            while (oManager.order_pool.Count > 0)
             {
                 //while (!oManager.SISO_order_pool.TryPeek(out ord))
                 //{
@@ -2082,7 +2082,7 @@ namespace Crypto_Linux
                         }
                         else
                         {
-                            if (oManager.order_pool.Count() > 10000)
+                            if (oManager.order_pool.Count > 10000)
                             {
                                 addLog("Something wrong in order_pool. timestamp of the head:" + ord.update_time.Value.ToString(GlobalVariables.tmMsecFormat));
                             }
@@ -2103,7 +2103,7 @@ namespace Crypto_Linux
 
             crypto_client.checkStackCount();
 
-            if(logEntryStack.Count() < logSize / 10)
+            if(logEntryStack.Count < logSize / 10)
             {
                 int i = 0;
                 while(i < logSize / 5)
