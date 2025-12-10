@@ -1867,9 +1867,10 @@ namespace Crypto_Linux
             {
                 strategyInfo stginfo = strategyInfos[stg.name];
                 DataSpotOrderUpdate? ord;
-                if(oManager.orders.ContainsKey(stg.live_buyorder_id))
+                string ord_id = stg.live_buyorder_id;
+                if(oManager.orders.ContainsKey(ord_id))
                 {
-                    ord = oManager.orders[stg.live_buyorder_id];
+                    ord = oManager.orders[ord_id];
                     if(ord.status == orderStatus.Open)
                     {
                         stginfo.bid = ord.order_price;
@@ -1886,9 +1887,10 @@ namespace Crypto_Linux
                     stginfo.bid = stg.live_bidprice;
                     stginfo.bidSize = 0;
                 }
-                if (oManager.orders.ContainsKey(stg.live_sellorder_id))
+                ord_id = stg.live_sellorder_id;
+                if (oManager.orders.ContainsKey(ord_id))
                 {
-                    ord = oManager.orders[stg.live_sellorder_id];
+                    ord = oManager.orders[ord_id];
                     if (ord.status == orderStatus.Open)
                     {
                         stginfo.ask = ord.order_price;
@@ -2121,15 +2123,15 @@ namespace Crypto_Linux
                 await MsgDeliverer.sendMessage(msg,msg_type);
                 nextMsgTime += TimeSpan.FromMinutes(msg_Interval);
 
-                foreach (var stg in strategies.Values)
-                {
-                    addLog("Internal Latency of onFill");
-                    addLog("Part1:" + stg.onFill_latency1.ToString("N3") + "micro sec");
-                    addLog("Part2:" + stg.onFill_latency2.ToString("N3") + "micro sec");
-                    addLog("Part3:" + stg.onFill_latency3.ToString("N3") + "micro sec");
-                    addLog("Placing Orders:" + stg.placingOrderLatencyOnFill.ToString("N3") + "micro sec");
-                    addLog("Placing Orders[updateOrder]:" + stg.placingOrderLatencyUpdate.ToString("N3") + "micro sec");
-                }
+                //foreach (var stg in strategies.Values)
+                //{
+                //    addLog("Internal Latency of onFill");
+                //    addLog("Part1:" + stg.onFill_latency1.ToString("N3") + "micro sec");
+                //    addLog("Part2:" + stg.onFill_latency2.ToString("N3") + "micro sec");
+                //    addLog("Part3:" + stg.onFill_latency3.ToString("N3") + "micro sec");
+                //    addLog("Placing Orders:" + stg.placingOrderLatencyOnFill.ToString("N3") + "micro sec");
+                //    addLog("Placing Orders[updateOrder]:" + stg.placingOrderLatencyUpdate.ToString("N3") + "micro sec");
+                //}
             }
 
             //foreach(var l in oManager.Latency)
