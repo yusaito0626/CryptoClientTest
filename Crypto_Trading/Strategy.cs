@@ -1367,7 +1367,7 @@ namespace Crypto_Trading
                             this.current_bids[i] = 0;
                         }
 
-                            ordid = this.live_sellorders[i];
+                        ordid = this.live_sellorders[i];
                         if (ordid != "")
                         {
                             if (this.oManager.orders.ContainsKey(ordid))
@@ -1411,8 +1411,11 @@ namespace Crypto_Trading
                     
                     await this.checkLiveOrdersMulti();
 
-                    bool newBuyOrder = false;
-                    bool newSellOrder = false;
+                    this.live_askprice = this.asks[0];
+                    this.live_bidprice = this.bids[0];
+
+                    int newBuyOrder = 0;
+                    int newSellOrder = 0;
 
                     List<string> cancelling_ord = new List<string>();
 
@@ -1434,7 +1437,7 @@ namespace Crypto_Trading
                                 cancelling_ord.Add(this.live_buyorders[i]);
                                 this.live_buyorders[i] = "";
                                 this.current_bids[i] = 0;
-                                newBuyOrder = true;
+                                newBuyOrder |= (1 << i);
                             }
                         }
                         else if (this.live_buyorders[i] == "")
@@ -1445,7 +1448,7 @@ namespace Crypto_Trading
                             }
                             else if (this.last_filled_time_buy == null || (decimal)(current - this.last_filled_time_buy).Value.TotalSeconds > this.intervalAfterFill)
                             {
-                                newBuyOrder = true;
+                                newBuyOrder |= (1 << i);
                             }
                         }
                         if (this.oManager.orders.ContainsKey(this.live_sellorders[i]))
@@ -1462,7 +1465,7 @@ namespace Crypto_Trading
                                 cancelling_ord.Add(this.live_sellorders[i]);
                                 this.live_sellorders[i] = "";
                                 this.current_asks[i] = 0;
-                                newSellOrder = true;
+                                newSellOrder |= (1 << i);
                             }
                         }
                         else if (this.live_sellorders[i] == "")
@@ -1473,11 +1476,13 @@ namespace Crypto_Trading
                             }
                             else if (this.last_filled_time_sell == null || (decimal)(DateTime.UtcNow - this.last_filled_time_sell).Value.TotalSeconds > this.intervalAfterFill)
                             {
-                                newSellOrder = true;
+                                newSellOrder |= (1 << i);
                             }
                         }
                     }
+
                     this.oManager.placeCancelSpotOrders(this.maker, cancelling_ord);
+
                     if ((current - this.live_buyorder_time).TotalMilliseconds < this.order_throttle || (current - this.live_sellorder_time).TotalMilliseconds < this.order_throttle)
                     {
                         //Only do cancelling orders to avoid excessive orders
@@ -1485,10 +1490,9 @@ namespace Crypto_Trading
                     }
                     if (!this.checkLatency(this.taker, 1000))
                     {
-                        Volatile.Write(ref this.updating, 0);
                         return ret;
                     }
-                    if (newBuyOrder && newSellOrder)//Both orders exist
+                    if (newBuyOrder > 0 && newSellOrder > 0)//Both orders exist
                     {
                         if (this.asks[0] - maker_ask > maker_bid - this.bids[0])
                         {
@@ -1499,7 +1503,7 @@ namespace Crypto_Trading
                             buyFirst = false;
                         }
                     }
-                    else if (newBuyOrder)//Only buy order exists
+                    else if (newBuyOrder > 0)//Only buy order exists
                     {
                         buyFirst = true;
                     }
@@ -1511,14 +1515,14 @@ namespace Crypto_Trading
                     {
                         for(i = 0;i < this.layers;++i)
                         {
-                            if (this.bids[i] > 0 && this.ordersize_bid[i] > 0)
+                            if (this.bids[i] > 0 && this.ordersize_bid[i] > 0 && (newBuyOrder & (1 << i)) > 0)
                             {
                                 this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], null, true, false);
                                 this.current_bids[i] = this.bids[i];
                                 this.stg_orders.Add(this.live_buyorders[i]);
                                 this.live_buyorder_time = current;
                             }
-                            if (this.asks[i] > 0 && this.ordersize_ask[i] > 0)
+                            if (this.asks[i] > 0 && this.ordersize_ask[i] > 0 && (newSellOrder & (1 << i)) > 0)
                             {
                                 this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], null, true, false);
                                 this.current_asks[i] = this.asks[i];
@@ -1531,14 +1535,14 @@ namespace Crypto_Trading
                     {
                         for (i = 0; i < this.layers; ++i)
                         {
-                            if (this.asks[i] > 0 && this.ordersize_ask[i] > 0)
+                            if (this.asks[i] > 0 && this.ordersize_ask[i] > 0 && (newSellOrder & (1 << i)) > 0)
                             {
                                 this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], null, true, false);
                                 this.current_asks[i] = this.asks[i];
                                 this.stg_orders.Add(this.live_sellorders[i]);
                                 this.live_sellorder_time = current;
                             }
-                            if (this.bids[i] > 0 && this.ordersize_bid[i] > 0)
+                            if (this.bids[i] > 0 && this.ordersize_bid[i] > 0 && (newBuyOrder & (1 << i)) > 0)
                             {
                                 this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], null, true, false);
                                 this.current_bids[i] = this.bids[i];
@@ -1673,7 +1677,7 @@ namespace Crypto_Trading
             }
             foreach (var ord in this.oManager.live_orders)
             {
-                if (this.live_buyorders.Contains(ord.Key) == false && this.live_sellorders.Contains(ord.Key) && ord.Value.status == orderStatus.Open)
+                if (this.live_buyorders.Contains(ord.Key) == false && this.live_sellorders.Contains(ord.Key) == false && ord.Value.status == orderStatus.Open)
                 {
                     if (this.maker.symbol_market == ord.Value.symbol_market)
                     {
