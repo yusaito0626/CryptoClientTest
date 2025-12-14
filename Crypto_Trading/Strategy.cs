@@ -902,6 +902,18 @@ namespace Crypto_Trading
                 bool newBuyOrder = false;
                 bool newSellOrder = false;
 
+                bool askChanged = false;
+                bool bidChanged = false;
+
+                if (bid_price > 0 && (this.live_bidprice == 0 || bid_price / this.live_bidprice > 1 + this.modThreshold + modTh_buffer || bid_price / this.live_bidprice < 1 - this.modThreshold - modTh_buffer))
+                {
+                    bidChanged = true;
+                }
+                if (ask_price > 0 && (this.live_askprice == 0 || ask_price / this.live_askprice > 1 + this.modThreshold + modTh_buffer || ask_price / this.live_askprice < 1 - this.modThreshold - modTh_buffer))
+                {
+                    askChanged = true;
+                }
+
                 List<string> cancelling_ord = new List<string>();
                 if (this.oManager.orders.ContainsKey(this.live_buyorder_id))
                 {
@@ -912,7 +924,7 @@ namespace Crypto_Trading
                         this.live_buyorder_id = "";
                         this.live_bidprice = 0;
                     }
-                    else if ((isPriceChanged || bid_price > this.live_bidprice) && ord.status == orderStatus.Open && this.live_bidprice != bid_price)
+                    else if (((bidChanged && isPriceChanged) || bid_price > this.live_bidprice) && ord.status == orderStatus.Open/*this.live_bidprice != bid_price*/)
                     {
                         cancelling_ord.Add(this.live_buyorder_id);
                         this.live_buyorder_id = "";
@@ -940,7 +952,7 @@ namespace Crypto_Trading
                         this.live_sellorder_id = "";
                         this.live_askprice = 0;
                     }
-                    else if ((isPriceChanged || ask_price < this.live_askprice) && ord.status == orderStatus.Open && this.live_askprice != ask_price)
+                    else if (((isPriceChanged && askChanged) || ask_price < this.live_askprice) && ord.status == orderStatus.Open/*this.live_askprice != ask_price*/)
                     {
                         cancelling_ord.Add(this.live_sellorder_id);
                         this.live_sellorder_id = "";
@@ -1419,10 +1431,25 @@ namespace Crypto_Trading
 
                     List<string> cancelling_ord = new List<string>();
 
+
                     for(i = 0;i <this.layers;++i)
                     {
                         decimal bid_price = this.bids[i];
                         decimal ask_price = this.asks[i];
+
+
+                        bool askChanged = false;
+                        bool bidChanged = false;
+
+                        if (bid_price > 0 && (this.current_bids[i] == 0 || bid_price / this.current_bids[i] > 1 + this.modThreshold + modTh_buffer || bid_price / this.current_bids[i] < 1 - this.modThreshold - modTh_buffer))
+                        {
+                            bidChanged = true;
+                        }
+                        if (ask_price > 0 && (this.current_asks[i] == 0 || ask_price / this.current_asks[i] > 1 + this.modThreshold + modTh_buffer || ask_price / this.current_asks[i] < 1 - this.modThreshold - modTh_buffer))
+                        {
+                            askChanged = true;
+                        }
+
                         if (this.oManager.orders.ContainsKey(this.live_buyorders[i]))
                         {
                             ord = this.oManager.orders[this.live_buyorders[i]];
@@ -1432,7 +1459,7 @@ namespace Crypto_Trading
                                 this.live_buyorders[i] = "";
                                 this.current_bids[i] = 0;
                             }
-                            else if ((isPriceChanged || bid_price > this.current_bids[i]) && ord.status == orderStatus.Open && this.current_bids[i] != bid_price)
+                            else if (((isPriceChanged && bidChanged) || bid_price > this.current_bids[i]) && ord.status == orderStatus.Open/*this.current_bids[i] != bid_price*/)
                             {
                                 cancelling_ord.Add(this.live_buyorders[i]);
                                 this.live_buyorders[i] = "";
@@ -1460,7 +1487,7 @@ namespace Crypto_Trading
                                 this.live_sellorders[i] = "";
                                 this.current_asks[i] = 0;
                             }
-                            else if ((isPriceChanged || ask_price < this.current_asks[i]) && ord.status == orderStatus.Open && this.current_asks[i] != ask_price)
+                            else if (((isPriceChanged && askChanged) || ask_price < this.current_asks[i]) && ord.status == orderStatus.Open/*this.current_asks[i] != ask_price*/)
                             {
                                 cancelling_ord.Add(this.live_sellorders[i]);
                                 this.live_sellorders[i] = "";
