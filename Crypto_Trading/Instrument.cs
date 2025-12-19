@@ -115,6 +115,9 @@ namespace Crypto_Trading
         public double avg_RV_display;
         public double realized_volatility_display;
 
+        public decimal mi_volume;
+        public Dictionary<double, decimal> market_impact_curve;
+
 
         public decimal base_fee;
         public decimal quote_fee;
@@ -191,6 +194,13 @@ namespace Crypto_Trading
             this.prev_cumRV = 0;
             this.RV_startTime = null;
             this.RV_currentPeriodStart = null;
+
+            this.mi_volume = 0;
+            this.market_impact_curve = new Dictionary<double, decimal>();
+            foreach(double d in GlobalVariables.MI_period)
+            {
+                this.market_impact_curve[d] = 0;
+            }
 
             this.base_fee = 0;
             this.quote_fee = 0;
@@ -1107,6 +1117,20 @@ namespace Crypto_Trading
                     ++(this.cum_LatentFill);
                 }
             }
+        }
+
+        public void update_micurve(MarketImpact mi)
+        {
+            int sign = 1;
+            if(mi.fill_side == orderSide.Sell)
+            {
+                sign = -1;
+            }
+            foreach (var item in mi.prices)
+            {
+                this.market_impact_curve[item.Key] =(this.market_impact_curve[item.Key] * this.mi_volume +  sign * (item.Value - mi.filled_price) / mi.filled_price * 1_000_000 * mi.filled_quantity) / (this.mi_volume + mi.filled_quantity);
+            }
+            this.mi_volume += mi.filled_quantity;
         }
         public string ToString(string content = "")
         {

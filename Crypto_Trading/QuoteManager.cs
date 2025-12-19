@@ -50,6 +50,7 @@ namespace Crypto_Trading
         public bool aborting;
 
         public bool live;
+        public bool monitoring;
 
         Stopwatch sw_updateQuotes;
         Stopwatch sw_updateTrades;
@@ -76,6 +77,7 @@ namespace Crypto_Trading
             this.Latency = new Dictionary<string, latency>();
 
             this.live = false;
+            this.monitoring = false;
         }
 
         
@@ -85,10 +87,31 @@ namespace Crypto_Trading
             ThreadManager thManager = ThreadManager.GetInstance();
             Func<Task<(bool, double)>> onMsg;
             Action onClosing;
+            int trials = 0;
             switch (market)
             {
                 case "bitbank":
                     ret = await this.crypto_client.bitbank_client.connectPublicAsync();
+                    while (!ret)
+                    {
+                        ++trials;
+                        if (trials < 5)
+                        {
+                            Thread.Sleep(trials * 3000);
+                            //Console.WriteLine("Bitbank public connection failed. Trying again. trial:" + trials.ToString());
+                            this.addLog("Bitbank public connection failed. Trying again. trial:" + trials.ToString(), logType.WARNING);
+                            ret = await this.crypto_client.bitbank_client.connectPublicAsync();
+                        }
+                        else
+                        {
+                            this.addLog("Failed to connect public. bitbank", logType.ERROR);
+                            break;
+                        }
+                    }
+                    if (!ret)
+                    {
+                        return false;
+                    }
                     this.crypto_client.bitbank_client.onMessage = this.crypto_client.onBitbankMessage;
                     onClosing = async () =>
                     {
@@ -99,6 +122,25 @@ namespace Crypto_Trading
                     break;
                 case "coincheck":
                     ret = await this.crypto_client.coincheck_client.connectPublicAsync();
+                    while (!ret)
+                    {
+                        ++trials;
+                        if (trials < 5)
+                        {
+                            Thread.Sleep(trials * 3000);
+                            this.addLog("Coincheck public connection failed. Trying again. trial:" + trials.ToString(), logType.WARNING);
+                            ret = await this.crypto_client.coincheck_client.connectPublicAsync();
+                        }
+                        else
+                        {
+                            this.addLog("Failed to connect public. coincheck", logType.ERROR);
+                            break;
+                        }
+                    }
+                    if (!ret)
+                    {
+                        return false;
+                    }
                     this.crypto_client.coincheck_client.onMessage = this.crypto_client.onCoincheckMessage;
                     onClosing = async () =>
                     {
@@ -109,6 +151,25 @@ namespace Crypto_Trading
                     break;
                 case "bittrade":
                     ret = await this.crypto_client.bittrade_client.connectPublicAsync();
+                    while (!ret)
+                    {
+                        ++trials;
+                        if (trials < 5)
+                        {
+                            Thread.Sleep(trials * 3000);
+                            this.addLog("Bittrade public connection failed. Trying again. trial:" + trials.ToString(), logType.WARNING);
+                            ret = await this.crypto_client.bittrade_client.connectPublicAsync();
+                        }
+                        else
+                        {
+                            this.addLog("Failed to connect public. bittrade", logType.ERROR);
+                            break;
+                        }
+                    }
+                    if (!ret)
+                    {
+                        return false;
+                    }
                     this.crypto_client.bittrade_client.onMessage = this.crypto_client.onBitTradeMessage;
                     onClosing = async () =>
                     {
@@ -370,6 +431,10 @@ namespace Crypto_Trading
                                     }
                                 }
 
+                            }
+                            if(this.monitoring == false && ins.mid != ins.prev_mid)
+                            {
+                                oManager.checkMIRecorder(DateTime.UtcNow);
                             }
                             this.oManager.checkVirtualOrders(ins);
                         }
@@ -839,6 +904,7 @@ namespace Crypto_Trading
         {
             Instrument ins;
             DataTrade msg;
+            MarketImpact mi;
             string symbol_market;
             var spinner = new SpinWait();
             bool ret = true;
@@ -862,13 +928,22 @@ namespace Crypto_Trading
                                     stg.Value.onTrades(msg);
                                 }
                             }
-
                         }
                         if (this.instruments.ContainsKey(symbol_market))
                         {
                             ins = instruments[symbol_market];
                             ins.updateTrade(msg);
 
+                            if(!this.monitoring)
+                            {
+                                mi = oManager.MI_stack.pop();
+                                if (mi != null)
+                                {
+                                    mi = new MarketImpact();
+                                }
+                                mi.startRecording(msg, ins);
+                                this.oManager.MI_recorder[0].Enqueue(mi);
+                            }
                             this.oManager.checkVirtualOrders(ins, msg);
                         }
                         else

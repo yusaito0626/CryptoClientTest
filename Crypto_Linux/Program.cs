@@ -66,8 +66,10 @@ namespace Crypto_Linux
 
         static SISOQueue<string> logQueue;
         static SISOQueue<DataFill> filledOrderQueue;
+        static SISOQueue<MarketImpact> marketImpactQueue;
 
         static StreamWriter logFile;
+        static StreamWriter marketImpactFile;
 
         static private bool threadsStarted;
         static private int stopTradingCalled;
@@ -132,6 +134,8 @@ namespace Crypto_Linux
             privateConnect = true;
             msgLogging = false;
 
+            marketImpactQueue = new SISOQueue<MarketImpact>();
+
             filledOrderQueue = new SISOQueue<DataFill>();
             logEntryStack = new LockFreeStack<logEntry>();
             fillInfoStack = new LockFreeStack<fillInfo>();
@@ -164,6 +168,8 @@ namespace Crypto_Linux
 
             logFile = new StreamWriter(new FileStream(logPath, FileMode.Create));
 
+            marketImpactFile = new StreamWriter(new FileStream(outputPath + "/Market_Impact.csv", FileMode.Create,FileAccess.Write));
+
             qManager._addLog = addLog;
             oManager._addLog = addLog;
             crypto_client.setAddLog(addLog);
@@ -182,6 +188,7 @@ namespace Crypto_Linux
             oManager.setOrdLogPath(outputPath);
             oManager.setInstruments(qManager.instruments);
             oManager.filledOrderQueue = filledOrderQueue;
+            oManager.MI_outputQueue = marketImpactQueue;
 
             //readAPIFiles(APIsPath);
             getAPIsFromEnv(live);
@@ -194,6 +201,11 @@ namespace Crypto_Linux
                 insInfo.symbol_market = ins.symbol_market;
                 insInfo.baseCcy = ins.baseCcy;
                 insInfo.quoteCcy = ins.quoteCcy;
+                insInfo.market_impact_curve = new Dictionary<double, decimal>();
+                foreach (double d in GlobalVariables.MI_period)
+                {
+                    insInfo.market_impact_curve[d] = 0;
+                }
                 instrumentInfos[ins.symbol_market] = insInfo;
             }
 
@@ -256,6 +268,12 @@ namespace Crypto_Linux
             }
             if(!await tradePreparation(live))
             {
+                Console.WriteLine("Failed to intialize the platform");
+                updateLog();
+                foreach (var th in thManager.threads.Values)
+                {
+                    th.stop();
+                }
                 return;
             }
 
@@ -323,6 +341,7 @@ namespace Crypto_Linux
             while (isRunning)
             {
                 sendFills();
+                outputMI();
                 await statusCheck();
                 setInstrumentInfo();
                 setStrategyInfo();
@@ -470,13 +489,18 @@ namespace Crypto_Linux
                     }
                     else
                     {
-                        foreach(var stg_ord in stg.stg_orders_dict)
-                        {
-                            if(stg_ord.Value > 0)
-                            {
-                                msg += stg_ord.Key + " " + stg_ord.Value.ToString() + "\n";
-                            }
-                        }
+                        //while(Interlocked.CompareExchange(ref stg.updating,1,0) != 0)
+                        //{
+
+                        //}
+                        //foreach(var stg_ord in stg.stg_orders_dict)
+                        //{
+                        //    if(stg_ord.Value > 0)
+                        //    {
+                        //        msg += stg_ord.Key + " " + stg_ord.Value.ToString() + "\n";
+                        //    }
+                        //}
+                        //Volatile.Write(ref stg.updating, 0);
                     }
                 }
             }
@@ -534,10 +558,6 @@ namespace Crypto_Linux
             while (filledOrderQueue.Count > 0)
             {
                 fill = filledOrderQueue.Dequeue();
-                //while(!filledOrderQueue.TryDequeue(out fill))
-                //{
-
-                //}
                 if(fill != null)
                 {
                     if (fillInfoStack.Count > 0)
@@ -857,6 +877,11 @@ namespace Crypto_Linux
                     stginfo.maker_symbol_market = stg.maker_symbol_market;
                     stginfo.taker_symbol_market = stg.taker_symbol_market;
                     stginfo.name = stg.name;
+                    stginfo.market_impact_curve = new Dictionary<double, decimal>();
+                    foreach(var d in GlobalVariables.MI_period)
+                    {
+                        stginfo.market_impact_curve[d] = 0;
+                    }
                     strategyInfos[stg.name] = stginfo;
                     //stg = stg;
                 }
@@ -1423,9 +1448,12 @@ namespace Crypto_Linux
                             sod.Flush();
                         }
                     }
-                    
 
-                    if(LatencyList.Count > 0)
+                    outputMI();
+                    marketImpactFile.Flush();
+                    marketImpactFile.Close();
+
+                    if (LatencyList.Count > 0)
                     {
                         string latencyReport = outputPath + "/LatencyReport.csv";
                         using(StreamWriter lr = new StreamWriter(new FileStream(latencyReport,FileMode.Create,FileAccess.Write)))
@@ -1534,7 +1562,11 @@ namespace Crypto_Linux
                         addLog("Public Connection to " + market + " lost reconnecting in 5 sec", Enums.logType.WARNING);
                         thManager.disposeThread(stoppedTh);
                         Thread.Sleep(5000);
-                        await qManager.connectPublicChannel(market);
+                        if(!await qManager.connectPublicChannel(market))
+                        {
+                            addLog("Failed to reconnect public. market:" + market, logType.ERROR);
+                            return;
+                        }
                         Thread.Sleep(5000);
                         foreach (var ins in qManager.instruments.Values)
                         {
@@ -1598,7 +1630,11 @@ namespace Crypto_Linux
                         addLog("Private Connection to " + market + " lost reconnecting in 5 sec", Enums.logType.WARNING);
                         thManager.disposeThread(stoppedTh);
                         Thread.Sleep(5000);
-                        await oManager.connectPrivateChannel(market);
+                        if(!await oManager.connectPrivateChannel(market))
+                        {
+                            addLog("Failed to reconnect private. market:" + market, logType.ERROR);
+                            return;
+                        }
                         Thread.Sleep(5000);
                         string[] markets = [market];
                         if (live || privateConnect)
@@ -1747,6 +1783,12 @@ namespace Crypto_Linux
                 stginfo.totalFee= stg.totalFee;
                 stginfo.totalPnL = stginfo.posPnL + stginfo.tradingPnL - stginfo.totalFee;
 
+                stginfo.mi_volume = stg.mi_volume;
+                foreach (var mi in stg.market_impact_curve)
+                {
+                    stginfo.market_impact_curve[mi.Key] = mi.Value;
+                }
+
                 stginfo.skew = stg.skew_point;
                 stginfo.markup = stg.base_markup;
                 if (stginfo.bid > 0 && stginfo.ask > 0)
@@ -1785,6 +1827,11 @@ namespace Crypto_Linux
 
                 insinfo.quoteFee_total = ins.quote_fee;
                 insinfo.baseFee_total = ins.base_fee;
+                insinfo.mi_volume = ins.mi_volume;
+                foreach(var mi in ins.market_impact_curve)
+                {
+                    insinfo.market_impact_curve[mi.Key] = mi.Value;
+                }
             }
         }
 
@@ -1892,7 +1939,7 @@ namespace Crypto_Linux
                 //while (!oManager.SISO_order_pool.TryPeek(out ord))
                 //{
                 //}
-                ord = oManager.order_pool.Peak();
+                ord = oManager.order_pool.Peek();
                 if(ord != null)
                 {
                     if (ord.update_time.HasValue)
@@ -1966,6 +2013,34 @@ namespace Crypto_Linux
                 addLog("Closing application at EoD.");
                 await EoDProcess();
                 isRunning = false;
+            }
+        }
+
+        static void outputMI()
+        {
+            Instrument ins;
+            Strategy stg;
+            MarketImpact mi;
+            if(marketImpactFile != null)
+            {
+                while(marketImpactQueue.Count > 0)
+                {
+                    mi = marketImpactQueue.Dequeue();
+                    if(strategies.ContainsKey(mi.stg_name))
+                    {
+                        stg = strategies[mi.stg_name];
+                        stg.update_micurve(mi);
+                    }
+                    if(qManager.instruments.ContainsKey(mi.symbolmarket) && mi.myOrder == false)
+                    {
+                        ins = qManager.instruments[mi.symbolmarket];
+                        ins.update_micurve(mi);
+                    }
+                    marketImpactFile.WriteLine(mi.ToString());
+                    marketImpactFile.Flush();
+                    mi.init();
+                    oManager.MI_stack.push(mi);
+                }
             }
         }
 

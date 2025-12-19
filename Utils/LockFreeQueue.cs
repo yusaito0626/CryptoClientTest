@@ -280,7 +280,7 @@ namespace LockFreeQueue
                 
             return val;
         }
-        public T Peak()
+        public T Peek()
         {
             using (var func = new funcContainer(this.getDequeueLock))
             {
@@ -603,7 +603,7 @@ namespace LockFreeQueue
             ++(this._Dequeues);
             return val;
         }
-        public T Peak()
+        public T Peek()
         {
             if (this._pTail.Back == null)
             {

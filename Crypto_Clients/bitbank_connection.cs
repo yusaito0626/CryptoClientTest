@@ -280,12 +280,12 @@ namespace Crypto_Clients
             }
             catch (WebSocketException wse)
             {
-                this.addLog($"WebSocketException: {wse.Message}",Enums.logType.ERROR);
+                this.addLog($"WebSocketException: {wse.Message}",Enums.logType.WARNING);
                 ret = false;
             }
             catch (Exception ex)
             {
-                this.addLog($"Connection failed: {ex.Message}", Enums.logType.ERROR);
+                this.addLog($"Connection failed: {ex.Message}", Enums.logType.WARNING);
                 ret = false;
             }
             return ret;

@@ -139,6 +139,50 @@ namespace Crypto_GUI
             comboStgVariables.Items.Add("Max Base Markup");
             comboStgVariables.Items.Add("Order Throttle");
 
+            int numOfCol = 0;
+            foreach(double d in GlobalVariables.MI_period)
+            {
+                gridView_MI.Columns.Add(d.ToString() + "s", d.ToString() + "s");
+                gridView_stgMI.Columns.Add(d.ToString() + "s", d.ToString() + "s");
+                ++numOfCol;
+            }
+            int totalWidth = gridView_MI.ClientSize.Width;
+            if (gridView_MI.RowHeadersVisible)
+            {
+                totalWidth -= gridView_MI.RowHeadersWidth;
+            }
+            int i = 0;
+            foreach (DataGridViewColumn col in gridView_MI.Columns)
+            {
+                if(i > 0)
+                {
+                    col.Width = totalWidth / numOfCol;
+                }
+                else
+                {
+                    totalWidth -= col.Width;
+                    ++i;
+                }
+            }
+
+            totalWidth = gridView_stgMI.ClientSize.Width;
+            if (gridView_stgMI.RowHeadersVisible)
+            {
+                totalWidth -= gridView_stgMI.RowHeadersWidth;
+            }
+            i = 0;
+            foreach (DataGridViewColumn col in gridView_stgMI.Columns)
+            {
+                if (i > 0)
+                {
+                    col.Width = totalWidth / numOfCol;
+                }
+                else
+                {
+                    totalWidth -= col.Width;
+                    ++i;
+                }
+            }
 
             this.button_receiveFeed.Enabled = false;
             this.button_startTrading.Enabled = false;
@@ -168,6 +212,7 @@ namespace Crypto_GUI
             else if (this.monitoringMode)
             {
                 this.Text += " Monitoring Mode";
+                this.qManager.monitoring = true;
             }
 
             //this.nextMsgTime = DateTime.UtcNow + TimeSpan.FromMinutes(this.msg_Interval);
@@ -194,7 +239,7 @@ namespace Crypto_GUI
             //this.qManager.strategies = this.strategies;
             //this.oManager.strategies = this.strategies;
 
-            int i = 0;
+            i = 0;
             int numOfRow = QuoteManager.NUM_OF_QUOTES * 2 + 1;
             while (i < numOfRow)
             {
@@ -872,6 +917,11 @@ namespace Crypto_GUI
                                                 stg.tradingPnL = s.Value.tradingPnL;
                                                 stg.totalFee = s.Value.totalFee;
                                                 stg.totalPnL = s.Value.totalPnL;
+                                                stg.mi_volume = s.Value.mi_volume;
+                                                foreach (var mi in s.Value.market_impact_curve)
+                                                {
+                                                    stg.market_impact_curve[mi.Key] = mi.Value;
+                                                }
                                             }
                                             else
                                             {
@@ -900,6 +950,11 @@ namespace Crypto_GUI
                                                 stg.tradingPnL = s.Value.tradingPnL;
                                                 stg.totalFee = s.Value.totalFee;
                                                 stg.totalPnL = s.Value.totalPnL;
+                                                stg.mi_volume = s.Value.mi_volume;
+                                                foreach (var mi in s.Value.market_impact_curve)
+                                                {
+                                                    stg.market_impact_curve[mi.Key] = mi.Value;
+                                                }
                                                 this.strategies[s.Key] = stg;
                                                 this.comboStrategy.Items.Add(s.Key);
                                                 this.combo_StgSetting.Items.Add(s.Key);
@@ -934,6 +989,11 @@ namespace Crypto_GUI
                                                 ins.my_sell_notional = i.Value.my_notional_sell;
                                                 ins.quote_fee = i.Value.quoteFee_total;
                                                 ins.base_fee = i.Value.baseFee_total;
+                                                ins.mi_volume = i.Value.mi_volume;
+                                                foreach (var mi in i.Value.market_impact_curve)
+                                                {
+                                                    ins.market_impact_curve[mi.Key] = mi.Value;
+                                                }
                                             }
                                             else
                                             {
@@ -964,6 +1024,11 @@ namespace Crypto_GUI
                                                 ins.my_sell_notional = i.Value.my_notional_sell;
                                                 ins.quote_fee = i.Value.quoteFee_total;
                                                 ins.base_fee = i.Value.baseFee_total;
+                                                ins.mi_volume = i.Value.mi_volume;
+                                                foreach (var mi in i.Value.market_impact_curve)
+                                                {
+                                                    ins.market_impact_curve[mi.Key] = mi.Value;
+                                                }
                                             }
                                         }
                                         break;
@@ -1441,6 +1506,41 @@ namespace Crypto_GUI
                 this.lbl_quoteFee.Text = this.selected_ins.quote_fee.ToString("N" + this.selected_ins.quantity_scale);
                 this.updateQuotesView(this.gridView_Ins, this.selected_ins);
 
+                this.gridView_MI.Rows[0].Cells[0].Value = this.selected_ins.mi_volume.ToString("N" + this.selected_ins.quantity_scale);
+                
+                foreach (var mi in this.selected_ins.market_impact_curve)
+                {
+                    if (gridView_MI.Columns.Contains(mi.Key.ToString() + "s"))
+                    {
+                        gridView_MI.Rows[0].Cells[mi.Key.ToString() + "s"].Value = mi.Value.ToString("N0");
+                        if(mi.Value > 100)
+                        {
+                            gridView_MI.Rows[0].Cells[mi.Key.ToString() + "s"].Style.BackColor = System.Drawing.Color.Green;
+                            gridView_MI.Rows[0].Cells[mi.Key.ToString() + "s"].Style.ForeColor = System.Drawing.Color.White;
+                        }
+                        else if(mi.Value > 0)
+                        {
+                            gridView_MI.Rows[0].Cells[mi.Key.ToString() + "s"].Style.BackColor = System.Drawing.Color.LightGreen;
+                            gridView_MI.Rows[0].Cells[mi.Key.ToString() + "s"].Style.ForeColor = System.Drawing.Color.Black;
+                        }
+                        else if (mi.Value < -100)
+                        {
+                            gridView_MI.Rows[0].Cells[mi.Key.ToString() + "s"].Style.BackColor = System.Drawing.Color.Red;
+                            gridView_MI.Rows[0].Cells[mi.Key.ToString() + "s"].Style.ForeColor = System.Drawing.Color.White;
+                        }
+                        else if (mi.Value < 0)
+                        {
+                            gridView_MI.Rows[0].Cells[mi.Key.ToString() + "s"].Style.BackColor = System.Drawing.Color.LightSalmon;
+                            gridView_MI.Rows[0].Cells[mi.Key.ToString() + "s"].Style.ForeColor = System.Drawing.Color.Black;
+                        }
+                        else
+                        {
+                            gridView_MI.Rows[0].Cells[mi.Key.ToString() + "s"].Style.BackColor = System.Drawing.Color.White;
+                            gridView_MI.Rows[0].Cells[mi.Key.ToString() + "s"].Style.ForeColor = System.Drawing.Color.Black;
+                        }
+                    }
+                }
+
                 foreach (DataGridViewRow row in this.gridView_InsFills.Rows)
                 {
                     string symbol_market = row.Cells[2].Value + "@" + row.Cells[1].Value;
@@ -1511,6 +1611,40 @@ namespace Crypto_GUI
                     this.lbl_bidprice.Text = this.selected_stg.live_bidprice.ToString("N" + this.selected_stg.maker.price_scale);
                     this.lbl_skewpoint.Text = this.selected_stg.skew_point.ToString("N2");
                     this.lbl_stgmarkup.Text = this.selected_stg.base_markup.ToString("N2");
+                }
+
+                gridView_stgMI.Rows[0].Cells[0].Value = this.selected_stg.mi_volume.ToString("N" + this.selected_stg.maker.quantity_scale);
+                foreach (var mi in this.selected_stg.market_impact_curve)
+                {
+                    if (gridView_stgMI.Columns.Contains(mi.Key.ToString() + "s"))
+                    {
+                        gridView_stgMI.Rows[0].Cells[mi.Key.ToString() + "s"].Value = mi.Value.ToString("N0");
+                        if (mi.Value > 100)
+                        {
+                            gridView_stgMI.Rows[0].Cells[mi.Key.ToString() + "s"].Style.BackColor = System.Drawing.Color.Green;
+                            gridView_stgMI.Rows[0].Cells[mi.Key.ToString() + "s"].Style.ForeColor = System.Drawing.Color.White;
+                        }
+                        else if (mi.Value > 0)
+                        {
+                            gridView_stgMI.Rows[0].Cells[mi.Key.ToString() + "s"].Style.BackColor = System.Drawing.Color.LightGreen;
+                            gridView_stgMI.Rows[0].Cells[mi.Key.ToString() + "s"].Style.ForeColor = System.Drawing.Color.Black;
+                        }
+                        else if (mi.Value < -100)
+                        {
+                            gridView_stgMI.Rows[0].Cells[mi.Key.ToString() + "s"].Style.BackColor = System.Drawing.Color.Red;
+                            gridView_stgMI.Rows[0].Cells[mi.Key.ToString() + "s"].Style.ForeColor = System.Drawing.Color.White;
+                        }
+                        else if (mi.Value < 0)
+                        {
+                            gridView_stgMI.Rows[0].Cells[mi.Key.ToString() + "s"].Style.BackColor = System.Drawing.Color.LightSalmon;
+                            gridView_stgMI.Rows[0].Cells[mi.Key.ToString() + "s"].Style.ForeColor = System.Drawing.Color.Black;
+                        }
+                        else
+                        {
+                            gridView_stgMI.Rows[0].Cells[mi.Key.ToString() + "s"].Style.BackColor = System.Drawing.Color.White;
+                            gridView_stgMI.Rows[0].Cells[mi.Key.ToString() + "s"].Style.ForeColor = System.Drawing.Color.Black;
+                        }
+                    }
                 }
 
                 foreach (DataGridViewRow row in this.gridView_orders.Rows)

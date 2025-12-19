@@ -124,6 +124,9 @@ namespace Crypto_Trading
         public decimal totalFee;
         public decimal totalPnL;
 
+        public decimal mi_volume;
+        public Dictionary<double, decimal> market_impact_curve;
+
         //For intradayPnL
         public decimal prev_notionalVolume = 0;
 
@@ -210,6 +213,13 @@ namespace Crypto_Trading
             this.totalPnL = 0;
 
             this.last_filled_time = DateTime.UtcNow;
+
+            this.mi_volume = 0;
+            this.market_impact_curve = new Dictionary<double, decimal>();
+            foreach (double d in GlobalVariables.MI_period)
+            {
+                this.market_impact_curve[d] = 0;
+            }
 
             this.oManager = OrderManager.GetInstance();
 
@@ -597,8 +607,6 @@ namespace Crypto_Trading
                 {
                    
                 }
-                //decimal taker_bid = this.taker.adjusted_bestbid.Item1;
-                //decimal taker_ask = this.taker.adjusted_bestask.Item1;
                 this.taker.getWeightedAvgPrice(orderSide.Buy, [ordersize_bid], this.bids);
                 this.taker.getWeightedAvgPrice(orderSide.Sell, [ordersize_ask], this.asks);
                 decimal taker_bid = this.bids[0];
@@ -620,11 +628,6 @@ namespace Crypto_Trading
                 }
                 decimal vr_markup = this.markup * (decimal)Math.Exp(taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000 / (double)this.markup) * this.RVMarkup_multiplier + this.markupAdjustment;
 
-                //if (vr_markup > this.markup)
-                //{
-                //    vr_markup = Math.Ceiling(vr_markup / 50) * 50;
-                //}
-
                 this.modThreshold = this.config_modThreshold;
 
                 if (vr_markup >= this.prev_markup)
@@ -632,18 +635,6 @@ namespace Crypto_Trading
                     this.base_markup = vr_markup;
                     this.prev_markup = vr_markup;
                     this.prevMarkupTime = DateTime.UtcNow;
-                    //if (vr_markup > this.markup)
-                    //{
-                    //    this.base_markup = vr_markup;
-                    //    this.prev_markup = vr_markup;
-                    //    this.prevMarkupTime = DateTime.UtcNow;
-                    //}
-                    //else
-                    //{
-
-                    //    this.base_markup = this.markup;
-                    //    this.prev_markup = this.markup;
-                    //}
                 }
                 else
                 {
@@ -676,9 +667,6 @@ namespace Crypto_Trading
 
                 markup_bid = this.base_markup;
                 markup_ask = this.base_markup;
-;
-
-                
 
                 if (this.skew_point > 0)
                 {
@@ -2459,6 +2447,10 @@ namespace Crypto_Trading
                         }
                     }
                 }
+                if (fill.market != this.maker.market)
+                {
+                    return;
+                }
                 decimal diff_amount = this.maker.baseBalance.total + this.taker.baseBalance.total - this.baseCcyQuantity; 
                 decimal filled_quantity = fill.quantity;
                 //if (filled_quantity > this.ToBsize * 2)
@@ -2466,10 +2458,7 @@ namespace Crypto_Trading
                 //    filled_quantity = this.ToBsize * 2;
                 //}
                 DataSpotOrderUpdate ord;
-                if (fill.market != this.maker.market)
-                {
-                    return;
-                }
+                
                 if (this.stg_orders.Contains(fill.internal_order_id) == false && this.stg_orders.Contains(fill.market + fill.order_id))
                 {
                     //Even if the order id is not registered, if the market and symbol meets the strategy handle the fill.
@@ -2513,7 +2502,12 @@ namespace Crypto_Trading
 
                             }
                         }
-                        
+
+                        if (this.stg_orders_dict.ContainsKey(fill.internal_order_id))
+                        {
+                            this.stg_orders_dict[fill.internal_order_id] -= fill.quantity;
+                        }
+
                         filled_quantity = Math.Round(filled_quantity / this.taker.quantity_unit) * this.taker.quantity_unit;
 
                         if (filled_quantity > 0)
@@ -2546,10 +2540,6 @@ namespace Crypto_Trading
                                             fill.msg += "  onFill at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + fill.internal_order_id;
                                         }
                                     }
-                                    if (this.stg_orders_dict.ContainsKey(fill.internal_order_id))
-                                    {
-                                        this.stg_orders_dict[fill.internal_order_id] -= fill.quantity;
-                                    }
                                     break;
                                 case orderSide.Sell:
                                     await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, null, true,false);
@@ -2577,10 +2567,6 @@ namespace Crypto_Trading
                                             this.last_filled_time = this.last_filled_time_sell;
                                             fill.msg += "  onFill at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + fill.internal_order_id;
                                         }
-                                    }
-                                    if (this.stg_orders_dict.ContainsKey(fill.internal_order_id))
-                                    {
-                                        this.stg_orders_dict[fill.internal_order_id] -= fill.quantity;
                                     }
                                     break;
                             }
@@ -2649,6 +2635,19 @@ namespace Crypto_Trading
                     }
                 }
             }
+        }
+        public void update_micurve(MarketImpact mi)
+        {
+            int sign = 1;
+            if (mi.fill_side == orderSide.Sell)
+            {
+                sign = -1;
+            }
+            foreach (var item in mi.prices)
+            {
+                this.market_impact_curve[item.Key] = (this.market_impact_curve[item.Key] * this.mi_volume + sign * (item.Value - mi.filled_price) / mi.filled_price * 1_000_000 * mi.filled_quantity) / (this.mi_volume + mi.filled_quantity);
+            }
+            this.mi_volume += mi.filled_quantity;
         }
 
         public Action obtainUpdating()

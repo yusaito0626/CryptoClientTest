@@ -260,12 +260,12 @@ namespace Crypto_Clients
             }
             catch (WebSocketException wse)
             {
-                this.addLog($"WebSocketException: {wse.Message}",Enums.logType.ERROR);
+                this.addLog($"WebSocketException: {wse.Message}",Enums.logType.WARNING);
                 ret = false;
             }
             catch (Exception ex)
             {
-                this.addLog($"Connection failed: {ex.Message}", Enums.logType.ERROR);
+                this.addLog($"Connection failed: {ex.Message}", Enums.logType.WARNING);
                 ret = false;
             }
             return ret;
@@ -308,8 +308,8 @@ namespace Crypto_Clients
                     JsonElement js = JsonDocument.Parse(msg_body).RootElement;
                     if(js.GetProperty("success").GetBoolean() == false)
                     {
-                        this.addLog("Failed to login to the private channel.",Enums.logType.ERROR);
-                        this.addLog(msg_body, Enums.logType.ERROR);
+                        this.addLog("Failed to login to the private channel.",Enums.logType.WARNING);
+                        this.addLog(msg_body, Enums.logType.WARNING);
                         this.closeSentPrivate = false;
                         await this.disconnectPrivate();
                         ret = false;
@@ -322,12 +322,12 @@ namespace Crypto_Clients
             }
             catch (WebSocketException wse)
             {
-                this.addLog($"WebSocketException: {wse.Message}", Enums.logType.ERROR);
+                this.addLog($"WebSocketException: {wse.Message}", Enums.logType.WARNING);
                 ret = false;
             }
             catch (Exception ex)
             {
-                this.addLog($"Connection failed: {ex.Message}", Enums.logType.ERROR);
+                this.addLog($"Connection failed: {ex.Message}", Enums.logType.WARNING);
                 ret = false;
             }
             return ret;

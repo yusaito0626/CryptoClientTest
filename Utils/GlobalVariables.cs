@@ -11,8 +11,11 @@ namespace Utils
     {
         public const string ver_major = "1";
         public const string ver_minor = "8";
-        public const string ver_patch = "2";
+        public const string ver_patch = "4";
 
         public static string tmMsecFormat = "yyyy-MM-dd HH:mm:ss.fff";
+
+        public static List<double> MI_period = [0,0.5, 1, 2, 3, 4, 5, 10, 30, 60, 120, 180, 240, 300, 600];
+        //public static List<double> MI_period = [0, 0.5, 1, 2, 3, 4, 5, 10, 30, 60, 120, 180, 240, 300, 600, 900, 1200, 1800, 3600];
     }
 }

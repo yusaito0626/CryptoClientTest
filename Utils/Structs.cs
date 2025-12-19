@@ -1476,6 +1476,8 @@ namespace Utils
         public decimal tradingPnL { get; set; }
         public decimal totalFee { get; set; }
         public decimal totalPnL { get; set; }
+        public decimal mi_volume { get; set; }
+        public Dictionary<double, decimal>? market_impact_curve { get; set; }
     }
 
     public class instrumentInfo
@@ -1508,6 +1510,8 @@ namespace Utils
 
         public decimal quoteFee_total { get; set; }
         public decimal baseFee_total { get; set; }
+        public decimal mi_volume { get; set; }
+        public Dictionary<double,decimal>? market_impact_curve { get; set; }
     }
 
     public class connecitonStatus
