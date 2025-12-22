@@ -597,6 +597,11 @@ namespace Crypto_Trading
 
                     }
                     this.oManager.live_orders.Clear();
+                    foreach(Instrument ins in this.instruments.Values)
+                    {
+                        ins.baseBalance.inuse = 0;
+                        ins.quoteBalance.inuse = 0;
+                    }
                     Volatile.Write(ref this.oManager.order_lock, 0);
                 }
                 else
@@ -683,6 +688,15 @@ namespace Crypto_Trading
                     foreach (var id in removing)
                     {
                         this.oManager.live_orders.Remove(id);
+                    }
+
+                    foreach (Instrument ins in this.instruments.Values)
+                    {
+                        if(ins.market == market)
+                        {
+                            ins.baseBalance.inuse = 0;
+                            ins.quoteBalance.inuse = 0;
+                        }
                     }
                     Volatile.Write(ref this.oManager.order_lock, 0);
                 }

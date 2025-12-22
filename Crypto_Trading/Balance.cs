@@ -49,6 +49,13 @@ namespace Crypto_Trading
             get { return _total; }
             set {  _total = value; }
         }
+
+        public void init()
+        {
+            this._total = 0;
+            this._inuse = 0;
+        }
+
         public decimal inuse
         {
             get { return _inuse; }
