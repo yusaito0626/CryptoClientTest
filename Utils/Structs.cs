@@ -42,11 +42,11 @@ namespace Utils
     {
         public string symbol;
         public string market;
-        public string symbolmarket
+        public string symbol_market
         {
             get { return symbol + "@" + market; }
         }
-        public orderSide side;//Buy:long Sell:short
+        public positionSide side;
         public decimal quantity;
         public decimal avgPrice;
         public decimal unrealizedFee;
@@ -56,7 +56,7 @@ namespace Utils
         {
             this.symbol = "";
             this.market = "";
-            this.side = orderSide.NONE;
+            this.side = positionSide.NONE;
             this.quantity = 0;
             this.avgPrice = 0;
             this.unrealizedFee = 0;
@@ -69,11 +69,11 @@ namespace Utils
             string str_side = js.GetProperty("position_side").GetString();
             if (str_side == "long")
             {
-                this.side = orderSide.Buy;
+                this.side = positionSide.Long;
             }
             else if (str_side == "short")
             {
-                this.side = orderSide.Sell;
+                this.side = positionSide.Short;
             }
             this.quantity = decimal.Parse(js.GetProperty("open_amount").GetString());
             this.avgPrice = decimal.Parse(js.GetProperty("average_price").GetString());
@@ -89,7 +89,7 @@ namespace Utils
         {
             this.symbol = "";
             this.market = "";
-            this.side = orderSide.NONE;
+            this.side = positionSide.NONE;
             this.quantity = 0;
             this.avgPrice = 0;
             this.unrealizedFee = 0;
@@ -333,6 +333,7 @@ namespace Utils
         public string symbol;
         public decimal price;
         public orderSide side;
+        public positionSide position_side;
         public string trade_id;
         public orderType order_type;
         public decimal profit_loss;
@@ -359,6 +360,7 @@ namespace Utils
             this.symbol = "";
             this.price = 0;
             this.side = orderSide.NONE;
+            this.position_side = positionSide.NONE;
             this.trade_id = "";
             this.order_type = orderType.NONE;
             this.profit_loss = 0;
@@ -457,6 +459,28 @@ namespace Utils
             {
                 this.side = orderSide.Sell;
             }
+
+            JsonElement js_posside;
+            if (js.TryGetProperty("position_side", out js_posside) && js_posside.GetString() != null)
+            {
+                string str_posside = js_posside.GetString();
+                if (str_posside == "long")
+                {
+                    this.position_side = positionSide.Long;
+                }
+                else if (str_posside == "short")
+                {
+                    this.position_side = positionSide.Short;
+                }
+                else
+                {
+                    this.position_side = positionSide.NONE;
+                }
+            }
+            else
+            {
+                this.position_side = positionSide.NONE;
+            }
             this.trade_id = js.GetProperty("trade_id").GetInt64().ToString();
             string _type = js.GetProperty("type").GetString();
             switch (_type)
@@ -470,6 +494,16 @@ namespace Utils
                 default:
                     this.order_type = orderType.Other;
                     break;
+            }
+            JsonElement js_pnl;
+            if(js.TryGetProperty("profit_loss",out js_pnl) && js_pnl.GetString() != null)
+            {
+                this.profit_loss = decimal.Parse(js_pnl.GetString());
+            }
+            JsonElement js_interest;
+            if (js.TryGetProperty("interest", out js_interest) && js_interest.GetString() != null)
+            {
+                this.profit_loss = decimal.Parse(js_interest.GetString());
             }
             //this.profit_loss = decimal.Parse(js.GetProperty("profit_loss").GetString());
             //this.interest = decimal.Parse(js.GetProperty("interest").GetString());
@@ -582,6 +616,7 @@ namespace Utils
         public string symbol;
         public orderType order_type;
         public orderSide side;
+        public positionSide position_side;
         public orderStatus status;
         public timeInForce time_in_force;
 
@@ -621,6 +656,7 @@ namespace Utils
             this.symbol = "";
             this.order_type = orderType.NONE;
             this.side = orderSide.NONE;
+            this.position_side = positionSide.NONE;
             this.status = orderStatus.NONE;
             this.time_in_force = timeInForce.NONE;
             this.order_quantity = 0;
@@ -651,6 +687,7 @@ namespace Utils
             this.symbol = org.symbol;
             this.order_type = org.order_type;
             this.side = org.side;
+            this.position_side = org.position_side;
             this.status = org.status;
             this.time_in_force = org.time_in_force;
             this.order_quantity = org.order_quantity;
@@ -788,6 +825,27 @@ namespace Utils
             else if (side == "sell")
             {
                 this.side = orderSide.Sell;
+            }
+            JsonElement js_posside;
+            if(js.TryGetProperty("position_side",out js_posside) && js_posside.GetString() != null)
+            {
+                string str_posside = js_posside.GetString();
+                if (str_posside == "long")
+                {
+                    this.position_side = positionSide.Long;
+                }
+                else if (str_posside == "short") 
+                {
+                    this.position_side= positionSide.Short;
+                }
+                else
+                {
+                    this.position_side = positionSide.NONE;
+                }
+            }
+            else
+            {
+                this.position_side = positionSide.NONE;
             }
             string str_status = js.GetProperty("status").GetString();
             switch (str_status)
@@ -1303,7 +1361,7 @@ namespace Utils
             {
                 line = "";
             }
-            line += "," + this.order_id + "," + this.market + "," + this.symbol + "," + this.order_type.ToString() + "," + this.side.ToString() + "," + this.status.ToString() + "," + this.time_in_force.ToString() + "," + this.order_price.ToString() + "," + this.order_quantity.ToString() + "," + this.filled_quantity.ToString() + "," + this.average_price.ToString() + "," + this.internal_order_id + "," + this.fee_asset + "," + this.fee.ToString();
+            line += "," + this.order_id + "," + this.market + "," + this.symbol + "," + this.order_type.ToString() + "," + this.position_side.ToString() + "," + this.side.ToString() + "," + this.status.ToString() + "," + this.time_in_force.ToString() + "," + this.order_price.ToString() + "," + this.order_quantity.ToString() + "," + this.filled_quantity.ToString() + "," + this.average_price.ToString() + "," + this.internal_order_id + "," + this.fee_asset + "," + this.fee.ToString();
             if (this.create_time != null)
             {
                 line += "," + ((DateTime)this.create_time).ToString("yyyy-MM-dd HH:mm:ss.fff");
@@ -1331,7 +1389,7 @@ namespace Utils
         public string? symbol;
         public DateTime? timestamp;
         public DateTime? filled_time;
-        public SharedOrderSide? side;
+        public orderSide side;
         public decimal price;
         public decimal quantity;
 
@@ -1341,7 +1399,7 @@ namespace Utils
             this.symbol = "";
             this.timestamp = null;
             this.filled_time = null;
-            this.side = null;
+            this.side = orderSide.NONE;
             this.price = 0;
             this.quantity = 0;
         }
@@ -1351,7 +1409,18 @@ namespace Utils
             this.symbol = symbol;
             this.timestamp = DateTime.UtcNow;
             this.filled_time = trd.Timestamp;
-            this.side = trd.Side;
+            switch(trd.Side)
+            {
+                case SharedOrderSide.Buy:
+                    this.side = orderSide.Buy;
+                    break;
+                case SharedOrderSide.Sell:
+                    this.side = orderSide.Sell;
+                    break;
+                default:
+                    this.side = orderSide.NONE;
+                    break;
+            }
             this.price = trd.Price;
             this.quantity = trd.Quantity;
         }
@@ -1364,11 +1433,11 @@ namespace Utils
             string str_side = js.GetProperty("side").GetString();
             if (str_side == "buy")
             {
-                this.side = SharedOrderSide.Buy;
+                this.side = orderSide.Buy;
             }
             else if (str_side == "sell")
             {
-                this.side = SharedOrderSide.Sell;
+                this.side = orderSide.Sell;
             }
             this.price = decimal.Parse(js.GetProperty("price").GetString());
             this.quantity = decimal.Parse(js.GetProperty("amount").GetString());
@@ -1385,11 +1454,11 @@ namespace Utils
             string str_side = js.GetProperty("direction").GetString();
             if (str_side == "buy")
             {
-                this.side = SharedOrderSide.Buy;
+                this.side = orderSide.Buy;
             }
             else if (str_side == "sell")
             {
-                this.side = SharedOrderSide.Sell;
+                this.side = orderSide.Sell;
             }
         }
         public void setCoincheckTrade(JsonElement js)
@@ -1419,11 +1488,11 @@ namespace Utils
                     case 5://side
                         if (str_item == "buy")
                         {
-                            this.side = SharedOrderSide.Buy;
+                            this.side = orderSide.Buy;
                         }
                         else if (str_item == "sell")
                         {
-                            this.side = SharedOrderSide.Sell;
+                            this.side = orderSide.Sell;
                         }
                         break;
                     case 6://Taker ID
@@ -1443,7 +1512,7 @@ namespace Utils
             this.symbol = "";
             this.timestamp = null;
             this.filled_time = null;
-            this.side = null;
+            this.side = orderSide.NONE;
             this.price = 0;
             this.quantity = 0;
         }

@@ -126,6 +126,14 @@ namespace Crypto_Trading
         public Balance baseBalance;
         public Balance quoteBalance;
 
+        public BalanceMargin longPostion;
+        public BalanceMargin shortPosition;
+
+        public decimal net_pos
+        {
+            get {return this.baseBalance.total + this.longPostion.total - this.shortPosition.total;}
+        }
+
         public Balance SoD_baseBalance;
         public Balance SoD_quoteBalance;
 
@@ -208,6 +216,12 @@ namespace Crypto_Trading
 
             this.baseBalance = new Balance();
             this.quoteBalance = new Balance();
+
+            this.longPostion = new BalanceMargin();
+            this.shortPosition = new BalanceMargin();
+
+            this.longPostion.side = positionSide.Long;
+            this.shortPosition.side = positionSide.Short;
 
             this.SoD_baseBalance = new Balance();
             this.SoD_quoteBalance = new Balance();
@@ -492,11 +506,11 @@ namespace Crypto_Trading
             this.last_price = update.price;
             switch (update.side)
             {
-                case CryptoExchange.Net.SharedApis.SharedOrderSide.Buy:
+                case orderSide.Buy:
                     this.buy_quantity += update.quantity;
                     this.buy_notional += update.quantity * update.price;
                     break;
-                case CryptoExchange.Net.SharedApis.SharedOrderSide.Sell:
+                case orderSide.Sell:
                     this.sell_quantity += update.quantity;
                     this.sell_notional += update.quantity * update.price;
                     break;
@@ -1083,20 +1097,51 @@ namespace Crypto_Trading
         }
         public void updateFills(DataFill fill)
         {
-            if(fill.side == orderSide.Buy)
+            if(fill.position_side == positionSide.Long)//Margin Long
+            {
+                if (fill.side == orderSide.Buy)
+                {
+                    this.longPostion.AddBalance(fill.quantity, 0);
+                }
+                else if (fill.side == orderSide.Sell)
+                {
+                    this.longPostion.AddBalance(-fill.quantity, 0);
+                }
+            }
+            else if(fill.position_side == positionSide.Short)//Margin Short
+            {
+                if(fill.side == orderSide.Sell)
+                {
+                    this.shortPosition.AddBalance(fill.quantity, 0);
+                }
+                else if(fill.side == orderSide.Buy)
+                {
+                    this.shortPosition.AddBalance(-fill.quantity, 0);
+                }
+            }
+            else//Spot Order
+            {
+                if (fill.side == orderSide.Buy)
+                {
+                    this.baseBalance.AddBalance(fill.quantity, 0);
+                    this.quoteBalance.AddBalance(-fill.quantity * fill.price, 0);
+                }
+                else if (fill.side == orderSide.Sell)
+                {
+                    this.baseBalance.AddBalance(-fill.quantity, 0);
+                    this.quoteBalance.AddBalance(fill.quantity * fill.price, 0);
+                }
+            }
+            if (fill.side == orderSide.Buy)
             {
                 this.my_buy_quantity += fill.quantity;
                 this.my_buy_notional += fill.quantity * fill.price;
-                this.baseBalance.AddBalance(fill.quantity,0);
-                this.quoteBalance.AddBalance(-fill.quantity * fill.price,0);                
             }
-            else if(fill.side == orderSide.Sell)
+            else if (fill.side == orderSide.Sell)
             {
 
                 this.my_sell_quantity += fill.quantity;
                 this.my_sell_notional += fill.quantity * fill.price;
-                this.baseBalance.AddBalance(-fill.quantity,0);
-                this.quoteBalance.AddBalance(fill.quantity * fill.price,0);
             }
             this.baseBalance.AddBalance(-fill.fee_base, 0);
             this.quoteBalance.AddBalance(-fill.fee_quote, 0);

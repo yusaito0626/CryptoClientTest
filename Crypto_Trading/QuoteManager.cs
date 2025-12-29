@@ -360,6 +360,27 @@ namespace Crypto_Trading
             }
             return output;
         }
+        public bool setMarginPosition(DataMarginPos[] mar_pos)
+        {
+            bool output = true;
+            foreach (var item in mar_pos)
+            {
+                if (this.instruments.ContainsKey(item.symbol_market))
+                {
+                    Instrument ins = this.instruments[item.symbol_market];
+                    if(item.side == positionSide.Long)
+                    {
+                        ins.longPostion.setPosition(item);
+                    }
+                    else if(item.side == positionSide.Short)
+                    {
+                        ins.shortPosition.setPosition(item);
+                    }
+                }
+            }
+            return output;
+        }
+
         public bool setFees(ExchangeWebResult<SharedFee>[] results,string master_symbol)
         {
             bool output = true;

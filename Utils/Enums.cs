@@ -37,6 +37,12 @@
         Buy = 1,
         Sell = 2
     }
+    public enum positionSide
+    {
+        NONE = -1,
+        Long = 1,
+        Short = 2
+    }
     public enum orderStatus
     {
         NONE = -1,

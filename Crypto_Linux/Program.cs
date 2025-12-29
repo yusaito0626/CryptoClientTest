@@ -525,7 +525,7 @@ namespace Crypto_Linux
             //js = await crypto_client.bitbank_client.getMarginPosition();
             //Console.WriteLine(js.RootElement.ToString());
 
-            DataMarginPos[] marpos = await crypto_client.getMarginPos("bitbank");
+            DataMarginPos[] marpos = await crypto_client.getMarginPos(["bitbank"]);
             foreach(DataMarginPos pos in marpos)
             {
                 Console.WriteLine(pos.ToString()); 
@@ -951,19 +951,30 @@ namespace Crypto_Linux
 
                 if (oManager.getVirtualMode())
                 {
-                    if (!qManager.setVirtualBalance(virtualBalanceFile))
+                    if(privateConnect)
                     {
-                        return false;
+                        if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys)))
+                        {
+                            addLog("Failed to set balance", logType.WARNING);
+                            return false;
+                        }
                     }
-                    foreach(var stg in strategies)
+                    else
                     {
-                        stg.Value.taker.baseBalance.total = stg.Value.baseCcyQuantity / 2;
-                        stg.Value.maker.baseBalance.total = stg.Value.baseCcyQuantity / 2;
+                        if (!qManager.setVirtualBalance(virtualBalanceFile))
+                        {
+                            return false;
+                        }
+                        foreach (var stg in strategies)
+                        {
+                            stg.Value.taker.baseBalance.total = stg.Value.baseCcyQuantity / 2;
+                            stg.Value.maker.baseBalance.total = stg.Value.baseCcyQuantity / 2;
+                        }
+
                     }
                 }
                 else
                 {
-                    
                     string SoDPosFile = outputPath + "/SoD_Position.csv";
                     if (!File.Exists(SoDPosFile))
                     {
@@ -1329,6 +1340,7 @@ namespace Crypto_Linux
                         foreach (var m in qManager._markets)
                         {
                             qManager.setBalance(await crypto_client.getBalance([m.Key]));
+                            qManager.setMarginPosition(await crypto_client.getMarginPos([m.Key]));
                         }
                     }
                     

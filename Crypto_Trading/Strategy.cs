@@ -1821,7 +1821,7 @@ namespace Crypto_Trading
                 DataSpotOrderUpdate ord = null;
                 switch(trade.side)
                 {
-                    case CryptoExchange.Net.SharedApis.SharedOrderSide.Buy:
+                    case orderSide.Buy:
 
                         ord_id = this.live_sellorder_id;
                         while (Interlocked.CompareExchange(ref this.fill_lock, 1, 0) != 0)
@@ -1875,7 +1875,7 @@ namespace Crypto_Trading
                         }
                         Volatile.Write(ref this.fill_lock, 0);
                         break;
-                    case CryptoExchange.Net.SharedApis.SharedOrderSide.Sell:
+                    case orderSide.Sell:
                         ord_id = this.live_buyorder_id;
                         i = 0;
                         while (Interlocked.CompareExchange(ref this.fill_lock, 1, 0) != 0)
@@ -1956,7 +1956,7 @@ namespace Crypto_Trading
                     decimal quantity = 0;
                     switch (trade.side)
                     {
-                        case CryptoExchange.Net.SharedApis.SharedOrderSide.Buy:
+                        case orderSide.Buy:
                             while (Interlocked.CompareExchange(ref this.fill_lock, 1, 0) != 0)
                             {
                             }
@@ -2012,7 +2012,7 @@ namespace Crypto_Trading
 
                             Volatile.Write(ref this.fill_lock, 0);
                             break;
-                        case CryptoExchange.Net.SharedApis.SharedOrderSide.Sell:
+                        case orderSide.Sell:
                             while (Interlocked.CompareExchange(ref this.fill_lock, 1, 0) != 0)
                             {
                             }

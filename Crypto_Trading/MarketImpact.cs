@@ -71,10 +71,10 @@ namespace Crypto_Trading
             this.filled_price = trd.price;
             switch(trd.side)
             {
-                case CryptoExchange.Net.SharedApis.SharedOrderSide.Buy:
+                case orderSide.Buy:
                     this.fill_side = orderSide.Sell;
                     break;
-                case CryptoExchange.Net.SharedApis.SharedOrderSide.Sell:
+                case orderSide.Sell:
                     this.fill_side = orderSide.Buy;
                     break;
             }
