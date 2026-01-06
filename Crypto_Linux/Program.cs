@@ -976,8 +976,8 @@ namespace Crypto_Linux
                         foreach (var stg in strategies)
                         {
                             stg.Value.taker.baseBalance.total = stg.Value.baseCcyQuantity / 2;
-                            stg.Value.maker.baseBalance.total = stg.Value.baseCcyQuantity / 2;
-                            stg.Value.maker.shortPosition.total = stg.Value.baseCcyQuantity;
+                            stg.Value.maker.baseBalance.total = 0;// stg.Value.baseCcyQuantity / 2;
+                            stg.Value.maker.shortPosition.total = stg.Value.baseCcyQuantity / 2;
                         }
                         foreach (var ins in qManager.instruments.Values)
                         {

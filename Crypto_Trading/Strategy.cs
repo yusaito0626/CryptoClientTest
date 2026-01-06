@@ -641,13 +641,7 @@ namespace Crypto_Trading
                 {
                     taker_VR = 0.7 * taker_VR + 0.3 * this.taker.prev_RV;
                 }
-                //decimal old_markup = 100 * (decimal)Math.Exp(taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000 / 100) * (decimal)0.8 - 80;
                 decimal vr_markup = this.const_markup + this.rv_penalty_multiplier * ((decimal)Math.Exp(taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000 / this.rv_base_param) - 1);
-
-                //if(vr_markup - old_markup > (decimal)0.00001 || vr_markup - old_markup < (decimal)-0.00001)
-                //{
-                //    addLog("Old:" + old_markup.ToString() + " current:" + vr_markup.ToString());
-                //}
 
                 this.modThreshold = this.config_modThreshold;
 
@@ -903,15 +897,6 @@ namespace Crypto_Trading
                     this.live_askprice = 0;
                 }
 
-
-                //if (this.maker.baseBalance.total - this.maker.baseBalance.inuse < ordersize_ask)
-                //{
-                //    ask_price = 0;
-                //}
-                //if (this.maker.quoteBalance.total - this.maker.quoteBalance.inuse < ordersize_bid * bid_price)
-                //{
-                //    bid_price = 0;
-                //}
                 if(this.maker.shortPosition.total - this.maker.shortPosition.inuse < ordersize_bid)
                 {
                     bid_price = 0;
@@ -942,7 +927,6 @@ namespace Crypto_Trading
                 if (this.oManager.orders.ContainsKey(this.live_buyorder_id))
                 {
                     ord = this.oManager.orders[this.live_buyorder_id];
-                    //if (ord.status == orderStatus.Open && (bid_price == 0 || (this.maker.baseBalance.total > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200))))
                     if (ord.status == orderStatus.Open && (bid_price == 0 || ((this.baseCcyQuantity + this.maker.net_pos) > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200))))
                     {
                         cancelling_ord.Add(this.live_buyorder_id);
@@ -959,7 +943,6 @@ namespace Crypto_Trading
                 }
                 else if(this.live_buyorder_id == "")
                 {
-                    //if (bid_price == 0 || (this.maker.baseBalance.total > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200)))
                     if (bid_price == 0 || ((this.baseCcyQuantity + this.maker.net_pos) > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200)))
                     {
 
@@ -972,7 +955,6 @@ namespace Crypto_Trading
                 if (this.oManager.orders.ContainsKey(this.live_sellorder_id))
                 {
                     ord = this.oManager.orders[this.live_sellorder_id];
-                    //if (ord.status == orderStatus.Open && (ask_price == 0 || (this.maker.baseBalance.total < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200))))
                     if (ord.status == orderStatus.Open && (ask_price == 0 || ((this.baseCcyQuantity + this.maker.net_pos) < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200))))
                     {
                         cancelling_ord.Add(this.live_sellorder_id);
@@ -989,7 +971,6 @@ namespace Crypto_Trading
                 }
                 else if (this.live_sellorder_id == "")
                 {
-                    //if (ask_price == 0 || (this.maker.baseBalance.total < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200)))
                     if (ask_price == 0 || ((this.baseCcyQuantity + this.maker.net_pos) < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200)))
                     {
 
@@ -1105,8 +1086,7 @@ namespace Crypto_Trading
                 bool buyFirst = true;
                 this.skew_point = this.skew();
                 decimal modTh_buffer = 0;
-                //decimal modTh_buffer = 100 * Math.Abs(this.skew_point) / this.maxSkew / 1000000;
-
+                
                 decimal cumAskSize = 0;
                 decimal cumBidSize = 0;
                 if (this.skew_point == 0)
@@ -1164,7 +1144,6 @@ namespace Crypto_Trading
                 {
                     taker_VR = 0.7 * taker_VR + 0.3 * this.taker.prev_RV;
                 }
-                //decimal vr_markup = this.const_markup * (decimal)Math.Exp(taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000 / (double)this.const_markup) * this.rv_penalty_multiplier + this.markupAdjustment;
                 decimal vr_markup = this.const_markup + this.rv_penalty_multiplier * ((decimal)Math.Exp(taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000 / this.rv_base_param) - 1);
 
                 if (vr_markup >= this.prev_markup)
@@ -1192,7 +1171,6 @@ namespace Crypto_Trading
                     elapsedTimeFromLastfill = 0;
                 }
 
-                //decimal min_basemarkup = this.const_markup * this.rv_penalty_multiplier + this.markupAdjustment;
                 decimal min_basemarkup = this.const_markup;
                 this.markup_decay = -elapsedTimeFromLastfill / this.markup_decay_basetime * this.const_markup;
 
