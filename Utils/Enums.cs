@@ -73,6 +73,11 @@
     public enum  ordError
     {
         NONE = 0,
+        INVALID_PRICE = 1,
+        INVALID_QUANTITY = 2,
+        INVALID_INSTRUMENT = 3,
+        INVALID_SIDE = 4,
+        INSUFFICIENT_AMOUNT = 5,
         RATE_LIMIT_EXCEEDED = 10009,
         TIMED_OUT = 80001,
         HTTP_NOT_READY = 80002,

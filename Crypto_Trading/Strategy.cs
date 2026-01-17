@@ -1026,7 +1026,7 @@ namespace Crypto_Trading
                 {
                     if(newBuyOrder)
                     {
-                        this.live_buyorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, ordersize_bid, bid_price, positionSide.Short, null, true, false);
+                        this.live_buyorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, ordersize_bid, bid_price, positionSide.Short, null, true, false,vr_markup.ToString());
                         this.live_bidprice = bid_price;
                         this.stg_orders.Add(this.live_buyorder_id);
                         this.stg_orders_dict[this.live_buyorder_id] = ordersize_bid;
@@ -1034,7 +1034,7 @@ namespace Crypto_Trading
                     }
                     if(newSellOrder)
                     {
-                        this.live_sellorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, ordersize_ask, ask_price, positionSide.Short, null, true, false);
+                        this.live_sellorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, ordersize_ask, ask_price, positionSide.Short, null, true, false, vr_markup.ToString());
                         this.live_askprice = ask_price;
                         this.stg_orders.Add(this.live_sellorder_id);
                         this.stg_orders_dict[this.live_sellorder_id] = ordersize_ask;
@@ -1045,7 +1045,7 @@ namespace Crypto_Trading
                 {
                     if (newSellOrder)
                     {
-                        this.live_sellorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, ordersize_ask, ask_price, positionSide.Short, null, true, false);
+                        this.live_sellorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, ordersize_ask, ask_price, positionSide.Short, null, true, false, vr_markup.ToString());
                         this.live_askprice = ask_price;
                         this.stg_orders.Add(this.live_sellorder_id);
                         this.stg_orders_dict[this.live_sellorder_id] = ordersize_ask;
@@ -1053,7 +1053,7 @@ namespace Crypto_Trading
                     }
                     if (newBuyOrder)
                     {
-                        this.live_buyorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, ordersize_bid, bid_price, positionSide.Short, null, true, false);
+                        this.live_buyorder_id = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, ordersize_bid, bid_price, positionSide.Short, null, true, false, vr_markup.ToString());
                         this.live_bidprice = bid_price;
                         this.stg_orders.Add(this.live_buyorder_id);
                         this.stg_orders_dict[this.live_buyorder_id] = ordersize_bid;
@@ -1566,7 +1566,7 @@ namespace Crypto_Trading
                         {
                             if (this.bids[i] > 0 && this.ordersize_bid[i] > 0 && (newBuyOrder & (1 << i)) > 0)
                             {
-                                this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.Short, null, true, false);
+                                this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.Short, null, true, false, vr_markup.ToString());
                                 this.current_bids[i] = this.bids[i];
                                 this.stg_orders.Add(this.live_buyorders[i]);
                                 this.stg_orders_dict[this.live_buyorder_id] = this.ordersize_bid[i];
@@ -1574,7 +1574,7 @@ namespace Crypto_Trading
                             }
                             if (this.asks[i] > 0 && this.ordersize_ask[i] > 0 && (newSellOrder & (1 << i)) > 0)
                             {
-                                this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.Short, null, true, false);
+                                this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.Short, null, true, false, vr_markup.ToString());
                                 this.current_asks[i] = this.asks[i];
                                 this.stg_orders.Add(this.live_sellorders[i]);
                                 this.stg_orders_dict[this.live_buyorder_id] = this.ordersize_ask[i];
@@ -1588,7 +1588,7 @@ namespace Crypto_Trading
                         {
                             if (this.asks[i] > 0 && this.ordersize_ask[i] > 0 && (newSellOrder & (1 << i)) > 0)
                             {
-                                this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.Short, null, true, false);
+                                this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.Short, null, true, false, vr_markup.ToString());
                                 this.current_asks[i] = this.asks[i];
                                 this.stg_orders.Add(this.live_sellorders[i]);
                                 this.stg_orders_dict[this.live_buyorder_id] = this.ordersize_ask[i];
@@ -1596,7 +1596,7 @@ namespace Crypto_Trading
                             }
                             if (this.bids[i] > 0 && this.ordersize_bid[i] > 0 && (newBuyOrder & (1 << i)) > 0)
                             {
-                                this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.Short, null, true, false);
+                                this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.Short, null, true, false, vr_markup.ToString());
                                 this.current_bids[i] = this.bids[i];
                                 this.stg_orders.Add(this.live_buyorders[i]);
                                 this.stg_orders_dict[this.live_buyorder_id] = this.ordersize_bid[i];
@@ -2432,7 +2432,7 @@ namespace Crypto_Trading
                             case orderSide.Buy:
                                 if (filled_quantity > 0)
                                 {
-                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true,false,ord.msg);
                                 }
                                 this.last_filled_time_buy = DateTime.UtcNow;
                                 this.last_filled_time = this.last_filled_time_buy;
@@ -2441,7 +2441,7 @@ namespace Crypto_Trading
 
                                 if (filled_quantity > 0)
                                 {
-                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, false, ord.msg);
                                 }
                                 this.last_filled_time_sell = DateTime.UtcNow;
                                 this.last_filled_time = this.last_filled_time_sell;
@@ -2555,7 +2555,7 @@ namespace Crypto_Trading
                                         if (ord.order_quantity - ord.filled_quantity <= fill.quantity || ord.status == orderStatus.Filled)
                                         {
                                             //this.executed_Orders_old[ord.internal_order_id] = ord;
-                                            ord.msg += "  onFill at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + fill.internal_order_id + " " + fill.msg;
+                                            ord.msg += ",  onFill at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + fill.internal_order_id + " " + fill.msg;
                                             addLog(ord.ToString());
                                             fill.msg += ord.msg;
                                             this.last_filled_time_buy = DateTime.UtcNow;
@@ -2585,7 +2585,7 @@ namespace Crypto_Trading
                                             //this.executed_Orders_old[ord.internal_order_id] = ord;
                                             this.last_filled_time_sell = DateTime.UtcNow;
                                             this.last_filled_time = this.last_filled_time_sell;
-                                            ord.msg += "  onFill at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + fill.internal_order_id + " " + fill.msg;
+                                            ord.msg += ",  onFill at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + fill.internal_order_id + " " + fill.msg;
                                             addLog(ord.ToString());
                                             fill.msg += ord.msg;
                                         }

@@ -362,8 +362,9 @@ namespace Crypto_Linux
                 ++i;
                 if (i > 30)
                 {
-                    string msg = stgPnLMsg();
-                    Console.WriteLine(msg);
+                    await messagePnL(false);
+                    //string msg = messagePnL();
+                    //Console.WriteLine(msg);
                     await timer_PeriodicMsg_Tick();
                     i = 0;
                 }
@@ -375,7 +376,7 @@ namespace Crypto_Linux
             Thread.Sleep(2000);
         }
 
-        static private string stgPnLMsg()
+        static private async Task messagePnL(bool discord = false)
         {
             decimal volumeAll = 0;
             decimal posPnLAll = 0;
@@ -414,6 +415,7 @@ namespace Crypto_Linux
             {
                 if (stg.maker != null && stg.taker != null)
                 {
+                    msg = "";
                     //msg += "Maker Latency:\n";
                     //msg += "<QuotesUpdate> All count:" + stg.maker.count_Allquotes.ToString("N0") + "  Latent Feed:" + stg.maker.count_Latentquotes.ToString("N0") + "\n";
                     //msg += "<Trades> All count:" + stg.maker.count_AllTrade.ToString("N0") + "  Latent Feed:" + stg.maker.count_LatentTrade.ToString("N0") + "\n";
@@ -516,9 +518,15 @@ namespace Crypto_Linux
                     {
 
                     }
+                    Console.WriteLine(msg);
+                    if(discord)
+                    {
+                        await MsgDeliverer.sendMessage(msg, msg_type);
+                    }
                 }
             }
 
+            msg = "";
             string latency_msg = "Latent messages.\n";
             latency_msg += "<QuotesUpdate> All count:" + feedCountQuoteAll.ToString("N0") + "  Latent Feed:" + feedCountQuoteLatent.ToString("N0") + "\n";
             latency_msg += "<Trades> All count:" + feedCountTradeAll.ToString("N0") + "  Latent Feed:" + feedCountTradeLatent.ToString("N0") + "\n";
@@ -538,11 +546,46 @@ namespace Crypto_Linux
             msg += DateTime.UtcNow.ToString() + " - All -    \nNotional Volume:" + volumeAll.ToString("N2") + "\nPosition PnL:" + posPnLAll.ToString("N2") + "\nTrading PnL:" + tradingPLAll.ToString("N2") + "\nFee:" + feeAll.ToString("N2") + "\nTotal:" + totalAll.ToString("N2") + "\n";
 
             msg = latency_msg + "\n" + msg;
-            return msg;
+            Console.WriteLine(msg);
+            if(discord)
+            {
+                await MsgDeliverer.sendMessage(msg, msg_type);
+            }
+            //return msg;
         }
 
         static private async Task testFunc()
         {
+            Console.WriteLine("GMO API test");
+
+            //getBalance
+            Console.WriteLine("getBalance");
+            DataBalance[] balance = crypto_client.getBalance(["gmocoin"]).GetAwaiter().GetResult();
+
+            foreach(var item in balance)
+            {
+               Console.WriteLine("Asset:" + item.asset + " Market:" + item.market + " Available:" + item.available.ToString() + " Total:" + item.total.ToString());
+            }
+            Thread.Sleep(1000);
+
+            //getMargin
+            Console.WriteLine("getMargin");
+            DataMarginPos[] margin = crypto_client.getMarginPos(["gmocoin"]).GetAwaiter().GetResult();
+            foreach(var item in margin)
+            {
+                Console.WriteLine(item.ToString());
+            }
+            Thread.Sleep(1000);
+            //getActiveOrders
+            Console.WriteLine("getActiveOrders");
+            List<DataSpotOrderUpdate> orders = crypto_client.getActiveOrders("gmocoin", ["BTC_JPY"]).GetAwaiter().GetResult();
+            foreach(var ord in orders)
+            {
+                Console.WriteLine(ord.ToString());
+            }
+            Thread.Sleep(1000);
+
+
             Console.WriteLine("Completed");
 
             await EoDProcess();
@@ -1417,13 +1460,19 @@ namespace Crypto_Linux
 
                     Thread.Sleep(1000);
 
-                    string msg = "EoD PnL\n" + stgPnLMsg();
+                    //string msg = "EoD PnL\n" + messagePnL();
 
+                    //await MsgDeliverer.sendMessage(msg, msg_type);
+
+                    //addLog(msg);
+
+                    string msg = "EoD PnL\n";
                     await MsgDeliverer.sendMessage(msg, msg_type);
+                    Console.WriteLine(msg);
 
-                    addLog(msg);
+                    await messagePnL(true);
 
-                    if(ws_server.intradayPnLList.Count > 0)
+                    if (ws_server.intradayPnLList.Count > 0)
                     {
                         using (var sw_intraday = new StreamWriter(new FileStream(intradayPnLFile, FileMode.Create, FileAccess.Write)))
                         {
@@ -2040,6 +2089,11 @@ namespace Crypto_Linux
                 addLog(e.Message, logType.WARNING);
             }
 
+            //if (crypto_client.gmocoin_client.GetSocketStatePublic() == WebSocketState.Open)
+            //{
+            //    crypto_client.gmocoin_client.sendPing(false);
+            //}
+
             DateTime currentTime = DateTime.UtcNow;
             DataSpotOrderUpdate ord;
             while (oManager.order_pool.Count > 0)
@@ -2096,10 +2150,15 @@ namespace Crypto_Linux
 
             if (DateTime.UtcNow > nextMsgTime)
             {
-                msg = stgPnLMsg();
-                await MsgDeliverer.sendMessage(msg,msg_type);
+                //msg = messagePnL();
+                //await MsgDeliverer.sendMessage(msg,msg_type);
+                await messagePnL(true);
                 nextMsgTime += TimeSpan.FromMinutes(msg_Interval);
 
+                if (crypto_client.gmocoin_client.GetSocketStatePrivate() == WebSocketState.Open)
+                {
+                    await crypto_client.gmocoin_client.extendToken(crypto_client.gmocoin_client.token);
+                }
                 //foreach (var stg in strategies.Values)
                 //{
                 //    addLog("Internal Latency of onFill");

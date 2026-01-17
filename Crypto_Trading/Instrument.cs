@@ -84,6 +84,8 @@ namespace Crypto_Trading
         public Dictionary<string, DataSpotOrderUpdate> orders;
         public Dictionary<string, DataSpotOrderUpdate> live_orders;
 
+        public decimal max_leverage = 2;
+
         public decimal last_price;
         public decimal mid;
         public decimal prev_mid;

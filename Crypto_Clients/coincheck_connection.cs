@@ -22,7 +22,6 @@ namespace Crypto_Clients
         private string apiName;
         private string secretKey;
 
-        private const string publicKey = "sub-c-ecebae8e-dd60-11e6-b6b1-02ee2ddab7fe";
         private const string URL = "https://coincheck.com";
         private const string ws_URL = "wss://ws-api.coincheck.com";
         private const string private_URL = "wss://stream.coincheck.com";

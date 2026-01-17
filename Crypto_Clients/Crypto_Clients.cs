@@ -10,12 +10,15 @@ using Enums;
 using HTX.Net.Enums;
 using LockFreeQueue;
 using LockFreeStack;
+using ProtoBuf.WellKnownTypes;
 using PubnubApi;
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
+using System.Diagnostics.Metrics;
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
@@ -349,6 +352,27 @@ namespace Crypto_Clients
                             this.addLog(JsonSerializer.Serialize(js), Enums.logType.WARNING);
                         }
                         break;
+                    case "gmocoin":
+                        js = await this.gmocoin_client.getBalance();
+                        if (js.RootElement.GetProperty("status").GetUInt16() == 0)
+                        {
+                            var assets = js.RootElement.GetProperty("data").EnumerateArray();
+                            foreach (var asset in assets)
+                            {
+                                DataBalance balance = new DataBalance();
+                                balance.market = m;
+                                balance.asset = asset.GetProperty("symbol").GetString();
+                                balance.available = Decimal.Parse(asset.GetProperty("available").GetString());
+                                balance.total = Decimal.Parse(asset.GetProperty("amount").GetString());
+                                temp.Add(balance);
+                            }
+                        }
+                        else
+                        {
+                            this.addLog("Failed to get the balance information. Exchange:" + m, Enums.logType.WARNING);
+                            this.addLog(JsonSerializer.Serialize(js), Enums.logType.WARNING);
+                        }
+                        break;
                     case "coincheck":
                         js = await this.coincheck_client.getBalance();
                         if (js.RootElement.GetProperty("success").GetBoolean())
@@ -519,6 +543,27 @@ namespace Crypto_Clients
                             this.addLog($"Failed to get the margin position of {market}. message:{js.RootElement.ToString()}", logType.WARNING);
                         }
                         break;
+                    case "gmocoin":
+                        js = await this.gmocoin_client.getMarginPosition();
+                        if (js.RootElement.GetProperty("status").GetInt16() == 0)
+                        {
+                            JsonElement data = js.RootElement.GetProperty("data");
+                            JsonElement list_data;
+                            if(data.TryGetProperty("list",out list_data))
+                            {
+                                foreach (var elem in list_data.EnumerateArray())
+                                {
+                                    DataMarginPos pos = new DataMarginPos();
+                                    pos.setGMOCoinJson(elem);
+                                    temp.Add(pos);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            this.addLog($"Failed to get the margin position of {market}. message:{js.RootElement.GetRawText()}", logType.WARNING);
+                        }
+                        break;
                     default:
                         addLog($"The getMarginPos is not defined for {market}", logType.WARNING);
                         break;
@@ -526,7 +571,7 @@ namespace Crypto_Clients
             }            
             return temp.ToArray();
         }
-        public async Task<List<DataSpotOrderUpdate>> getActiveOrders(string market)
+        public async Task<List<DataSpotOrderUpdate>> getActiveOrders(string market,List<string> symList = null)
         {
             DataSpotOrderUpdate ord;
             List<DataSpotOrderUpdate> l = new List<DataSpotOrderUpdate>();
@@ -540,10 +585,6 @@ namespace Crypto_Clients
                         var data = js.RootElement.GetProperty("data").GetProperty("orders");
                         foreach(var item in data.EnumerateArray())
                         {
-                            //while (!this.ordUpdateStack.TryPop(out ord))
-                            //{
-
-                            //}
                             ord = this.ordUpdateStack.pop();
                             if(ord == null)
                             {
@@ -697,6 +738,101 @@ namespace Crypto_Clients
                         l = null;
                     }
                     break;
+                case "gmocoin":
+                    if(symList != null)
+                    {
+                        foreach(string symbol in symList)
+                        {
+                            js = await this.gmocoin_client.getActiveOrders(symbol);
+                            if(js.RootElement.GetProperty("status").GetInt16() == 0)
+                            {
+                                JsonElement data = js.RootElement.GetProperty("data");
+                                JsonElement list_data;
+                                if(data.TryGetProperty("list",out list_data))
+                                {
+                                    foreach (var elem in list_data.EnumerateArray())
+                                    {
+                                        ord = this.ordUpdateStack.pop();
+                                        if (ord == null)
+                                        {
+                                            ord = new DataSpotOrderUpdate();
+                                        }
+                                        ord.symbol = elem.GetProperty("symbol").GetString();
+                                        ord.create_time = DateTime.ParseExact(elem.GetProperty("timestamp").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+                                        ord.update_time = ord.create_time;
+                                        ord.order_quantity = decimal.Parse(elem.GetProperty("size").GetString());
+                                        ord.filled_quantity = decimal.Parse(elem.GetProperty("executedSize").GetString());
+                                        ord.order_id = elem.GetProperty("orderId").GetInt64().ToString();
+                                        string str_status = elem.GetProperty("status").GetString();
+                                        switch (str_status)
+                                        {
+                                            case "WAITING":
+                                                ord.status = orderStatus.WaitOpen;
+                                                break;
+                                            case "ORDERED":
+                                                ord.status = orderStatus.Open;
+                                                break;
+                                            case "MODIFYING":
+                                                ord.status = orderStatus.WaitMod;
+                                                break;
+                                            case "CANCELLING":
+                                                ord.status = orderStatus.WaitCancel;
+                                                break;
+                                            default:
+                                                ord.status = orderStatus.INVALID;
+                                                break;
+                                        }
+                                        string _type = elem.GetProperty("side").GetString();
+                                        string settleType = elem.GetProperty("settleType").GetString();
+                                        switch (_type)
+                                        {
+                                            case "BUY":
+                                                ord.side = orderSide.Buy;
+                                                if (settleType == "OPEN")
+                                                {
+                                                    ord.position_side = positionSide.Long;
+                                                }
+                                                else if (settleType == "CLOSE")
+                                                {
+                                                    ord.position_side = positionSide.Short;
+                                                }
+                                                break;
+                                            case "SELL":
+                                                ord.side = orderSide.Sell;
+                                                if (settleType == "OPEN")
+                                                {
+                                                    ord.position_side = positionSide.Short;
+                                                }
+                                                else if (settleType == "CLOSE")
+                                                {
+                                                    ord.position_side = positionSide.Long;
+                                                }
+                                                break;
+                                            default:
+                                                ord.side = orderSide.NONE;
+                                                break;
+                                        }
+
+                                        l.Add(ord);
+                                        this.ordUpdateQueue.Enqueue(ord);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                addLog("Failed to get active orders from gmocoin. symbol:" + symbol, logType.WARNING);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        addLog("Symbol list is required to get active orders from gmocoin.", logType.WARNING);
+                    }
+                    break;
+                default:
+                    addLog($"The getActiveOrders is not defined for {market}", logType.WARNING);
+                    break;
+
             }
             return l;
         }
@@ -1079,6 +1215,11 @@ namespace Crypto_Clients
                         await this.bittrade_client.subscribeOrderEvent();
                         await this.bittrade_client.subscribeExecutionEvent();
                         break;
+                    case "gmocoin":
+                        await this.gmocoin_client.subscribeOrderEvent();
+                        Thread.Sleep(1000);//GMO Coin doesn't allow more than 1 request per a second.
+                        await this.gmocoin_client.subscribeExecutionEvent();
+                        break;
                     default:
                         var subResult = await this._client.SubscribeToSpotOrderUpdatesAsync(m, request, LogOrderUpdates);
                         this.addLog($"{subResult.Exchange} subscribe spot order updates result: {subResult.Success} {subResult.Error}");
@@ -1145,7 +1286,8 @@ namespace Crypto_Clients
                 this.tradeQueue.Enqueue(trd);
             }
         }
-        async public Task subscribeOrderBook(IEnumerable<string>? markets, string baseCcy, string quoteCcy)
+        async public Task 
+            subscribeOrderBook(IEnumerable<string>? markets, string baseCcy, string quoteCcy)
         {
             var symbol = new SharedSymbol(TradingMode.Spot, baseCcy, quoteCcy);
             var req = new SubscribeOrderBookRequest(symbol);
@@ -1273,7 +1415,22 @@ namespace Crypto_Clients
                         trd.setGMOCoinTrade(doc);
                         this.tradeQueue.Enqueue(trd);
                         break;
+                    default:
+                        addLog(msg_body);
+                        break;
                 }
+            }
+            catch (Exception e)
+            {
+                this.addLog(e.Message, Enums.logType.ERROR);
+                this.addLog(msg_body, Enums.logType.ERROR);
+            }
+        }
+        public void onGMOCoinPrivateMessage(string msg_body)
+        {
+            try
+            {
+                addLog(msg_body);
             }
             catch (Exception e)
             {

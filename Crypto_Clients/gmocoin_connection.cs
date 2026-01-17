@@ -1,8 +1,12 @@
-﻿using LockFreeQueue;
+﻿using CryptoExchange.Net;
+using Enums;
+using LockFreeQueue;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
@@ -10,6 +14,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Net.WebSockets;
+using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -18,17 +23,28 @@ using XT.Net.Objects.Models;
 
 namespace Crypto_Clients
 {
+    internal class gmo_marginPos
+    {
+        public string positionid;
+        public string symbol;
+        public orderSide side;
+        public decimal size;
+        public decimal price;
+        public DateTime updated_time;
+    }
     public class gmocoin_connection
     {
         private const string CONN_NAME = "GMOCoin";
         private string apiName;
         private string secretKey;
 
-        private const string publicKey = "sub-c-ecebae8e-dd60-11e6-b6b1-02ee2ddab7fe";
         private const string public_URL = "https://api.coin.z.com/public";
         private const string private_URL = "https://api.coin.z.com/private";
         private const string public_wss = "wss://api.coin.z.com/ws/public/v1";
         private const string private_wss = "wss://api.coin.z.com/ws/private";
+
+        public string token = "";
+        private DateTime lastAccTokenObtained;
 
         public MISOQueue<string> msgLogQueue;
         string logPath;
@@ -211,7 +227,7 @@ namespace Crypto_Clients
                     }
                     if (ct.IsCancellationRequested)
                     {
-                        this.addLog("Cancel requested. msgLogging of coincheck", Enums.logType.WARNING);
+                        this.addLog("Cancel requested. msgLogging of gmocoin", Enums.logType.WARNING);
                         break;
                     }
                     spinner.SpinOnce();
@@ -224,7 +240,7 @@ namespace Crypto_Clients
             }
             catch (Exception ex)
             {
-                this.addLog("Error occured during logging coincheck messages.", Enums.logType.WARNING);
+                this.addLog("Error occured during logging gmocoin messages.", Enums.logType.WARNING);
                 this.addLog($"Error: {ex.Message}");
                 if(ex.StackTrace != null)
                 {
@@ -278,48 +294,26 @@ namespace Crypto_Clients
             this.pv_memory.SetLength(0);
             this.pv_memory.Position = 0;
             this.private_client = new ClientWebSocket();
-            var nonce = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            if(nonce <= this.lastnonce)
-            {
-                ++nonce;
-            }
-            this.lastnonce = nonce;
-            var uri = new Uri(gmocoin_connection.private_wss);
-            string msg = nonce.ToString() + gmocoin_connection.private_wss + "/private"; 
-            var body = new
-            {
-                type = "login",
-                access_key = this.apiName,
-                access_nonce = nonce.ToString(),
-                access_signature = this.ToSha256(this.secretKey,msg)
 
-            };
-            var jsonBody = JsonSerializer.Serialize(body);
-            var bytes = Encoding.UTF8.GetBytes(jsonBody);
+            JsonDocument accToken = await this.getToken();
+
+            if(accToken.RootElement.GetProperty("status").GetInt32() != 0)
+            {
+                addLog("Failed to obtain the access token", logType.ERROR);
+                return false;
+            }
+
+            this.token = accToken.RootElement.GetProperty("data").GetString();
+            this.lastAccTokenObtained = DateTime.ParseExact(accToken.RootElement.GetProperty("responsetime").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+
+            var uri = new Uri(gmocoin_connection.private_wss + "/v1/" + this.token);
+
             try
             {
                 this.private_client.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
                 await this.private_client.ConnectAsync(uri, CancellationToken.None);
-                await this.private_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
-                var buffer = new byte[16384];
-                var res = await this.private_client.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                if(res.MessageType == WebSocketMessageType.Text)
-                {
-                    var msg_body = Encoding.UTF8.GetString(buffer, 0, res.Count);
-                    JsonElement js = JsonDocument.Parse(msg_body).RootElement;
-                    if(js.GetProperty("success").GetBoolean() == false)
-                    {
-                        this.addLog("Failed to login to the private channel.",Enums.logType.WARNING);
-                        this.addLog(msg_body, Enums.logType.WARNING);
-                        this.closeSentPrivate = false;
-                        await this.disconnectPrivate();
-                        ret = false;
-                    }
-                    else
-                    {
-                        this.closeSentPrivate = false;
-                    }
-                }
+                this.addLog("Connected to " + gmocoin_connection.CONN_NAME);
+                this.closeSentPublic = false;
             }
             catch (WebSocketException wse)
             {
@@ -596,74 +590,10 @@ namespace Crypto_Clients
             }
             return false;
         }
-        public async Task<(bool,double)> onListen(Action<string> onMsg)
-        {
-            WebSocketReceiveResult result;
-            string msg = "";
-            bool output = true;
-            double latency = 0;
-            switch (this.websocket_client.State)
-            {
-                case WebSocketState.Open:
-                    do
-                    {
-                        result = await this.websocket_client.ReceiveAsync(new ArraySegment<byte>(this.ws_buffer), CancellationToken.None);
-                        this.ws_memory.Write(this.ws_buffer, 0, result.Count);
-
-                    } while ((!result.EndOfMessage) && this.websocket_client.State != WebSocketState.Aborted && this.websocket_client.State != WebSocketState.Closed);
-                    this.sw_Public.Start();
-                    switch (result.MessageType)
-                    {
-                        case WebSocketMessageType.Text:
-                            msg = Encoding.UTF8.GetString(this.ws_memory.ToArray());
-                            onMsg(msg);
-                            break;
-                        case WebSocketMessageType.Binary:
-                            this.addLog("Binary type is not expected", Enums.logType.WARNING);
-                            this.ws_memory.Position = 0;
-                            using (var gzipStream = new GZipStream(this.ws_memory, CompressionMode.Decompress, leaveOpen: true))
-                            {
-                                gzipStream.CopyTo(this.result_memory);
-                            }
-                            msg = Encoding.UTF8.GetString(this.result_memory.ToArray());
-
-                            this.addLog(msg, Enums.logType.WARNING);
-                            break;
-                        case WebSocketMessageType.Close:
-                            this.addLog("Closed by server");
-                            output = false;
-                            msg = "Closing message[onListen]:" + Encoding.UTF8.GetString(this.ws_memory.ToArray());
-                            break;
-                    }
-                    if(this.logging)
-                    {
-                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString() + "   " + msg);
-                        //this.logFilePublic.Flush();
-                    }
-                    this.ws_memory.SetLength(0);
-                    this.ws_memory.Position = 0;
-                    this.sw_Public.Stop();
-                    latency = this.sw_Public.Elapsed.TotalNanoseconds / 1000;
-                    this.sw_Public.Reset();
-                    break;
-                case WebSocketState.None:
-                case WebSocketState.Connecting:
-                    //Do nothing
-                    break;
-                case WebSocketState.CloseReceived:
-                case WebSocketState.CloseSent:
-                case WebSocketState.Closed:
-                case WebSocketState.Aborted:
-                default:
-                    output = false;
-                    break;
-            }
-            return (output, latency);
-        }
 
         public async Task subscribeOrderEvent()
         {
-            var subscribeJson = "{\"type\":\"subscribe\", \"channels\":[\"order-events\"]}";
+            var subscribeJson = "{\"command\":\"subscribe\", \"channel\":\"orderEvents\"}";
             var bytes = Encoding.UTF8.GetBytes(subscribeJson);
             if (this.private_client.State == WebSocketState.Open)
             {
@@ -677,7 +607,7 @@ namespace Crypto_Clients
         }
         public async Task subscribeExecutionEvent()
         {
-            var subscribeJson = "{\"type\":\"subscribe\", \"channels\":[\"execution-events\"]}";
+            var subscribeJson = "{\"command\":\"subscribe\", \"channel\":\"executionEvents\"}";
             var bytes = Encoding.UTF8.GetBytes(subscribeJson);
             if (this.private_client.State == WebSocketState.Open)
             {
@@ -1025,7 +955,7 @@ namespace Crypto_Clients
                 return "{\"status\":-1}";
             }
         }
-        private async Task<string> privateGetAsync(string endpoint, string body = "")
+        private async Task<string> privateGetAsync(string endpoint,string parameter = "", string body = "")
         {
             try
             {
@@ -1035,11 +965,11 @@ namespace Crypto_Clients
                     string method = "GET";
                     var message = $"{nonce}{method}{endpoint}";
 
-                    var request = new HttpRequestMessage(HttpMethod.Get, gmocoin_connection.private_URL + endpoint + body);
+                    var request = new HttpRequestMessage(HttpMethod.Get, gmocoin_connection.private_URL + endpoint + parameter);
 
 
                     request.Content = new StringContent(body, Encoding.UTF8, "application/json");
-                    request.Headers.Add("API", this.apiName);
+                    request.Headers.Add("API-KEY", this.apiName);
                     request.Headers.Add("API-TIMESTAMP", nonce.ToString());
                     request.Headers.Add("API-SIGN", ToSha256(this.secretKey, message));
 
@@ -1076,7 +1006,7 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   POST ack " + resString);
+                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   GET ack " + resString);
                     }
 
                     return resString;
@@ -1112,13 +1042,12 @@ namespace Crypto_Clients
                 {
                     var nonce = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                     string method = "POST";
-                    var message = $"{nonce}{method}{endpoint}{body}";
+                    var message = $"{nonce}{method}{endpoint}";
 
                     var request = new HttpRequestMessage(HttpMethod.Post, gmocoin_connection.private_URL + endpoint);
 
-
                     request.Content = new StringContent(body, Encoding.UTF8, "application/json");
-                    request.Headers.Add("API", this.apiName);
+                    request.Headers.Add("API-KEY", this.apiName);
                     request.Headers.Add("API-TIMESTAMP", nonce.ToString());
                     request.Headers.Add("API-SIGN", ToSha256(this.secretKey, message));
 
@@ -1189,11 +1118,169 @@ namespace Crypto_Clients
                 return "{\"status\":-1}";
             }
         }
+        private async Task<string> privatePutAsync(string endpoint, string body = "")
+        {
+            try
+            {
+                if (this.refreshing == 0)
+                {
+                    var nonce = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                    string method = "PUT";
+                    var message = $"{nonce}{method}{endpoint}";
 
-        public async Task<JsonDocument> postWsAuth()
+                    var request = new HttpRequestMessage(HttpMethod.Put, gmocoin_connection.private_URL + endpoint);
+
+                    request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+                    request.Headers.Add("API-KEY", this.apiName);
+                    request.Headers.Add("API-TIMESTAMP", nonce.ToString());
+                    request.Headers.Add("API-SIGN", ToSha256(this.secretKey, message));
+
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    using var watchDogCts = new CancellationTokenSource();
+
+                    if (this.logging)
+                    {
+                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   PUT " + endpoint + " " + body);
+                        //this.logFilePublic.Flush();
+                    }
+
+                    var watchDog = Task.Delay(10000, watchDogCts.Token);
+                    var task = this.http_client.SendAsync(request, cts.Token);
+
+                    var compleretedTask = await Task.WhenAny(task, watchDog);
+
+                    if (compleretedTask == watchDog)
+                    {
+                        this.addLog("The request has timed out.(WatchDog)", Enums.logType.WARNING);
+                        return "{\"status\":80001}";
+                    }
+                    watchDogCts.Cancel();
+
+                    var response = await task;
+
+                    var resString = await response.Content.ReadAsStringAsync();
+
+
+                    if (this.logging)
+                    {
+                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   PUT ack " + resString);
+                    }
+
+                    return resString;
+                }
+                else
+                {
+                    this.addLog("The http client is being refreshed.", Enums.logType.WARNING);
+                    return "{\"status\":80002}";
+                }
+            }
+            catch (TaskCanceledException tce)
+            {
+                this.addLog("The request has timed out." + tce.Message, Enums.logType.WARNING);
+                return "{\"status\":80001}";
+            }
+            catch (TimeoutException te)
+            {
+                this.addLog("The request has timed out." + te.Message, Enums.logType.WARNING);
+                return "{\"status\":80001}";
+            }
+            catch (Exception ex)
+            {
+                this.addLog("Error occured during postAsync. " + ex.Message, Enums.logType.ERROR);
+                return "{\"status\":-1}";
+            }
+        }
+        private async Task<string> privateDeleteAsync(string endpoint, string body = "")
+        {
+            try
+            {
+                if (this.refreshing == 0)
+                {
+                    var nonce = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                    string method = "DELETE";
+                    var message = $"{nonce}{method}{endpoint}";
+
+                    var request = new HttpRequestMessage(HttpMethod.Delete, gmocoin_connection.private_URL + endpoint);
+
+                    request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+                    request.Headers.Add("API-KEY", this.apiName);
+                    request.Headers.Add("API-TIMESTAMP", nonce.ToString());
+                    request.Headers.Add("API-SIGN", ToSha256(this.secretKey, message));
+
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    using var watchDogCts = new CancellationTokenSource();
+
+                    if (this.logging)
+                    {
+                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   DELETE " + endpoint + " " + body);
+                        //this.logFilePublic.Flush();
+                    }
+
+                    var watchDog = Task.Delay(10000, watchDogCts.Token);
+                    var task = this.http_client.SendAsync(request, cts.Token);
+
+                    var compleretedTask = await Task.WhenAny(task, watchDog);
+
+                    if (compleretedTask == watchDog)
+                    {
+                        this.addLog("The request has timed out.(WatchDog)", Enums.logType.WARNING);
+                        return "{\"status\":80001}";
+                    }
+                    watchDogCts.Cancel();
+
+                    var response = await task;
+
+                    var resString = await response.Content.ReadAsStringAsync();
+
+
+                    if (this.logging)
+                    {
+                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   DELETE ack " + resString);
+                    }
+
+                    return resString;
+                }
+                else
+                {
+                    this.addLog("The http client is being refreshed.", Enums.logType.WARNING);
+                    return "{\"status\":80002}";
+                }
+            }
+            catch (TaskCanceledException tce)
+            {
+                this.addLog("The request has timed out." + tce.Message, Enums.logType.WARNING);
+                return "{\"status\":80001}";
+            }
+            catch (TimeoutException te)
+            {
+                this.addLog("The request has timed out." + te.Message, Enums.logType.WARNING);
+                return "{\"status\":80001}";
+            }
+            catch (Exception ex)
+            {
+                this.addLog("Error occured during postAsync. " + ex.Message, Enums.logType.ERROR);
+                return "{\"status\":-1}";
+            }
+        }
+
+        public async Task<JsonDocument> getToken()
         {
 
             var resString = await this.privatePostAsync("/v1/ws-auth");
+            var json = JsonDocument.Parse(resString);
+            return json;
+        }
+        public async Task<JsonDocument> extendToken(string token)
+        {
+            string reqBody = "{ \"token\": \"" + token + "\"}";
+            var resString = await this.privatePutAsync("/v1/ws-auth",reqBody);
+            var json = JsonDocument.Parse(resString);
+            return json;
+        }
+        public async Task<JsonDocument> deleteToken(string token)
+        {
+            string reqBody = "{ \"token\": \"" + token + "\"}";
+            var resString = await this.privateDeleteAsync("/v1/ws-auth", reqBody);
             var json = JsonDocument.Parse(resString);
             return json;
         }
@@ -1305,108 +1392,171 @@ namespace Crypto_Clients
             }
             return allTransactions;
         }
+
+        public string getCanonicalQuery(Dictionary<string,string> parameters)
+        {
+            return  string.Join("&",
+                parameters.Select(kv =>
+                    $"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(kv.Value)}"));
+        }
+        public async Task<JsonDocument> getMargin()
+        {
+            var resString = await this.privateGetAsync("/v1/account/margin");
+            var json = JsonDocument.Parse(resString);
+            return json;
+        }
         public async Task<JsonDocument> getBalance()
         {
-            var resString = await this.privateGetAsync("/api/accounts/balance");
+            var resString = await this.privateGetAsync("/v1/account/assets");
             var json = JsonDocument.Parse(resString);
             return json;
         }
-        public async Task<JsonDocument> getActiveOrders()
+        public async Task<JsonDocument> getActiveOrders(string symbol)
         {
-            var resString = await this.privateGetAsync("/api/exchange/orders/opens");
+            Dictionary<string,string> param = new Dictionary<string,string>();
+            param["symbol"] = symbol;
+            string str_param = "?" + this.getCanonicalQuery(param);
+            var resString = await this.privateGetAsync("/v1/activeOrders",str_param);
             var json = JsonDocument.Parse(resString);
             return json;
         }
-        public async Task<JsonDocument> getStatus()
+        public async Task<JsonDocument> getOpenPositions(string symbol)
         {
-            var resString = await this.privateGetAsync("/api/exchange_status");
+            Dictionary<string, string> param = new Dictionary<string, string>();
+            param["symbol"] = symbol;
+            string str_param = "?" + this.getCanonicalQuery(param);
+            var resString = await this.privateGetAsync("/v1/openPositions", str_param);
             var json = JsonDocument.Parse(resString);
             return json;
         }
-        public async Task<JsonDocument> getOrderBooks(string symbol)
+        public async Task<JsonDocument> getMarginPosition(string symbol = "")
+        {
+            string str_param = "";
+            if (symbol != "")
+            {
+                Dictionary<string, string> param = new Dictionary<string, string>();
+                param["symbol"] = symbol;
+                str_param = "?" + this.getCanonicalQuery(param);
+            }
+            var resString = await this.privateGetAsync("/v1/positionSummary", str_param);
+            var json = JsonDocument.Parse(resString);
+            return json;
+        }
+        public async Task<JsonDocument> placeNewOrder(string symbol, string side, decimal price = 0, decimal quantity = 0, string tif = "FOK")//If postonly set tif as "SOK"
         {
             var body = new
             {
-                pair = symbol
-            };
-            var jsonBody = JsonSerializer.Serialize(body);
-            var resString = await this.privateGetAsync("/api/order_books?pair=" + Uri.EscapeDataString(symbol));
-            var json = JsonDocument.Parse(resString);
-            return json;
-        }
-        public async Task<JsonDocument> placeNewOrder(string symbol, string side, decimal price = 0, decimal quantity = 0, string tif = "good_til_cancelled")
-        {
-            var body = new
-            {
-                pair = symbol,
-                amount = quantity.ToString(),
-                rate = price.ToString(),
-                order_type = side,
+                symbol = symbol,
+                executionType = "LIMIT",
+                size = quantity.ToString(),
+                price = price.ToString(),
+                side = side.ToUpper(),
                 time_in_force = tif
             };
             
 
             var jsonBody = JsonSerializer.Serialize(body);
             //var sw = Stopwatch.StartNew();
-            var resString = await this.privatePostAsync("/api/exchange/orders", jsonBody);
+            var resString = await this.privatePostAsync("/v1/order", jsonBody);
+            var json = JsonDocument.Parse(resString);
+            return json;
+        }
+        public async Task<JsonDocument> placeCloseOrder(string symbol, string side, decimal price = 0, decimal quantity = 0, string tif = "FOK")//If postonly set tif as "SOK"
+        {
+            var body = new
+            {
+                symbol = symbol,
+                executionType = "LIMIT",
+                size = quantity.ToString(),
+                price = price.ToString(),
+                side = side.ToUpper(),
+                time_in_force = tif
+            };
+
+
+            var jsonBody = JsonSerializer.Serialize(body);
+            //var sw = Stopwatch.StartNew();
+            var resString = await this.privatePostAsync("/v1/closeBulkOrder", jsonBody);
             var json = JsonDocument.Parse(resString);
             return json;
         }
 
-        public async Task<JsonDocument> placeMarketNewOrder(string symbol, string side, decimal price = 0, decimal quantity = 0, string tif = "good_til_cancelled")
+        public async Task<JsonDocument> placeMarketNewOrder(string symbol, string side, decimal price = 0, decimal quantity = 0)
         {
-            if(side == "sell")
+            var body = new
             {
-                var body = new
-                {
-                    pair = symbol,
-                    amount = quantity.ToString(),
-                    order_type = "market_" + side,
-                };
+                symbol = symbol,
+                executionType = "MARKET",
+                size = quantity.ToString(),
+                side = side.ToUpper(),
+            };
 
 
-                var jsonBody = JsonSerializer.Serialize(body);
-                var resString = await this.privatePostAsync("/api/exchange/orders", jsonBody);
-
-                var json = JsonDocument.Parse(resString);
-                return json;
-            }
-            else
-            {
-                var body = new
-                {
-                    pair = symbol,
-                    market_buy_amount = quantity.ToString(),
-                    order_type = "market_" + side,
-                };
-
-
-                var jsonBody = JsonSerializer.Serialize(body);
-                var resString = await this.privatePostAsync("/api/exchange/orders", jsonBody);
-
-                var json = JsonDocument.Parse(resString);
-                return json;
-            }
+            var jsonBody = JsonSerializer.Serialize(body);
+            var resString = await this.privatePostAsync("/v1/order", jsonBody);
+            var json = JsonDocument.Parse(resString);
+            return json;
             
+        }
+        public async Task<JsonDocument> placeModOrder(string ordid, decimal price = 0)
+        {
+            var body = new
+            {
+                orderid = ordid,
+                price = price.ToString()
+            };
+
+
+            var jsonBody = JsonSerializer.Serialize(body);
+            //var sw = Stopwatch.StartNew();
+            var resString = await this.privatePostAsync("/v1/changeOrder", jsonBody);
+            var json = JsonDocument.Parse(resString);
+            return json;
         }
 
         public async Task<JsonDocument> placeCanOrder(string order_id)
         {
-            var resString = await this.privatePostAsync("/api/exchange/orders/" + order_id, "");
-
+            var body = new
+            {
+                orderid = order_id
+            };
+            var jsonBody = JsonSerializer.Serialize(body);
+            var resString = await this.privatePostAsync("/v1/cancelOrder", jsonBody);
             var json = JsonDocument.Parse(resString);
             return json;
         }
 
-        public async Task<List<JsonDocument>> placeCanOrders(IEnumerable<string> order_ids)
+        public async Task<JsonDocument> placeCanOrders(IEnumerable<string> order_ids)
         {
-            List<JsonDocument> list = new List<JsonDocument>();
-            foreach (var order_id in order_ids)
+            IEnumerable<Int64> orderIdInts = order_ids.Select(s => Int64.Parse(s));
+            var body = new
             {
-                var res = await this.placeCanOrder(order_id);
-                list.Add(res);
+                orderids = orderIdInts
+            };
+            var jsonBody = JsonSerializer.Serialize(body);
+            var resString = await this.privatePostAsync("/v1/cancelOrder", jsonBody);
+            var json = JsonDocument.Parse(resString);
+            return json;
+
+        }
+
+        public async Task sendPing(bool isPrivate)
+        {
+            var bytes = Encoding.UTF8.GetBytes("{\"command\":\"ping\"}");
+            if(isPrivate)
+            {
+                if (this.private_client.State == WebSocketState.Open)
+                {
+                    await this.private_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                }
             }
-            return list;
+            else
+            {
+                if (this.websocket_client.State == WebSocketState.Open)
+                {
+                    await this.websocket_client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                }
+            }
         }
 
         public WebSocketState GetSocketStatePublic()

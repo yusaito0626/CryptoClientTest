@@ -80,6 +80,22 @@ namespace Utils
             this.unrealizedFee = decimal.Parse(js.GetProperty("unrealized_fee_amount").GetString());
             this.unrealizedInterest = decimal.Parse(js.GetProperty("unrealized_interest_amount").GetString());
         }
+        public void setGMOCoinJson(JsonElement js)
+        {
+            this.symbol = js.GetProperty("symbol").GetString();
+            this.market = "gmocoin";
+            string str_side = js.GetProperty("side").GetString();
+            if (str_side == "BUY")
+            {
+                this.side = positionSide.Long;
+            }
+            else if (str_side == "SELL")
+            {
+                this.side = positionSide.Short;
+            }
+            this.quantity = decimal.Parse(js.GetProperty("sumPositionQuantity").GetString());
+            this.avgPrice = decimal.Parse(js.GetProperty("averagePositionRate").GetString());
+        }
         public string ToString()
         {
             string res = this.symbol + "," + this.market + "," + this.side.ToString() + "," + this.quantity.ToString() + "," + this.avgPrice.ToString() + "," + this.unrealizedFee.ToString() + "," + this.unrealizedInterest.ToString();
