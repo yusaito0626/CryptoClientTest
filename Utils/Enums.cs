@@ -52,6 +52,7 @@
         WaitCancel = 4,
         Filled = 5,
         Canceled = 6,
+        Expired = 7,
         WaitMod = 98,
         INVALID = 99
     }

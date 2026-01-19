@@ -2221,7 +2221,7 @@ namespace Crypto_Trading
             
             if (this.Instruments.ContainsKey(fill.symbol_market))
             {
-                if (fill.market == "coincheck")
+                if (fill.market == "coincheck" || fill.market == "gmocoin")
                 {
                     if (this.orders.ContainsKey(fill.internal_order_id))
                     {
@@ -2599,6 +2599,7 @@ namespace Crypto_Trading
                                 Volatile.Write(ref stg.updating, 0);
                             }
                         }
+                        this.ordLogQueue.Enqueue(ord.ToString());
                         this.placeCancelSpotOrder(ins, ord.market + ord.order_id, true, false);
 
                         ++(ord.queued_count);

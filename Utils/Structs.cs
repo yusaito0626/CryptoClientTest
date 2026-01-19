@@ -356,6 +356,8 @@ namespace Utils
         public DateTime? timestamp;
         public string symbol_market;
         public string market;
+        public decimal order_quantity;
+        public decimal executed_quantity;
         public decimal quantity;
         public DateTime? filled_time;
         public decimal fee_base;
@@ -363,6 +365,7 @@ namespace Utils
         public decimal fee_unknown;
         public string maker_taker;
         public string order_id;
+        public string position_id;
         public string internal_order_id;
         public string symbol;
         public decimal price;
@@ -384,12 +387,15 @@ namespace Utils
             this.symbol_market = "";
             this.market = "";
             this.quantity = 0;
+            this.order_quantity = 0;
+            this.executed_quantity = 0;
             this.filled_time = null;
             this.fee_base = 0;
             this.fee_quote = 0;
             this.fee_unknown = 0;
             this.maker_taker = "";
             this.order_id = "";
+            this.position_id = "";
             this.internal_order_id = "";
             this.symbol = "";
             this.price = 0;
@@ -543,6 +549,94 @@ namespace Utils
             //this.profit_loss = decimal.Parse(js.GetProperty("profit_loss").GetString());
             //this.interest = decimal.Parse(js.GetProperty("interest").GetString());
         }
+        public void setGMOCoinFill(JsonElement js)
+        {
+            this.timestamp = DateTime.UtcNow;
+            this.quantity = decimal.Parse(js.GetProperty("executionSize").GetString());
+            this.filled_time = DateTime.ParseExact(js.GetProperty("executionTimestamp").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+            this.fee_quote = decimal.Parse(js.GetProperty("fee").GetString());
+            this.order_id = js.GetProperty("orderId").GetInt64().ToString();
+            this.position_id = js.GetProperty("positionId").GetInt64().ToString();
+            this.symbol = js.GetProperty("symbol").GetString();
+            this.market = "gmocoin";
+            this.symbol_market = this.symbol + "@" + this.market;
+            this.internal_order_id = this.market + this.order_id;
+            this.price = decimal.Parse(js.GetProperty("executionPrice").GetString());
+            this.order_quantity = decimal.Parse(js.GetProperty("orderSize").GetString());
+            this.executed_quantity = decimal.Parse(js.GetProperty("orderExecutedSize").GetString());
+            string side = js.GetProperty("side").GetString();
+            if (side == "BUY")
+            {
+                this.side = orderSide.Buy;
+            }
+            else if (side == "SELL")
+            {
+                this.side = orderSide.Sell;
+            }
+
+            JsonElement js_settle;
+            if (js.TryGetProperty("settleType", out js_settle) && js_settle.GetString() != null)
+            {
+                string str_settle = js_settle.GetString();
+                if (str_settle == "OPEN")
+                {
+                    if(this.side == orderSide.Buy)
+                    {
+                        this.position_side = positionSide.Long;
+                    }
+                    else if (this.side == orderSide.Sell)
+                    {
+                        this.position_side = positionSide.Short;
+                    }
+                    else
+                    {
+                        this.position_side = positionSide.NONE;
+                    }
+                }
+                else if (str_settle == "CLOSE")
+                {
+                    if (this.side == orderSide.Buy)
+                    {
+                        this.position_side = positionSide.Short;
+                    }
+                    else if (this.side == orderSide.Sell)
+                    {
+                        this.position_side = positionSide.Long;
+                    }
+                    else
+                    {
+                        this.position_side = positionSide.NONE;
+                    }
+                }
+                else
+                {
+                    this.position_side = positionSide.NONE;
+                }
+            }
+            else
+            {
+                this.position_side = positionSide.NONE;
+            }
+            this.trade_id = js.GetProperty("executionId").GetInt64().ToString();
+            string _type = js.GetProperty("executionType").GetString();
+            switch (_type)
+            {
+                case "LIMIT":
+                    this.order_type = orderType.Limit;
+                    break;
+                case "MARKET":
+                    this.order_type = orderType.Market;
+                    break;
+                default:
+                    this.order_type = orderType.Other;
+                    break;
+            }
+            JsonElement js_pnl;
+            if (js.TryGetProperty("lossGain", out js_pnl) && js_pnl.GetString() != null)
+            {
+                this.profit_loss = decimal.Parse(js_pnl.GetString());
+            }
+        }
         public void setBitTradeFill(JsonElement js)//trade.clearing object. retrive only fees
         {
             this.timestamp = DateTime.UtcNow;
@@ -604,7 +698,7 @@ namespace Utils
             {
                 line = "";
             }
-            line += "," + this.trade_id + "," + this.order_id + "," + this.market + "," + this.symbol + "," + this.order_type.ToString() + "," + this.side.ToString() + "," + this.price.ToString() + "," + this.quantity.ToString() + "," + this.maker_taker + "," + this.fee_base.ToString() + "," + this.fee_quote.ToString() + "," + this.profit_loss.ToString() + "," + this.interest + "," + this.internal_order_id + ",";
+            line += "," + this.trade_id + "," + this.order_id + "," + this.position_id + "," + this.market + "," + this.symbol + "," + this.order_type.ToString() + "," + this.side.ToString() + "," + this.price.ToString() + "," + this.quantity.ToString() + "," + this.order_quantity.ToString() + "," + this.executed_quantity.ToString() + "," + this.maker_taker + "," + this.fee_base.ToString() + "," + this.fee_quote.ToString() + "," + this.profit_loss.ToString() + "," + this.interest + "," + this.internal_order_id + ",";
             if (this.filled_time != null)
             {
                 line += ((DateTime)this.filled_time).ToString("yyyy-MM-dd HH:mm:ss.fff");
@@ -623,12 +717,15 @@ namespace Utils
             this.symbol_market = "";
             this.market = "";
             this.quantity = 0;
+            this.order_quantity = 0;
+            this.executed_quantity = 0;
             this.filled_time = null;
             this.fee_base = 0;
             this.fee_quote = 0;
             this.fee_unknown = 0;
             this.maker_taker = "";
             this.order_id = "";
+            this.position_id = "";
             this.symbol = "";
             this.internal_order_id = "";
             this.price = 0;
@@ -830,6 +927,266 @@ namespace Utils
             this.trigger_price = 0;
             this.is_trigger_order = false;
             this.update_time = DateTime.Parse(js.GetProperty("event_time").GetString(), null, System.Globalization.DateTimeStyles.RoundtripKind);
+        }
+        public void setGMOCoinSpotOrder(JsonElement js)
+        {
+            this.timestamp = DateTime.UtcNow;
+            this.symbol = js.GetProperty("symbol").GetString();
+            this.market = "gmocoin";
+            this.symbol_market = this.symbol + "@" + this.market;
+            this.order_id = js.GetProperty("orderId").GetInt64().ToString();
+            string _type = js.GetProperty("executionType").GetString();
+            switch (_type)
+            {
+                case "LIMIT":
+                    this.order_type = orderType.Limit;
+                    this.order_price = decimal.Parse(js.GetProperty("orderPrice").GetString());
+                    break;
+                case "MARKET":
+                    this.order_type = orderType.Market;
+                    this.order_price = 0;
+                    break;
+                default:
+                    this.order_type = orderType.Other;
+                    break;
+            }
+            string side = js.GetProperty("side").GetString();
+            if (side == "BUY")
+            {
+                this.side = orderSide.Buy;
+            }
+            else if (side == "SELL")
+            {
+                this.side = orderSide.Sell;
+            }
+            JsonElement js_settle;
+            if (js.TryGetProperty("settleType", out js_settle) && js_settle.GetString() != null)
+            {
+                string str_settle = js_settle.GetString();
+                if (str_settle == "OPEN")
+                {
+                    if(this.side == orderSide.Buy)
+                    {
+                        this.position_side = positionSide.Long;
+                    }
+                    else if(this.side == orderSide.Sell)
+                    {
+                        this.position_side = positionSide.Short;
+                    }
+                    else
+                    {
+                        this.position_side = positionSide.NONE;
+                    }
+                }
+                else if (str_settle == "CLOSE")
+                {
+                    if (this.side == orderSide.Buy)
+                    {
+                        this.position_side = positionSide.Short;
+                    }
+                    else if (this.side == orderSide.Sell)
+                    {
+                        this.position_side = positionSide.Long;
+                    }
+                    else
+                    {
+                        this.position_side = positionSide.NONE;
+                    }
+                }
+                else
+                {
+                    this.position_side = positionSide.NONE;
+                }
+            }
+            else
+            {
+                this.position_side = positionSide.NONE;
+            }
+            string str_status = js.GetProperty("orderStatus").GetString();
+            switch (str_status)
+            {
+                case "ORDERED":
+                    this.status = orderStatus.Open;
+                    break;
+                case "CANCELED":
+                    this.status = orderStatus.Canceled;
+                    break;
+                case "WAITING ":
+                    this.status = orderStatus.WaitOpen;
+                    break;
+                case "EXPIRED":
+                    this.status = orderStatus.Expired;
+                    break;
+                default:
+                    this.status = orderStatus.INVALID;
+                    break;
+            }
+            this.create_time = DateTime.ParseExact(js.GetProperty("orderTimestamp").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+            this.update_time = this.timestamp;
+            string time_in_force = js.GetProperty("timeInForce").GetString();
+
+            if(time_in_force == "SOK")//PostOnly
+            {
+                this.time_in_force = timeInForce.GoodTillCanceled;
+            }
+            else if(time_in_force == "FAS")
+            {
+                this.time_in_force = timeInForce.GoodTillCanceled;
+            }
+            else if(time_in_force == "FAK")
+            {
+                this.time_in_force = timeInForce.ImmediateOrCancel;
+            }
+            else if(time_in_force == "FOK")
+            {
+                this.time_in_force = timeInForce.FillOrKill;
+            }
+            else
+            {
+                this.time_in_force = timeInForce.NONE;
+            }
+            this.order_quantity = decimal.Parse(js.GetProperty("orderSize").GetString());
+            this.filled_quantity = decimal.Parse(js.GetProperty("orderExecutedSize").GetString());
+            this.average_price = -1;
+            this.fee_asset = "";
+            this.fee = 0;
+            this.last_trade = "";
+            this.trigger_price = 0;
+            this.is_trigger_order = false;
+        }
+        public void setGMOCoinFill(JsonElement js)
+        {
+            this.timestamp = DateTime.UtcNow;
+            this.symbol = js.GetProperty("symbol").GetString();
+            this.market = "gmocoin";
+            this.symbol_market = this.symbol + "@" + this.market;
+            this.order_id = js.GetProperty("orderId").GetInt64().ToString();
+            string _type = js.GetProperty("executionType").GetString();
+            switch (_type)
+            {
+                case "LIMIT":
+                    this.order_type = orderType.Limit;
+                    this.order_price = decimal.Parse(js.GetProperty("orderPrice").GetString());
+                    break;
+                case "MARKET":
+                    this.order_type = orderType.Market;
+                    this.order_price = 0;
+                    break;
+                default:
+                    this.order_type = orderType.Other;
+                    break;
+            }
+            string side = js.GetProperty("side").GetString();
+            if (side == "BUY")
+            {
+                this.side = orderSide.Buy;
+            }
+            else if (side == "SELL")
+            {
+                this.side = orderSide.Sell;
+            }
+            JsonElement js_settle;
+            if (js.TryGetProperty("settleType", out js_settle) && js_settle.GetString() != null)
+            {
+                string str_settle = js_settle.GetString();
+                if (str_settle == "OPEN")
+                {
+                    if (this.side == orderSide.Buy)
+                    {
+                        this.position_side = positionSide.Long;
+                    }
+                    else if (this.side == orderSide.Sell)
+                    {
+                        this.position_side = positionSide.Short;
+                    }
+                    else
+                    {
+                        this.position_side = positionSide.NONE;
+                    }
+                }
+                else if (str_settle == "CLOSE")
+                {
+                    if (this.side == orderSide.Buy)
+                    {
+                        this.position_side = positionSide.Short;
+                    }
+                    else if (this.side == orderSide.Sell)
+                    {
+                        this.position_side = positionSide.Long;
+                    }
+                    else
+                    {
+                        this.position_side = positionSide.NONE;
+                    }
+                }
+                else
+                {
+                    this.position_side = positionSide.NONE;
+                }
+            }
+            else
+            {
+                this.position_side = positionSide.NONE;
+            }
+            //string str_status = js.GetProperty("orderStatus").GetString();
+            //switch (str_status)
+            //{
+            //    case "ORDERED":
+            //        this.status = orderStatus.Open;
+            //        break;
+            //    case "CANCELED":
+            //        this.status = orderStatus.Canceled;
+            //        break;
+            //    case "WAITING ":
+            //        this.status = orderStatus.WaitOpen;
+            //        break;
+            //    case "EXPIRED":
+            //        this.status = orderStatus.Expired;
+            //        break;
+            //    default:
+            //        this.status = orderStatus.INVALID;
+            //        break;
+            //}
+            this.create_time = DateTime.ParseExact(js.GetProperty("orderTimestamp").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+            this.update_time = this.timestamp;
+            string time_in_force = js.GetProperty("timeInForce").GetString();
+
+            if (time_in_force == "SOK")//PostOnly
+            {
+                this.time_in_force = timeInForce.GoodTillCanceled;
+            }
+            else if (time_in_force == "FAS")
+            {
+                this.time_in_force = timeInForce.GoodTillCanceled;
+            }
+            else if (time_in_force == "FAK")
+            {
+                this.time_in_force = timeInForce.ImmediateOrCancel;
+            }
+            else if (time_in_force == "FOK")
+            {
+                this.time_in_force = timeInForce.FillOrKill;
+            }
+            else
+            {
+                this.time_in_force = timeInForce.NONE;
+            }
+            this.order_quantity = decimal.Parse(js.GetProperty("orderSize").GetString());
+            this.filled_quantity = decimal.Parse(js.GetProperty("orderExecutedSize").GetString());
+            if(this.order_quantity == this.filled_quantity)
+            {
+                this.status = orderStatus.Filled;
+            }
+            else
+            {
+                this.status = orderStatus.Open;
+            }
+            this.average_price = -1;
+            this.fee_asset = "";
+            this.fee = 0;
+            this.last_trade = "";
+            this.trigger_price = 0;
+            this.is_trigger_order = false;
         }
         public void setBitbankSpotOrder(JsonElement js)
         {

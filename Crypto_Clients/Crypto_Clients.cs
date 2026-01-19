@@ -1430,7 +1430,41 @@ namespace Crypto_Clients
         {
             try
             {
-                addLog(msg_body);
+                JsonDocument doc = JsonDocument.Parse(msg_body);
+                string channel = doc.RootElement.GetProperty("channel").GetString();
+                DataSpotOrderUpdate ord;
+                DataFill exe;
+                switch(channel)
+                {
+                    case "orderEvents":
+                        ord = this.ordUpdateStack.pop();
+                        if(ord == null)
+                        {
+                            ord = new DataSpotOrderUpdate();
+                        }
+                        ord.setGMOCoinSpotOrder(doc.RootElement);
+                        this.ordUpdateQueue.Enqueue(ord);
+                        break;
+                    case "executionEvents":
+                        exe = this.fillStack.pop();
+                        if(exe == null)
+                        {
+                            exe = new DataFill();
+                        }
+                        exe.setGMOCoinFill(doc.RootElement);
+                        //if(exe.order_quantity == exe.executed_quantity)//Consider creating order objects for every fill
+                        {
+                            ord = this.ordUpdateStack.pop();
+                            if (ord == null)
+                            {
+                                ord = new DataSpotOrderUpdate();
+                            }
+                            ord.setGMOCoinFill(doc.RootElement);
+                            this.ordUpdateQueue.Enqueue(ord);
+                        }
+                        this.fillQueue.Enqueue(exe);
+                        break;
+                }
             }
             catch (Exception e)
             {
