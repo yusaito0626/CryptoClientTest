@@ -123,7 +123,7 @@ namespace Crypto_Linux
                 setting.min_markup = stg.Value.min_markup;
                 setting.max_skew = stg.Value.maxSkew;
                 setting.skew_widening = stg.Value.skewWidening;
-                setting.baseCcy_quantity = stg.Value.baseCcyQuantity;
+                setting.maxMakerPosition = stg.Value.maxMakerPosition;
                 setting.ToBsize = stg.Value.ToBsize;
                 setting.ToBsizeMultiplier = stg.Value.ToBsizeMultiplier;
                 setting.intervalAfterFill = stg.Value.intervalAfterFill;
@@ -313,11 +313,11 @@ namespace Crypto_Linux
                                                     await BroadcastAsync(message);
                                                 }
                                                 break;
-                                            case "baseccyquantity":
+                                            case "maxposition":
                                                 if (decimal.TryParse(newVar.value, out newvalue))
                                                 {
-                                                    addLog("The total quantity of base currency of " + stg.name + " has been changed from " + stg.baseCcyQuantity.ToString("N0") + " to " + newVar.value);
-                                                    stg.baseCcyQuantity = newvalue;
+                                                    addLog("The total quantity of base currency of " + stg.name + " has been changed from " + stg.maxMakerPosition.ToString("N0") + " to " + newVar.value);
+                                                    stg.maxMakerPosition = newvalue;
                                                     await BroadcastAsync(message);
                                                 }
                                                 break;

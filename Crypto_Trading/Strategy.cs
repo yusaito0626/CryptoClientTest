@@ -32,11 +32,13 @@ namespace Crypto_Trading
 
         public decimal const_markup;
         public decimal min_markup;
-        public decimal baseCcyQuantity;
+        public decimal maxMakerPosition;
         public decimal ToBsize;
         public decimal ToBsizeMultiplier;
         public decimal rv_penalty_multiplier = 1;
         public double rv_base_param;
+
+        public decimal targetMakerPosition;//The position stays between target + max and target - max        
 
         public decimal intervalAfterFill;
         public decimal modThreshold;
@@ -154,7 +156,8 @@ namespace Crypto_Trading
             this.order_throttle = 0;
             this.const_markup = 0;
             this.min_markup = 0;
-            this.baseCcyQuantity = 0;
+            this.maxMakerPosition = 0;
+            this.targetMakerPosition = 0;
             this.ToBsize = 0;
             this.ToBsizeMultiplier = 1;
             this.intervalAfterFill = 0;
@@ -312,13 +315,21 @@ namespace Crypto_Trading
             {
                 addLog("Minimum markup is not configurated", logType.ERROR);
             }
-            if (root.TryGetProperty("baseCcyQuantity", out item))
+            if (root.TryGetProperty("maxMakerPosition", out item))
             {
-                this.baseCcyQuantity = item.GetDecimal();
+                this.maxMakerPosition = item.GetDecimal();
             }
             else
             {
                 addLog("The quantity of the base currency is not configurated", logType.ERROR);
+            }
+            if (root.TryGetProperty("targetMakerPosition", out item))
+            {
+                this.targetMakerPosition = item.GetDecimal();
+            }
+            else
+            {
+                addLog("The targetMakerPosition is not configurated", logType.ERROR);
             }
             if (root.TryGetProperty("ToBsize", out item))
             {
@@ -552,7 +563,8 @@ namespace Crypto_Trading
             this.order_throttle = setting.order_throttle;
             this.const_markup = setting.markup;
             this.min_markup = setting.min_markup;
-            this.baseCcyQuantity = setting.baseCcy_quantity;
+            this.maxMakerPosition = setting.maxMakerPosition;
+            this.targetMakerPosition = setting.targetMakerPosition;
             this.skewWidening = setting.skew_widening;
             this.ToBsize = setting.ToBsize;
             this.ToBsizeMultiplier = setting.ToBsizeMultiplier;
@@ -601,7 +613,6 @@ namespace Crypto_Trading
                 bool buyFirst = true;
                 this.skew_point = this.skew();
                 decimal modTh_buffer = 0;
-                //decimal modTh_buffer = 100 * Math.Abs(this.skew_point) / this.maxSkew / 1000000;
 
                 decimal ordersize_bid = this.ToBsize;
                 decimal ordersize_ask = this.ToBsize;
@@ -609,13 +620,16 @@ namespace Crypto_Trading
                 if(this.skew_point == 0)
                 {
                     decimal temp_askSize = ordersize_ask * this.ToBsizeMultiplier;
-                    if ((this.baseCcyQuantity + this.maker.net_pos) - temp_askSize >= this.baseCcyQuantity * ((decimal)0.5 - this.skewThreshold / 200))
+                    //if ((this.maxMakerPosition + this.maker.net_pos) - temp_askSize >= this.maxMakerPosition * ((decimal)0.5 - this.skewThreshold / 200))
+                    if (- (this.maker.net_pos - this.targetMakerPosition) + temp_askSize <= this.maxMakerPosition * this.skewThreshold / 100)
+
                     {
                         ordersize_ask = temp_askSize;
                     }
 
                     decimal temp_bidSize = ordersize_bid * this.ToBsizeMultiplier;
-                    if ((this.baseCcyQuantity + this.maker.net_pos) + temp_bidSize <= this.baseCcyQuantity * ((decimal)0.5 + this.skewThreshold / 200))
+                    //if ((this.maxMakerPosition + this.maker.net_pos) + temp_bidSize <= this.maxMakerPosition * ((decimal)0.5 + this.skewThreshold / 200))
+                    if ((this.maker.net_pos - this.targetMakerPosition) + temp_bidSize <= this.maxMakerPosition * this.skewThreshold / 100)
                     {
                         ordersize_bid = temp_bidSize;
                     }
@@ -931,7 +945,8 @@ namespace Crypto_Trading
                 if (this.oManager.orders.ContainsKey(this.live_buyorder_id))
                 {
                     ord = this.oManager.orders[this.live_buyorder_id];
-                    if (ord.status == orderStatus.Open && (bid_price == 0 || ((this.baseCcyQuantity + this.maker.net_pos) > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200))))
+                    //if (ord.status == orderStatus.Open && (bid_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) > this.maxMakerPosition * ((decimal)0.5 + this.oneSideThreshold / 200))))
+                    if (ord.status == orderStatus.Open && (bid_price == 0 || ((this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100)))
                     {
                         cancelling_ord.Add(this.live_buyorder_id);
                         this.live_buyorder_id = "";
@@ -947,7 +962,8 @@ namespace Crypto_Trading
                 }
                 else if(this.live_buyorder_id == "")
                 {
-                    if (bid_price == 0 || ((this.baseCcyQuantity + this.maker.net_pos) > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200)))
+                    //if (bid_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) > this.maxMakerPosition * ((decimal)0.5 + this.oneSideThreshold / 200)))
+                    if (bid_price == 0 || ((this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100))
                     {
 
                     }
@@ -959,7 +975,8 @@ namespace Crypto_Trading
                 if (this.oManager.orders.ContainsKey(this.live_sellorder_id))
                 {
                     ord = this.oManager.orders[this.live_sellorder_id];
-                    if (ord.status == orderStatus.Open && (ask_price == 0 || ((this.baseCcyQuantity + this.maker.net_pos) < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200))))
+                    //if (ord.status == orderStatus.Open && (ask_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) < this.maxMakerPosition * ((decimal)0.5 - this.oneSideThreshold / 200))))
+                    if (ord.status == orderStatus.Open && (ask_price == 0 || (- (this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100)))
                     {
                         cancelling_ord.Add(this.live_sellorder_id);
                         this.live_sellorder_id = "";
@@ -975,9 +992,10 @@ namespace Crypto_Trading
                 }
                 else if (this.live_sellorder_id == "")
                 {
-                    if (ask_price == 0 || ((this.baseCcyQuantity + this.maker.net_pos) < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200)))
+                    //if (ask_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) < this.maxMakerPosition * ((decimal)0.5 - this.oneSideThreshold / 200)))
+                    if (ask_price == 0 || (- (this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100))
                     {
-
+                        
                     }
                     else if (this.last_filled_time_sell == null || (decimal)(DateTime.UtcNow - this.last_filled_time_sell).Value.TotalSeconds > this.intervalAfterFill)
                     {
@@ -1100,13 +1118,13 @@ namespace Crypto_Trading
                         decimal temp_ordersize_bid = this.order_size[i];
                         decimal temp_ordersize_ask = this.order_size[i];
                         decimal temp_askSize = temp_ordersize_ask * this.ToBsizeMultiplier;
-                        if ((this.baseCcyQuantity + this.maker.net_pos) - cumAskSize - temp_askSize >= this.baseCcyQuantity * ((decimal)0.5 - this.skewThreshold / 200))
+                        if (- (this.maker.net_pos - this.targetMakerPosition) + cumAskSize + temp_askSize <= this.maxMakerPosition * this.skewThreshold / 100)
                         {
                             temp_ordersize_ask = temp_askSize;
                         }
 
                         decimal temp_bidSize = temp_ordersize_bid * this.ToBsizeMultiplier;
-                        if ((this.baseCcyQuantity + this.maker.net_pos) + cumBidSize + temp_bidSize <= this.baseCcyQuantity * ((decimal)0.5 + this.skewThreshold / 200))
+                        if ((this.maker.net_pos - this.targetMakerPosition) + cumBidSize + temp_bidSize <= this.maxMakerPosition * this.skewThreshold / 100)
                         {
                             temp_ordersize_bid = temp_bidSize;
                         }
@@ -1471,8 +1489,8 @@ namespace Crypto_Trading
                         if (this.oManager.orders.ContainsKey(this.live_buyorders[i]))
                         {
                             ord = this.oManager.orders[this.live_buyorders[i]];
-                            //if (ord.status == orderStatus.Open && (bid_price == 0 || (this.maker.baseBalance.total > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200))))
-                            if (ord.status == orderStatus.Open && (bid_price == 0 || ((this.baseCcyQuantity + this.maker.net_pos) > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200))))
+                            //if (ord.status == orderStatus.Open && (bid_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) > this.maxMakerPosition * ((decimal)0.5 + this.oneSideThreshold / 200))))
+                            if (ord.status == orderStatus.Open && (bid_price == 0 || ((this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100)))
                             {
                                 cancelling_ord.Add(this.live_buyorders[i]);
                                 this.live_buyorders[i] = "";
@@ -1488,8 +1506,8 @@ namespace Crypto_Trading
                         }
                         else if (this.live_buyorders[i] == "")
                         {
-                            //if (bid_price == 0 || (this.maker.baseBalance.total > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200)))
-                            if (bid_price == 0 || ((this.baseCcyQuantity + this.maker.net_pos) > this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200)))
+                            //if (bid_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) > this.maxMakerPosition * ((decimal)0.5 + this.oneSideThreshold / 200)))
+                            if (bid_price == 0 || ((this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100))
                             {
 
                             }
@@ -1501,8 +1519,8 @@ namespace Crypto_Trading
                         if (this.oManager.orders.ContainsKey(this.live_sellorders[i]))
                         {
                             ord = this.oManager.orders[this.live_sellorders[i]];
-                            //if (ord.status == orderStatus.Open && (ask_price == 0 || (this.maker.baseBalance.total < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200))))
-                            if (ord.status == orderStatus.Open && (ask_price == 0 || ((this.baseCcyQuantity + this.maker.net_pos) < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200))))
+                            //if (ord.status == orderStatus.Open && (ask_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) < this.maxMakerPosition * ((decimal)0.5 - this.oneSideThreshold / 200))))
+                            if (ord.status == orderStatus.Open && (ask_price == 0 || (- (this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100)))
                             {
                                 cancelling_ord.Add(this.live_sellorders[i]);
                                 this.live_sellorders[i] = "";
@@ -1518,10 +1536,10 @@ namespace Crypto_Trading
                         }
                         else if (this.live_sellorders[i] == "")
                         {
-                            //if (ask_price == 0 || (this.maker.baseBalance.total < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200)))
-                            if (ask_price == 0 || ((this.baseCcyQuantity + this.maker.net_pos) < this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200)))
+                            //if (ask_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) < this.maxMakerPosition * ((decimal)0.5 - this.oneSideThreshold / 200)))
+                            if (ask_price == 0 || (- (this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100))
                             {
-
+                                
                             }
                             else if (this.last_filled_time_sell == null || (decimal)(DateTime.UtcNow - this.last_filled_time_sell).Value.TotalSeconds > this.intervalAfterFill)
                             {
@@ -1759,19 +1777,17 @@ namespace Crypto_Trading
         public decimal skew()
         {
             decimal skew_point = 0;
-            //if (this.maker.baseBalance.total > this.baseCcyQuantity * ((decimal)0.5 + this.skewThreshold / 200))
-            if (this.baseCcyQuantity + this.maker.net_pos > this.baseCcyQuantity * ((decimal)0.5 + this.skewThreshold / 200))
+            if (this.maker.net_pos - this.targetMakerPosition > this.maxMakerPosition * this.skewThreshold / 100)
             {
-                skew_point = -this.maxSkew * ((this.baseCcyQuantity + this.maker.net_pos) - this.baseCcyQuantity * ((decimal)0.5 + this.skewThreshold / 200)) / (this.baseCcyQuantity * ((decimal)0.5 + this.oneSideThreshold / 200) - this.baseCcyQuantity * ((decimal)0.5 + this.skewThreshold / 200));
+                skew_point = - this.maxSkew * ((this.maker.net_pos - this.targetMakerPosition) - this.maxMakerPosition * this.skewThreshold / 100) / (this.maxMakerPosition * this.oneSideThreshold / 100 - this.maxMakerPosition * this.skewThreshold / 100);
                 if (skew_point < -this.maxSkew)
                 {
                     skew_point = -this.maxSkew;
                 }
             }
-            //else if (this.maker.baseBalance.total < this.baseCcyQuantity * ((decimal)0.5 - this.skewThreshold / 200))
-            else if (this.baseCcyQuantity + this.maker.net_pos < this.baseCcyQuantity * ((decimal)0.5 - this.skewThreshold / 200))
+            else if (this.maker.net_pos - this.targetMakerPosition < - this.maxMakerPosition * this.skewThreshold / 100)
             {
-                skew_point = this.maxSkew * (this.baseCcyQuantity * ((decimal)0.5 - this.skewThreshold / 200) - (this.baseCcyQuantity + this.maker.net_pos)) / (this.baseCcyQuantity * ((decimal)0.5 - this.skewThreshold / 200) - this.baseCcyQuantity * ((decimal)0.5 - this.oneSideThreshold / 200));
+                skew_point = this.maxSkew * (- (this.maker.net_pos - this.targetMakerPosition) - this.maxMakerPosition * this.skewThreshold / 100) / (this.maxMakerPosition * this.oneSideThreshold / 100 - this.maxMakerPosition * this.skewThreshold / 100);
                 if (skew_point > this.maxSkew)
                 {
                     skew_point = this.maxSkew;
@@ -1784,6 +1800,34 @@ namespace Crypto_Trading
             
             return skew_point;
         }
+        //public decimal skew()
+        //{
+        //    decimal skew_point = 0;
+        //    //if (this.maker.baseBalance.total > this.baseCcyQuantity * ((decimal)0.5 + this.skewThreshold / 200))
+        //    if (this.maxMakerPosition + this.maker.net_pos > this.maxMakerPosition * ((decimal)0.5 + this.skewThreshold / 200))
+        //    {
+        //        skew_point = -this.maxSkew * ((this.maxMakerPosition + this.maker.net_pos) - this.maxMakerPosition * ((decimal)0.5 + this.skewThreshold / 200)) / (this.maxMakerPosition * ((decimal)0.5 + this.oneSideThreshold / 200) - this.maxMakerPosition * ((decimal)0.5 + this.skewThreshold / 200));
+        //        if (skew_point < -this.maxSkew)
+        //        {
+        //            skew_point = -this.maxSkew;
+        //        }
+        //    }
+        //    //else if (this.maker.baseBalance.total < this.baseCcyQuantity * ((decimal)0.5 - this.skewThreshold / 200))
+        //    else if (this.maxMakerPosition + this.maker.net_pos < this.maxMakerPosition * ((decimal)0.5 - this.skewThreshold / 200))
+        //    {
+        //        skew_point = this.maxSkew * (this.maxMakerPosition * ((decimal)0.5 - this.skewThreshold / 200) - (this.maxMakerPosition + this.maker.net_pos)) / (this.maxMakerPosition * ((decimal)0.5 - this.skewThreshold / 200) - this.maxMakerPosition * ((decimal)0.5 - this.oneSideThreshold / 200));
+        //        if (skew_point > this.maxSkew)
+        //        {
+        //            skew_point = this.maxSkew;
+        //        }
+        //    }
+        //    if (this.skew_type == skewType.STEP)
+        //    {
+        //        skew_point = Math.Floor(skew_point / this.skew_step) * this.skew_step;
+        //    }
+
+        //    return skew_point;
+        //}
 
         public void onTrades(DataTrade trade)
         {

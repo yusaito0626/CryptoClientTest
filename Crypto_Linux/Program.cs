@@ -243,7 +243,8 @@ namespace Crypto_Linux
                 setting.min_markup = stg.Value.min_markup;
                 setting.max_skew = stg.Value.maxSkew;
                 setting.skew_widening = stg.Value.skewWidening;
-                setting.baseCcy_quantity = stg.Value.baseCcyQuantity;
+                setting.maxMakerPosition = stg.Value.maxMakerPosition;
+                setting.targetMakerPosition = stg.Value.targetMakerPosition;
                 setting.ToBsize = stg.Value.ToBsize;
                 setting.ToBsizeMultiplier = stg.Value.ToBsizeMultiplier;
                 setting.intervalAfterFill = stg.Value.intervalAfterFill;
@@ -999,9 +1000,9 @@ namespace Crypto_Linux
                         }
                         foreach (var stg in strategies)
                         {
-                            stg.Value.taker.baseBalance.total = stg.Value.baseCcyQuantity / 2;
+                            stg.Value.taker.baseBalance.total = - stg.Value.targetMakerPosition;
                             stg.Value.maker.baseBalance.total = 0;// stg.Value.baseCcyQuantity / 2;
-                            stg.Value.maker.shortPosition.total = stg.Value.baseCcyQuantity / 2;
+                            stg.Value.maker.shortPosition.total =  - stg.Value.targetMakerPosition;
                         }
                         foreach (var ins in qManager.instruments.Values)
                         {
@@ -1554,7 +1555,7 @@ namespace Crypto_Linux
                             decimal BBookPnL = (sell_avgprice - stg.maker.mid) * stg.maker.my_sell_quantity + (stg.maker.mid - buy_avgprice) * stg.maker.my_buy_quantity;
 
                             string line = today + "," + stg.name + "," + baseBalance_open.ToString() + "," + quoteBalance_open.ToString() + ","
-                                + baseBalance_close.ToString() + "," + quoteBalance_close.ToString() + "," + stg.baseCcyQuantity.ToString() + "," + notionalVolume.ToString() + "," + stg.taker.open_mid.ToString() + "," + stg.taker.mid.ToString() + ","
+                                + baseBalance_close.ToString() + "," + quoteBalance_close.ToString() + "," + stg.maxMakerPosition.ToString() + "," + notionalVolume.ToString() + "," + stg.taker.open_mid.ToString() + "," + stg.taker.mid.ToString() + ","
                                 + stg.maker.my_buy_quantity + "," + buy_avgprice + "," + stg.maker.my_sell_quantity + "," + sell_avgprice + ","
                                 + totalPnL.ToString() + "," + (- interest).ToString() + "," + pos_diff.ToString() + "," + unrealized_diff.ToString() + "," + BBookPnL.ToString();
 

@@ -221,15 +221,15 @@ namespace Utils
             this.timestamp = DateTime.UtcNow;
             this.market = "gmocoin";
             this.symbol = js.RootElement.GetProperty("symbol").GetString();
-            this.updateType = SocketUpdateType.Update;
+            this.updateType = SocketUpdateType.Snapshot;
             this.orderbookTime = DateTime.ParseExact(js.RootElement.GetProperty("timestamp").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'",CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
-            var data = js.RootElement.GetProperty("asks").EnumerateArray();
-            foreach (var item in data)
+            var asks = js.RootElement.GetProperty("asks").EnumerateArray();
+            foreach (var item in asks)
             {
                 this.asks[decimal.Parse(item.GetProperty("price").GetString())] = decimal.Parse(item.GetProperty("size").GetString());
             }
-            data = js.RootElement.GetProperty("bids").EnumerateArray();
-            foreach (var item in data)
+            var bids  = js.RootElement.GetProperty("bids").EnumerateArray();
+            foreach (var item in bids)
             {
                 this.bids[decimal.Parse(item.GetProperty("price").GetString())] = decimal.Parse(item.GetProperty("size").GetString());
             }
@@ -1963,7 +1963,8 @@ namespace Utils
         public decimal min_markup { get; set; }
         public decimal max_skew { get; set; }
         public decimal skew_widening { get; set; }
-        public decimal baseCcy_quantity { get; set; }
+        public decimal maxMakerPosition { get; set; }
+        public decimal targetMakerPosition { get; set; }
         public decimal ToBsize { get; set; }
         public decimal ToBsizeMultiplier { get; set; }
         public decimal intervalAfterFill { get; set; }

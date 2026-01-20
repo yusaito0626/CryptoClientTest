@@ -253,6 +253,8 @@
             toolStripStatusLabel1 = new ToolStripStatusLabel();
             lbl_currentTime = new ToolStripStatusLabel();
             timer_Monitoring = new System.Windows.Forms.Timer(components);
+            lbl_targetpos = new Label();
+            label56 = new Label();
             tabControl.SuspendLayout();
             tabPage1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridView_PnL).BeginInit();
@@ -1817,6 +1819,8 @@
             // 
             // groupBox1
             // 
+            groupBox1.Controls.Add(lbl_targetpos);
+            groupBox1.Controls.Add(label56);
             groupBox1.Controls.Add(lbl_maxBaseMarkup);
             groupBox1.Controls.Add(label54);
             groupBox1.Controls.Add(lbl_rvParam);
@@ -1867,7 +1871,7 @@
             // lbl_maxBaseMarkup
             // 
             lbl_maxBaseMarkup.AutoSize = true;
-            lbl_maxBaseMarkup.Location = new Point(212, 363);
+            lbl_maxBaseMarkup.Location = new Point(212, 395);
             lbl_maxBaseMarkup.Margin = new Padding(2, 0, 2, 0);
             lbl_maxBaseMarkup.Name = "lbl_maxBaseMarkup";
             lbl_maxBaseMarkup.Size = new Size(44, 20);
@@ -1877,7 +1881,7 @@
             // label54
             // 
             label54.AutoSize = true;
-            label54.Location = new Point(18, 363);
+            label54.Location = new Point(18, 395);
             label54.Margin = new Padding(2, 0, 2, 0);
             label54.Name = "label54";
             label54.Size = new Size(129, 20);
@@ -1887,7 +1891,7 @@
             // lbl_rvParam
             // 
             lbl_rvParam.AutoSize = true;
-            lbl_rvParam.Location = new Point(212, 330);
+            lbl_rvParam.Location = new Point(212, 362);
             lbl_rvParam.Margin = new Padding(2, 0, 2, 0);
             lbl_rvParam.Name = "lbl_rvParam";
             lbl_rvParam.Size = new Size(44, 20);
@@ -1897,7 +1901,7 @@
             // label53
             // 
             label53.AutoSize = true;
-            label53.Location = new Point(16, 330);
+            label53.Location = new Point(16, 362);
             label53.Margin = new Padding(2, 0, 2, 0);
             label53.Name = "label53";
             label53.Size = new Size(65, 20);
@@ -1927,7 +1931,7 @@
             // lbl_RVMulti
             // 
             lbl_RVMulti.AutoSize = true;
-            lbl_RVMulti.Location = new Point(212, 297);
+            lbl_RVMulti.Location = new Point(212, 329);
             lbl_RVMulti.Margin = new Padding(2, 0, 2, 0);
             lbl_RVMulti.Name = "lbl_RVMulti";
             lbl_RVMulti.Size = new Size(44, 20);
@@ -1937,7 +1941,7 @@
             // label50
             // 
             label50.AutoSize = true;
-            label50.Location = new Point(16, 297);
+            label50.Location = new Point(16, 329);
             label50.Margin = new Padding(2, 0, 2, 0);
             label50.Name = "label50";
             label50.Size = new Size(150, 20);
@@ -2027,7 +2031,7 @@
             // lbl_skewWidening
             // 
             lbl_skewWidening.AutoSize = true;
-            lbl_skewWidening.Location = new Point(215, 265);
+            lbl_skewWidening.Location = new Point(215, 297);
             lbl_skewWidening.Margin = new Padding(2, 0, 2, 0);
             lbl_skewWidening.Name = "lbl_skewWidening";
             lbl_skewWidening.Size = new Size(44, 20);
@@ -2037,7 +2041,7 @@
             // label40
             // 
             label40.AutoSize = true;
-            label40.Location = new Point(18, 265);
+            label40.Location = new Point(18, 297);
             label40.Margin = new Padding(2, 0, 2, 0);
             label40.Name = "label40";
             label40.Size = new Size(114, 20);
@@ -2148,7 +2152,7 @@
             // lbl_maxpos
             // 
             lbl_maxpos.AutoSize = true;
-            lbl_maxpos.Location = new Point(215, 234);
+            lbl_maxpos.Location = new Point(215, 265);
             lbl_maxpos.Margin = new Padding(2, 0, 2, 0);
             lbl_maxpos.Name = "lbl_maxpos";
             lbl_maxpos.Size = new Size(44, 20);
@@ -2218,7 +2222,7 @@
             // label13
             // 
             label13.AutoSize = true;
-            label13.Location = new Point(18, 234);
+            label13.Location = new Point(18, 265);
             label13.Margin = new Padding(2, 0, 2, 0);
             label13.Name = "label13";
             label13.Size = new Size(97, 20);
@@ -2499,6 +2503,26 @@
             timer_Monitoring.Interval = 1000;
             timer_Monitoring.Tick += timer_Monitoring_Tick;
             // 
+            // lbl_targetpos
+            // 
+            lbl_targetpos.AutoSize = true;
+            lbl_targetpos.Location = new Point(215, 235);
+            lbl_targetpos.Margin = new Padding(2, 0, 2, 0);
+            lbl_targetpos.Name = "lbl_targetpos";
+            lbl_targetpos.Size = new Size(44, 20);
+            lbl_targetpos.TabIndex = 46;
+            lbl_targetpos.Text = "value";
+            // 
+            // label56
+            // 
+            label56.AutoSize = true;
+            label56.Location = new Point(16, 235);
+            label56.Margin = new Padding(2, 0, 2, 0);
+            label56.Name = "label56";
+            label56.Size = new Size(110, 20);
+            label56.TabIndex = 45;
+            label56.Text = "Target Position:";
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
@@ -2749,5 +2773,7 @@
         private Label lbl_LongInuse;
         private Label label58;
         private Label lbl_LongTotal;
+        private Label lbl_targetpos;
+        private Label label56;
     }
 }

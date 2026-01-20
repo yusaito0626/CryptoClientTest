@@ -372,6 +372,7 @@ namespace Crypto_Clients
                             this.addLog("Failed to get the balance information. Exchange:" + m, Enums.logType.WARNING);
                             this.addLog(JsonSerializer.Serialize(js), Enums.logType.WARNING);
                         }
+                        Thread.Sleep(1000);
                         break;
                     case "coincheck":
                         js = await this.coincheck_client.getBalance();
@@ -563,6 +564,7 @@ namespace Crypto_Clients
                         {
                             this.addLog($"Failed to get the margin position of {market}. message:{js.RootElement.GetRawText()}", logType.WARNING);
                         }
+                        Thread.Sleep(1000);
                         break;
                     default:
                         addLog($"The getMarginPos is not defined for {market}", logType.WARNING);
@@ -822,6 +824,7 @@ namespace Crypto_Clients
                             {
                                 addLog("Failed to get active orders from gmocoin. symbol:" + symbol, logType.WARNING);
                             }
+                            Thread.Sleep(1000);
                         }
                     }
                     else
@@ -1217,7 +1220,7 @@ namespace Crypto_Clients
                         break;
                     case "gmocoin":
                         await this.gmocoin_client.subscribeOrderEvent();
-                        Thread.Sleep(1000);//GMO Coin doesn't allow more than 1 request per a second.
+                        Thread.Sleep(1100);//GMO Coin doesn't allow more than 1 request per a second.
                         await this.gmocoin_client.subscribeExecutionEvent();
                         break;
                     default:
@@ -1262,7 +1265,7 @@ namespace Crypto_Clients
                         break;
                     case "gmocoin":
                         await this.gmocoin_client.subscribeTrades(baseCcy, quoteCcy);
-                        Thread.Sleep(1000);//GMO Coin doesn't allow more than 1 request per a second.
+                        Thread.Sleep(1100);//GMO Coin doesn't allow more than 1 request per a second.
                         break;
                     default:
                         var subResult = await this._client.SubscribeToTradeUpdatesAsync(m, new SubscribeTradeRequest(symbol), LogTrades);
@@ -1316,7 +1319,7 @@ namespace Crypto_Clients
                         break;
                     case "gmocoin":
                         await this.gmocoin_client.subscribeOrderBook(baseCcy,quoteCcy);
-                        Thread.Sleep(1000);//GMO Coin doesn't allow more than 1 request per a second.
+                        Thread.Sleep(1100);//GMO Coin doesn't allow more than 1 request per a second.
                         break;
                     default:
                         var subResult = await this._client.SubscribeToOrderBookUpdatesAsync(m, req, LogOrderBook);
@@ -1422,8 +1425,8 @@ namespace Crypto_Clients
             }
             catch (Exception e)
             {
-                this.addLog(e.Message, Enums.logType.ERROR);
-                this.addLog(msg_body, Enums.logType.ERROR);
+                this.addLog("[onGMOCoinMessage]" + e.Message, Enums.logType.ERROR);
+                this.addLog("[onGMOCoinMessage]" + msg_body, Enums.logType.ERROR);
             }
         }
         public void onGMOCoinPrivateMessage(string msg_body)
@@ -1468,8 +1471,8 @@ namespace Crypto_Clients
             }
             catch (Exception e)
             {
-                this.addLog(e.Message, Enums.logType.ERROR);
-                this.addLog(msg_body, Enums.logType.ERROR);
+                this.addLog("[onGMOCoinPrivateMessage]" + e.Message, Enums.logType.ERROR);
+                this.addLog("[onGMOCoinPrivateMessage]" + msg_body, Enums.logType.ERROR);
             }
         }
         public void onBitbankMessage(string msg_body)
@@ -1541,8 +1544,8 @@ namespace Crypto_Clients
             }
             catch (Exception e)
             {
-                this.addLog(e.Message,Enums.logType.ERROR);
-                this.addLog(msg_body, Enums.logType.ERROR);
+                this.addLog("[onBitbankMessage]" + e.Message,Enums.logType.ERROR);
+                this.addLog("[onBitbankMessage]" + msg_body, Enums.logType.ERROR);
             }
             
         }

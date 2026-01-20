@@ -3063,6 +3063,7 @@ namespace Crypto_Trading
             {
                 DateTime current = DateTime.UtcNow;
                 DataSpotOrderUpdate output = this.virtual_order_queue.Peek();
+                DataSpotOrderUpdate output_temp;
                 DataSpotOrderUpdate update = null;
                 while (output != null)
                 {
@@ -3072,7 +3073,19 @@ namespace Crypto_Trading
                     }
                     else
                     {
-                        output = this.virtual_order_queue.Dequeue();
+                        output_temp = this.virtual_order_queue.Dequeue();
+                        if(output != output_temp)
+                        {
+                            addLog("Peek and Dequeue works different");
+                            if(output != null)
+                            {
+                                addLog("output:" + output.ToString());
+                            }
+                            if (output_temp != null)
+                            {
+                                addLog("output_temp:" + output_temp.ToString());
+                            }
+                        }
                         if (this.Instruments.ContainsKey(output.symbol_market))
                         {
                             Instrument ins = this.Instruments[output.symbol_market];
