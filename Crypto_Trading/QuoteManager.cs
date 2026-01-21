@@ -25,6 +25,9 @@ namespace Crypto_Trading
         private Crypto_Clients.Crypto_Clients crypto_client = Crypto_Clients.Crypto_Clients.GetInstance();
         public Dictionary<string, Instrument> instruments;
         public Dictionary<string, Instrument> ins_bymaster;
+
+        public Dictionary<string, ExchangeBalance> exchange_balances;
+        public Dictionary<string, ExchangeBalance> SoD_exchange_balances;
         public Dictionary<string, Balance> balances;
 
         public Dictionary<string, WebSocketState> _markets;
@@ -61,6 +64,7 @@ namespace Crypto_Trading
         {
             this.instruments = new Dictionary<string, Instrument>();
             this.ins_bymaster = new Dictionary<string, Instrument>();
+            this.exchange_balances = new Dictionary<string, ExchangeBalance>();
             this.balances = new Dictionary<string, Balance>();
             this._markets = new Dictionary<string, WebSocketState>();
             this.strategies = new Dictionary<string, Strategy>();
@@ -340,6 +344,7 @@ namespace Crypto_Trading
                                     {
                                         ins.baseBalance = balance;
                                     }
+                                    balance.valuation_pair = ins.symbol_market;
                                 }
                             }
                         }
@@ -385,9 +390,44 @@ namespace Crypto_Trading
                             else if (ins.baseCcy == balance.ccy)
                             {
                                 ins.baseBalance = balance;
+                                if (ins.quoteCcy == "JPY")
+                                {
+                                    balance.valuation_pair = ins.symbol_market;
+                                }
                             }
                         }
                     }
+                }
+                ExchangeBalance exBalance;
+                if(this.exchange_balances.ContainsKey(item.market))
+                {
+                    exBalance = this.exchange_balances[item.market];
+                }
+                else
+                {
+                    exBalance = new ExchangeBalance();
+                    exBalance.market = item.market;
+                    this.exchange_balances[item.market] = exBalance;
+                }
+                exBalance.balance[item.asset] = this.balances[key];
+                switch(item.market)
+                {
+                    case "bitbank":
+                        if(item.asset == "JPY")
+                        {
+                            exBalance.marginAvailability += item.total;
+                        }
+                        else
+                        {
+                            exBalance.marginAvailability += item.total / 2;
+                        }
+                        break;
+                    case "gmocoin":
+                        if(item.asset == "JPY")
+                        {
+                            exBalance.marginAvailability += item.total;
+                        }
+                        break;
                 }
             }
             return output;
@@ -399,14 +439,30 @@ namespace Crypto_Trading
             {
                 if (this.instruments.ContainsKey(item.symbol_market))
                 {
+                    ExchangeBalance exBalance;
+                    if (this.exchange_balances.ContainsKey(item.market))
+                    {
+                        exBalance = this.exchange_balances[item.market];
+                    }
+                    else
+                    {
+                        exBalance = new ExchangeBalance();
+                        exBalance.market = item.market;
+                        this.exchange_balances[item.market] = exBalance;
+                    }
+
                     Instrument ins = this.instruments[item.symbol_market];
                     if(item.side == positionSide.Long)
                     {
                         ins.longPosition.setPosition(item);
+                        exBalance.marginLong[item.symbol] = ins.longPosition;
+                        exBalance.marginNotionalAmount += ins.longPosition.avg_price * ins.longPosition.total;
                     }
                     else if(item.side == positionSide.Short)
                     {
                         ins.shortPosition.setPosition(item);
+                        exBalance.marginShort[item.symbol] = ins.shortPosition;
+                        exBalance.marginNotionalAmount += ins.shortPosition.avg_price * ins.shortPosition.total;
                     }
                 }
             }

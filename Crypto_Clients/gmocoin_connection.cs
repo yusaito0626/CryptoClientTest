@@ -1,10 +1,12 @@
-﻿using CryptoExchange.Net;
+﻿using Binance.Net.Objects.Models.Spot.Staking;
+using CryptoExchange.Net;
 using Enums;
 using LockFreeQueue;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
+using System.Diagnostics.SymbolStore;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
@@ -1343,55 +1345,111 @@ namespace Crypto_Clients
             }
             return allTransactions;
         }
-        public async Task<JsonDocument> getTradeHistory()
+        public async Task<List<JsonElement>> getTradeHistory(string symbol = "", int page = 1, int count = 100)
         {
-            var resString = await this.privateGetAsync("/api/exchange/orders/transactions");
-            var json = JsonDocument.Parse(resString);
-            return json;
-        }
-        public async Task<List<JsonElement>> getTradeHistoryPagenation(DateTime? startTime = null, DateTime? endTime = null)
-        {
-            List<JsonElement> allTransactions = new List<JsonElement>();
-            string starting_after = null;
-            int limit = 100;
-            DateTime currentTime = DateTime.UtcNow;
-            while (true)
+            addLog("getTradeHistory Called");
+            List<JsonElement> res = new List<JsonElement>();
+            if (page < 1)
             {
-                string query = $"?limit={limit}&order=desc";
-                if (!string.IsNullOrEmpty(starting_after))
-                    query += $"&starting_after={starting_after}";
-                var resString = await this.privateGetAsync("/api/exchange/orders/transactions_pagination" + query);
-                var json = JsonDocument.Parse(resString);
-
-                if (!json.RootElement.TryGetProperty("data", out JsonElement transactions) || transactions.GetArrayLength() == 0)
-                    break;
-
-                foreach (var tx in transactions.EnumerateArray())
-                {
-                    currentTime = DateTime.Parse(tx.GetProperty("created_at").GetString(), null, System.Globalization.DateTimeStyles.RoundtripKind);
-                    if (endTime != null && currentTime > endTime)
-                    {
-
-                    }
-                    else if (startTime != null && currentTime < startTime)
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        allTransactions.Add(tx);
-                    }
-                }
-                if (startTime != null && currentTime < startTime)
-                {
-                    break;
-                }
-
-
-                starting_after = transactions[transactions.GetArrayLength() - 1].GetProperty("id").GetInt64().ToString();
+                page = 1;
             }
-            return allTransactions;
+
+            if (count > 100 || count <= 0)
+            {
+                count = 100;
+            }
+            Dictionary<string, string> js = new Dictionary<string, string>();
+
+            int i = 1;
+            while(i <= page)
+            {
+                if (!string.IsNullOrEmpty(symbol))
+                {
+                    js["symbol"] = symbol;
+                }
+                js["page"] = i.ToString();
+                js["count"] = count.ToString();
+                string str_param = "?" + this.getCanonicalQuery(js);
+                var resString = await this.privateGetAsync("/v1/latestExecutions", str_param);
+                var json = JsonDocument.Parse(resString);
+                JsonElement result;
+                if(json.RootElement.TryGetProperty("status",out result) && result.GetUInt16() == 0)
+                {
+                    JsonElement data;
+                    if(json.RootElement.TryGetProperty("data",out data))
+                    {
+                        //JsonElement pagenation;
+                        JsonElement l;
+                        //if(data.TryGetProperty("pagenation",out pagenation))
+                        //{
+                        //    addLog("Check Page:" + data.GetProperty("currentPage").GetInt32().ToString());
+                        //    addLog("Check Count:" + data.GetProperty("count").GetInt32().ToString());
+                        //}
+                        //else
+                        //{
+                        //    break;
+                        //}
+                        if (data.TryGetProperty("list", out l))
+                        {
+                            foreach (var item in l.EnumerateArray())
+                            {
+                                res.Add(item);
+                            }
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                }
+                js.Clear();
+                ++i;
+            }
+            return res;
         }
+        //public async Task<List<JsonElement>> getTradeHistoryPagenation(DateTime? startTime = null, DateTime? endTime = null)
+        //{
+        //    List<JsonElement> allTransactions = new List<JsonElement>();
+        //    string starting_after = null;
+        //    int limit = 100;
+        //    DateTime currentTime = DateTime.UtcNow;
+        //    while (true)
+        //    {
+        //        string query = $"?limit={limit}&order=desc";
+        //        if (!string.IsNullOrEmpty(starting_after))
+        //            query += $"&starting_after={starting_after}";
+        //        var resString = await this.privateGetAsync("/api/exchange/orders/transactions_pagination" + query);
+        //        var json = JsonDocument.Parse(resString);
+
+        //        if (!json.RootElement.TryGetProperty("data", out JsonElement transactions) || transactions.GetArrayLength() == 0)
+        //            break;
+
+        //        foreach (var tx in transactions.EnumerateArray())
+        //        {
+        //            currentTime = DateTime.Parse(tx.GetProperty("created_at").GetString(), null, System.Globalization.DateTimeStyles.RoundtripKind);
+        //            if (endTime != null && currentTime > endTime)
+        //            {
+
+        //            }
+        //            else if (startTime != null && currentTime < startTime)
+        //            {
+        //                break;
+        //            }
+        //            else
+        //            {
+        //                allTransactions.Add(tx);
+        //            }
+        //        }
+        //        if (startTime != null && currentTime < startTime)
+        //        {
+        //            break;
+        //        }
+
+
+        //        starting_after = transactions[transactions.GetArrayLength() - 1].GetProperty("id").GetInt64().ToString();
+        //    }
+        //    return allTransactions;
+        //}
 
         public string getCanonicalQuery(Dictionary<string,string> parameters)
         {
@@ -1442,6 +1500,7 @@ namespace Crypto_Clients
             var json = JsonDocument.Parse(resString);
             return json;
         }
+        
         public async Task<JsonDocument> placeNewOrder(string symbol, string side, decimal price = 0, decimal quantity = 0, string tif = "FOK")//If postonly set tif as "SOK"
         {
             var body = new

@@ -945,7 +945,7 @@ namespace Crypto_Clients
         {
             var js = new Dictionary<string, object>();
 
-            if (string.IsNullOrEmpty(symbol))
+            if (!string.IsNullOrEmpty(symbol))
             {
                 js["pair"] = symbol;
             }

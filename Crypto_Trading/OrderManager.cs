@@ -809,6 +809,19 @@ namespace Crypto_Trading
                 this.virtual_order_queue.Enqueue(output);
                 this.ord_client.ordUpdateQueue.Enqueue(output);
             }
+            else if(sndOrd.ins.market == "gmocoin")
+            {
+                quantity = Math.Round(sndOrd.quantity / sndOrd.ins.quantity_unit) * sndOrd.ins.quantity_unit;
+                DateTime sendTime = DateTime.UtcNow;
+                if (sndOrd.order_type == orderType.Limit)
+                {
+                    js = await this.ord_client.bitbank_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.order_type.ToString().ToLower(), sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, sndOrd.pos_side.ToString().ToLower(), true);
+                }
+                else
+                {
+                    js = await this.ord_client.bitbank_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.order_type.ToString().ToLower(), sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, sndOrd.pos_side.ToString().ToLower(), false);
+                }
+            }
             else if (sndOrd.ins.market == "bitbank")
             {
                 quantity = Math.Round(sndOrd.quantity / sndOrd.ins.quantity_unit) * sndOrd.ins.quantity_unit;

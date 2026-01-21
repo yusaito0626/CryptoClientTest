@@ -10,10 +10,96 @@ using Utils;
 
 namespace Crypto_Trading
 {
+    public class ExchangeBalance
+    {
+        public string market;
+        public Dictionary<string, Balance> balance;
+        public Dictionary<string, BalanceMargin> marginLong;
+        public Dictionary<string,BalanceMargin> marginShort;
+
+        public decimal marginAvailability;
+        public decimal marginNotionalAmount;
+
+        public ExchangeBalance()
+        {
+            this.market = "";
+            this.balance = new Dictionary<string,Balance>();
+            this.marginLong = new Dictionary<string,BalanceMargin>();
+            this.marginShort = new Dictionary<string, BalanceMargin>();
+
+            this.marginAvailability = 0;
+            this.marginNotionalAmount = 0;
+        }
+
+        public decimal getUnrealizedPnL(Dictionary<string,Instrument> ins_dict)
+        {
+            decimal res = 0;
+            foreach(BalanceMargin b in this.marginShort.Values)
+            {
+                if(ins_dict.ContainsKey(b.symbol_market))
+                {
+                    Instrument ins = ins_dict[b.symbol_market];
+                    b.setUnrealizedPnL(ins.mid);
+                    res += b.unrealized_pnl;
+                }
+            }
+            foreach (BalanceMargin b in this.marginLong.Values)
+            {
+                if (ins_dict.ContainsKey(b.symbol_market))
+                {
+                    Instrument ins = ins_dict[b.symbol_market];
+                    b.setUnrealizedPnL(ins.mid);
+                    res += b.unrealized_pnl;
+                }
+            }
+            foreach (Balance b in this.balance.Values)
+            {
+                if (b.valuation_pair == "")
+                {
+                    b.current_price = 1;
+                }
+                else if (ins_dict.ContainsKey(b.valuation_pair) && ins_dict[b.valuation_pair].mid > 0)
+                {
+                    b.current_price = ins_dict[b.valuation_pair].mid;
+                }
+                
+            }
+            return res;
+        }
+        public string OutputToFile(Dictionary<string, Instrument> ins_dict,DateTime? currentTime = null)
+        {
+            string str_time;
+            if(currentTime.HasValue)
+            {
+                str_time = currentTime.Value.ToString(GlobalVariables.tmMsecFormat);
+            }
+            else
+            {
+                str_time = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
+            }
+            //Timestamp,Exchange,Margin or Spot,symbol,side(margin),quantity,avg_price(margin),current_price,valuation_pair,unrealized_fee(margin),unrealized_interest
+            string res = "";
+
+            this.getUnrealizedPnL(ins_dict);
+
+            foreach (var b in this.balance.Values)
+            {
+                res += str_time + "," + this.market + ",SPOT," + b.ccy + ",," + b.total.ToString() + ",0," + b.current_price.ToString() + "," + b.valuation_pair + ",0,0\n";
+            }
+            foreach (var b in this.marginShort.Values)
+            {
+                res += str_time + "," + this.market + ",MARGIN," + b.symbol + "," + b.side.ToString() + "," + b.total.ToString() + "," + b.avg_price.ToString() + "," + b.current_price.ToString() + "," + b.symbol + "," + b.unrealized_fee.ToString() + "," + b.unrealized_interest.ToString() + "\n"; 
+            }       
+            return res;
+        }
+    }
     public class Balance
     {
         public string ccy;
         public string market;
+
+        public decimal current_price;
+        public string valuation_pair;
 
         private decimal _total;
         private decimal _inuse;
@@ -26,6 +112,8 @@ namespace Crypto_Trading
             this.market = "";
             this._total = 0;
             this._inuse = 0;
+            this.current_price = 1;
+            this.valuation_pair = "";
         }
 
         public void AddBalance(decimal total = 0,decimal inuse = 0)
@@ -75,6 +163,11 @@ namespace Crypto_Trading
         public decimal unrealized_fee;
         public decimal unrealized_interest;
 
+        public decimal current_price;
+        public decimal unrealized_pnl;
+
+        public decimal maxLeverage;
+
         public volatile int balance_lock;
 
         public BalanceMargin()
@@ -82,14 +175,19 @@ namespace Crypto_Trading
             this.symbol = "";
             this.side = positionSide.NONE;
             this.avg_price = 0;
-            this._total= 0;
+            this._total = 0;
             this._inuse = 0;
             this.unrealized_fee = 0;
             this.unrealized_interest = 0;
+            this.current_price = 0;
+            this.unrealized_pnl = 0;
+            this.maxLeverage = 1;
         }
 
         public void setPosition(DataMarginPos position)
         {
+            this.symbol = position.symbol;
+            this.market = position.market;
             this.side = position.side;
             this.avg_price = position.avgPrice;
             this._total = position.quantity;
@@ -143,6 +241,23 @@ namespace Crypto_Trading
                     break;
             }
             Volatile.Write(ref this.balance_lock, 0);
+        }
+
+        public void setUnrealizedPnL(decimal price)
+        {
+            if(price > 0)
+            {
+                this.current_price = price;
+                switch (this.side)
+                {
+                    case positionSide.Long:
+                        this.unrealized_pnl = (this.current_price - this.avg_price) * this._total;
+                        break;
+                    case positionSide.Short:
+                        this.unrealized_pnl = (this.avg_price - this.current_price) * this._total;
+                        break;
+                }
+            }
         }
 
         public decimal available

@@ -637,6 +637,82 @@ namespace Utils
                 this.profit_loss = decimal.Parse(js_pnl.GetString());
             }
         }
+        public void setGMOCoinHistFill(JsonElement js,string symbol)
+        {
+            this.timestamp = DateTime.UtcNow;
+            this.quantity = decimal.Parse(js.GetProperty("size").GetString());
+            this.filled_time = DateTime.ParseExact(js.GetProperty("timestamp").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+            this.fee_quote = decimal.Parse(js.GetProperty("fee").GetString());
+            this.order_id = js.GetProperty("orderId").GetInt64().ToString();
+            this.position_id = js.GetProperty("positionId").GetInt64().ToString();
+            this.symbol = symbol;
+            this.market = "gmocoin";
+            this.symbol_market = this.symbol + "@" + this.market;
+            this.internal_order_id = this.market + this.order_id;
+            this.price = decimal.Parse(js.GetProperty("price").GetString());
+            this.order_quantity = decimal.Parse(js.GetProperty("size").GetString());
+            this.executed_quantity = decimal.Parse(js.GetProperty("size").GetString());
+            string side = js.GetProperty("side").GetString();
+            if (side == "BUY")
+            {
+                this.side = orderSide.Buy;
+            }
+            else if (side == "SELL")
+            {
+                this.side = orderSide.Sell;
+            }
+
+            JsonElement js_settle;
+            if (js.TryGetProperty("settleType", out js_settle) && js_settle.GetString() != null)
+            {
+                string str_settle = js_settle.GetString();
+                if (str_settle == "OPEN")
+                {
+                    if (this.side == orderSide.Buy)
+                    {
+                        this.position_side = positionSide.Long;
+                    }
+                    else if (this.side == orderSide.Sell)
+                    {
+                        this.position_side = positionSide.Short;
+                    }
+                    else
+                    {
+                        this.position_side = positionSide.NONE;
+                    }
+                }
+                else if (str_settle == "CLOSE")
+                {
+                    if (this.side == orderSide.Buy)
+                    {
+                        this.position_side = positionSide.Short;
+                    }
+                    else if (this.side == orderSide.Sell)
+                    {
+                        this.position_side = positionSide.Long;
+                    }
+                    else
+                    {
+                        this.position_side = positionSide.NONE;
+                    }
+                }
+                else
+                {
+                    this.position_side = positionSide.NONE;
+                }
+            }
+            else
+            {
+                this.position_side = positionSide.NONE;
+            }
+            this.trade_id = js.GetProperty("executionId").GetInt64().ToString();
+            this.order_type = orderType.Other;
+            JsonElement js_pnl;
+            if (js.TryGetProperty("lossGain", out js_pnl) && js_pnl.GetString() != null)
+            {
+                this.profit_loss = decimal.Parse(js_pnl.GetString());
+            }
+        }
         public void setBitTradeFill(JsonElement js)//trade.clearing object. retrive only fees
         {
             this.timestamp = DateTime.UtcNow;

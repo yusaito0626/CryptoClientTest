@@ -557,34 +557,144 @@ namespace Crypto_Linux
 
         static private async Task testFunc()
         {
-            Console.WriteLine("GMO API test");
+            await crypto_client.gmocoin_client.getTradeHistory("BTC_JPY",5,1);
+            //string newSoDFile = "../output/SoD_position_new.csv";
+            //if (File.Exists(newSoDFile))
+            //{
+            //    int i = 0;
+            //    StreamReader sr = new StreamReader(new FileStream(newSoDFile, FileMode.Open, FileAccess.Read));
+            //    ExchangeBalance exBalance;
+            //    while (sr.ReadLine() is string line)
+            //    {
+            //        if(i > 0)
+            //        {
+            //            Console.WriteLine(line);
+            //            string[] items = line.Split(',');
+            //            if (items.Length >= 11)
+            //            {
+            //                string balanceType = items[2];
+            //                if(balanceType == "SPOT")
+            //                {
+            //                    Balance b = new Balance();
+            //                    b.market = items[1];
+            //                    b.ccy = items[3];
+            //                    b.total = decimal.Parse(items[5]);
+            //                    b.current_price = decimal.Parse(items[7]);
+            //                    b.valuation_pair = items[8];
+            //                    if(qManager.exchange_balances.ContainsKey(b.market))
+            //                    {
+            //                        exBalance = qManager.exchange_balances[b.market];
+            //                    }
+            //                    else
+            //                    {
+            //                        exBalance = new ExchangeBalance();
+            //                        exBalance.market = b.market;
+            //                        qManager.exchange_balances[b.market] = exBalance;
+            //                    }
+            //                    exBalance.balance[b.ccy] = b;
+            //                }
+            //                else if(balanceType == "MARGIN")
+            //                {
+            //                    BalanceMargin bm = new BalanceMargin();
+            //                    bm.market = items[1];
+            //                    bm.symbol = items[3];
+            //                    string str_side = items[4];
+            //                    if(str_side.ToLower() == "long")
+            //                    {
+            //                        bm.side = positionSide.Long;
+            //                    }
+            //                    else if(str_side.ToLower() == "short")
+            //                    {
+            //                        bm.side = positionSide.Short;
+            //                    }
+            //                    else
+            //                    {
+            //                        bm.side = positionSide.NONE;
+            //                    }
+            //                    bm.total = decimal.Parse(items[5]);
+            //                    bm.avg_price = decimal.Parse(items[6]);
+            //                    bm.current_price = decimal.Parse(items[7]);
+            //                    bm.unrealized_fee = decimal.Parse(items[9]);
+            //                    bm.unrealized_interest = decimal.Parse(items[10]);
+            //                    if (qManager.exchange_balances.ContainsKey(bm.market))
+            //                    {
+            //                        exBalance = qManager.exchange_balances[bm.market];
+            //                    }
+            //                    else
+            //                    {
+            //                        exBalance = new ExchangeBalance();
+            //                        exBalance.market = bm.market;
+            //                        qManager.exchange_balances[bm.market] = exBalance;
+            //                    }
+            //                    if(bm.side == positionSide.Long)
+            //                    {
+            //                        Console.WriteLine("Long Position:" + bm.ToString());
+            //                        exBalance.marginLong[bm.symbol] = bm;
+            //                    }
+            //                    else if(bm.side == positionSide.Short)
+            //                    {
+            //                        exBalance.marginShort[bm.symbol] = bm;
+            //                    }
+            //                    Console.WriteLine(bm.ToString());
+            //                }
+            //            }
+            //        }
+            //        else
+            //        {
+            //            ++i;
+            //        }
+            //    }
 
-            //getBalance
-            Console.WriteLine("getBalance");
-            DataBalance[] balance = crypto_client.getBalance(["gmocoin"]).GetAwaiter().GetResult();
 
-            foreach(var item in balance)
-            {
-               Console.WriteLine("Asset:" + item.asset + " Market:" + item.market + " Available:" + item.available.ToString() + " Total:" + item.total.ToString());
-            }
-            Thread.Sleep(1000);
-
-            //getMargin
-            Console.WriteLine("getMargin");
-            DataMarginPos[] margin = crypto_client.getMarginPos(["gmocoin"]).GetAwaiter().GetResult();
-            foreach(var item in margin)
-            {
-                Console.WriteLine(item.ToString());
-            }
-            Thread.Sleep(1000);
-            //getActiveOrders
-            Console.WriteLine("getActiveOrders");
-            List<DataSpotOrderUpdate> orders = crypto_client.getActiveOrders("gmocoin", ["BTC_JPY"]).GetAwaiter().GetResult();
-            foreach(var ord in orders)
-            {
-                Console.WriteLine(ord.ToString());
-            }
-            Thread.Sleep(1000);
+            //    foreach(Instrument ins in qManager.instruments.Values)
+            //    {
+            //        if(qManager.exchange_balances.ContainsKey(ins.market))
+            //        {
+            //            exBalance = qManager.exchange_balances[ins.market];
+            //            if(exBalance.balance.ContainsKey(ins.baseCcy))
+            //            {
+            //                ins.baseBalance = exBalance.balance[ins.baseCcy];
+            //            }
+            //            else
+            //            {
+            //                Console.WriteLine("Base Balance not found" + exBalance.balance.Count.ToString());
+            //            }
+            //            if (exBalance.balance.ContainsKey(ins.quoteCcy))
+            //            {
+            //                ins.quoteBalance = exBalance.balance[ins.quoteCcy];
+            //            }
+            //            else
+            //            {
+            //                Console.WriteLine("Quote Balance not found" + exBalance.balance.Count.ToString());
+            //            }
+            //            if(exBalance.marginShort.ContainsKey(ins.symbol))
+            //            {
+            //                ins.shortPosition = exBalance.marginShort[ins.symbol];
+            //            }
+            //            else
+            //            {
+            //                Console.WriteLine("Short Position not found" + exBalance.marginShort.Count.ToString());
+            //            }
+            //            if (exBalance.marginLong.ContainsKey(ins.symbol))
+            //            {
+            //                ins.longPosition = exBalance.marginLong[ins.symbol];
+            //            }
+            //            else
+            //            {
+            //                Console.WriteLine("Long Position not found. " + exBalance.marginLong.Count.ToString());
+            //            }
+            //        }
+            //        else
+            //        {
+            //            Console.WriteLine("Exchange not found");
+            //        }
+            //        Console.WriteLine($"{ins.symbol_market} baseCcy[{ins.baseBalance.ccy}]{ins.baseBalance.total.ToString()} quoteCcy[{ins.quoteBalance.ccy}]{ins.quoteBalance.total.ToString()} Long[{ins.longPosition.symbol}]{ins.longPosition.total.ToString()} Short[{ins.shortPosition.symbol}]{ins.shortPosition.total.ToString()}");  
+            //    }
+            //}
+            //else
+            //{
+            //    Console.WriteLine("File not found");
+            //}
 
 
             Console.WriteLine("Completed");
@@ -986,9 +1096,11 @@ namespace Crypto_Linux
                 {
                     if(privateConnect)
                     {
-                        if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys)))
+                        bool ret;
+                        ret = await setRealPosition();
+                        if (!ret)
                         {
-                            addLog("Failed to set balance", logType.WARNING);
+                            addLog("Failed to set real position", logType.WARNING);
                             return false;
                         }
                     }
@@ -1026,141 +1138,12 @@ namespace Crypto_Linux
                 }
                 else
                 {
-                    string SoDPosFile = outputPath + "/SoD_Position.csv";
-                    if (!File.Exists(SoDPosFile))
+                    bool ret;
+                    ret = await setRealPosition();
+                    if(!ret)
                     {
-                        if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys)))
-                        {
-                            addLog("Failed to set balance", logType.WARNING);
-                            return false;
-                        }
-                        if(!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys)))
-                        {
-                            addLog("Failed to set margin position", logType.WARNING);
-                            return false;
-                        }
-                        StreamWriter sw = new StreamWriter(new FileStream(SoDPosFile, FileMode.Create, FileAccess.Write));
-                        sw.WriteLine("timestamp,symbol,market,symbol_market,base_ccy,quote_ccy,baseccy_balance,quoteccy_balance,long_position,long_avgprice,long_unrealized_fee,long_unrealized_interest,short_position,short_avgprice,short_unrealized_fee,short_unrealized_interest,open_mid");
-                        string currentTime = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
-                        foreach (var ins in qManager.instruments.Values)
-                        {
-                            decimal mid = await crypto_client.getCurrentMid(ins.market, ins.symbol);
-                            string line = currentTime + "," + ins.symbol + "," + ins.market + "," + ins.symbol_market + "," + ins.baseCcy + "," + ins.quoteCcy + "," + ins.baseBalance.total.ToString() + "," + ins.quoteBalance.total.ToString()
-                                    + "," + ins.longPosition.total.ToString() + "," + ins.longPosition.avg_price.ToString() + "," + ins.longPosition.unrealized_fee.ToString() + "," + ins.longPosition.unrealized_interest.ToString()
-                                    + "," + ins.shortPosition.total.ToString() + "," + ins.shortPosition.avg_price.ToString() + "," + ins.shortPosition.unrealized_fee.ToString() + "," + ins.shortPosition.unrealized_interest.ToString() + "," + mid.ToString();
-                            ins.SoD_baseBalance.total = ins.baseBalance.total;
-                            ins.SoD_baseBalance.ccy = ins.baseBalance.ccy;
-                            ins.SoD_baseBalance.market = ins.baseBalance.market;
-                            ins.SoD_quoteBalance.total = ins.quoteBalance.total;
-                            ins.SoD_quoteBalance.ccy = ins.quoteBalance.ccy;
-                            ins.SoD_quoteBalance.market = ins.quoteBalance.market;
-                            ins.SoD_longPosition.copy(ins.longPosition);
-                            ins.SoD_shortPosition.copy(ins.shortPosition);
-                            ins.open_mid = mid;
-                            sw.WriteLine(line);
-                            sw.Flush();
-                        }
-                        sw.Close();
-                        sw.Dispose();
-                    }
-                    else
-                    {
-                        addLog("SoD file found File:" + SoDPosFile);
-                        StreamReader sr = new StreamReader(new FileStream(SoDPosFile, FileMode.Open, FileAccess.Read));
-                        while(sr.ReadLine() is string line)
-                        {
-                            if(line.StartsWith("timestamp"))
-                            {
-                                continue;
-                            }
-                            string[] items = line.Split(',');
-                            if(items.Length >= 8)
-                            {
-                                string symbol_market = items[3];
-                                if (qManager.instruments.ContainsKey(symbol_market))
-                                {
-                                    Instrument ins = qManager.instruments[symbol_market];
-                                    ins.SoD_baseBalance.ccy = ins.baseCcy;
-                                    ins.SoD_baseBalance.market = ins.market;
-                                    ins.SoD_baseBalance.total = decimal.Parse(items[6]);
-                                    ins.SoD_quoteBalance.ccy = ins.quoteCcy;
-                                    ins.SoD_quoteBalance.market = ins.market;
-                                    ins.SoD_quoteBalance.total = decimal.Parse(items[7]);
-                                    ins.SoD_longPosition.symbol = ins.symbol;
-                                    ins.SoD_longPosition.market = ins.market;
-                                    ins.SoD_longPosition.total = decimal.Parse(items[8]);
-                                    ins.SoD_longPosition.avg_price = decimal.Parse(items[9]);
-                                    ins.SoD_longPosition.unrealized_fee = decimal.Parse(items[10]);
-                                    ins.SoD_longPosition.unrealized_interest = decimal.Parse(items[11]);
-                                    ins.SoD_shortPosition.symbol = ins.symbol;
-                                    ins.SoD_shortPosition.market = ins.market;
-                                    ins.SoD_shortPosition.total = decimal.Parse(items[12]);
-                                    ins.SoD_shortPosition.avg_price = decimal.Parse(items[13]);
-                                    ins.SoD_shortPosition.unrealized_fee = decimal.Parse(items[14]);
-                                    ins.SoD_shortPosition.unrealized_interest = decimal.Parse(items[15]);
-                                    ins.open_mid = decimal.Parse(items[16]);
-
-                                    ins.baseBalance.total = ins.SoD_baseBalance.total;
-                                    ins.baseBalance.ccy = ins.SoD_baseBalance.ccy;
-                                    ins.baseBalance.market = ins.SoD_baseBalance.market;
-                                    ins.quoteBalance.total = ins.SoD_quoteBalance.total;
-                                    ins.quoteBalance.ccy = ins.SoD_quoteBalance.ccy;
-                                    ins.quoteBalance.market = ins.SoD_quoteBalance.market;
-
-                                    ins.longPosition.symbol = ins.symbol;
-                                    ins.longPosition.market = ins.market;
-                                    ins.longPosition.total = ins.SoD_longPosition.total;
-                                    ins.longPosition.avg_price = ins.SoD_longPosition.avg_price;
-                                    ins.longPosition.unrealized_fee = ins.SoD_longPosition.unrealized_fee;
-                                    ins.longPosition.unrealized_interest = ins.SoD_longPosition.unrealized_interest;
-                                    ins.shortPosition.symbol = ins.symbol;
-                                    ins.shortPosition.market = ins.market;
-                                    ins.shortPosition.total = ins.SoD_shortPosition.total;
-                                    ins.shortPosition.avg_price = ins.SoD_shortPosition.avg_price;
-                                    ins.shortPosition.unrealized_fee = ins.SoD_shortPosition.unrealized_fee;
-                                    ins.shortPosition.unrealized_interest = ins.SoD_shortPosition.unrealized_interest;
-                                }
-                            }
-                        }
-                        SortedDictionary<DateTime,DataFill> histFill = new SortedDictionary<DateTime, DataFill>();
-                        foreach (var mkt in qManager._markets.Keys)
-                        {
-                            DateTime currentTime = DateTime.UtcNow;
-                            List<DataFill> temp_histFill = await crypto_client.getTradeHistory(mkt, DateTime.UtcNow.Date);
-                            foreach(var fill in temp_histFill)
-                            {
-                                if(fill.filled_time == null)
-                                {
-                                    fill.filled_time = currentTime;
-                                }
-                                while (histFill.ContainsKey((DateTime)fill.filled_time))
-                                {
-                                    fill.filled_time += TimeSpan.FromMilliseconds(1);
-                                }
-                                histFill[fill.filled_time ?? DateTime.UtcNow] = fill;
-                            }
-                        }
-                        foreach (var fill in histFill.Values)
-                        {
-                            string symbol_market = fill.symbol_market;
-                            if (qManager.instruments.ContainsKey(symbol_market))
-                            {
-                                Instrument ins = qManager.instruments[symbol_market];
-                                ins.updateFills(fill);
-                                filledOrderQueue.Enqueue(fill);
-                            }
-                        }
-                        //Just in case, update balance again
-                        if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys)))
-                        {
-                            addLog("Failed to set balance", logType.WARNING);
-                            return false;
-                        }
-                        if (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys)))
-                        {
-                            addLog("Failed to set margion position", logType.WARNING);
-                            return false;
-                        }
+                        addLog("Failed to set real position", logType.WARNING);
+                        return false;
                     }
                 }
                 qManager.ready = true;
@@ -1327,6 +1310,413 @@ namespace Crypto_Linux
             }
 
 
+            return true;
+        }
+
+        static private async Task<bool> setRealPosition()
+        {
+            string SoDPosFile = outputPath + "/SoD_Position.csv";
+            string NewSoDPosFile = outputPath + "/SoD_Position_new.csv";
+            if (File.Exists(NewSoDPosFile))
+            {
+                addLog("New SoD file found File:" + NewSoDPosFile);
+                int i = 0;
+                StreamReader sr = new StreamReader(new FileStream(NewSoDPosFile, FileMode.Open, FileAccess.Read));
+                ExchangeBalance exBalance;
+                while (sr.ReadLine() is string line)
+                {
+                    if (i > 0)
+                    {
+                        string[] items = line.Split(',');
+                        if (items.Length >= 11)
+                        {
+                            string balanceType = items[2];
+                            if (balanceType == "SPOT")
+                            {
+                                Balance b = new Balance();
+                                b.market = items[1];
+                                b.ccy = items[3];
+                                b.total = decimal.Parse(items[5]);
+                                b.current_price = decimal.Parse(items[7]);
+                                b.valuation_pair = items[8];
+                                if (qManager.SoD_exchange_balances.ContainsKey(b.market))
+                                {
+                                    exBalance = qManager.SoD_exchange_balances[b.market];
+                                }
+                                else
+                                {
+                                    exBalance = new ExchangeBalance();
+                                    exBalance.market = b.market;
+                                    qManager.SoD_exchange_balances[b.market] = exBalance;
+                                }
+                                exBalance.balance[b.ccy] = b;
+                            }
+                            else if (balanceType == "MARGIN")
+                            {
+                                BalanceMargin bm = new BalanceMargin();
+                                bm.market = items[1];
+                                bm.symbol = items[3];
+                                string str_side = items[4];
+                                if (str_side.ToLower() == "long")
+                                {
+                                    bm.side = positionSide.Long;
+                                }
+                                else if (str_side.ToLower() == "short")
+                                {
+                                    bm.side = positionSide.Short;
+                                }
+                                else
+                                {
+                                    bm.side = positionSide.NONE;
+                                }
+                                bm.total = decimal.Parse(items[5]);
+                                bm.avg_price = decimal.Parse(items[6]);
+                                bm.current_price = decimal.Parse(items[7]);
+                                bm.unrealized_fee = decimal.Parse(items[9]);
+                                bm.unrealized_interest = decimal.Parse(items[10]);
+                                if (qManager.SoD_exchange_balances.ContainsKey(bm.market))
+                                {
+                                    exBalance = qManager.SoD_exchange_balances[bm.market];
+                                }
+                                else
+                                {
+                                    exBalance = new ExchangeBalance();
+                                    exBalance.market = bm.market;
+                                    qManager.SoD_exchange_balances[bm.market] = exBalance;
+                                }
+                                if (bm.side == positionSide.Long)
+                                {
+                                    exBalance.marginLong[bm.symbol] = bm;
+                                }
+                                else if (bm.side == positionSide.Short)
+                                {
+                                    exBalance.marginShort[bm.symbol] = bm;
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        ++i;
+                    }
+                }
+
+
+                foreach (Instrument ins in qManager.instruments.Values)
+                {
+                    if (qManager.exchange_balances.ContainsKey(ins.market))
+                    {
+                        exBalance = qManager.exchange_balances[ins.market];
+                        if (exBalance.balance.ContainsKey(ins.baseCcy))
+                        {
+                            ins.SoD_baseBalance = exBalance.balance[ins.baseCcy];
+                        }
+                        else
+                        {
+                            Console.WriteLine("Base Balance not found" + exBalance.balance.Count.ToString());
+                        }
+                        if (exBalance.balance.ContainsKey(ins.quoteCcy))
+                        {
+                            ins.SoD_quoteBalance = exBalance.balance[ins.quoteCcy];
+                        }
+                        else
+                        {
+                            Console.WriteLine("Quote Balance not found" + exBalance.balance.Count.ToString());
+                        }
+                        if (exBalance.marginShort.ContainsKey(ins.symbol))
+                        {
+                            ins.SoD_shortPosition = exBalance.marginShort[ins.symbol];
+                        }
+                        else
+                        {
+                            Console.WriteLine("Short Position not found" + exBalance.marginShort.Count.ToString());
+                        }
+                        if (exBalance.marginLong.ContainsKey(ins.symbol))
+                        {
+                            ins.SoD_longPosition = exBalance.marginLong[ins.symbol];
+                        }
+                        else
+                        {
+                            Console.WriteLine("Long Position not found. " + exBalance.marginLong.Count.ToString());
+                        }
+                        ins.baseBalance.total = ins.SoD_baseBalance.total;
+                        ins.baseBalance.ccy = ins.SoD_baseBalance.ccy;
+                        ins.baseBalance.market = ins.SoD_baseBalance.market;
+                        ins.quoteBalance.total = ins.SoD_quoteBalance.total;
+                        ins.quoteBalance.ccy = ins.SoD_quoteBalance.ccy;
+                        ins.quoteBalance.market = ins.SoD_quoteBalance.market;
+
+                        ins.longPosition.symbol = ins.symbol;
+                        ins.longPosition.market = ins.market;
+                        ins.longPosition.total = ins.SoD_longPosition.total;
+                        ins.longPosition.avg_price = ins.SoD_longPosition.avg_price;
+                        ins.longPosition.unrealized_fee = ins.SoD_longPosition.unrealized_fee;
+                        ins.longPosition.unrealized_interest = ins.SoD_longPosition.unrealized_interest;
+                        ins.shortPosition.symbol = ins.symbol;
+                        ins.shortPosition.market = ins.market;
+                        ins.shortPosition.total = ins.SoD_shortPosition.total;
+                        ins.shortPosition.avg_price = ins.SoD_shortPosition.avg_price;
+                        ins.shortPosition.unrealized_fee = ins.SoD_shortPosition.unrealized_fee;
+                        ins.shortPosition.unrealized_interest = ins.SoD_shortPosition.unrealized_interest;
+
+                        if (ins.shortPosition.current_price > 0)
+                        {
+                            ins.open_mid = ins.SoD_shortPosition.current_price;
+                        }
+                        else if (ins.longPosition.current_price > 0)
+                        {
+                            ins.open_mid = ins.SoD_longPosition.current_price;
+                        }
+                        else if (ins.SoD_baseBalance.current_price > 0)
+                        {
+                            ins.open_mid = ins.SoD_baseBalance.current_price;
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Exchange not found");
+                    }
+                    Console.WriteLine($"{ins.symbol_market} baseCcy[{ins.baseBalance.ccy}]{ins.baseBalance.total.ToString()} quoteCcy[{ins.quoteBalance.ccy}]{ins.quoteBalance.total.ToString()} Long[{ins.longPosition.symbol}]{ins.longPosition.total.ToString()} Short[{ins.shortPosition.symbol}]{ins.shortPosition.total.ToString()}");
+                }
+                SortedDictionary<DateTime, DataFill> histFill = new SortedDictionary<DateTime, DataFill>();
+                DateTime currentTime = DateTime.UtcNow;
+                foreach (var mkt in qManager._markets.Keys)
+                {
+                    List<DataFill> temp_histFill;
+                    if (mkt == "gmocoin")
+                    {
+                        foreach(Instrument ins in qManager.instruments.Values)
+                        {
+                            if (ins.market == mkt)
+                            {
+                                temp_histFill = await crypto_client.getTradeHistory(mkt, ins.symbol, DateTime.UtcNow.Date);
+                                foreach (var fill in temp_histFill)
+                                {
+                                    if (fill.filled_time == null)
+                                    {
+                                        fill.filled_time = currentTime;
+                                    }
+                                    while (histFill.ContainsKey((DateTime)fill.filled_time))
+                                    {
+                                        fill.filled_time += TimeSpan.FromMilliseconds(1);
+                                    }
+                                    histFill[fill.filled_time ?? DateTime.UtcNow] = fill;
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        temp_histFill = await crypto_client.getTradeHistory(mkt, "", DateTime.UtcNow.Date);
+                        foreach (var fill in temp_histFill)
+                        {
+                            if (fill.filled_time == null)
+                            {
+                                fill.filled_time = currentTime;
+                            }
+                            while (histFill.ContainsKey((DateTime)fill.filled_time))
+                            {
+                                fill.filled_time += TimeSpan.FromMilliseconds(1);
+                            }
+                            histFill[fill.filled_time ?? DateTime.UtcNow] = fill;
+                        }
+                    }
+                }
+                foreach (var fill in histFill.Values)
+                {
+                    string symbol_market = fill.symbol_market;
+                    if (qManager.instruments.ContainsKey(symbol_market))
+                    {
+                        Instrument ins = qManager.instruments[symbol_market];
+                        ins.updateFills(fill);
+                        filledOrderQueue.Enqueue(fill);
+                    }
+                }
+                //Just in case, update balance again
+                if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys)))
+                {
+                    addLog("Failed to set balance", logType.WARNING);
+                    return false;
+                }
+                if (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys)))
+                {
+                    addLog("Failed to set margion position", logType.WARNING);
+                    return false;
+                }
+            }
+            else if (File.Exists(SoDPosFile))
+            {
+                addLog("SoD file found File:" + SoDPosFile);
+                StreamReader sr = new StreamReader(new FileStream(SoDPosFile, FileMode.Open, FileAccess.Read));
+                while (sr.ReadLine() is string line)
+                {
+                    if (line.StartsWith("timestamp"))
+                    {
+                        continue;
+                    }
+                    string[] items = line.Split(',');
+                    if (items.Length >= 8)
+                    {
+                        string symbol_market = items[3];
+                        if (qManager.instruments.ContainsKey(symbol_market))
+                        {
+                            Instrument ins = qManager.instruments[symbol_market];
+                            ins.SoD_baseBalance.ccy = ins.baseCcy;
+                            ins.SoD_baseBalance.market = ins.market;
+                            ins.SoD_baseBalance.total = decimal.Parse(items[6]);
+                            ins.SoD_quoteBalance.ccy = ins.quoteCcy;
+                            ins.SoD_quoteBalance.market = ins.market;
+                            ins.SoD_quoteBalance.total = decimal.Parse(items[7]);
+                            ins.SoD_longPosition.symbol = ins.symbol;
+                            ins.SoD_longPosition.market = ins.market;
+                            ins.SoD_longPosition.total = decimal.Parse(items[8]);
+                            ins.SoD_longPosition.avg_price = decimal.Parse(items[9]);
+                            ins.SoD_longPosition.unrealized_fee = decimal.Parse(items[10]);
+                            ins.SoD_longPosition.unrealized_interest = decimal.Parse(items[11]);
+                            ins.SoD_shortPosition.symbol = ins.symbol;
+                            ins.SoD_shortPosition.market = ins.market;
+                            ins.SoD_shortPosition.total = decimal.Parse(items[12]);
+                            ins.SoD_shortPosition.avg_price = decimal.Parse(items[13]);
+                            ins.SoD_shortPosition.unrealized_fee = decimal.Parse(items[14]);
+                            ins.SoD_shortPosition.unrealized_interest = decimal.Parse(items[15]);
+                            ins.open_mid = decimal.Parse(items[16]);
+
+                            ins.baseBalance.total = ins.SoD_baseBalance.total;
+                            ins.baseBalance.ccy = ins.SoD_baseBalance.ccy;
+                            ins.baseBalance.market = ins.SoD_baseBalance.market;
+                            ins.quoteBalance.total = ins.SoD_quoteBalance.total;
+                            ins.quoteBalance.ccy = ins.SoD_quoteBalance.ccy;
+                            ins.quoteBalance.market = ins.SoD_quoteBalance.market;
+
+                            ins.longPosition.symbol = ins.symbol;
+                            ins.longPosition.market = ins.market;
+                            ins.longPosition.total = ins.SoD_longPosition.total;
+                            ins.longPosition.avg_price = ins.SoD_longPosition.avg_price;
+                            ins.longPosition.unrealized_fee = ins.SoD_longPosition.unrealized_fee;
+                            ins.longPosition.unrealized_interest = ins.SoD_longPosition.unrealized_interest;
+                            ins.shortPosition.symbol = ins.symbol;
+                            ins.shortPosition.market = ins.market;
+                            ins.shortPosition.total = ins.SoD_shortPosition.total;
+                            ins.shortPosition.avg_price = ins.SoD_shortPosition.avg_price;
+                            ins.shortPosition.unrealized_fee = ins.SoD_shortPosition.unrealized_fee;
+                            ins.shortPosition.unrealized_interest = ins.SoD_shortPosition.unrealized_interest;
+                        }
+                    }
+                }
+                SortedDictionary<DateTime, DataFill> histFill = new SortedDictionary<DateTime, DataFill>();
+                DateTime currentTime = DateTime.UtcNow;
+                foreach (var mkt in qManager._markets.Keys)
+                {
+                    List<DataFill> temp_histFill;
+                    if (mkt == "gmocoin")
+                    {
+                        foreach (Instrument ins in qManager.instruments.Values)
+                        {
+                            if (ins.market == mkt)
+                            {
+                                temp_histFill = await crypto_client.getTradeHistory(mkt, ins.symbol, DateTime.UtcNow.Date);
+                                foreach (var fill in temp_histFill)
+                                {
+                                    if (fill.filled_time == null)
+                                    {
+                                        fill.filled_time = currentTime;
+                                    }
+                                    while (histFill.ContainsKey((DateTime)fill.filled_time))
+                                    {
+                                        fill.filled_time += TimeSpan.FromMilliseconds(1);
+                                    }
+                                    histFill[fill.filled_time ?? DateTime.UtcNow] = fill;
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        temp_histFill = await crypto_client.getTradeHistory(mkt, "", DateTime.UtcNow.Date);
+                        foreach (var fill in temp_histFill)
+                        {
+                            if (fill.filled_time == null)
+                            {
+                                fill.filled_time = currentTime;
+                            }
+                            while (histFill.ContainsKey((DateTime)fill.filled_time))
+                            {
+                                fill.filled_time += TimeSpan.FromMilliseconds(1);
+                            }
+                            histFill[fill.filled_time ?? DateTime.UtcNow] = fill;
+                        }
+                    }
+                }
+                foreach (var fill in histFill.Values)
+                {
+                    string symbol_market = fill.symbol_market;
+                    if (qManager.instruments.ContainsKey(symbol_market))
+                    {
+                        Instrument ins = qManager.instruments[symbol_market];
+                        ins.updateFills(fill);
+                        filledOrderQueue.Enqueue(fill);
+                    }
+                }
+                //Just in case, update balance again
+                if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys)))
+                {
+                    addLog("Failed to set balance", logType.WARNING);
+                    return false;
+                }
+                if (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys)))
+                {
+                    addLog("Failed to set margin position", logType.WARNING);
+                    return false;
+                }
+            }
+            else
+            {
+                if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys)))
+                {
+                    addLog("Failed to set balance", logType.WARNING);
+                    return false;
+                }
+                if (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys)))
+                {
+                    addLog("Failed to set margin position", logType.WARNING);
+                    return false;
+                }
+                StreamWriter sw = new StreamWriter(new FileStream(SoDPosFile, FileMode.Create, FileAccess.Write));
+                sw.WriteLine("timestamp,symbol,market,symbol_market,base_ccy,quote_ccy,baseccy_balance,quoteccy_balance,long_position,long_avgprice,long_unrealized_fee,long_unrealized_interest,short_position,short_avgprice,short_unrealized_fee,short_unrealized_interest,open_mid");
+                string currentTime = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
+                foreach (var ins in qManager.instruments.Values)
+                {
+                    decimal mid = await crypto_client.getCurrentMid(ins.market, ins.symbol);
+                    string line = currentTime + "," + ins.symbol + "," + ins.market + "," + ins.symbol_market + "," + ins.baseCcy + "," + ins.quoteCcy + "," + ins.baseBalance.total.ToString() + "," + ins.quoteBalance.total.ToString()
+                            + "," + ins.longPosition.total.ToString() + "," + ins.longPosition.avg_price.ToString() + "," + ins.longPosition.unrealized_fee.ToString() + "," + ins.longPosition.unrealized_interest.ToString()
+                            + "," + ins.shortPosition.total.ToString() + "," + ins.shortPosition.avg_price.ToString() + "," + ins.shortPosition.unrealized_fee.ToString() + "," + ins.shortPosition.unrealized_interest.ToString() + "," + mid.ToString();
+                    ins.SoD_baseBalance.total = ins.baseBalance.total;
+                    ins.SoD_baseBalance.ccy = ins.baseBalance.ccy;
+                    ins.SoD_baseBalance.market = ins.baseBalance.market;
+                    ins.SoD_quoteBalance.total = ins.quoteBalance.total;
+                    ins.SoD_quoteBalance.ccy = ins.quoteBalance.ccy;
+                    ins.SoD_quoteBalance.market = ins.quoteBalance.market;
+                    ins.SoD_longPosition.copy(ins.longPosition);
+                    ins.SoD_shortPosition.copy(ins.shortPosition);
+                    ins.open_mid = mid;
+                    sw.WriteLine(line);
+                    sw.Flush();
+                }
+                sw.Close();
+                sw.Dispose();
+
+                using (StreamWriter sod = new StreamWriter(new FileStream(NewSoDPosFile, FileMode.Create, FileAccess.Write)))
+                {
+                    //Timestamp,Exchange,Margin or Spot,symbol,side(margin),quantity,avg_price(margin),current_price,valuation_pair,unrealized_fee(margin),unrealized_interest
+                    sod.WriteLine("timestamp,exchange,Margin or Spot,symbol,side(margin),quantity,avg_price(margin),current_price,valuation_pair,unrealized_fee(margin),unrealized_interest(margin)");
+                    DateTime current = DateTime.UtcNow;
+                    foreach (var exBalance in qManager.exchange_balances.Values)
+                    {
+                        sod.Write(exBalance.OutputToFile(qManager.instruments, current));
+                        sod.Flush();
+                    }
+                }
+            }
             return true;
         }
 
@@ -1520,7 +1910,7 @@ namespace Crypto_Linux
                             decimal quoteBalance_close = stg.maker.quoteBalance.total + stg.taker.quoteBalance.total;
 
                             stg.taker.mid = await crypto_client.getCurrentMid(stg.taker.market, stg.taker.symbol);
-                            stg.maker.mid = await crypto_client.getCurrentMid(stg.maker.market, stg.taker.symbol);
+                            stg.maker.mid = await crypto_client.getCurrentMid(stg.maker.market, stg.maker.symbol);
 
                             decimal notionalVolume = stg.maker.my_buy_notional + stg.maker.my_sell_notional;
 
@@ -1594,6 +1984,20 @@ namespace Crypto_Linux
                             sod.Flush();
                         }
                     }
+
+                    string new_SoDFile = newpath + "/SoD_Position_new.csv";
+                    using (StreamWriter sod = new StreamWriter(new FileStream(new_SoDFile, FileMode.Create, FileAccess.Write)))
+                    {
+                        //Timestamp,Exchange,Margin or Spot,symbol,side(margin),quantity,avg_price(margin),current_price,valuation_pair,unrealized_fee(margin),unrealized_interest
+                        sod.WriteLine("timestamp,exchange,Margin or Spot,symbol,side(margin),quantity,avg_price(margin),current_price,valuation_pair,unrealized_fee(margin),unrealized_interest(margin)");
+                        DateTime currentTime = DateTime.UtcNow;
+                        foreach (var exBalance in qManager.exchange_balances.Values)
+                        {
+                            sod.Write(exBalance.OutputToFile(qManager.instruments,currentTime));
+                            sod.Flush();
+                        }
+                    }
+                    
 
                     outputMI();
                     marketImpactFile.Flush();

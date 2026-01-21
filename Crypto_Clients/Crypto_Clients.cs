@@ -354,7 +354,8 @@ namespace Crypto_Clients
                         break;
                     case "gmocoin":
                         js = await this.gmocoin_client.getBalance();
-                        if (js.RootElement.GetProperty("status").GetUInt16() == 0)
+                        JsonElement res;
+                        if (js.RootElement.TryGetProperty("status",out res) && res.GetUInt16() == 0)
                         {
                             var assets = js.RootElement.GetProperty("data").EnumerateArray();
                             foreach (var asset in assets)
@@ -546,7 +547,8 @@ namespace Crypto_Clients
                         break;
                     case "gmocoin":
                         js = await this.gmocoin_client.getMarginPosition();
-                        if (js.RootElement.GetProperty("status").GetInt16() == 0)
+                        JsonElement res;
+                        if (js.RootElement.TryGetProperty("status", out res) && res.GetUInt16() == 0)
                         {
                             JsonElement data = js.RootElement.GetProperty("data");
                             JsonElement list_data;
@@ -746,7 +748,8 @@ namespace Crypto_Clients
                         foreach(string symbol in symList)
                         {
                             js = await this.gmocoin_client.getActiveOrders(symbol);
-                            if(js.RootElement.GetProperty("status").GetInt16() == 0)
+                            JsonElement res;
+                            if (js.RootElement.TryGetProperty("status", out res) && res.GetUInt16() == 0)
                             {
                                 JsonElement data = js.RootElement.GetProperty("data");
                                 JsonElement list_data;
@@ -961,7 +964,7 @@ namespace Crypto_Clients
             return output;
         }
 
-        public async Task<List<DataFill>> getTradeHistory(string market,DateTime? startTime = null,DateTime? endTime = null)
+        public async Task<List<DataFill>> getTradeHistory(string market,string symbol = "",DateTime? startTime = null,DateTime? endTime = null)
         {
             List<DataFill> output = new List<DataFill>();
             JsonDocument js;
@@ -971,15 +974,12 @@ namespace Crypto_Clients
             switch(market)
             {
                 case "bitbank":
-                    js = await this.bitbank_client.getTradeHistory("", startTime, endTime);
+                    js = await this.bitbank_client.getTradeHistory(symbol, startTime, endTime);
                     if(js.RootElement.GetProperty("success").GetInt32() == 1)
                     {
                         var data = js.RootElement.GetProperty("data").GetProperty("trades");
                         foreach(var item in data.EnumerateArray())
                         {
-                            //while (!this.fillStack.TryPop(out fill))
-                            //{
-                            //}
                             fill = this.fillStack.pop();
                             if(fill == null)
                             {
@@ -999,9 +999,6 @@ namespace Crypto_Clients
                     js_list = await this.coincheck_client.getTradeHistoryPagenation(startTime, endTime);
                     foreach(var js_elem in js_list)
                     {
-                        //while (!this.fillStack.TryPop(out fill))
-                        //{
-                        //}
                         fill = this.fillStack.pop();
                         if (fill == null)
                         {
@@ -1014,6 +1011,45 @@ namespace Crypto_Clients
                     if(js_list.Count == 0)
                     {
                         addLog("Failed to get trade history from coincheck.", logType.WARNING);
+                    }
+                    break;
+                case "gmocoin":
+                    if(symbol == "")
+                    {
+                        addLog("Symbol is required to get trade history from gmocoin.", logType.WARNING);
+                        return output;
+                    }
+                    else
+                    {
+                        js_list = await this.gmocoin_client.getTradeHistory(symbol);
+                        foreach (var js_elem in js_list)
+                        {
+                            fill = this.fillStack.pop();
+                            if (fill == null)
+                            {
+                                fill = new DataFill();
+                            }
+                            fill.setGMOCoinHistFill(js_elem, symbol);
+                            fill.timestamp = fill.filled_time;
+                            if(startTime != null && fill.filled_time < startTime)
+                            {
+                                fill.init();
+                                this.fillStack.push(fill);
+                            }
+                            else if(endTime != null && fill.filled_time > endTime)
+                            {
+                                fill.init();
+                                this.fillStack.push(fill);
+                            }
+                            else
+                            {
+                                output.Add(fill);
+                            }
+                        }
+                        if (js_list.Count == 0)
+                        {
+                            addLog("Failed to get trade history from gmocoin.", logType.WARNING);
+                        }
                     }
                     break;
             }
@@ -1037,6 +1073,7 @@ namespace Crypto_Clients
                     else
                     {
                         addLog("Failed to get the ticker from bitbank.", logType.WARNING);
+                        addLog(js.RootElement.GetRawText(), logType.WARNING);
                     }
                     break;
                 case "coincheck":
