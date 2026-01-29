@@ -364,9 +364,13 @@ namespace Crypto_Trading
         {
             bool output = true;
             string key;
+            foreach(var exBalance in this.exchange_balances.Values)
+            {
+                exBalance.marginAvailability = 0;
+            }
             foreach(var item in results)
             {
-                key = item.asset + "@" + item.market;
+                key = item.asset.ToUpper() + "@" + item.market;
                 if (this.balances.ContainsKey(key))
                 {
                     this.balances[key].total = item.total;
@@ -410,11 +414,11 @@ namespace Crypto_Trading
                     exBalance.market = item.market;
                     this.exchange_balances[item.market] = exBalance;
                 }
-                exBalance.balance[item.asset] = this.balances[key];
+                exBalance.balance[item.asset.ToUpper()] = this.balances[key];
                 switch(item.market)
                 {
                     case "bitbank":
-                        if(item.asset == "JPY")
+                        if(item.asset.ToUpper() == "JPY")
                         {
                             exBalance.marginAvailability += item.total;
                         }
@@ -424,7 +428,7 @@ namespace Crypto_Trading
                         }
                         break;
                     case "gmocoin":
-                        if(item.asset == "JPY")
+                        if(item.asset.ToUpper() == "JPY")
                         {
                             exBalance.marginAvailability += item.total;
                         }

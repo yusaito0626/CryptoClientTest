@@ -312,6 +312,7 @@ namespace Crypto_Clients
             if(accToken.RootElement.GetProperty("status").GetInt32() != 0)
             {
                 addLog("Failed to obtain the access token", logType.ERROR);
+                addLog(accToken.RootElement.GetRawText(), logType.ERROR);
                 return false;
             }
 
@@ -1085,7 +1086,7 @@ namespace Crypto_Clients
                 {
                     var nonce = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                     string method = "POST";
-                    var message = $"{nonce}{method}{endpoint}";
+                    var message = $"{nonce}{method}{endpoint}{body}";
 
                     var request = new HttpRequestMessage(HttpMethod.Post, gmocoin_connection.private_URL + endpoint);
 
@@ -1598,6 +1599,24 @@ namespace Crypto_Clients
             return json;
             
         }
+        public async Task<JsonDocument> placeCloseMarketOrder(string symbol, string side, decimal price = 0, decimal quantity = 0, string tif = "FOK")//If postonly set tif as "SOK"
+        {
+            var body = new
+            {
+                symbol = symbol,
+                executionType = "MARKET",
+                size = quantity.ToString(),
+                side = side.ToUpper(),
+                time_in_force = tif
+            };
+
+
+            var jsonBody = JsonSerializer.Serialize(body);
+            //var sw = Stopwatch.StartNew();
+            var resString = await this.privatePostAsync("/v1/closeBulkOrder", jsonBody);
+            var json = JsonDocument.Parse(resString);
+            return json;
+        }
         public async Task<JsonDocument> placeModOrder(string ordid, decimal price = 0)
         {
             var body = new
@@ -1634,7 +1653,7 @@ namespace Crypto_Clients
                 orderids = orderIdInts
             };
             var jsonBody = JsonSerializer.Serialize(body);
-            var resString = await this.privatePostAsync("/v1/cancelOrder", jsonBody);
+            var resString = await this.privatePostAsync("/v1/cancelOrders", jsonBody);
             var json = JsonDocument.Parse(resString);
             return json;
 

@@ -22,12 +22,15 @@ using System.ComponentModel.Design;
 using System.Data;
 using System.Data.SqlTypes;
 using System.Diagnostics;
+using System.Diagnostics.SymbolStore;
 using System.Drawing;
+using System.Globalization;
 using System.IO.Pipelines;
 using System.Linq;
 using System.Net;
 using System.Net.WebSockets;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -811,15 +814,153 @@ namespace Crypto_Trading
             }
             else if(sndOrd.ins.market == "gmocoin")
             {
+                this.addLog("GMO Coin new order called");
                 quantity = Math.Round(sndOrd.quantity / sndOrd.ins.quantity_unit) * sndOrd.ins.quantity_unit;
                 DateTime sendTime = DateTime.UtcNow;
-                if (sndOrd.order_type == orderType.Limit)
+
+                if((sndOrd.side == orderSide.Sell && sndOrd.pos_side == positionSide.Long) || (sndOrd.side == orderSide.Buy && sndOrd.pos_side == positionSide.Short))
                 {
-                    js = await this.ord_client.bitbank_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.order_type.ToString().ToLower(), sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, sndOrd.pos_side.ToString().ToLower(), true);
+                    if (sndOrd.order_type == orderType.Market)
+                    {
+                        js = await this.ord_client.gmocoin_client.placeCloseMarketOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToUpper(), 0, quantity);
+                    }
+                    else
+                    {
+                        js = await this.ord_client.gmocoin_client.placeCloseOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToUpper(), sndOrd.price, quantity, "SOK");
+                    }
+                }
+                else if(sndOrd.order_type == orderType.Market)
+                {
+                    js = await this.ord_client.gmocoin_client.placeMarketNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToUpper(), 0, quantity);
                 }
                 else
                 {
-                    js = await this.ord_client.bitbank_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.order_type.ToString().ToLower(), sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, sndOrd.pos_side.ToString().ToLower(), false);
+                    js = await this.ord_client.gmocoin_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToUpper(), sndOrd.price, quantity, "SOK");
+                }
+                JsonElement result;
+                if(js.RootElement.TryGetProperty("status",out result) && result.GetInt32() == 0)
+                {
+                    string ord_id = js.RootElement.GetProperty("data").GetString();
+                    DateTime resTime = DateTime.ParseExact(js.RootElement.GetProperty("responsetime").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+                    output = this.ord_client.ordUpdateStack.pop();
+                    if (output == null)
+                    {
+                        output = new DataSpotOrderUpdate();
+                    }
+                    output.order_id = ord_id;
+                    this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
+                    output.timestamp = sendTime;
+                    output.symbol = sndOrd.ins.symbol;
+                    output.market = sndOrd.ins.market;
+                    output.internal_order_id = sndOrd.internalOrdId;
+                    output.symbol_market = sndOrd.ins.symbol_market;
+                    output.side = sndOrd.side;
+                    output.position_side = sndOrd.pos_side;
+                    output.order_type = sndOrd.order_type;
+                    output.order_price = sndOrd.price;
+                    output.order_quantity = quantity;
+                    output.filled_quantity = 0;//Even if an executed order is passed, output 0 executed quantity as the execution will be streamed anyway.
+                    output.average_price = 0;
+                    output.create_time = resTime;
+                    output.update_time = output.create_time;
+                    output.status = orderStatus.WaitOpen;
+                    output.fee = 0;
+                    output.fee_asset = "";
+                    output.is_trigger_order = true;
+                    output.last_trade = "";
+                    output.msg = sndOrd.msg;
+
+                    if (output.position_side == positionSide.Long)
+                    {
+                        if (output.side == orderSide.Sell)
+                        {
+                            sndOrd.ins.longPosition.AddBalance(0, output.order_quantity);
+                        }
+                    }
+                    else if (output.position_side == positionSide.Short)
+                    {
+                        if (output.side == orderSide.Buy)
+                        {
+                            sndOrd.ins.shortPosition.AddBalance(0, output.order_quantity);
+                        }
+                    }
+                    else
+                    {
+                        switch (output.side)
+                        {
+                            case orderSide.Buy:
+                                sndOrd.ins.quoteBalance.AddBalance(0, output.order_price * output.order_quantity);
+                                break;
+                            case orderSide.Sell:
+                                sndOrd.ins.baseBalance.AddBalance(0, output.order_quantity);
+                                break;
+                        }
+                    }
+                    this.ord_client.ordUpdateQueue.Enqueue(output);
+                }
+                else
+                {
+                    addLog(js.RootElement.GetRawText(), logType.WARNING);
+                    JsonElement timeElem;
+                    DateTime resTime;
+                    if (js.RootElement.TryGetProperty("responsetime",out timeElem))
+                    {
+                        resTime = DateTime.ParseExact(js.RootElement.GetProperty("responsetime").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+                    }
+                    else
+                    {
+                        resTime = DateTime.UtcNow;
+                    }
+                    output = this.ord_client.ordUpdateStack.pop();
+                    if (output == null)
+                    {
+                        output = new DataSpotOrderUpdate();
+                    }
+                    output.order_id = "";
+                    this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
+                    output.timestamp = sendTime;
+                    output.symbol = sndOrd.ins.symbol;
+                    output.market = sndOrd.ins.market;
+                    output.internal_order_id = sndOrd.internalOrdId;
+                    output.symbol_market = sndOrd.ins.symbol_market;
+                    output.side = sndOrd.side;
+                    output.position_side = sndOrd.pos_side;
+                    output.order_type = sndOrd.order_type;
+                    output.order_price = sndOrd.price;
+                    output.order_quantity = quantity;
+                    output.filled_quantity = 0;//Even if an executed order is passed, output 0 executed quantity as the execution will be streamed anyway.
+                    output.average_price = 0;
+                    output.create_time = resTime;
+                    output.update_time = output.create_time;
+                    output.status = orderStatus.INVALID;
+                    output.fee = 0;
+                    output.fee_asset = "";
+                    output.is_trigger_order = true;
+                    output.last_trade = "";
+                    output.msg = sndOrd.msg;
+
+                    JsonElement js_err;
+                    if (js.RootElement.TryGetProperty("messages", out js_err))
+                    {
+                        string err_code = js_err.GetProperty("message_code").GetString();
+                        string err_msg = js_err.GetProperty("message_string").GetString();
+                        if (err_code == "ERR-5003")//Request too many
+                        {
+                            output.err_code = (int)Enums.ordError.RATE_LIMIT_EXCEEDED;
+                            this.addLog($"[gmocoin] New order failed. Too many request. Error code:{err_code}   Error message:{err_msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                        }
+                        else if (err_code == "ERR-626")
+                        {
+                            output.err_code = (int)Enums.ordError.SERVER_BUSY;
+                            this.addLog($"[gmocoin] New order failed. Server busy. Error code:{err_code}   Error message:{err_msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                        }
+                        else
+                        {
+                            this.addLog($"[gmocoin] Unexpected Error.   Error code:{err_code}   Error message:{err_msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
+                        }
+                    }
+
+                    this.ord_client.ordUpdateQueue.Enqueue(output);
                 }
             }
             else if (sndOrd.ins.market == "bitbank")
@@ -1557,6 +1698,58 @@ namespace Crypto_Trading
                 this.virtual_order_queue.Enqueue(output);
                 this.ord_client.ordUpdateQueue.Enqueue(output);
             }
+            else if(sndOrd.ins.market == "gmocoin")
+            {
+                this.addLog("GMO Coin can order called");
+                DateTime sendTime = DateTime.UtcNow;
+                DataSpotOrderUpdate prev = this.orders[sndOrd.ref_IntOrdId];
+                js = await this.ord_client.gmocoin_client.placeCanOrder(prev.order_id);
+                JsonElement res;
+                if (js.RootElement.TryGetProperty("status", out res) && res.GetInt32() == 0)
+                {
+                    DateTime resTime = DateTime.ParseExact(js.RootElement.GetProperty("responsetime").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+                    output = this.ord_client.ordUpdateStack.pop();
+                    if (output == null)
+                    {
+                        output = new DataSpotOrderUpdate();
+                    }
+                    output.order_id = prev.order_id;
+                    output.timestamp = sendTime;
+                    output.update_time = resTime;
+                    output.order_price = -1;
+                    output.order_quantity = 0;
+                    output.market = sndOrd.ins.market;
+                    output.symbol = sndOrd.ins.symbol;
+                    output.internal_order_id = sndOrd.ref_IntOrdId;
+                    output.filled_quantity = 0;
+                    output.status = orderStatus.WaitCancel;
+                    this.ord_client.ordUpdateQueue.Enqueue(output);
+                }
+                else
+                {
+                    addLog(js.RootElement.GetRawText(), logType.WARNING);
+                    JsonElement js_err;
+                    if (js.RootElement.TryGetProperty("messages", out js_err))
+                    {
+                        string err_code = js_err.GetProperty("message_code").GetString();
+                        string err_msg = js_err.GetProperty("message_string").GetString();
+                        if (err_code == "ERR-5003")//Request too many
+                        {
+                            output.err_code = (int)Enums.ordError.RATE_LIMIT_EXCEEDED;
+                            this.addLog($"[gmocoin] Cancel order failed. Too many request. Error code:{err_code}   Error message:{err_msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                        }
+                        else if (err_code == "ERR-5122")//The order is not alive anymore. ignore
+                        {
+
+                        }
+                        else
+                        {
+                            this.addLog($"[gmocoin] Unexpected Error.   Error code:{err_code}   Error message:{err_msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
+                        }
+                    }
+                    
+                }
+            }
             else if (sndOrd.ins.market == "bitbank")
             {
                 DateTime sendTime = DateTime.UtcNow;
@@ -1735,7 +1928,8 @@ namespace Crypto_Trading
             using var f = new funcContainer(this.Latency["processCanOrders"].MeasureLatency);
             List<DataSpotOrderUpdate> output = new List<DataSpotOrderUpdate>();
             DataSpotOrderUpdate? ordObj = null;
-            List<JsonDocument> js;
+            List<JsonDocument> js_list;
+            JsonDocument js;
             if (this.virtualMode)
             {
                 foreach (var ordid in sndOrd.order_ids)
@@ -1775,6 +1969,147 @@ namespace Crypto_Trading
                     this.ord_client.ordUpdateQueue.Enqueue(ordObj);
                 }
             }
+            else if (sndOrd.ins.market == "gmocoin")
+            {
+
+                this.addLog("GMO Coin can orders called");
+                DateTime sendTime = DateTime.UtcNow;
+                List<string> ord_ids = new List<string>();
+                foreach (string order_id in sndOrd.order_ids)
+                {
+                    if (this.orders.ContainsKey(order_id) && (this.orders[order_id].status == orderStatus.Open || this.orders[order_id].status == orderStatus.WaitOpen))
+                    {
+                        ord_ids.Add(this.orders[order_id].order_id);
+                    }
+                }
+                
+                js = await this.ord_client.gmocoin_client.placeCanOrders(ord_ids);
+                JsonElement res;
+                if (js.RootElement.TryGetProperty("status", out res) && res.GetInt32() == 0)
+                {
+                    JsonElement js_data;
+                    if (js.RootElement.TryGetProperty("data", out js_data))
+                    {
+                        JsonElement successes;
+                        JsonElement fails;
+                        if(js_data.TryGetProperty("success",out successes))
+                        {
+                            foreach(var elem in successes.EnumerateArray())
+                            {
+                                ordObj = this.ord_client.ordUpdateStack.pop();
+                                if (ordObj == null)
+                                {
+                                    ordObj = new DataSpotOrderUpdate();
+                                }
+                                ordObj.order_id = elem.GetInt64().ToString();
+                                ordObj.timestamp = sendTime;
+                                ordObj.order_price = -1;
+                                ordObj.order_quantity = 0;
+                                ordObj.market = sndOrd.ins.market;
+                                ordObj.symbol = sndOrd.ins.symbol;
+                                ordObj.symbol_market = sndOrd.ins.symbol_market;
+                                ordObj.internal_order_id = this.ordIdMapping[ordObj.market + ordObj.order_id];
+                                ordObj.filled_quantity = 0;
+                                ordObj.status = orderStatus.WaitCancel;
+                                this.ord_client.ordUpdateQueue.Enqueue(ordObj);
+                                output.Add(ordObj);
+                            }
+                        }
+                        if(js_data.TryGetProperty("failed",out fails))
+                        {
+                            foreach (var elem in fails.EnumerateArray())
+                            {
+                                string code = elem.GetProperty("message_code").GetString();
+                                string msg = elem.GetProperty("message_string").GetString();
+                                if (code.StartsWith("ERR-5003"))//Request too many
+                                {
+                                    this.addLog($"[gmocoin] Cancel order failed. Too many request. Error code:{code}   ord_id:{sndOrd.internalOrdId}   msg:{msg}", Enums.logType.WARNING);
+                                }
+                                else if (code.StartsWith("ERR-5122"))//The order is not alive anymore. ignore
+                                {
+
+                                }
+                                else
+                                {
+                                    this.addLog($"[gmocoin] Unexpected Error. Error code:{code}   ord_id:{sndOrd.internalOrdId}   msg:{msg}", Enums.logType.ERROR);
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    addLog(js.RootElement.GetRawText(), logType.WARNING);
+                    JsonElement js_err;
+                    if (js.RootElement.TryGetProperty("messages", out js_err))
+                    {
+                        string err_code = js_err.GetProperty("message_code").GetString();
+                        string err_msg = js_err.GetProperty("message_string").GetString();
+                        if (err_code == "ERR-5003")//Request too many
+                        {
+                            this.addLog($"[gmocoin] Cancel order failed. Too many request. Error code:{err_code}   Error message:{err_msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                        }
+                        else if (err_code == "ERR-5122")//The order is not alive anymore. ignore
+                        {
+
+                        }
+                        else
+                        {
+                            this.addLog($"[gmocoin] Unexpected Error.   Error code:{err_code}   Error message:{err_msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
+                        }
+                    }
+                    
+                    JsonElement js_data;
+                    if(js.RootElement.TryGetProperty("data",out js_data))
+                    {
+                        JsonElement successes;
+                        JsonElement fails;
+                        if (js_data.TryGetProperty("success", out successes))
+                        {
+                            foreach (var elem in successes.EnumerateArray())
+                            {
+                                ordObj = this.ord_client.ordUpdateStack.pop();
+                                if (ordObj == null)
+                                {
+                                    ordObj = new DataSpotOrderUpdate();
+                                }
+                                ordObj.order_id = elem.GetInt64().ToString();
+                                ordObj.timestamp = sendTime;
+                                ordObj.order_price = -1;
+                                ordObj.order_quantity = 0;
+                                ordObj.market = sndOrd.ins.market;
+                                ordObj.symbol = sndOrd.ins.symbol;
+                                ordObj.symbol_market = sndOrd.ins.symbol_market;
+                                ordObj.internal_order_id = this.ordIdMapping[ordObj.market + ordObj.order_id];
+                                ordObj.filled_quantity = 0;
+                                ordObj.status = orderStatus.WaitCancel;
+                                this.ord_client.ordUpdateQueue.Enqueue(ordObj);
+                                output.Add(ordObj);
+                            }
+                        }
+                        if (js_data.TryGetProperty("failed", out fails))
+                        {
+                            foreach (var elem in fails.EnumerateArray())
+                            {
+                                string code = elem.GetProperty("message_code").GetString();
+                                string msg = elem.GetProperty("message_string").GetString();
+                                if (code.StartsWith("ERR-5003"))//Request too many
+                                {
+                                    this.addLog($"[gmocoin] Cancel order failed. Too many request. Error code:{code}   ord_id:{sndOrd.internalOrdId}   msg:{msg}", Enums.logType.WARNING);
+                                }
+                                else if (code.StartsWith("ERR-5122"))//The order is not alive anymore. ignore
+                                {
+
+                                }
+                                else
+                                {
+                                    this.addLog($"[gmocoin] Unexpected Error. Error code:{code}   ord_id:{sndOrd.internalOrdId}   msg:{msg}", Enums.logType.ERROR);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             else if (sndOrd.ins.market == "bitbank")
             {
                 DateTime sendTime = DateTime.UtcNow;
@@ -1786,8 +2121,8 @@ namespace Crypto_Trading
                         ord_ids.Add(this.orders[order_id].order_id);
                     }
                 }
-                js = await this.ord_client.bitbank_client.placeCanOrders(sndOrd.ins.symbol, ord_ids);
-                foreach (var elem in js)
+                js_list = await this.ord_client.bitbank_client.placeCanOrders(sndOrd.ins.symbol, ord_ids);
+                foreach (var elem in js_list)
                 {
                     if (elem.RootElement.GetProperty("success").GetUInt16() == 1)
                     {
@@ -1885,8 +2220,8 @@ namespace Crypto_Trading
                     }
                 }
                 
-                js = await this.ord_client.coincheck_client.placeCanOrders(ord_ids);
-                foreach (var elem in js)
+                js_list = await this.ord_client.coincheck_client.placeCanOrders(ord_ids);
+                foreach (var elem in js_list)
                 {
                     if (elem.RootElement.GetProperty("success").GetBoolean())
                     {
@@ -1948,8 +2283,8 @@ namespace Crypto_Trading
                         ord_ids.Add(this.orders[order_id].order_id);
                     }
                 }
-                js = await this.ord_client.bittrade_client.placeCanOrders(ord_ids);
-                foreach(var elem in js)
+                js_list = await this.ord_client.bittrade_client.placeCanOrders(ord_ids);
+                foreach(var elem in js_list)
                 {
                     if (elem.RootElement.GetProperty("status").GetString() == "ok")
                     {

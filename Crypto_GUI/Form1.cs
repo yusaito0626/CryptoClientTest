@@ -915,7 +915,6 @@ namespace Crypto_GUI
                                         {
                                             if(b.isSoD)
                                             {
-                                                addLog($"{b.symbol} {b.posType} {b.market}");
                                                 if(b.posType == "SPOT")
                                                 {
                                                     Balance balance = new Balance();

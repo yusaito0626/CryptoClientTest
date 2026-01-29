@@ -192,7 +192,14 @@ namespace Crypto_Linux
             oManager.MI_outputQueue = marketImpactQueue;
 
             //readAPIFiles(APIsPath);
-            getAPIsFromEnv(live);
+            if (test && privateConnect)
+            {
+                getAPIsFromEnv(true);
+            }
+            else
+            {
+                getAPIsFromEnv(live);
+            }
 
             foreach (var ins in qManager.instruments.Values)
             {
@@ -339,7 +346,7 @@ namespace Crypto_Linux
             else
             {
                 addLog("Test Mode");
-                await testFunc();
+                Task.Run(testFunc);
             }
 
 
@@ -559,145 +566,172 @@ namespace Crypto_Linux
 
         static private async Task testFunc()
         {
-            await crypto_client.gmocoin_client.getTradeHistory("BTC_JPY",5,1);
-            //string newSoDFile = "../output/SoD_position_new.csv";
-            //if (File.Exists(newSoDFile))
-            //{
-            //    int i = 0;
-            //    StreamReader sr = new StreamReader(new FileStream(newSoDFile, FileMode.Open, FileAccess.Read));
-            //    ExchangeBalance exBalance;
-            //    while (sr.ReadLine() is string line)
-            //    {
-            //        if(i > 0)
-            //        {
-            //            Console.WriteLine(line);
-            //            string[] items = line.Split(',');
-            //            if (items.Length >= 11)
-            //            {
-            //                string balanceType = items[2];
-            //                if(balanceType == "SPOT")
-            //                {
-            //                    Balance b = new Balance();
-            //                    b.market = items[1];
-            //                    b.ccy = items[3];
-            //                    b.total = decimal.Parse(items[5]);
-            //                    b.current_price = decimal.Parse(items[7]);
-            //                    b.valuation_pair = items[8];
-            //                    if(qManager.exchange_balances.ContainsKey(b.market))
-            //                    {
-            //                        exBalance = qManager.exchange_balances[b.market];
-            //                    }
-            //                    else
-            //                    {
-            //                        exBalance = new ExchangeBalance();
-            //                        exBalance.market = b.market;
-            //                        qManager.exchange_balances[b.market] = exBalance;
-            //                    }
-            //                    exBalance.balance[b.ccy] = b;
-            //                }
-            //                else if(balanceType == "MARGIN")
-            //                {
-            //                    BalanceMargin bm = new BalanceMargin();
-            //                    bm.market = items[1];
-            //                    bm.symbol = items[3];
-            //                    string str_side = items[4];
-            //                    if(str_side.ToLower() == "long")
-            //                    {
-            //                        bm.side = positionSide.Long;
-            //                    }
-            //                    else if(str_side.ToLower() == "short")
-            //                    {
-            //                        bm.side = positionSide.Short;
-            //                    }
-            //                    else
-            //                    {
-            //                        bm.side = positionSide.NONE;
-            //                    }
-            //                    bm.total = decimal.Parse(items[5]);
-            //                    bm.avg_price = decimal.Parse(items[6]);
-            //                    bm.current_price = decimal.Parse(items[7]);
-            //                    bm.unrealized_fee = decimal.Parse(items[9]);
-            //                    bm.unrealized_interest = decimal.Parse(items[10]);
-            //                    if (qManager.exchange_balances.ContainsKey(bm.market))
-            //                    {
-            //                        exBalance = qManager.exchange_balances[bm.market];
-            //                    }
-            //                    else
-            //                    {
-            //                        exBalance = new ExchangeBalance();
-            //                        exBalance.market = bm.market;
-            //                        qManager.exchange_balances[bm.market] = exBalance;
-            //                    }
-            //                    if(bm.side == positionSide.Long)
-            //                    {
-            //                        Console.WriteLine("Long Position:" + bm.ToString());
-            //                        exBalance.marginLong[bm.symbol] = bm;
-            //                    }
-            //                    else if(bm.side == positionSide.Short)
-            //                    {
-            //                        exBalance.marginShort[bm.symbol] = bm;
-            //                    }
-            //                    Console.WriteLine(bm.ToString());
-            //                }
-            //            }
-            //        }
-            //        else
-            //        {
-            //            ++i;
-            //        }
-            //    }
+            Instrument ins = qManager.instruments["BTC_JPY@gmocoin"];
+            decimal price_buy = 13_000_000;
+            decimal price_sell = 14_000_000;
+            decimal quantity = (decimal)0.001;
+            Console.WriteLine("GMO Coin order test");
 
+            foreach(var stg in strategies)
+            {
+                stg.Value.enabled = false;
+            }
+            oManager.setVirtualMode(false);
 
-            //    foreach(Instrument ins in qManager.instruments.Values)
-            //    {
-            //        if(qManager.exchange_balances.ContainsKey(ins.market))
-            //        {
-            //            exBalance = qManager.exchange_balances[ins.market];
-            //            if(exBalance.balance.ContainsKey(ins.baseCcy))
-            //            {
-            //                ins.baseBalance = exBalance.balance[ins.baseCcy];
-            //            }
-            //            else
-            //            {
-            //                Console.WriteLine("Base Balance not found" + exBalance.balance.Count.ToString());
-            //            }
-            //            if (exBalance.balance.ContainsKey(ins.quoteCcy))
-            //            {
-            //                ins.quoteBalance = exBalance.balance[ins.quoteCcy];
-            //            }
-            //            else
-            //            {
-            //                Console.WriteLine("Quote Balance not found" + exBalance.balance.Count.ToString());
-            //            }
-            //            if(exBalance.marginShort.ContainsKey(ins.symbol))
-            //            {
-            //                ins.shortPosition = exBalance.marginShort[ins.symbol];
-            //            }
-            //            else
-            //            {
-            //                Console.WriteLine("Short Position not found" + exBalance.marginShort.Count.ToString());
-            //            }
-            //            if (exBalance.marginLong.ContainsKey(ins.symbol))
-            //            {
-            //                ins.longPosition = exBalance.marginLong[ins.symbol];
-            //            }
-            //            else
-            //            {
-            //                Console.WriteLine("Long Position not found. " + exBalance.marginLong.Count.ToString());
-            //            }
-            //        }
-            //        else
-            //        {
-            //            Console.WriteLine("Exchange not found");
-            //        }
-            //        Console.WriteLine($"{ins.symbol_market} baseCcy[{ins.baseBalance.ccy}]{ins.baseBalance.total.ToString()} quoteCcy[{ins.quoteBalance.ccy}]{ins.quoteBalance.total.ToString()} Long[{ins.longPosition.symbol}]{ins.longPosition.total.ToString()} Short[{ins.shortPosition.symbol}]{ins.shortPosition.total.ToString()}");  
-            //    }
-            //}
-            //else
-            //{
-            //    Console.WriteLine("File not found");
-            //}
+            Console.WriteLine("New Order");
+            string ordid = await oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Limit, quantity, price_buy,positionSide.Long);
+            DataSpotOrderUpdate ord;
+            if(ordid == "")
+            {
+                Console.WriteLine("New Order Failed");
+                await EoDProcess();
+                isRunning = false;
+                return;
+            }
 
+            Thread.Sleep(3000);
+            if (oManager.orders.ContainsKey(ordid))
+            {
+                ord = oManager.orders[ordid];
+                Console.WriteLine(ord.ToString());
+            }
+            Console.WriteLine("Cancel Order");
+            ordid = await oManager.placeCancelSpotOrder(ins, ordid);
+            if (ordid == "")
+            {
+                Console.WriteLine("Can Order Failed");
+                await EoDProcess();
+                isRunning = false;
+                return;
+            }
+
+            Thread.Sleep(3000);
+            if (oManager.orders.ContainsKey(ordid))
+            {
+                ord = oManager.orders[ordid];
+                Console.WriteLine(ord.ToString());
+            }
+            
+            Console.WriteLine("Market Order");
+            ordid = await oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Market, quantity, 0, positionSide.Long);
+            if (ordid == "")
+            {
+                Console.WriteLine("New Order Failed");
+                await EoDProcess();
+                isRunning = false;
+                return;
+            }
+
+            Thread.Sleep(3000);
+            if (oManager.orders.ContainsKey(ordid))
+            {
+                ord = oManager.orders[ordid];
+                Console.WriteLine(ord.ToString());
+            }
+
+            Console.WriteLine("Close New Order");
+            ordid = await oManager.placeNewSpotOrder(ins, orderSide.Sell, orderType.Limit, quantity, price_sell,positionSide.Long);
+            if (ordid == "")
+            {
+                Console.WriteLine("Close New Order Failed");
+                await EoDProcess();
+                isRunning = false;
+                return;
+            }
+
+            Thread.Sleep(3000);
+            if (oManager.orders.ContainsKey(ordid))
+            {
+                ord = oManager.orders[ordid];
+                Console.WriteLine(ord.ToString());
+            }
+
+            Console.WriteLine("Cancel Order");
+            ordid = await oManager.placeCancelSpotOrder(ins, ordid);
+            if (ordid == "")
+            {
+                Console.WriteLine("Can Order Failed");
+                await EoDProcess();
+                isRunning = false;
+                return;
+            }
+
+            Thread.Sleep(3000);
+            if (oManager.orders.ContainsKey(ordid))
+            {
+                ord = oManager.orders[ordid];
+                Console.WriteLine(ord.ToString());
+            }
+
+            Console.WriteLine("Close Market Order");
+            ordid = await oManager.placeNewSpotOrder(ins, orderSide.Sell, orderType.Market, quantity, 0,positionSide.Long);
+            if (ordid == "")
+            {
+                Console.WriteLine("Close Market Order Failed");
+                await EoDProcess();
+                isRunning = false;
+                return;
+            }
+
+            Thread.Sleep(3000);
+            if (oManager.orders.ContainsKey(ordid))
+            {
+                ord = oManager.orders[ordid];
+                Console.WriteLine(ord.ToString());
+            }
+
+            Console.WriteLine("Multi cancel");
+            Console.WriteLine("New Order");
+            ordid = await oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Limit, quantity, price_buy,positionSide.Long);
+            if (ordid == "")
+            {
+                Console.WriteLine("Close Market Order Failed");
+                await EoDProcess();
+                isRunning = false;
+                return;
+            }
+
+            Thread.Sleep(3000);
+            if (oManager.orders.ContainsKey(ordid))
+            {
+                ord = oManager.orders[ordid];
+                Console.WriteLine(ord.ToString());
+            }
+            List<string> ordids = new List<string>();
+            ordids.Add(ordid);
+            Console.WriteLine("New Order");
+            ordid = await oManager.placeNewSpotOrder(ins, orderSide.Sell, orderType.Limit, quantity, price_sell, positionSide.Short);
+            if (ordid == "")
+            {
+                Console.WriteLine("Close Market Order Failed");
+                await EoDProcess();
+                isRunning = false;
+                return;
+            }
+
+            Thread.Sleep(3000);
+            if (oManager.orders.ContainsKey(ordid))
+            {
+                ord = oManager.orders[ordid];
+                Console.WriteLine(ord.ToString());
+            }
+            ordids.Add(ordid);
+
+            foreach (string id in ordids)
+            {
+                Console.WriteLine(id);
+            }
+
+            List<string> result = (await oManager.placeCancelSpotOrders(ins, ordids)).ToList();
+            Thread.Sleep(3000);
+            foreach(string id in result)
+            {
+                if(oManager.orders.ContainsKey(id))
+                {
+                    ord = oManager.orders[id];
+                    Console.WriteLine(ord.ToString());
+                }
+            }
 
             Console.WriteLine("Completed");
 
@@ -1354,6 +1388,7 @@ namespace Crypto_Linux
                                 }
                                 exBalance.balance[b.ccy] = b;
 
+
                                 b = new Balance();
                                 b.market = items[1];
                                 b.ccy = items[3];
@@ -1506,7 +1541,7 @@ namespace Crypto_Linux
                         }
                         else
                         {
-                            Console.WriteLine("Base Balance not found" + exBalance.balance.Count.ToString());
+                            addLog("Base currency balance not found.  pair:" + ins.symbol_market + "  ccy:" + ins.baseCcy, logType.WARNING);
                         }
                         if (exBalance.balance.ContainsKey(ins.quoteCcy))
                         {
@@ -1514,23 +1549,15 @@ namespace Crypto_Linux
                         }
                         else
                         {
-                            Console.WriteLine("Quote Balance not found" + exBalance.balance.Count.ToString());
+                            addLog("Quote currency balance not found.  pair:" + ins.symbol_market + "  ccy:" + ins.quoteCcy, logType.WARNING);
                         }
                         if (exBalance.marginShort.ContainsKey(ins.symbol))
                         {
                             ins.shortPosition = exBalance.marginShort[ins.symbol];
                         }
-                        else
-                        {
-                            Console.WriteLine("Short Position not found" + exBalance.marginShort.Count.ToString());
-                        }
                         if (exBalance.marginLong.ContainsKey(ins.symbol))
                         {
                             ins.longPosition = exBalance.marginLong[ins.symbol];
-                        }
-                        else
-                        {
-                            Console.WriteLine("Long Position not found. " + exBalance.marginLong.Count.ToString());
                         }
                     }
                     else
@@ -1546,7 +1573,7 @@ namespace Crypto_Linux
                         }
                         else
                         {
-                            Console.WriteLine("Base Balance not found" + exBalance.balance.Count.ToString());
+                            addLog("Base currency balance not found.  pair:" + ins.symbol_market + "  ccy:" + ins.baseCcy, logType.WARNING);
                         }
                         if (exBalance.balance.ContainsKey(ins.quoteCcy))
                         {
@@ -1554,23 +1581,15 @@ namespace Crypto_Linux
                         }
                         else
                         {
-                            Console.WriteLine("Quote Balance not found" + exBalance.balance.Count.ToString());
+                            addLog("Quote currency balance not found.  pair:" + ins.symbol_market + "  ccy:" + ins.quoteCcy, logType.WARNING);
                         }
                         if (exBalance.marginShort.ContainsKey(ins.symbol))
                         {
                             ins.shortPosition = exBalance.marginShort[ins.symbol];
                         }
-                        else
-                        {
-                            Console.WriteLine("Short Position not found" + exBalance.marginShort.Count.ToString());
-                        }
                         if (exBalance.marginLong.ContainsKey(ins.symbol))
                         {
                             ins.longPosition = exBalance.marginLong[ins.symbol];
-                        }
-                        else
-                        {
-                            Console.WriteLine("Long Position not found. " + exBalance.marginLong.Count.ToString());
                         }
                         if (ins.SoD_shortPosition.current_price > 0)
                         {
@@ -1655,6 +1674,22 @@ namespace Crypto_Linux
                     addLog("Failed to set margion position", logType.WARNING);
                     return false;
                 }
+                //foreach(var ex in qManager.exchange_balances.Values)
+                //{
+                //    addLog($"Exchange:{ex.market} Balance:{ex.balance.Count} Long:{ex.marginLong.Count} Short:{ex.marginShort.Count}");
+                //    foreach(var b in ex.balance)
+                //    {
+                //        addLog($"Key:{b.Key}  Value:{b.Value.ToString()}");
+                //    }
+                //    foreach(var m in ex.marginLong)
+                //    {
+                //        addLog($"Key:{m.Key} Value:{m.Value.ToString()}");
+                //    }
+                //    foreach (var m in ex.marginShort)
+                //    {
+                //        addLog($"Key:{m.Key} Value:{m.Value.ToString()}");
+                //    }
+                //}
             }
             else if (File.Exists(SoDPosFile))
             {
@@ -2078,6 +2113,23 @@ namespace Crypto_Linux
                     string SoDPosFile = newpath + "/SoD_Position.csv";
                     qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys));
                     qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys));
+                    //foreach (var exvk in qManager.exchange_balances)
+                    //{
+                    //    ExchangeBalance ex = exvk.Value;
+                    //    addLog($"Exchange:{ex.market}[{exvk.Key}] Balance:{ex.balance.Count} Long:{ex.marginLong.Count} Short:{ex.marginShort.Count}");
+                    //    foreach (var b in ex.balance)
+                    //    {
+                    //        addLog($"Key:{b.Key}  Value:{b.Value.ToString()}");
+                    //    }
+                    //    foreach (var m in ex.marginLong)
+                    //    {
+                    //        addLog($"Key:{m.Key} Value:{m.Value.ToString()}");
+                    //    }
+                    //    foreach (var m in ex.marginShort)
+                    //    {
+                    //        addLog($"Key:{m.Key} Value:{m.Value.ToString()}");
+                    //    }
+                    //}
 
                     //StreamWriter sw = new StreamWriter(new FileStream(SoDPosFile, FileMode.Create, FileAccess.Write));
                     using (StreamWriter sod = new StreamWriter(new FileStream(SoDPosFile, FileMode.Create, FileAccess.Write)))
@@ -2103,9 +2155,23 @@ namespace Crypto_Linux
                         //Timestamp,Exchange,Margin or Spot,symbol,side(margin),quantity,avg_price(margin),current_price,valuation_pair,unrealized_fee(margin),unrealized_interest
                         sod.WriteLine("timestamp,exchange,Margin or Spot,symbol,side(margin),quantity,avg_price(margin),current_price,valuation_pair,unrealized_fee(margin),unrealized_interest(margin)");
                         DateTime currentTime = DateTime.UtcNow;
-                        foreach (var exBalance in qManager.exchange_balances.Values)
+                        foreach (var exBalance in qManager.exchange_balances)
                         {
-                            sod.Write(exBalance.OutputToFile(qManager.instruments,currentTime));
+                            ExchangeBalance ex = exBalance.Value;
+                            //addLog($"Exchange:{ex.market}[{exBalance.Key}] Balance:{ex.balance.Count} Long:{ex.marginLong.Count} Short:{ex.marginShort}");
+                            //foreach (var b in ex.balance)
+                            //{
+                            //    addLog($"Key:{b.Key}  Value:{b.Value.ToString()}");
+                            //}
+                            //foreach (var m in ex.marginLong)
+                            //{
+                            //    addLog($"Key:{m.Key} Value:{m.Value.ToString()}");
+                            //}
+                            //foreach (var m in ex.marginShort)
+                            //{
+                            //    addLog($"Key:{m.Key} Value:{m.Value.ToString()}");
+                            //}
+                            sod.Write(exBalance.Value.OutputToFile(qManager.instruments,currentTime));
                             sod.Flush();
                         }
                     }

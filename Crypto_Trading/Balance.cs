@@ -84,14 +84,18 @@ namespace Crypto_Trading
 
             this.getUnrealizedPnL(ins_dict);
 
-            foreach (var b in this.balance.Values)
+            foreach (var b in this.balance)
             {
-                res += str_time + "," + this.market + ",SPOT," + b.ccy + ",," + b.total.ToString() + ",0," + b.current_price.ToString() + "," + b.valuation_pair + ",0,0\n";
+                res += str_time + "," + this.market + ",SPOT," + b.Value.ccy + ",," + b.Value.total.ToString() + ",0," + b.Value.current_price.ToString() + "," + b.Value.valuation_pair + ",0,0\n";
             }
             foreach (var b in this.marginShort.Values)
             {
-                res += str_time + "," + this.market + ",MARGIN," + b.symbol + "," + b.side.ToString() + "," + b.total.ToString() + "," + b.avg_price.ToString() + "," + b.current_price.ToString() + "," + b.symbol + "," + b.unrealized_fee.ToString() + "," + b.unrealized_interest.ToString() + "\n"; 
-            }       
+                res += str_time + "," + this.market + ",MARGIN," + b.symbol + "," + b.side.ToString() + "," + b.total.ToString() + "," + b.avg_price.ToString() + "," + b.current_price.ToString() + "," + b.symbol + "," + b.unrealized_fee.ToString() + "," + b.unrealized_interest.ToString() + "\n";
+            }
+            foreach (var b in this.marginLong.Values)
+            {
+                res += str_time + "," + this.market + ",MARGIN," + b.symbol + "," + b.side.ToString() + "," + b.total.ToString() + "," + b.avg_price.ToString() + "," + b.current_price.ToString() + "," + b.symbol + "," + b.unrealized_fee.ToString() + "," + b.unrealized_interest.ToString() + "\n";
+            }
             return res;
         }
     }
@@ -158,6 +162,10 @@ namespace Crypto_Trading
         {
             get { return _inuse; }
             set {  this._inuse = value; }
+        }
+        public string ToString()
+        {
+            return $"{this.ccy},{this.market},{this._total.ToString()},{this._inuse.ToString()},{this.valuation_pair},{this.current_price.ToString()}";
         }
     }
     public class BalanceMargin
@@ -328,6 +336,10 @@ namespace Crypto_Trading
         {
             get { return _inuse; }
             set { this._inuse = value; }
+        }
+        public string ToString()
+        {
+            return $"{this.symbol},{this.market},{this.side.ToString()},{this.avg_price.ToString()},{this._total.ToString()},{this._inuse.ToString()},{this.current_price.ToString()},{this.unrealized_pnl.ToString()},{this.unrealized_fee.ToString()},{this.unrealized_interest.ToString()},{this.maxLeverage}";
         }
     }
 }

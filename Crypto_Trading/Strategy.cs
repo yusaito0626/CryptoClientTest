@@ -2509,7 +2509,7 @@ namespace Crypto_Trading
 
         public async Task onFill(DataFill fill)
         {
-            if (/*this.enabled && */this.abook)//onFill should work even if the strategy disabled
+            if (this.enabled && this.abook)//onFill should work even if the strategy disabled
             {
                 if (!this.oManager.ready)
                 {

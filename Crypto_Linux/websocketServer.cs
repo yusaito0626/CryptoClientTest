@@ -176,6 +176,7 @@ namespace Crypto_Linux
             {
 
             }
+            i = 0;
             while (i < this.logList.Count)
             {
                 List<logEntry> subList;
