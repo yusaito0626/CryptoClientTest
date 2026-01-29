@@ -137,6 +137,8 @@ namespace Crypto_Trading
         public BalanceMargin SoD_longPosition;
         public BalanceMargin SoD_shortPosition;
 
+        public bool marginTrade;
+
         public decimal net_pos
         {
             get {return this.baseBalance.total + this.longPosition.total - this.shortPosition.total;}
@@ -235,6 +237,8 @@ namespace Crypto_Trading
             this.SoD_longPosition.side = positionSide.Long;
             this.SoD_shortPosition.side = positionSide.Short;
 
+            this.marginTrade = false;
+
 
             this.taker_fee = 0;
             this.maker_fee = 0;
@@ -280,6 +284,7 @@ namespace Crypto_Trading
                     case 5: this.maker_fee = decimal.Parse(item); break;
                     case 6: this.price_unit = decimal.Parse(item); break;
                     case 7: this.quantity_unit = decimal.Parse(item); break;
+                    case 8: this.marginTrade = bool.Parse(item); break;
                     default: break;
                 }
                 i++;
