@@ -704,26 +704,33 @@ namespace Crypto_Trading
 
             if(this.mid > 0 && this.prev_mid > 0)
             {
-                this.cumlative_RV += Math.Pow(Math.Log((double)this.mid / (double)this.prev_mid), 2);
-                if (this.RV_startTime == null)
+                if(Math.Pow(Math.Log((double)this.mid / (double)this.prev_mid), 2) < 0.1)
                 {
-                    this.RV_startTime = current;
+                    this.cumlative_RV += Math.Pow(Math.Log((double)this.mid / (double)this.prev_mid), 2);
+                    if (this.RV_startTime == null)
+                    {
+                        this.RV_startTime = current;
+                    }
+                    else
+                    {
+                        this.avg_RV = Math.Sqrt(this.cumlative_RV / (current - this.RV_startTime.Value).TotalMinutes * this.RV_minute);
+                    }
+                    if (this.RV_currentPeriodStart == null)
+                    {
+                        this.RV_currentPeriodStart = current;
+                        this.prev_cumRV = this.cumlative_RV;
+                    }
+                    else if ((current - this.RV_currentPeriodStart.Value).TotalMinutes > this.RV_minute)
+                    {
+                        this.prev_RV = this.realized_volatility;
+                        this.realized_volatility = Math.Sqrt((this.cumlative_RV - this.prev_cumRV) / (current - this.RV_currentPeriodStart.Value).TotalMinutes * this.RV_minute);
+                        this.prev_cumRV = this.cumlative_RV;
+                        this.RV_currentPeriodStart = current;
+                    }
                 }
                 else
                 {
-                    this.avg_RV = Math.Sqrt(this.cumlative_RV / (current - this.RV_startTime.Value).TotalMinutes * this.RV_minute);
-                }
-                if(this.RV_currentPeriodStart == null)
-                {
-                    this.RV_currentPeriodStart = current;
-                    this.prev_cumRV = this.cumlative_RV;
-                }
-                else if((current - this.RV_currentPeriodStart.Value).TotalMinutes > this.RV_minute)
-                {
-                    this.prev_RV = this.realized_volatility;
-                    this.realized_volatility = Math.Sqrt((this.cumlative_RV - this.prev_cumRV) / (current - this.RV_currentPeriodStart.Value).TotalMinutes * this.RV_minute);
-                    this.prev_cumRV = this.cumlative_RV;
-                    this.RV_currentPeriodStart = current;
+                    Console.WriteLine($"market:{this.market} symbol:{this.symbol} bestask:{this.bestask.Item1} bestbid:{this.bestbid.Item1} mid:{this.mid} prev_mid:{this.prev_mid}");
                 }
             }
 

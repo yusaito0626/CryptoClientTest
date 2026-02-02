@@ -880,7 +880,7 @@ namespace Crypto_Clients
             }
             catch (Exception ex)
             {
-                this.addLog("Error occured during getAsync. " + ex.Message, Enums.logType.ERROR);
+                this.addLog("Error occured during postAsync. " + ex.Message, Enums.logType.ERROR);
                 return "{\"success\":0,\"data\":{\"code\":-1}}";
             }
             

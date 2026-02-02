@@ -1146,11 +1146,138 @@ namespace Crypto_Linux
                         {
                             return false;
                         }
+
                         foreach (var stg in strategies)
                         {
-                            stg.Value.taker.baseBalance.total = - stg.Value.targetMakerPosition;
-                            stg.Value.maker.baseBalance.total = 0;// stg.Value.baseCcyQuantity / 2;
-                            stg.Value.maker.shortPosition.total =  - stg.Value.targetMakerPosition;
+                            Instrument takerins = stg.Value.taker;
+                            Instrument makerins = stg.Value.maker;
+                            ExchangeBalance takerExchange;
+                            ExchangeBalance makerExchange;
+                            if (!qManager.exchange_balances.ContainsKey(takerins.market))
+                            {
+                                takerExchange = new ExchangeBalance();
+                                takerExchange.market = takerins.market;
+                                qManager.exchange_balances[takerExchange.market] = takerExchange;
+                                Balance jpy_balance = new Balance();
+                                jpy_balance.market = takerExchange.market;
+                                jpy_balance.ccy = "JPY";
+                                jpy_balance.total = 100_000_000;
+                                takerExchange.balance["JPY"] = jpy_balance;
+                            }
+                            else
+                            {
+                                takerExchange = qManager.exchange_balances[takerins.market];
+                            }
+                            if (!qManager.exchange_balances.ContainsKey(makerins.market))
+                            {
+                                makerExchange = new ExchangeBalance();
+                                makerExchange.market = makerins.market;
+                                qManager.exchange_balances[makerExchange.market] = makerExchange;
+                                Balance jpy_balance = new Balance();
+                                jpy_balance.market = makerExchange.market;
+                                jpy_balance.ccy = "JPY";
+                                jpy_balance.total = 100_000_000;
+                                makerExchange.balance["JPY"] = jpy_balance;
+                            }
+                            else
+                            {
+                                makerExchange = qManager.exchange_balances[makerins.market];
+                            }
+
+                            if (takerins.quoteCcy == "JPY")
+                            {
+                                takerins.quoteBalance = takerExchange.balance["JPY"];
+                            }
+                            if (takerins.baseCcy == "JPY")
+                            {
+                                takerins.baseBalance = takerExchange.balance["JPY"];
+                            }
+                            if (makerins.quoteCcy == "JPY")
+                            {
+                                makerins.quoteBalance = makerExchange.balance["JPY"];
+                            }
+                            if (makerins.baseCcy == "JPY")
+                            {
+                                makerins.baseBalance = makerExchange.balance["JPY"];
+                            }
+
+                            if (takerins.marginTrade)
+                            {
+                                if(!takerExchange.marginLong.ContainsKey(takerins.symbol))
+                                {
+                                    takerExchange.marginLong[takerins.symbol] = takerins.longPosition;
+                                }
+                                if (!takerExchange.marginShort.ContainsKey(takerins.symbol))
+                                {
+                                    takerExchange.marginShort[takerins.symbol] = takerins.shortPosition;
+                                }
+
+                                takerins.baseBalance.total = 0;// stg.Value.baseCcyQuantity / 2;
+                                if (stg.Value.targetMakerPosition > 0)
+                                {
+                                    takerins.shortPosition.total = stg.Value.targetMakerPosition;
+                                }
+                                else if (stg.Value.targetMakerPosition < 0)
+                                {
+                                    takerins.longPosition.total = - stg.Value.targetMakerPosition;
+                                }
+                            }
+                            else
+                            {
+                                if(!takerExchange.balance.ContainsKey(takerins.baseCcy))
+                                {
+                                    takerExchange.balance[takerins.baseCcy] = takerins.baseBalance;
+                                }
+                                if (stg.Value.targetMakerPosition > 0)
+                                {
+                                    if(makerins.marginTrade == false)
+                                    {
+                                        takerins.baseBalance.total = stg.Value.targetMakerPosition;
+                                    }
+                                    else
+                                    {
+                                        addLog("The maker target position must be negative value when the taker instrument is spot.", logType.ERROR);
+                                    }
+                                }
+                                else if (stg.Value.targetMakerPosition < 0)
+                                {
+                                    takerins.baseBalance.total = - stg.Value.targetMakerPosition;
+                                }
+                            }
+                            if(makerins.marginTrade)
+                            {
+                                if(!makerExchange.marginLong.ContainsKey(makerins.symbol))
+                                {
+                                    makerExchange.marginLong[makerins.symbol] = makerins.longPosition;
+                                }
+                                if (!makerExchange.marginShort.ContainsKey(makerins.symbol))
+                                {
+                                    makerExchange.marginShort[makerins.symbol] = makerins.shortPosition;
+                                }
+
+                                makerins.baseBalance.total = 0;// stg.Value.baseCcyQuantity / 2;
+                                if(stg.Value.targetMakerPosition > 0)
+                                {
+                                    makerins.longPosition.total = stg.Value.targetMakerPosition;
+                                }
+                                else if(stg.Value.targetMakerPosition < 0)
+                                {
+                                    makerins.shortPosition.total = -stg.Value.targetMakerPosition;
+                                }
+                            }
+                            else
+                            {
+                                if (!makerExchange.balance.ContainsKey(makerins.baseCcy))
+                                {
+                                    makerExchange.balance[makerins.baseCcy] = makerins.baseBalance;
+                                }
+                                if(!makerExchange.marginShort.ContainsKey(makerins.symbol))
+                                {
+                                    makerExchange.marginShort[makerins.symbol] = makerins.shortPosition;
+                                }
+                                makerins.baseBalance.total = stg.Value.targetMakerPosition;
+                                makerins.shortPosition.total = 2 * stg.Value.targetMakerPosition;
+                            }
                         }
                         foreach (var ins in qManager.instruments.Values)
                         {
@@ -1979,21 +2106,22 @@ namespace Crypto_Linux
 
                     foreach(var stg in strategies.Values)
                     {
+                        stg.adjustPosition();
                         //decimal baseBalance_diff = stg.baseCcyQuantity - (stg.maker.baseBalance.total + stg.taker.baseBalance.total);
-                        decimal baseBalance_diff = -(stg.maker.net_pos + stg.taker.net_pos);
-                        orderSide side = orderSide.Buy;
-                        if(baseBalance_diff < 0)
-                        {
-                            baseBalance_diff *= -1;
-                            side = orderSide.Sell;
-                        }
-                        baseBalance_diff = Math.Round(baseBalance_diff / stg.taker.quantity_unit) * stg.taker.quantity_unit;
-                        addLog("EoD balance of " + stg.name + " BaseCcy:" + (stg.maker.net_pos + stg.taker.net_pos).ToString() + " QuoteCcy:" + (stg.maker.quoteBalance.total + stg.taker.quoteBalance.total).ToString());
-                        if(baseBalance_diff >= stg.taker.quantity_unit)
-                        {
-                            addLog("Adjustment at EoD: " + side.ToString() + " " + baseBalance_diff.ToString());
-                            oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, positionSide.NONE, null, true, false);
-                        }
+                        //decimal baseBalance_diff = -(stg.maker.net_pos + stg.taker.net_pos);
+                        //orderSide side = orderSide.Buy;
+                        //if(baseBalance_diff < 0)
+                        //{
+                        //    baseBalance_diff *= -1;
+                        //    side = orderSide.Sell;
+                        //}
+                        //baseBalance_diff = Math.Round(baseBalance_diff / stg.taker.quantity_unit) * stg.taker.quantity_unit;
+                        //addLog("EoD balance of " + stg.name + " BaseCcy:" + (stg.maker.net_pos + stg.taker.net_pos).ToString() + " QuoteCcy:" + (stg.maker.quoteBalance.total + stg.taker.quoteBalance.total).ToString());
+                        //if(baseBalance_diff >= stg.taker.quantity_unit)
+                        //{
+                        //    addLog("Adjustment at EoD: " + side.ToString() + " " + baseBalance_diff.ToString());
+                        //    oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, positionSide.NONE, null, true, false);
+                        //}
                     }
 
                     Thread.Sleep(1000);
@@ -2111,8 +2239,11 @@ namespace Crypto_Linux
                     
                     addLog("Exporting SoD position file...");
                     string SoDPosFile = newpath + "/SoD_Position.csv";
-                    qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys));
-                    qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys));
+                    if(live)
+                    {
+                        qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys));
+                        qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys));
+                    }
                     //foreach (var exvk in qManager.exchange_balances)
                     //{
                     //    ExchangeBalance ex = exvk.Value;

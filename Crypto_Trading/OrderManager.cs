@@ -2423,7 +2423,7 @@ namespace Crypto_Trading
                     end();
                     if (ct.IsCancellationRequested)
                     {
-                        this.addLog("Cancel requested. updateFills", Enums.logType.WARNING);
+                        this.addLog("Cancel requested. updateMarketImpact", Enums.logType.WARNING);
                         break;
                     }
                     Thread.Sleep(10);
@@ -3718,12 +3718,12 @@ namespace Crypto_Trading
                 {
                     miQueue.Value.Enqueue(this.MI_tempQueue.Dequeue());
                 }
-                while(miQueue.Value.Count > 0)
+                mi = miQueue.Value.Peek();
+                while (mi != null)
                 {
-                    mi = miQueue.Value.Peek();
                     if (currentTime - mi.filled_time > TimeSpan.FromSeconds(miQueue.Key))
                     {
-                        mi = miQueue.Value.Dequeue();
+                        miQueue.Value.Dequeue();
                         if (miQueue.Key > 0)
                         {
                             mi.recordPrice(currentTime);
@@ -3734,6 +3734,7 @@ namespace Crypto_Trading
                     {
                         break;
                     }
+                    mi = miQueue.Value.Peek();
                 }
             }
 

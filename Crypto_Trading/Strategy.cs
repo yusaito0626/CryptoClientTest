@@ -790,11 +790,11 @@ namespace Crypto_Trading
                 bid_price = Math.Floor(bid_price / this.maker.price_unit) * this.maker.price_unit;
                 ask_price = Math.Ceiling(ask_price / this.maker.price_unit) * this.maker.price_unit;
 
-                if (ordersize_bid * (1 + this.taker.taker_fee) * 2 > this.taker.baseBalance.available)
+                if (this.taker.marginTrade == false && ordersize_bid * (1 + this.taker.taker_fee) * 2 > this.taker.baseBalance.available)
                 {
                     bid_price = 0;
                 }
-                if (taker_ask * ordersize_ask * (1 + this.taker.taker_fee) * 2 > this.taker.quoteBalance.available)
+                if (this.taker.marginTrade == false && taker_ask * ordersize_ask * (1 + this.taker.taker_fee) * 2 > this.taker.quoteBalance.available)
                 {
                     ask_price = 0;
                 }
@@ -1584,7 +1584,22 @@ namespace Crypto_Trading
                         {
                             if (this.bids[i] > 0 && this.ordersize_bid[i] > 0 && (newBuyOrder & (1 << i)) > 0)
                             {
-                                this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.Short, null, true, false, vr_markup.ToString());
+                                if(this.maker.marginTrade)
+                                {
+                                    if(this.maker.shortPosition.available >= this.ordersize_bid[i])
+                                    {
+                                        this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.Short, null, true, false, vr_markup.ToString());
+                                    }
+                                    else
+                                    {
+                                        this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.Long, null, true, false, vr_markup.ToString());
+                                    }
+                                }
+                                else
+                                {
+                                    this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.NONE, null, true, false, vr_markup.ToString());
+                                }
+                                    
                                 this.current_bids[i] = this.bids[i];
                                 this.stg_orders.Add(this.live_buyorders[i]);
                                 this.stg_orders_dict[this.live_buyorder_id] = this.ordersize_bid[i];
@@ -1592,7 +1607,22 @@ namespace Crypto_Trading
                             }
                             if (this.asks[i] > 0 && this.ordersize_ask[i] > 0 && (newSellOrder & (1 << i)) > 0)
                             {
-                                this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.Short, null, true, false, vr_markup.ToString());
+                                if (this.maker.marginTrade)
+                                {
+                                    if (this.maker.longPosition.available >= this.ordersize_ask[i])
+                                    {
+                                        this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.Long, null, true, false, vr_markup.ToString());
+                                    }
+                                    else
+                                    {
+                                        this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.Short, null, true, false, vr_markup.ToString());
+                                    }
+                                }
+                                else
+                                {
+                                    this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.NONE, null, true, false, vr_markup.ToString());
+                                }
+                                
                                 this.current_asks[i] = this.asks[i];
                                 this.stg_orders.Add(this.live_sellorders[i]);
                                 this.stg_orders_dict[this.live_buyorder_id] = this.ordersize_ask[i];
@@ -1606,7 +1636,21 @@ namespace Crypto_Trading
                         {
                             if (this.asks[i] > 0 && this.ordersize_ask[i] > 0 && (newSellOrder & (1 << i)) > 0)
                             {
-                                this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.Short, null, true, false, vr_markup.ToString());
+                                if (this.maker.marginTrade)
+                                {
+                                    if (this.maker.longPosition.available >= this.ordersize_ask[i])
+                                    {
+                                        this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.Long, null, true, false, vr_markup.ToString());
+                                    }
+                                    else
+                                    {
+                                        this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.Short, null, true, false, vr_markup.ToString());
+                                    }
+                                }
+                                else
+                                {
+                                    this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.NONE, null, true, false, vr_markup.ToString());
+                                }
                                 this.current_asks[i] = this.asks[i];
                                 this.stg_orders.Add(this.live_sellorders[i]);
                                 this.stg_orders_dict[this.live_buyorder_id] = this.ordersize_ask[i];
@@ -1614,7 +1658,21 @@ namespace Crypto_Trading
                             }
                             if (this.bids[i] > 0 && this.ordersize_bid[i] > 0 && (newBuyOrder & (1 << i)) > 0)
                             {
-                                this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.Short, null, true, false, vr_markup.ToString());
+                                if (this.maker.marginTrade)
+                                {
+                                    if (this.maker.shortPosition.available >= this.ordersize_bid[i])
+                                    {
+                                        this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.Short, null, true, false, vr_markup.ToString());
+                                    }
+                                    else
+                                    {
+                                        this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.Long, null, true, false, vr_markup.ToString());
+                                    }
+                                }
+                                else
+                                {
+                                    this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.NONE, null, true, false, vr_markup.ToString());
+                                }
                                 this.current_bids[i] = this.bids[i];
                                 this.stg_orders.Add(this.live_buyorders[i]);
                                 this.stg_orders_dict[this.live_buyorder_id] = this.ordersize_bid[i];
@@ -1692,9 +1750,44 @@ namespace Crypto_Trading
             }
             diff_amount = Math.Round(diff_amount / this.taker.quantity_unit) * this.taker.quantity_unit; 
 
-            if(diff_amount > 0)
+            if(diff_amount >= this.taker.quantity_unit)
             {
-                this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, diff_amount, 0, positionSide.NONE, null, true);
+                if (this.taker.marginTrade)
+                {
+                    if (side == orderSide.Buy)
+                    {
+                        if (this.taker.shortPosition.available >= diff_amount)
+                        {
+                            this.oManager.placeNewSpotOrder(this.taker, side, orderType.Market, diff_amount, 0, positionSide.Short, null, true);
+                        }
+                        else
+                        {
+                            this.oManager.placeNewSpotOrder(this.taker, side, orderType.Market, diff_amount, 0, positionSide.Long, null, true);
+                        }
+                    }
+                    else if(side == orderSide.Sell)
+                    {
+                        if (this.taker.longPosition.available >= diff_amount)
+                        {
+                            this.oManager.placeNewSpotOrder(this.taker, side, orderType.Market, diff_amount, 0, positionSide.Long, null, true);
+                        }
+                        else
+                        {
+                            this.oManager.placeNewSpotOrder(this.taker, side, orderType.Market, diff_amount, 0, positionSide.Short, null, true);
+                        }
+                    }
+                }
+                else
+                {
+                    if ((side == orderSide.Buy && this.taker.quoteBalance.available > diff_amount * this.taker.bestask.Item1 * (decimal)1.05) || (side == orderSide.Buy && this.taker.baseBalance.available > diff_amount))
+                    {
+                        this.oManager.placeNewSpotOrder(this.taker, side, orderType.Market, diff_amount, 0, positionSide.NONE, null, true);
+                    }
+                    else
+                    {
+                        addLog("Insufficient availability. Symbol:" + this.taker.symbol_market, logType.WARNING);
+                    }
+                }
             }
         }
 
@@ -1800,34 +1893,7 @@ namespace Crypto_Trading
             
             return skew_point;
         }
-        //public decimal skew()
-        //{
-        //    decimal skew_point = 0;
-        //    //if (this.maker.baseBalance.total > this.baseCcyQuantity * ((decimal)0.5 + this.skewThreshold / 200))
-        //    if (this.maxMakerPosition + this.maker.net_pos > this.maxMakerPosition * ((decimal)0.5 + this.skewThreshold / 200))
-        //    {
-        //        skew_point = -this.maxSkew * ((this.maxMakerPosition + this.maker.net_pos) - this.maxMakerPosition * ((decimal)0.5 + this.skewThreshold / 200)) / (this.maxMakerPosition * ((decimal)0.5 + this.oneSideThreshold / 200) - this.maxMakerPosition * ((decimal)0.5 + this.skewThreshold / 200));
-        //        if (skew_point < -this.maxSkew)
-        //        {
-        //            skew_point = -this.maxSkew;
-        //        }
-        //    }
-        //    //else if (this.maker.baseBalance.total < this.baseCcyQuantity * ((decimal)0.5 - this.skewThreshold / 200))
-        //    else if (this.maxMakerPosition + this.maker.net_pos < this.maxMakerPosition * ((decimal)0.5 - this.skewThreshold / 200))
-        //    {
-        //        skew_point = this.maxSkew * (this.maxMakerPosition * ((decimal)0.5 - this.skewThreshold / 200) - (this.maxMakerPosition + this.maker.net_pos)) / (this.maxMakerPosition * ((decimal)0.5 - this.skewThreshold / 200) - this.maxMakerPosition * ((decimal)0.5 - this.oneSideThreshold / 200));
-        //        if (skew_point > this.maxSkew)
-        //        {
-        //            skew_point = this.maxSkew;
-        //        }
-        //    }
-        //    if (this.skew_type == skewType.STEP)
-        //    {
-        //        skew_point = Math.Floor(skew_point / this.skew_step) * this.skew_step;
-        //    }
-
-        //    return skew_point;
-        //}
+        
 
         public void onTrades(DataTrade trade)
         {
@@ -1900,7 +1966,6 @@ namespace Crypto_Trading
                                         this.stg_orders_dict[ord_id] = 0;
                                     }
                                     this.live_sellorder_id = "";
-                                    //decimal diff_amount = this.maker.baseBalance.total + this.taker.baseBalance.total - this.baseCcyQuantity;
                                     decimal diff_amount = this.maker.net_pos + this.taker.net_pos;
                                     if (DateTime.UtcNow - this.lastPosAdjustment > TimeSpan.FromSeconds(10))
                                     {
@@ -1910,7 +1975,22 @@ namespace Crypto_Trading
 
                                     if (filled_quantity > 0)
                                     {
-                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                        if(this.taker.marginTrade)
+                                        {
+                                            if(this.taker.shortPosition.available >= filled_quantity)
+                                            {
+                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true);
+                                            }
+                                            else
+                                            {
+                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Long, null, true);
+                                            }
+                                        }
+                                        else
+                                        {
+                                            this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                        }
+                                        
                                     }
                                     this.last_filled_time_sell = DateTime.UtcNow;
                                     this.last_filled_time = this.last_filled_time_sell;
@@ -1963,11 +2043,24 @@ namespace Crypto_Trading
                                     }
                                     if (filled_quantity > 0)
                                     {
-                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                        if (this.taker.marginTrade)
+                                        {
+                                            if (this.taker.longPosition.available >= filled_quantity)
+                                            {
+                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Long, null, true);
+                                            }
+                                            else
+                                            {
+                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true);
+                                            }
+                                        }
+                                        else
+                                        {
+                                            this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                        }
                                     }
                                     this.last_filled_time_buy = DateTime.UtcNow;
                                     this.last_filled_time = this.last_filled_time_buy;
-                                    //this.executed_Orders_old[ord.internal_order_id] = ord;
                                     this.executed_OrderIds[ord.internal_order_id] = fillType.onTrade;
                                     ord.msg += "  onTrades at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
                                     addLog(ord.ToString());
@@ -2047,7 +2140,21 @@ namespace Crypto_Trading
 
                                             if (filled_quantity > 0)
                                             {
-                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                                if (this.taker.marginTrade)
+                                                {
+                                                    if (this.taker.shortPosition.available >= filled_quantity)
+                                                    {
+                                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true);
+                                                    }
+                                                    else
+                                                    {
+                                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Long, null, true);
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                                }
                                             }
                                             this.last_filled_time_sell = DateTime.UtcNow;
                                             this.last_filled_time = this.last_filled_time_sell;
@@ -2104,7 +2211,21 @@ namespace Crypto_Trading
                                             }
                                             if (filled_quantity > 0)
                                             {
-                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                                if (this.taker.marginTrade)
+                                                {
+                                                    if (this.taker.longPosition.available >= filled_quantity)
+                                                    {
+                                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Long, null, true);
+                                                    }
+                                                    else
+                                                    {
+                                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true);
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                                }
                                             }
                                             this.last_filled_time_buy = DateTime.UtcNow;
                                             this.last_filled_time = this.last_filled_time_buy;
@@ -2191,7 +2312,21 @@ namespace Crypto_Trading
                             
                             if(filled_quantity > 0)
                             {
-                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                if (this.taker.marginTrade)
+                                {
+                                    if (this.taker.shortPosition.available >= filled_quantity)
+                                    {
+                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true);
+                                    }
+                                    else
+                                    {
+                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Long, null, true);
+                                    }
+                                }
+                                else
+                                {
+                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                }
                             }
                             this.live_sellorder_id = "";
                             this.last_filled_time_sell = DateTime.UtcNow;
@@ -2237,7 +2372,21 @@ namespace Crypto_Trading
                             }
                             if(filled_quantity > 0)
                             {
-                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                if (this.taker.marginTrade)
+                                {
+                                    if (this.taker.longPosition.available >= filled_quantity)
+                                    {
+                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Long, null, true);
+                                    }
+                                    else
+                                    {
+                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true);
+                                    }
+                                }
+                                else
+                                {
+                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                }
                             }
                             this.live_buyorder_id = "";
                             this.last_filled_time_buy = DateTime.UtcNow;
@@ -2318,7 +2467,22 @@ namespace Crypto_Trading
 
                                     if (filled_quantity > 0)
                                     {
-                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                        if (this.taker.marginTrade)
+                                        {
+                                            if (this.taker.shortPosition.available >= filled_quantity)
+                                            {
+                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true);
+                                            }
+                                            else
+                                            {
+                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Long, null, true);
+                                            }
+                                        }
+                                        else
+                                        {
+                                            this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                        }
+                                        
                                     }
                                     this.live_sellorders[i] = "";
                                     this.last_filled_time_sell = DateTime.UtcNow;
@@ -2369,7 +2533,22 @@ namespace Crypto_Trading
                                     }
                                     if(filled_quantity > 0)
                                     {
-                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                        if (this.taker.marginTrade)
+                                        {
+                                            if (this.taker.longPosition.available >= filled_quantity)
+                                            {
+                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Long, null, true);
+                                            }
+                                            else
+                                            {
+                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true);
+                                            }
+                                        }
+                                        else
+                                        {
+                                            this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                        }
+                                        
                                     }
                                     this.live_buyorders[i] = "";
                                     this.last_filled_time_buy = DateTime.UtcNow;
@@ -2476,7 +2655,21 @@ namespace Crypto_Trading
                             case orderSide.Buy:
                                 if (filled_quantity > 0)
                                 {
-                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true,false,ord.msg);
+                                    if (this.taker.marginTrade)
+                                    {
+                                        if (this.taker.longPosition.available >= filled_quantity)
+                                        {
+                                            this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Long, null, true, false, ord.msg);
+                                        }
+                                        else
+                                        {
+                                            this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, false, ord.msg);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, false, ord.msg);
+                                    }
                                 }
                                 this.last_filled_time_buy = DateTime.UtcNow;
                                 this.last_filled_time = this.last_filled_time_buy;
@@ -2485,7 +2678,21 @@ namespace Crypto_Trading
 
                                 if (filled_quantity > 0)
                                 {
-                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, false, ord.msg);
+                                    if (this.taker.marginTrade)
+                                    {
+                                        if (this.taker.shortPosition.available >= filled_quantity)
+                                        {
+                                            this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, false, ord.msg);
+                                        }
+                                        else
+                                        {
+                                            this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Long, null, true, false, ord.msg);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, false, ord.msg);
+                                    }                                    
                                 }
                                 this.last_filled_time_sell = DateTime.UtcNow;
                                 this.last_filled_time = this.last_filled_time_sell;
@@ -2592,7 +2799,22 @@ namespace Crypto_Trading
                             switch (fill.side)
                             {
                                 case orderSide.Buy:
-                                    await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null,true,false);
+                                    if (this.taker.marginTrade)
+                                    {
+                                        if (this.taker.longPosition.available >= filled_quantity)
+                                        {
+                                            await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Long, null, true, false);
+                                        }
+                                        else
+                                        {
+                                            await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, false);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, false);
+                                    }
+                                    
                                     if (this.oManager.orders.ContainsKey(fill.internal_order_id))
                                     {
                                         ord = this.oManager.orders[fill.internal_order_id];
@@ -2619,7 +2841,22 @@ namespace Crypto_Trading
                                     }
                                     break;
                                 case orderSide.Sell:
-                                    await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true,false);
+                                    if (this.taker.marginTrade)
+                                    {
+                                        if (this.taker.shortPosition.available >= filled_quantity)
+                                        {
+                                            await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, false);
+                                        }
+                                        else
+                                        {
+                                            await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Long, null, true, false);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, false);
+                                    }
+                                    
                                     if (this.oManager.orders.ContainsKey(fill.internal_order_id))
                                     {
                                         ord = this.oManager.orders[fill.internal_order_id];
@@ -2677,7 +2914,21 @@ namespace Crypto_Trading
                         switch (fill.side)
                         {
                             case orderSide.Buy:
-                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                if (this.taker.marginTrade)
+                                {
+                                    if (this.taker.longPosition.available >= filled_quantity)
+                                    {
+                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Long, null, true);
+                                    }
+                                    else
+                                    {
+                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true);
+                                    }
+                                }
+                                else
+                                {
+                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                }
                                 if (this.oManager.orders.ContainsKey(fill.internal_order_id))
                                 {
                                     ord = this.oManager.orders[fill.internal_order_id];
@@ -2693,7 +2944,22 @@ namespace Crypto_Trading
                                 }
                                 break;
                             case orderSide.Sell:
-                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                if (this.taker.marginTrade)
+                                {
+                                    if (this.taker.shortPosition.available >= filled_quantity)
+                                    {
+                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true);
+                                    }
+                                    else
+                                    {
+                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Long, null, true);
+                                    }
+                                }
+                                else
+                                {
+                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                }
+                                
                                 if (this.oManager.orders.ContainsKey(fill.internal_order_id))
                                 {
                                     ord = this.oManager.orders[fill.internal_order_id];
