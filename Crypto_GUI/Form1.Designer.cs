@@ -86,8 +86,8 @@
             col_side = new DataGridViewTextBoxColumn();
             col_fillprice = new DataGridViewTextBoxColumn();
             col_quantity = new DataGridViewTextBoxColumn();
-            col_feeCcy = new DataGridViewTextBoxColumn();
             col_fee = new DataGridViewTextBoxColumn();
+            col_msg = new DataGridViewTextBoxColumn();
             label25 = new Label();
             lbl_adjustedbid = new Label();
             lbl_adjustedask = new Label();
@@ -128,14 +128,6 @@
             gridView_MI = new DataGridView();
             Quantity = new DataGridViewTextBoxColumn();
             gridView_InsFills = new DataGridView();
-            dataGridViewTextBoxColumn12 = new DataGridViewTextBoxColumn();
-            dataGridViewTextBoxColumn13 = new DataGridViewTextBoxColumn();
-            dataGridViewTextBoxColumn14 = new DataGridViewTextBoxColumn();
-            dataGridViewTextBoxColumn15 = new DataGridViewTextBoxColumn();
-            dataGridViewTextBoxColumn16 = new DataGridViewTextBoxColumn();
-            dataGridViewTextBoxColumn17 = new DataGridViewTextBoxColumn();
-            dataGridViewTextBoxColumn18 = new DataGridViewTextBoxColumn();
-            dataGridViewTextBoxColumn19 = new DataGridViewTextBoxColumn();
             lbl_avgRV = new Label();
             label49 = new Label();
             lbl_RV = new Label();
@@ -261,6 +253,14 @@
             toolStripStatusLabel1 = new ToolStripStatusLabel();
             lbl_currentTime = new ToolStripStatusLabel();
             timer_Monitoring = new System.Windows.Forms.Timer(components);
+            dataGridViewTextBoxColumn12 = new DataGridViewTextBoxColumn();
+            dataGridViewTextBoxColumn13 = new DataGridViewTextBoxColumn();
+            dataGridViewTextBoxColumn14 = new DataGridViewTextBoxColumn();
+            dataGridViewTextBoxColumn15 = new DataGridViewTextBoxColumn();
+            dataGridViewTextBoxColumn16 = new DataGridViewTextBoxColumn();
+            dataGridViewTextBoxColumn17 = new DataGridViewTextBoxColumn();
+            dataGridViewTextBoxColumn19 = new DataGridViewTextBoxColumn();
+            colIns_msg = new DataGridViewTextBoxColumn();
             tabControl.SuspendLayout();
             tabPage1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridView_PnL).BeginInit();
@@ -592,7 +592,7 @@
             gridView_orders.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle7;
             gridView_orders.ColumnHeadersHeight = 29;
             gridView_orders.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            gridView_orders.Columns.AddRange(new DataGridViewColumn[] { col_time, col_market, col_symbol, col_side, col_fillprice, col_quantity, col_feeCcy, col_fee });
+            gridView_orders.Columns.AddRange(new DataGridViewColumn[] { col_time, col_market, col_symbol, col_side, col_fillprice, col_quantity, col_fee, col_msg });
             gridView_orders.Location = new Point(2, 683);
             gridView_orders.Margin = new Padding(2);
             gridView_orders.Name = "gridView_orders";
@@ -645,19 +645,19 @@
             col_quantity.Name = "col_quantity";
             col_quantity.Width = 125;
             // 
-            // col_feeCcy
-            // 
-            col_feeCcy.HeaderText = "Fee Ccy";
-            col_feeCcy.MinimumWidth = 10;
-            col_feeCcy.Name = "col_feeCcy";
-            col_feeCcy.Width = 125;
-            // 
             // col_fee
             // 
             col_fee.HeaderText = "Fee";
             col_fee.MinimumWidth = 10;
             col_fee.Name = "col_fee";
             col_fee.Width = 120;
+            // 
+            // col_msg
+            // 
+            col_msg.HeaderText = "msg";
+            col_msg.MinimumWidth = 6;
+            col_msg.Name = "col_msg";
+            col_msg.Width = 125;
             // 
             // label25
             // 
@@ -1128,7 +1128,7 @@
             gridView_InsFills.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle14;
             gridView_InsFills.ColumnHeadersHeight = 29;
             gridView_InsFills.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            gridView_InsFills.Columns.AddRange(new DataGridViewColumn[] { dataGridViewTextBoxColumn12, dataGridViewTextBoxColumn13, dataGridViewTextBoxColumn14, dataGridViewTextBoxColumn15, dataGridViewTextBoxColumn16, dataGridViewTextBoxColumn17, dataGridViewTextBoxColumn18, dataGridViewTextBoxColumn19 });
+            gridView_InsFills.Columns.AddRange(new DataGridViewColumn[] { dataGridViewTextBoxColumn12, dataGridViewTextBoxColumn13, dataGridViewTextBoxColumn14, dataGridViewTextBoxColumn15, dataGridViewTextBoxColumn16, dataGridViewTextBoxColumn17, dataGridViewTextBoxColumn19, colIns_msg });
             gridView_InsFills.Location = new Point(4, 644);
             gridView_InsFills.Margin = new Padding(2);
             gridView_InsFills.Name = "gridView_InsFills";
@@ -1138,62 +1138,6 @@
             gridView_InsFills.RowsDefaultCellStyle = dataGridViewCellStyle15;
             gridView_InsFills.Size = new Size(1023, 323);
             gridView_InsFills.TabIndex = 37;
-            // 
-            // dataGridViewTextBoxColumn12
-            // 
-            dataGridViewTextBoxColumn12.HeaderText = "Time";
-            dataGridViewTextBoxColumn12.MinimumWidth = 10;
-            dataGridViewTextBoxColumn12.Name = "dataGridViewTextBoxColumn12";
-            dataGridViewTextBoxColumn12.Width = 150;
-            // 
-            // dataGridViewTextBoxColumn13
-            // 
-            dataGridViewTextBoxColumn13.HeaderText = "Market";
-            dataGridViewTextBoxColumn13.MinimumWidth = 10;
-            dataGridViewTextBoxColumn13.Name = "dataGridViewTextBoxColumn13";
-            dataGridViewTextBoxColumn13.Width = 125;
-            // 
-            // dataGridViewTextBoxColumn14
-            // 
-            dataGridViewTextBoxColumn14.HeaderText = "Symbol";
-            dataGridViewTextBoxColumn14.MinimumWidth = 10;
-            dataGridViewTextBoxColumn14.Name = "dataGridViewTextBoxColumn14";
-            dataGridViewTextBoxColumn14.Width = 125;
-            // 
-            // dataGridViewTextBoxColumn15
-            // 
-            dataGridViewTextBoxColumn15.HeaderText = "Side";
-            dataGridViewTextBoxColumn15.MinimumWidth = 10;
-            dataGridViewTextBoxColumn15.Name = "dataGridViewTextBoxColumn15";
-            dataGridViewTextBoxColumn15.Width = 125;
-            // 
-            // dataGridViewTextBoxColumn16
-            // 
-            dataGridViewTextBoxColumn16.HeaderText = "Fill Price";
-            dataGridViewTextBoxColumn16.MinimumWidth = 10;
-            dataGridViewTextBoxColumn16.Name = "dataGridViewTextBoxColumn16";
-            dataGridViewTextBoxColumn16.Width = 125;
-            // 
-            // dataGridViewTextBoxColumn17
-            // 
-            dataGridViewTextBoxColumn17.HeaderText = "Quantity";
-            dataGridViewTextBoxColumn17.MinimumWidth = 10;
-            dataGridViewTextBoxColumn17.Name = "dataGridViewTextBoxColumn17";
-            dataGridViewTextBoxColumn17.Width = 125;
-            // 
-            // dataGridViewTextBoxColumn18
-            // 
-            dataGridViewTextBoxColumn18.HeaderText = "Fee Ccy";
-            dataGridViewTextBoxColumn18.MinimumWidth = 10;
-            dataGridViewTextBoxColumn18.Name = "dataGridViewTextBoxColumn18";
-            dataGridViewTextBoxColumn18.Width = 125;
-            // 
-            // dataGridViewTextBoxColumn19
-            // 
-            dataGridViewTextBoxColumn19.HeaderText = "Fee";
-            dataGridViewTextBoxColumn19.MinimumWidth = 10;
-            dataGridViewTextBoxColumn19.Name = "dataGridViewTextBoxColumn19";
-            dataGridViewTextBoxColumn19.Width = 120;
             // 
             // lbl_avgRV
             // 
@@ -2582,6 +2526,62 @@
             timer_Monitoring.Interval = 1000;
             timer_Monitoring.Tick += timer_Monitoring_Tick;
             // 
+            // dataGridViewTextBoxColumn12
+            // 
+            dataGridViewTextBoxColumn12.HeaderText = "Time";
+            dataGridViewTextBoxColumn12.MinimumWidth = 10;
+            dataGridViewTextBoxColumn12.Name = "dataGridViewTextBoxColumn12";
+            dataGridViewTextBoxColumn12.Width = 150;
+            // 
+            // dataGridViewTextBoxColumn13
+            // 
+            dataGridViewTextBoxColumn13.HeaderText = "Market";
+            dataGridViewTextBoxColumn13.MinimumWidth = 10;
+            dataGridViewTextBoxColumn13.Name = "dataGridViewTextBoxColumn13";
+            dataGridViewTextBoxColumn13.Width = 125;
+            // 
+            // dataGridViewTextBoxColumn14
+            // 
+            dataGridViewTextBoxColumn14.HeaderText = "Symbol";
+            dataGridViewTextBoxColumn14.MinimumWidth = 10;
+            dataGridViewTextBoxColumn14.Name = "dataGridViewTextBoxColumn14";
+            dataGridViewTextBoxColumn14.Width = 125;
+            // 
+            // dataGridViewTextBoxColumn15
+            // 
+            dataGridViewTextBoxColumn15.HeaderText = "Side";
+            dataGridViewTextBoxColumn15.MinimumWidth = 10;
+            dataGridViewTextBoxColumn15.Name = "dataGridViewTextBoxColumn15";
+            dataGridViewTextBoxColumn15.Width = 125;
+            // 
+            // dataGridViewTextBoxColumn16
+            // 
+            dataGridViewTextBoxColumn16.HeaderText = "Fill Price";
+            dataGridViewTextBoxColumn16.MinimumWidth = 10;
+            dataGridViewTextBoxColumn16.Name = "dataGridViewTextBoxColumn16";
+            dataGridViewTextBoxColumn16.Width = 125;
+            // 
+            // dataGridViewTextBoxColumn17
+            // 
+            dataGridViewTextBoxColumn17.HeaderText = "Quantity";
+            dataGridViewTextBoxColumn17.MinimumWidth = 10;
+            dataGridViewTextBoxColumn17.Name = "dataGridViewTextBoxColumn17";
+            dataGridViewTextBoxColumn17.Width = 125;
+            // 
+            // dataGridViewTextBoxColumn19
+            // 
+            dataGridViewTextBoxColumn19.HeaderText = "Fee";
+            dataGridViewTextBoxColumn19.MinimumWidth = 10;
+            dataGridViewTextBoxColumn19.Name = "dataGridViewTextBoxColumn19";
+            dataGridViewTextBoxColumn19.Width = 120;
+            // 
+            // colIns_msg
+            // 
+            colIns_msg.HeaderText = "msg";
+            colIns_msg.MinimumWidth = 6;
+            colIns_msg.Name = "colIns_msg";
+            colIns_msg.Width = 125;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
@@ -2714,14 +2714,6 @@
         private Label label8;
         private Button button_startTrading;
         private DataGridView gridView_PnL;
-        private DataGridViewTextBoxColumn col_time;
-        private DataGridViewTextBoxColumn col_market;
-        private DataGridViewTextBoxColumn col_symbol;
-        private DataGridViewTextBoxColumn col_side;
-        private DataGridViewTextBoxColumn col_fillprice;
-        private DataGridViewTextBoxColumn col_quantity;
-        private DataGridViewTextBoxColumn col_feeCcy;
-        private DataGridViewTextBoxColumn col_fee;
         private TabPage tabPage5;
         private DataGridView gridView_ThStatus;
         private DataGridView gridView_Connection;
@@ -2795,14 +2787,6 @@
         private Label lbl_stgmarkup;
         private Label label52;
         private DataGridView gridView_InsFills;
-        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn12;
-        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn13;
-        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn14;
-        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn15;
-        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn16;
-        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn17;
-        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn18;
-        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn19;
         private TabPage tabPage6;
         private ComboBox combo_pnlStrategy;
         private ScottPlot.WinForms.FormsPlot plot_notional;
@@ -2839,5 +2823,21 @@
         private TabPage tabPage7;
         private DataGridView gridView_balance;
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn23;
+        private DataGridViewTextBoxColumn col_time;
+        private DataGridViewTextBoxColumn col_market;
+        private DataGridViewTextBoxColumn col_symbol;
+        private DataGridViewTextBoxColumn col_side;
+        private DataGridViewTextBoxColumn col_fillprice;
+        private DataGridViewTextBoxColumn col_quantity;
+        private DataGridViewTextBoxColumn col_fee;
+        private DataGridViewTextBoxColumn col_msg;
+        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn12;
+        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn13;
+        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn14;
+        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn15;
+        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn16;
+        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn17;
+        private DataGridViewTextBoxColumn dataGridViewTextBoxColumn19;
+        private DataGridViewTextBoxColumn colIns_msg;
     }
 }

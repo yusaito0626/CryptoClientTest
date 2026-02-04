@@ -3580,9 +3580,10 @@ namespace Crypto_Trading
                     DataSpotOrderUpdate ord = item.Value;
                     if (key != ord.internal_order_id)
                     {
-                        this.addLog("The key and the order id didn't match while checking virtual orders.", Enums.logType.ERROR);
-                        this.addLog($"The dictionary key:{key} The internal order id:{ord.internal_order_id}", Enums.logType.ERROR);
-                        foreach(var kv in this.ordIdMapping)
+                        this.addLog("The key and the order id didn't match while checking virtual orders.", Enums.logType.WARNING);
+                        this.addLog($"The dictionary key:{key} The internal order id:{ord.internal_order_id}", Enums.logType.WARNING);
+                        this.addLog(ord.ToString(), Enums.logType.WARNING);
+                        foreach (var kv in this.ordIdMapping)
                         {
                             if(kv.Value == key)
                             {

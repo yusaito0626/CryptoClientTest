@@ -2064,6 +2064,7 @@ namespace Utils
         public string? fill_price { get; set; }
         public string? quantity { get; set; }
         public string? fee { get; set; }
+        public string? msg { get; set; }
     }
     public class strategyInfo
     {

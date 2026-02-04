@@ -1491,7 +1491,8 @@ namespace Crypto_GUI
                 this.gridView_orders.Rows[0].Cells[3].Value = f.side;
                 this.gridView_orders.Rows[0].Cells[4].Value = f.fill_price;
                 this.gridView_orders.Rows[0].Cells[5].Value = f.quantity;
-                this.gridView_orders.Rows[0].Cells[7].Value = f.fee;
+                this.gridView_orders.Rows[0].Cells[6].Value = f.fee;
+                this.gridView_orders.Rows[0].Cells[7].Value = f.msg;
 
 
                 this.gridView_InsFills.Rows.Insert(0);
@@ -1501,7 +1502,8 @@ namespace Crypto_GUI
                 this.gridView_InsFills.Rows[0].Cells[3].Value = f.side;
                 this.gridView_InsFills.Rows[0].Cells[4].Value = f.fill_price;
                 this.gridView_InsFills.Rows[0].Cells[5].Value = f.quantity;
-                this.gridView_InsFills.Rows[0].Cells[7].Value = f.fee;
+                this.gridView_InsFills.Rows[0].Cells[6].Value = f.fee;
+                this.gridView_InsFills.Rows[0].Cells[7].Value = f.msg;
             }
         }
         private void updateQueueInfo(Dictionary<string, queueInfo> queueInfos)

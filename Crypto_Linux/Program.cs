@@ -762,6 +762,7 @@ namespace Crypto_Linux
                         fInfo.fill_price = fill.price.ToString("N" + ins.price_scale);
                         fInfo.quantity = fill.quantity.ToString("N" + ins.quantity_scale);
                         fInfo.fee = (fill.fee_quote + fill.fee_base * fill.price).ToString();
+                        fInfo.msg = fill.msg;
                         ws_server.processFill(fInfo);
                         fill.init();
                         oManager.pushbackFill(fill);
