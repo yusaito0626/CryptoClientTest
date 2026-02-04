@@ -314,6 +314,10 @@ namespace Crypto_Linux
                                                 {
                                                     addLog("The markup of " + stg.name + " has been changed from " + stg.const_markup.ToString("N0") + " to " + newVar.value);
                                                     stg.const_markup = newvalue;
+                                                    for(int j = 0; j < stg.markups.Count; ++j)
+                                                    {
+                                                        stg.markups[j] = newvalue;
+                                                    }
                                                     await BroadcastAsync(message);
                                                 }
                                                 break;

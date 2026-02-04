@@ -86,6 +86,8 @@ namespace Crypto_Trading
 
         public decimal max_leverage = 2;
 
+        public decimal marginDiscount = 0;
+
         public decimal last_price;
         public decimal mid;
         public decimal prev_mid;
@@ -285,6 +287,13 @@ namespace Crypto_Trading
                     case 6: this.price_unit = decimal.Parse(item); break;
                     case 7: this.quantity_unit = decimal.Parse(item); break;
                     case 8: this.marginTrade = bool.Parse(item); break;
+                    case 9: 
+                        this.marginDiscount = decimal.Parse(item);
+                        if(!this.marginTrade)
+                        {
+                            this.marginDiscount = 0;
+                        }
+                        break;
                     default: break;
                 }
                 i++;
@@ -866,11 +875,11 @@ namespace Crypto_Trading
                             cumQuantity += (quantity - cumQuantity);
                             if(prices.Count > layer)
                             {
-                                prices[layer] = cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) : 0;
+                                prices[layer] = cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0;
                             }
                             else
                             {
-                                prices.Add(cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) : 0);
+                                prices.Add(cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0);
                             }
                             cumQuantity = 0;
                             weightedPrice = 0;
@@ -895,11 +904,11 @@ namespace Crypto_Trading
                                         cumQuantity += quantity - cumQuantity;
                                         if (prices.Count > layer)
                                         {
-                                            prices[layer] = cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) : 0;
+                                            prices[layer] = cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0;
                                         }
                                         else
                                         {
-                                            prices.Add(cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) : 0);
+                                            prices.Add(cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0);
                                         }
                                         cumQuantity = 0;
                                         weightedPrice = 0;
@@ -935,11 +944,11 @@ namespace Crypto_Trading
                             cumQuantity += (quantity - cumQuantity);
                             if (prices.Count > layer)
                             {
-                                prices[layer] = cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) : 0;
+                                prices[layer] = cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0;
                             }
                             else
                             {
-                                prices.Add(cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) : 0);
+                                prices.Add(cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0);
                             }
                             cumQuantity = 0;
                             weightedPrice = 0;
@@ -964,11 +973,11 @@ namespace Crypto_Trading
                                         cumQuantity += quantity - cumQuantity;
                                         if (prices.Count > layer)
                                         {
-                                            prices[layer] = cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) : 0;
+                                            prices[layer] = cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0;
                                         }
                                         else
                                         {
-                                            prices.Add(cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) : 0);
+                                            prices.Add(cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0);
                                         }
                                         cumQuantity = 0;
                                         weightedPrice = 0;

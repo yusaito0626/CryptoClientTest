@@ -524,6 +524,15 @@ namespace Crypto_Trading
                         {
                             ins = instruments[symbol_market];
                             ins.updateQuotes(msg);
+                            if(ins.mid > 0 && ins.prev_mid > 0 && Math.Pow(Math.Log((double)ins.mid / (double)ins.prev_mid),2) > 0.1)
+                            {
+                                addLog($"Irregular mid found.   ins:{ins.symbol_market} mid:{ins.mid} prevmid:{ins.prev_mid} bestask:{ins.bestask.Item1} bestbid:{ins.bestbid.Item1}",logType.WARNING);
+                            }
+                            else if(ins.mid <= 0 && ins.prev_mid > 0)
+                            {
+                                addLog($"Irregular mid found.   ins:{ins.symbol_market} mid:{ins.mid} prevmid:{ins.prev_mid} bestask:{ins.bestask.Item1} bestbid:{ins.bestbid.Item1}", logType.WARNING);
+                            }
+
                             foreach (var stg in this.strategies)
                             {
                                 if (stg.Value.enabled)

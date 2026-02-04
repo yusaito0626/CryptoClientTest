@@ -2548,6 +2548,15 @@ namespace Crypto_Trading
             {
                 fill.internal_order_id = fill.market + fill.order_id;
             }
+            if (this.orders.ContainsKey(fill.internal_order_id))
+            {
+                DataSpotOrderUpdate filled = this.orders[fill.internal_order_id];
+                if (fill.market == "coincheck" || fill.market == "gmocoin")
+                {
+                    filled.average_price = fill.price;//For viewing purpose
+                }
+                fill.msg = filled.msg;
+            }
             if (stgRunning)
             {
                 foreach (var stg in this.strategies)
@@ -2569,14 +2578,6 @@ namespace Crypto_Trading
             
             if (this.Instruments.ContainsKey(fill.symbol_market))
             {
-                if (fill.market == "coincheck" || fill.market == "gmocoin")
-                {
-                    if (this.orders.ContainsKey(fill.internal_order_id))
-                    {
-                        DataSpotOrderUpdate filled = this.orders[fill.internal_order_id];
-                        filled.average_price = fill.price;//For viewing purpose
-                    }
-                }
                 Instrument ins;
                 ins = this.Instruments[fill.symbol_market];
                 ins.updateFills(fill);
@@ -2807,6 +2808,7 @@ namespace Crypto_Trading
                 if (this.orders.ContainsKey(ord.internal_order_id))
                 {
                     prevord = this.orders[ord.internal_order_id];
+                    ord.msg = prevord.msg;
                     if ((ord.status < prevord.status || ord.filled_quantity < prevord.filled_quantity) && !(prevord.status == orderStatus.WaitCancel && ord.status == orderStatus.Open))
                     {
                         ord.update_time = DateTime.UtcNow;
@@ -2989,7 +2991,7 @@ namespace Crypto_Trading
                 if (this.orders.ContainsKey(ord.internal_order_id))
                 {
                     prevord = this.orders[ord.internal_order_id];
-
+                    ord.msg = prevord.msg;
                     foreach (var stg in this.strategies)
                     {
                         if (stg.Value.enabled)
@@ -3203,6 +3205,7 @@ namespace Crypto_Trading
                 if (this.orders.ContainsKey(ord.internal_order_id))
                 {
                     prevord = this.orders[ord.internal_order_id];
+                    ord.msg = prevord.msg;
                     foreach (var stg in this.strategies)
                     {
                         if (stg.Value.enabled)
@@ -3466,10 +3469,12 @@ namespace Crypto_Trading
                                         {
                                             feetype = ins.maker_fee;
                                         }
+                                        List<decimal> pr = new List<decimal>();
                                         switch (output.side)
                                         {
                                             case orderSide.Buy:
-                                                update.average_price = ins.adjusted_bestask.Item1;
+                                                ins.getWeightedAvgPrice(orderSide.Sell, [update.filled_quantity], pr);
+                                                update.average_price = pr[0];
                                                 update.fee = feetype * update.filled_quantity * update.average_price;
                                                 update.fee_asset = ins.quoteCcy;
                                                 fill.fee_quote = update.fee;
@@ -3477,7 +3482,8 @@ namespace Crypto_Trading
                                                 fill.fee_unknown = 0;
                                                 break;
                                             case orderSide.Sell:
-                                                update.average_price = ins.adjusted_bestbid.Item1;
+                                                ins.getWeightedAvgPrice(orderSide.Buy, [update.filled_quantity], pr);
+                                                update.average_price = pr[0];
                                                 update.fee = feetype * update.filled_quantity * update.average_price;
                                                 update.fee_asset = ins.quoteCcy;
                                                 fill.fee_quote = update.fee;

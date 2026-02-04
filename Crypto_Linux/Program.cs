@@ -426,11 +426,6 @@ namespace Crypto_Linux
                 if (stg.maker != null && stg.taker != null)
                 {
                     msg = "";
-                    //msg += "Maker Latency:\n";
-                    //msg += "<QuotesUpdate> All count:" + stg.maker.count_Allquotes.ToString("N0") + "  Latent Feed:" + stg.maker.count_Latentquotes.ToString("N0") + "\n";
-                    //msg += "<Trades> All count:" + stg.maker.count_AllTrade.ToString("N0") + "  Latent Feed:" + stg.maker.count_LatentTrade.ToString("N0") + "\n";
-                    //msg += "<OrderUpdate> All count:" + stg.maker.count_AllOrderUpdates.ToString("N0") + "  Latent Feed:" + stg.maker.count_LatentOrderUpdates.ToString("N0") + "\n";
-                    //msg += "<Fill> All count:" + stg.maker.count_AllFill.ToString("N0") + "  Latent Feed:" + stg.maker.count_LatentFill.ToString("N0") + "\n";
                     stg.maker.count_Allquotes = 0;
                     stg.maker.count_Latentquotes = 0;
                     stg.maker.count_AllTrade = 0;
@@ -439,11 +434,6 @@ namespace Crypto_Linux
                     stg.maker.count_LatentOrderUpdates = 0;
                     stg.maker.count_AllFill = 0;
                     stg.maker.count_LatentFill = 0;
-                    //msg += "Cumulative Count:\n";
-                    //msg += "<QuotesUpdate> All count:" + stg.maker.cum_Allquotes.ToString("N0") + "  Latent Feed:" + stg.maker.cum_Latentquotes.ToString("N0") + "\n";
-                    //msg += "<Trades> All count:" + stg.maker.cum_AllTrade.ToString("N0") + "  Latent Feed:" + stg.maker.cum_LatentTrade.ToString("N0") + "\n";
-                    //msg += "<OrderUpdate> All count:" + stg.maker.cum_AllOrderUpdates.ToString("N0") + "  Latent Feed:" + stg.maker.cum_LatentOrderUpdates.ToString("N0") + "\n";
-                    //msg += "<Fill> All count:" + stg.maker.cum_AllFill.ToString("N0") + "  Latent Feed:" + stg.maker.cum_LatentFill.ToString("N0") + "\n";
                     feedCountQuoteAll += stg.maker.cum_Allquotes;
                     feedCountQuoteLatent += stg.maker.cum_Latentquotes;
                     feedCountTradeAll += stg.maker.cum_AllTrade;
@@ -453,8 +443,6 @@ namespace Crypto_Linux
                     feedCountFillAll += stg.maker.cum_AllFill;
                     feedCountFillLatent += stg.maker.cum_LatentFill;
 
-                    //stg.netExposure = stg.maker.baseBalance.total + stg.taker.baseBalance.total - stg.baseCcyQuantity;
-                    //stg.netExposure = stg.maker.net_pos + stg.taker.baseBalance.total;
                     stg.netExposure = stg.maker.net_pos + stg.taker.net_pos;
                     stg.notionalVolume = stg.maker.my_buy_notional + stg.maker.my_sell_notional;
                     stg.posPnL = stg.SoD_baseCcyPos * (stg.taker.mid - stg.taker.open_mid);
@@ -492,7 +480,7 @@ namespace Crypto_Linux
                                 if (oManager.orders.ContainsKey(ord_id))
                                 {
                                     ord = oManager.orders[ord_id];
-                                    sells += "Layer " + (stg.layers - 1 - i).ToString() + " " + ord.status.ToString() + "  " + ord.order_quantity.ToString() + "@" + ord.order_price.ToString("N0") + "\n";
+                                    sells += "Layer " + (stg.layers - 1 - i).ToString() + " " + ord.status.ToString() + "  " + ord.order_quantity.ToString() + "@" + ord.order_price.ToString("N" + stg.maker.price_scale) + "\n";
                                 }
                                 else
                                 {
@@ -503,7 +491,7 @@ namespace Crypto_Linux
                                 if (oManager.orders.ContainsKey(ord_id))
                                 {
                                     ord = oManager.orders[ord_id];
-                                    buys += "Layer " + (i).ToString() + " " + ord.status.ToString() + "  " + ord.order_quantity.ToString() + "@" + ord.order_price.ToString("N0") + "\n";
+                                    buys += "Layer " + (i).ToString() + " " + ord.status.ToString() + "  " + ord.order_quantity.ToString() + "@" + ord.order_price.ToString("N" + stg.maker.price_scale) + "\n";
                                 }
                                 else
                                 {
@@ -517,11 +505,7 @@ namespace Crypto_Linux
                         {
 
                         }
-                        msg += "Live Order Count:" + oManager.live_orders.Count.ToString() + "\n";
-                        foreach (var o in oManager.live_orders.Values)
-                        {
-                            msg += o.internal_order_id + " " + o.side.ToString() + " " + o.order_quantity.ToString() + "@" + o.order_price.ToString("N0") + "\n";
-                        }
+                        
                         Volatile.Write(ref oManager.order_lock, 0);
                     }
                     else
@@ -542,7 +526,11 @@ namespace Crypto_Linux
             latency_msg += "<Trades> All count:" + feedCountTradeAll.ToString("N0") + "  Latent Feed:" + feedCountTradeLatent.ToString("N0") + "\n";
             latency_msg += "<OrderUpdate> All count:" + feedCountOrderAll.ToString("N0") + "  Latent Feed:" + feedCountOrderLatent.ToString("N0") + "\n";
             latency_msg += "<Fill> All count:" + feedCountFillAll.ToString("N0") + "  Latent Feed:" + feedCountFillLatent.ToString("N0") + "\n";
-
+            latency_msg += "Live Order Count:" + oManager.live_orders.Count.ToString() + "\n";
+            foreach (var o in oManager.live_orders.Values)
+            {
+                latency_msg += o.internal_order_id + " " + o.side.ToString() + " " + o.order_quantity.ToString() + "@" + o.order_price.ToString("N0") + "\n";
+            }
             pnl = new intradayPnL();
             pnl.strategy_name = "Total";
             pnl.OADatetime = current.ToOADate();
@@ -1311,38 +1299,40 @@ namespace Crypto_Linux
                 }
                 qManager.ready = true;
 
-                if(File.Exists(intradayPnLFile))
+                if(live)
                 {
-                    List<intradayPnL> pnls = new List<intradayPnL>();
-                    using (StreamReader sr = new StreamReader(new FileStream(intradayPnLFile, FileMode.Open, FileAccess.Read)))
+                    if (File.Exists(intradayPnLFile))
                     {
-                        while (sr.ReadLine() is string line)
+                        List<intradayPnL> pnls = new List<intradayPnL>();
+                        using (StreamReader sr = new StreamReader(new FileStream(intradayPnLFile, FileMode.Open, FileAccess.Read)))
                         {
-                            string[] items = line.Split(',');//name,oadatetime,pnl,notional
-                            if (items.Length >= 4)
+                            while (sr.ReadLine() is string line)
                             {
-                                intradayPnL pnl = new intradayPnL();
-                                pnl.strategy_name = items[0];
-                                pnl.OADatetime = double.Parse(items[1]);
-                                pnl.PnL = double.Parse(items[2]);
-                                pnl.notionalVolume = double.Parse(items[3]);
-                                intradayPnLTime = DateTime.FromOADate(pnl.OADatetime);
-                                pnls.Add(pnl);
+                                string[] items = line.Split(',');//name,oadatetime,pnl,notional
+                                if (items.Length >= 4)
+                                {
+                                    intradayPnL pnl = new intradayPnL();
+                                    pnl.strategy_name = items[0];
+                                    pnl.OADatetime = double.Parse(items[1]);
+                                    pnl.PnL = double.Parse(items[2]);
+                                    pnl.notionalVolume = double.Parse(items[3]);
+                                    intradayPnLTime = DateTime.FromOADate(pnl.OADatetime);
+                                    pnls.Add(pnl);
+                                }
                             }
                         }
+                        if (pnls.Count > 0)
+                        {
+                            ws_server.processIntradayPnL(pnls);
+                        }
                     }
-                    if (pnls.Count > 0)
+                    else
                     {
-                        ws_server.processIntradayPnL(pnls);
+                        addLog("Intraday PnL file not found");
                     }
+                    string mifile = outputPath + "/Market_Impact.csv";
+                    readMIFile(mifile);
                 }
-                else
-                {
-                    addLog("Intraday PnL file not found");
-                }
-
-                string mifile = outputPath + "/Market_Impact.csv";
-                readMIFile(mifile);
 
                 if (liveTrading || privateConnect)
                 {
