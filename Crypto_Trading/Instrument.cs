@@ -1151,7 +1151,7 @@ namespace Crypto_Trading
                     //decimal realize_pnl = fill.profit_loss;// fill.quantity * (fill.price - this.longPosition.avg_price);
                     //decimal realized_fee = fill.fee_quote;
                     //decimal realized_interest = fill.interest;//this.longPosition.unrealized_interest * (fill.quantity / this.longPosition.total);
-                    fill.msg += $" Realize PnL: {fill.profit_loss.ToString("N8")} avg_price: {this.longPosition.avg_price.ToString()}";
+                    //fill.msg += $" Realize PnL: {fill.profit_loss.ToString("N8")} avg_price: {this.longPosition.avg_price.ToString()}";
                     this.longPosition.unrealized_fee -= fill.fee_quote - filled_fee;
                     this.longPosition.unrealized_interest -= fill.interest;
                     this.realized_PnL += fill.profit_loss;
@@ -1172,7 +1172,7 @@ namespace Crypto_Trading
                     //decimal realize_pnl = fill.profit_loss; //fill.quantity * (this.shortPosition.avg_price - fill.price);
                     //decimal realized_fee = fill.fee_quote;
                     //decimal realized_interest = fill.interest;//this.shortPosition.unrealized_interest * (fill.quantity / this.shortPosition.total);
-                    fill.msg += $" Realize PnL: {fill.profit_loss.ToString("N8")} avg_price: {this.shortPosition.avg_price.ToString()}";
+                    //fill.msg += $" Realize PnL: {fill.profit_loss.ToString("N8")} avg_price: {this.shortPosition.avg_price.ToString()}";
                     this.shortPosition.unrealized_fee -= fill.fee_quote - filled_fee;
                     this.shortPosition.unrealized_interest -= fill.interest;
                     this.realized_PnL += fill.profit_loss;

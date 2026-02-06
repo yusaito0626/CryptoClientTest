@@ -1299,7 +1299,7 @@ namespace Crypto_GUI
                                                     case "targetposition":
                                                         if (decimal.TryParse(update.value, out newvalue))
                                                         {
-                                                            stg.maxMakerPosition = newvalue;
+                                                            stg.targetMakerPosition = newvalue;
                                                         }
                                                         break;
                                                     case "tobsize":

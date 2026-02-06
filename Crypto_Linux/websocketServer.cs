@@ -348,8 +348,16 @@ namespace Crypto_Linux
                                             case "maxposition":
                                                 if (decimal.TryParse(newVar.value, out newvalue))
                                                 {
-                                                    addLog("The total quantity of base currency of " + stg.name + " has been changed from " + stg.maxMakerPosition.ToString("N0") + " to " + newVar.value);
+                                                    addLog("The max position of base currency of " + stg.name + " has been changed from " + stg.maxMakerPosition.ToString("N0") + " to " + newVar.value);
                                                     stg.maxMakerPosition = newvalue;
+                                                    await BroadcastAsync(message);
+                                                }
+                                                break;
+                                            case "targetposition":
+                                                if (decimal.TryParse(newVar.value, out newvalue))
+                                                {
+                                                    addLog("The target position of " + stg.name + " has been changed from " + stg.targetMakerPosition.ToString("N0") + " to " + newVar.value);
+                                                    stg.targetMakerPosition = newvalue;
                                                     await BroadcastAsync(message);
                                                 }
                                                 break;

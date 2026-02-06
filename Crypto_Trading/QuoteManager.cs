@@ -1072,7 +1072,7 @@ namespace Crypto_Trading
                             if(!this.monitoring)
                             {
                                 mi = oManager.MI_stack.pop();
-                                if (mi != null)
+                                if (mi == null)
                                 {
                                     mi = new MarketImpact();
                                 }

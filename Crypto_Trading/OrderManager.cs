@@ -954,6 +954,11 @@ namespace Crypto_Trading
                             output.err_code = (int)Enums.ordError.SERVER_BUSY;
                             this.addLog($"[gmocoin] New order failed. Server busy. Error code:{err_code}   Error message:{err_msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                         }
+                        else if (err_code == "ERR-273")
+                        {
+                            output.err_code = (int)Enums.ordError.SERVER_BUSY;
+                            this.addLog($"[gmocoin] New order failed. Server maybe be temporarily unavailable. Error code:{err_code}   Error message:{err_msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                        }
                         else
                         {
                             this.addLog($"[gmocoin] Unexpected Error.   Error code:{err_code}   Error message:{err_msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
@@ -1742,6 +1747,16 @@ namespace Crypto_Trading
                         {
 
                         }
+                        else if (err_code == "ERR-626")
+                        {
+                            output.err_code = (int)Enums.ordError.SERVER_BUSY;
+                            this.addLog($"[gmocoin] New order failed. Server busy. Error code:{err_code}   Error message:{err_msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                        }
+                        else if (err_code == "ERR-273")
+                        {
+                            output.err_code = (int)Enums.ordError.SERVER_BUSY;
+                            this.addLog($"[gmocoin] New order failed. Server maybe be temporarily unavailable. Error code:{err_code}   Error message:{err_msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                        }
                         else
                         {
                             this.addLog($"[gmocoin] Unexpected Error.   Error code:{err_code}   Error message:{err_msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
@@ -2053,6 +2068,14 @@ namespace Crypto_Trading
                         {
 
                         }
+                        else if (err_code == "ERR-626")
+                        {
+                            this.addLog($"[gmocoin] New order failed. Server busy. Error code:{err_code}   Error message:{err_msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                        }
+                        else if (err_code == "ERR-273")
+                        {
+                            this.addLog($"[gmocoin] New order failed. Server maybe be temporarily unavailable. Error code:{err_code}   Error message:{err_msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                        }
                         else
                         {
                             this.addLog($"[gmocoin] Unexpected Error.   Error code:{err_code}   Error message:{err_msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
@@ -2093,13 +2116,23 @@ namespace Crypto_Trading
                             {
                                 string code = elem.GetProperty("message_code").GetString();
                                 string msg = elem.GetProperty("message_string").GetString();
-                                if (code.StartsWith("ERR-5003"))//Request too many
+                                if (code == "ERR-5003")//Request too many
                                 {
                                     this.addLog($"[gmocoin] Cancel order failed. Too many request. Error code:{code}   ord_id:{sndOrd.internalOrdId}   msg:{msg}", Enums.logType.WARNING);
                                 }
-                                else if (code.StartsWith("ERR-5122"))//The order is not alive anymore. ignore
+                                else if (code == "ERR-5122")//The order is not alive anymore. ignore
                                 {
 
+                                }
+                                else if (code == "ERR-626")
+                                {
+                                    ordObj.err_code = (int)Enums.ordError.SERVER_BUSY;
+                                    this.addLog($"[gmocoin] New order failed. Server busy. Error code:{err_code}   Error message:{err_msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                                }
+                                else if (code == "ERR-273")
+                                {
+                                    ordObj.err_code = (int)Enums.ordError.SERVER_BUSY;
+                                    this.addLog($"[gmocoin] New order failed. Server maybe be temporarily unavailable. Error code:{err_code}   Error message:{err_msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                                 }
                                 else
                                 {
@@ -2738,7 +2771,16 @@ namespace Crypto_Trading
         {
             this.ordLogQueue.Enqueue(ord.ToString());
             ord.update_time = DateTime.UtcNow;
-            this.order_pool.Enqueue(ord);
+            if(this.orders.ContainsKey(ord.internal_order_id))
+            {
+                DataSpotOrderUpdate prev = this.orders[ord.internal_order_id];
+                prev.msg = ord.msg;
+                this.order_pool.Enqueue(ord);
+            }
+            else
+            {
+                this.orders[ord.internal_order_id] = ord;
+            }
         }
         public void handleWaitMod(DataSpotOrderUpdate ord)
         {
@@ -2758,6 +2800,7 @@ namespace Crypto_Trading
                     ord.filled_quantity = prevord.filled_quantity;
                     ord.order_price = prevord.order_price;
                     ord.order_quantity = prevord.order_quantity;
+                    ord.msg = prevord.msg;
                     this.orders[ord.internal_order_id] = ord;
                     //while(Interlocked.CompareExchange(ref this.order_lock,1,0) != 0)
                     //{
@@ -3588,6 +3631,7 @@ namespace Crypto_Trading
                             if(kv.Value == key)
                             {
                                 addLog(key + " is registered as " + kv.Key + " in the mapping");
+                                this.addLog(this.orders[key].ToString());
                             }
                         }
                     }

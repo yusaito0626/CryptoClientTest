@@ -1680,7 +1680,7 @@ namespace Crypto_Linux
                     }
                     else
                     {
-                        Console.WriteLine("Exchange not found. Exchange:" + ins.market);
+                        addLog("[SetRealPosition]Exchange not found. Exchange:" + ins.market);
                     }
                     if (qManager.SoD_exchange_balances.ContainsKey(ins.market))
                     {
@@ -1724,7 +1724,7 @@ namespace Crypto_Linux
                     }
                     else
                     {
-                        Console.WriteLine("Exchange not found. Exchange:" + ins.market);
+                        addLog("[SetRealPosition]Exchange not found. Exchange:" + ins.market);
                     }
                 }
                 SortedDictionary<DateTime, DataFill> histFill = new SortedDictionary<DateTime, DataFill>();
