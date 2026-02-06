@@ -2127,12 +2127,12 @@ namespace Crypto_Trading
                                 else if (code == "ERR-626")
                                 {
                                     ordObj.err_code = (int)Enums.ordError.SERVER_BUSY;
-                                    this.addLog($"[gmocoin] New order failed. Server busy. Error code:{err_code}   Error message:{err_msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                                    this.addLog($"[gmocoin] New order failed. Server busy. Error code:{code}   Error message:{msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                                 }
                                 else if (code == "ERR-273")
                                 {
                                     ordObj.err_code = (int)Enums.ordError.SERVER_BUSY;
-                                    this.addLog($"[gmocoin] New order failed. Server maybe be temporarily unavailable. Error code:{err_code}   Error message:{err_msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                                    this.addLog($"[gmocoin] New order failed. Server maybe be temporarily unavailable. Error code:{code}   Error message:{msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                                 }
                                 else
                                 {
