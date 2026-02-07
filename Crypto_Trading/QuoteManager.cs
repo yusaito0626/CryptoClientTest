@@ -1071,13 +1071,16 @@ namespace Crypto_Trading
 
                             if(!this.monitoring)
                             {
-                                mi = oManager.MI_stack.pop();
-                                if (mi == null)
+                                if(ins.mid > 0)
                                 {
-                                    mi = new MarketImpact();
+                                    mi = oManager.MI_stack.pop();
+                                    if (mi == null)
+                                    {
+                                        mi = new MarketImpact();
+                                    }
+                                    mi.startRecording(msg, ins);
+                                    this.oManager.MI_recorder[0].Enqueue(mi);
                                 }
-                                mi.startRecording(msg, ins);
-                                this.oManager.MI_recorder[0].Enqueue(mi);
                             }
                             this.oManager.checkVirtualOrders(ins, msg);
                         }

@@ -1460,9 +1460,6 @@ namespace Crypto_Trading
                     
                     await this.checkLiveOrdersMulti();
 
-                    this.live_askprice = this.asks[0];
-                    this.live_bidprice = this.bids[0];
-
                     int newBuyOrder = 0;
                     int newSellOrder = 0;
 
@@ -1548,6 +1545,9 @@ namespace Crypto_Trading
                             }
                         }
                     }
+
+                    this.live_askprice = this.current_asks[i];
+                    this.live_bidprice = this.current_bids[i];
 
                     this.oManager.placeCancelSpotOrders(this.maker, cancelling_ord);
 

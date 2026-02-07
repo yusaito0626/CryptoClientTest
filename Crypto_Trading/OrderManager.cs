@@ -814,7 +814,6 @@ namespace Crypto_Trading
             }
             else if(sndOrd.ins.market == "gmocoin")
             {
-                this.addLog("GMO Coin new order called");
                 quantity = Math.Round(sndOrd.quantity / sndOrd.ins.quantity_unit) * sndOrd.ins.quantity_unit;
                 DateTime sendTime = DateTime.UtcNow;
 
@@ -1705,7 +1704,6 @@ namespace Crypto_Trading
             }
             else if(sndOrd.ins.market == "gmocoin")
             {
-                this.addLog("GMO Coin can order called");
                 DateTime sendTime = DateTime.UtcNow;
                 DataSpotOrderUpdate prev = this.orders[sndOrd.ref_IntOrdId];
                 js = await this.ord_client.gmocoin_client.placeCanOrder(prev.order_id);
@@ -1986,8 +1984,6 @@ namespace Crypto_Trading
             }
             else if (sndOrd.ins.market == "gmocoin")
             {
-
-                this.addLog("GMO Coin can orders called");
                 DateTime sendTime = DateTime.UtcNow;
                 List<string> ord_ids = new List<string>();
                 foreach (string order_id in sndOrd.order_ids)
@@ -2036,13 +2032,21 @@ namespace Crypto_Trading
                             {
                                 string code = elem.GetProperty("message_code").GetString();
                                 string msg = elem.GetProperty("message_string").GetString();
-                                if (code.StartsWith("ERR-5003"))//Request too many
+                                if (code == "ERR-5003")//Request too many
                                 {
                                     this.addLog($"[gmocoin] Cancel order failed. Too many request. Error code:{code}   ord_id:{sndOrd.internalOrdId}   msg:{msg}", Enums.logType.WARNING);
                                 }
-                                else if (code.StartsWith("ERR-5122"))//The order is not alive anymore. ignore
+                                else if (code == "ERR-5122")//The order is not alive anymore. ignore
                                 {
 
+                                }
+                                else if (code == "ERR-626")
+                                {
+                                    this.addLog($"[gmocoin] New order failed. Server busy. Error code:{code}   Error message:{msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                                }
+                                else if (code == "ERR-273")
+                                {
+                                    this.addLog($"[gmocoin] New order failed. Server maybe be temporarily unavailable. Error code:{code}   Error message:{msg}   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                                 }
                                 else
                                 {
@@ -2915,7 +2919,7 @@ namespace Crypto_Trading
                     {
                         filled_quantity = ord.filled_quantity;
                     }
-                    if (filled_quantity > 0 && ord.order_type != orderType.Market)
+                    if (filled_quantity > 0 /*&& ord.order_type != orderType.Market*/)
                     {
                         if(ord.position_side == positionSide.Long)
                         {
@@ -2984,9 +2988,17 @@ namespace Crypto_Trading
                                 {
                                     case orderSide.Buy:
                                         stg.live_buyorder_id = "";
+                                        for(int i = 0;i<stg.live_buyorders.Count;++i)
+                                        {
+                                            stg.live_buyorders[i] = "";
+                                        }
                                         break;
                                     case orderSide.Sell:
                                         stg.live_sellorder_id = "";
+                                        for (int i = 0; i < stg.live_sellorders.Count; ++i)
+                                        {
+                                            stg.live_sellorders[i] = "";
+                                        }
                                         break;
                                 }
                                 Volatile.Write(ref stg.updating, 0);
@@ -3093,7 +3105,7 @@ namespace Crypto_Trading
                     {
                         filled_quantity = ord.order_quantity;
                     }
-                    if (filled_quantity > 0 && ord.order_type != orderType.Market)
+                    if (filled_quantity > 0 /*&& ord.order_type != orderType.Market*/)
                     {
                         if (ord.position_side == positionSide.Long)
                         {
@@ -3177,7 +3189,7 @@ namespace Crypto_Trading
                         {
                             filled_quantity = ord.order_quantity;
                         }
-                        if (filled_quantity > 0 && ord.order_type != orderType.Market)
+                        if (filled_quantity > 0 /*&& ord.order_type != orderType.Market*/)
                         {
                             if (ord.position_side == positionSide.Long)
                             {
@@ -3320,7 +3332,7 @@ namespace Crypto_Trading
                     {
                         filled_quantity = ord.order_quantity;
                     }
-                    if (filled_quantity > 0 && ord.order_type != orderType.Market)
+                    if (filled_quantity > 0 /*&& ord.order_type != orderType.Market*/)
                     {
                         if (ord.position_side == positionSide.Long)
                         {
@@ -3384,7 +3396,7 @@ namespace Crypto_Trading
                         {
                             filled_quantity = ord.order_quantity;
                         }
-                        if (filled_quantity > 0 && ord.order_type != orderType.Market)
+                        if (filled_quantity > 0/* && ord.order_type != orderType.Market*/)
                         {
                             if (ord.position_side == positionSide.Long)
                             {
