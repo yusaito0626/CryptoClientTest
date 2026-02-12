@@ -671,7 +671,7 @@ namespace Crypto_GUI
             {
                 foreach (var mkt in this.qManager._markets.Keys)
                 {
-                    this.APIList.Add(mkt.ToUpper() + "_" + tradeState);
+                    this.APIList.Add(mkt.ToString().ToUpper() + "_" + tradeState);
                 }
             }
 
@@ -730,7 +730,7 @@ namespace Crypto_GUI
                 {
                     this.addLog("The API secret key for " + mkt + "is not found", Enums.logType.ERROR);
                 }
-                crypto_client.setCredentials(mkt, api_name, api_key);
+                crypto_client.setCredentials((market)Enum.Parse(typeof(market),mkt), api_name, api_key);
             }
         }
         private void addLog(string body, Enums.logType logtype = Enums.logType.INFO)
@@ -1135,8 +1135,8 @@ namespace Crypto_GUI
                                                 stg.name = s.Value.name;
                                                 stg.baseCcy = s.Value.baseCcy;
                                                 stg.quoteCcy = s.Value.quoteCcy;
-                                                stg.maker_market = s.Value.maker_market;
-                                                stg.taker_market = s.Value.taker_market;
+                                                stg.maker_market = (market)Enum.Parse(typeof(market),s.Value.maker_market);
+                                                stg.taker_market = (market)Enum.Parse(typeof(market), s.Value.taker_market);
                                                 stg.maker_symbol_market = s.Value.maker_symbol_market;
                                                 stg.taker_symbol_market = s.Value.taker_symbol_market;
                                                 if (this.qManager.instruments.ContainsKey(stg.maker_symbol_market))
@@ -1211,7 +1211,7 @@ namespace Crypto_GUI
                                             {
                                                 Instrument ins = new Instrument();
                                                 ins.symbol = i.Value.symbol;
-                                                ins.market = i.Value.market;
+                                                ins.market = (market)Enum.Parse(typeof(market),i.Value.market);
                                                 ins.baseCcy = i.Value.baseCcy;
                                                 ins.quoteCcy = i.Value.quoteCcy;
 
@@ -1708,7 +1708,7 @@ namespace Crypto_GUI
                 this.lbl_symbol.Text = this.selected_ins.symbol;
                 this.lbl_baseCcyName.Text = this.selected_ins.baseCcy;
                 this.lbl_quoteCcyName.Text = this.selected_ins.quoteCcy;
-                this.lbl_market.Text = this.selected_ins.market;
+                this.lbl_market.Text = this.selected_ins.market.ToString();
                 this.lbl_lastprice.Text = this.selected_ins.last_price.ToString("N" + this.selected_ins.price_scale);
                 this.lbl_notional.Text = (this.selected_ins.buy_notional + this.selected_ins.sell_notional).ToString("N2");
                 this.lbl_baseCcyTotal.Text = this.selected_ins.baseBalance.total.ToString("N" + this.selected_ins.quantity_scale);
@@ -1806,7 +1806,7 @@ namespace Crypto_GUI
                     {
                         continue;
                     }
-                    if (row.Cells[0] != null && row.Cells[0].Value != null && row.Cells[0].Value.ToString() == exBalance.market)
+                    if (row.Cells[0] != null && row.Cells[0].Value != null && row.Cells[0].Value.ToString() == exBalance.market.ToString())
                     {
                         decimal currentValue = 0;
                         foreach(var b in exBalance.balance.Values)
@@ -2118,20 +2118,21 @@ namespace Crypto_GUI
 
                 foreach (var ins in this.qManager.instruments.Values)
                 {
-                    string[] markets = [ins.market];
-                    if (ins.market == Exchange.Bybit)
-                    {
-                        await crypto_client.subscribeBybitOrderBook(ins.baseCcy, ins.quoteCcy);
-                    }
-                    else if (ins.market == Exchange.Coinbase)
-                    {
-                        await crypto_client.subscribeCoinbaseOrderBook(ins.baseCcy, ins.quoteCcy);
-                    }
-                    else
-                    {
-                        await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
-                    }
-                    await crypto_client.subscribeTrades(markets, ins.baseCcy, ins.quoteCcy);
+                    market[] markets = [ins.market];
+                    //if (ins.market == Exchange.Bybit)
+                    //{
+                    //    await crypto_client.subscribeBybitOrderBook(ins.baseCcy, ins.quoteCcy);
+                    //}
+                    //else if (ins.market == Exchange.Coinbase)
+                    //{
+                    //    await crypto_client.subscribeCoinbaseOrderBook(ins.baseCcy, ins.quoteCcy);
+                    //}
+                    //else
+                    //{
+                    //    await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
+                    //}
+					await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
+					await crypto_client.subscribeTrades(markets, ins.baseCcy, ins.quoteCcy);
                 }
 
 
@@ -2492,13 +2493,13 @@ namespace Crypto_GUI
             //            row.Cells[2].Value = mkt.Value.ToString();
             //            switch (row.Cells[0].Value)
             //            {
-            //                case "bitbank":
+            //                case market.bitbank:
             //                    row.Cells[3].Value = (this.crypto_client.bitbank_client.avgLatency() / 1000).ToString("N2");
             //                    break;
-            //                case "coincheck":
+            //                case market.coincheck:
             //                    row.Cells[3].Value = (this.crypto_client.coincheck_client.avgLatency() / 1000).ToString("N2");
             //                    break;
-            //                case "bittrade":
+            //                case market.bittrade:
             //                    row.Cells[3].Value = (this.crypto_client.bittrade_client.avgLatency() / 1000).ToString("N2");
             //                    break;
             //                default:
@@ -2588,7 +2589,7 @@ namespace Crypto_GUI
                         addLog("Public Connection to " + market + " lost reconnecting in 5 sec", Enums.logType.WARNING);
                         thManager.disposeThread(stoppedTh);
                         Thread.Sleep(5000);
-                        if (!await qManager.connectPublicChannel(market))
+                        if (!await qManager.connectPublicChannel((market)Enum.Parse(typeof(market),market)))
                         {
                             addLog("Failed to reconnect public. market:" + market, logType.ERROR);
                             return;
@@ -2596,22 +2597,23 @@ namespace Crypto_GUI
                         Thread.Sleep(5000);
                         foreach (var ins in qManager.instruments.Values)
                         {
-                            string[] markets = [ins.market];
-                            if (market == ins.market)
+                            market[] markets = [ins.market];
+                            if (market == ins.market.ToString())
                             {
-                                if (ins.market == Exchange.Bybit)
-                                {
-                                    await crypto_client.subscribeBybitOrderBook(ins.baseCcy, ins.quoteCcy);
-                                }
-                                else if (ins.market == Exchange.Coinbase)
-                                {
-                                    await crypto_client.subscribeCoinbaseOrderBook(ins.baseCcy, ins.quoteCcy);
-                                }
-                                else
-                                {
-                                    await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
-                                }
-                                await crypto_client.subscribeTrades(markets, ins.baseCcy, ins.quoteCcy);
+                                //if (ins.market == Exchange.Bybit)
+                                //{
+                                //    await crypto_client.subscribeBybitOrderBook(ins.baseCcy, ins.quoteCcy);
+                                //}
+                                //else if (ins.market == Exchange.Coinbase)
+                                //{
+                                //    await crypto_client.subscribeCoinbaseOrderBook(ins.baseCcy, ins.quoteCcy);
+                                //}
+                                //else
+                                //{
+                                //    await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
+                                //}
+								await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
+								await crypto_client.subscribeTrades(markets, ins.baseCcy, ins.quoteCcy);
                             }
                         }
                         if (oManager.getVirtualMode())
@@ -2654,13 +2656,13 @@ namespace Crypto_GUI
                         addLog("Private Connection to " + market + " lost reconnecting in 5 sec", Enums.logType.WARNING);
                         thManager.disposeThread(stoppedTh);
                         Thread.Sleep(5000);
-                        if (!await oManager.connectPrivateChannel(market))
+                        if (!await oManager.connectPrivateChannel((market)Enum.Parse(typeof(market),market)))
                         {
                             addLog("Failed to reconnect private. market:" + market, logType.ERROR);
                             return;
                         }
                         Thread.Sleep(5000);
-                        string[] markets = [market];
+                        market[] markets = [(market)Enum.Parse(typeof(market), market)];
                         if (live || privateConnect)
                         {
                             await crypto_client.subscribeSpotOrderUpdates(markets);
@@ -3777,7 +3779,7 @@ namespace Crypto_GUI
                         addLog("Public Connection to " + market + " lost reconnecting in 5 sec", Enums.logType.WARNING);
                         thManager.disposeThread(stoppedTh);
                         Thread.Sleep(5000);
-                        if (!await qManager.connectPublicChannel(market))
+                        if (!await qManager.connectPublicChannel((market)Enum.Parse(typeof(market), market)))
                         {
                             addLog("Failed to reconnect public. market:" + market, logType.ERROR);
                             return;
@@ -3785,22 +3787,23 @@ namespace Crypto_GUI
                         Thread.Sleep(5000);
                         foreach (var ins in qManager.instruments.Values)
                         {
-                            string[] markets = [ins.market];
-                            if (market == ins.market)
+                            market[] markets = [ins.market];
+                            if (market == ins.market.ToString())
                             {
-                                if (ins.market == Exchange.Bybit)
-                                {
-                                    await crypto_client.subscribeBybitOrderBook(ins.baseCcy, ins.quoteCcy);
-                                }
-                                else if (ins.market == Exchange.Coinbase)
-                                {
-                                    await crypto_client.subscribeCoinbaseOrderBook(ins.baseCcy, ins.quoteCcy);
-                                }
-                                else
-                                {
-                                    await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
-                                }
-                                await crypto_client.subscribeTrades(markets, ins.baseCcy, ins.quoteCcy);
+                                //if (ins.market == Exchange.Bybit)
+                                //{
+                                //    await crypto_client.subscribeBybitOrderBook(ins.baseCcy, ins.quoteCcy);
+                                //}
+                                //else if (ins.market == Exchange.Coinbase)
+                                //{
+                                //    await crypto_client.subscribeCoinbaseOrderBook(ins.baseCcy, ins.quoteCcy);
+                                //}
+                                //else
+                                //{
+                                //    await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
+                                //}
+								await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
+								await crypto_client.subscribeTrades(markets, ins.baseCcy, ins.quoteCcy);
                             }
                         }
                         if (oManager.getVirtualMode())
@@ -3845,13 +3848,13 @@ namespace Crypto_GUI
                         addLog("Private Connection to " + market + " lost reconnecting in 5 sec", Enums.logType.WARNING);
                         thManager.disposeThread(stoppedTh);
                         Thread.Sleep(5000);
-                        if (!await oManager.connectPrivateChannel(market))
+                        if (!await oManager.connectPrivateChannel((market)Enum.Parse(typeof(market), market)))
                         {
                             addLog("Failed to reconnect private. market:" + market, logType.ERROR);
                             return;
                         }
                         Thread.Sleep(5000);
-                        string[] markets = [market];
+                        market[] markets = [(market)Enum.Parse(typeof(market), market)];
                         if (live || privateConnect)
                         {
                             await crypto_client.subscribeSpotOrderUpdates(markets);

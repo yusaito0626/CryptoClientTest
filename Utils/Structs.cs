@@ -14,26 +14,27 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Globalization;
+using Binance.Net.Enums;
 
 namespace Utils
 {
     public class DataBalance
     {
         public string asset;
-        public string market;
+        public Enums.market market;
         public decimal available;
         public decimal total;
         public DataBalance()
         {
             this.asset = "";
-            this.market = "";
+            this.market = market.NONE;
             this.available = 0;
             this.total = 0;
         }
         public void init()
         {
             this.asset = "";
-            this.market = "";
+            this.market = market.NONE;
             this.available = 0;
             this.total = 0;
         }
@@ -41,10 +42,10 @@ namespace Utils
     public class DataMarginPos
     {
         public string symbol;
-        public string market;
+        public Enums.market market;
         public string symbol_market
         {
-            get { return symbol + "@" + market; }
+            get { return symbol + "@" + market.ToString(); }
         }
         public positionSide side;
         public decimal quantity;
@@ -55,7 +56,7 @@ namespace Utils
         public DataMarginPos()
         {
             this.symbol = "";
-            this.market = "";
+            this.market = market.NONE;
             this.side = positionSide.NONE;
             this.quantity = 0;
             this.avgPrice = 0;
@@ -65,7 +66,7 @@ namespace Utils
         public void setBitbankJson(JsonElement js)
         {
             this.symbol = js.GetProperty("pair").GetString();
-            this.market = "bitbank";
+            this.market = market.bitbank;
             string str_side = js.GetProperty("position_side").GetString();
             if (str_side == "long")
             {
@@ -83,7 +84,7 @@ namespace Utils
         public void setGMOCoinJson(JsonElement js)
         {
             this.symbol = js.GetProperty("symbol").GetString();
-            this.market = "gmocoin";
+            this.market = market.gmocoin;
             string str_side = js.GetProperty("side").GetString();
             if (str_side == "BUY")
             {
@@ -104,7 +105,7 @@ namespace Utils
         public void init()
         {
             this.symbol = "";
-            this.market = "";
+            this.market = market.NONE;
             this.side = positionSide.NONE;
             this.quantity = 0;
             this.avgPrice = 0;
@@ -116,7 +117,7 @@ namespace Utils
     {
         public DateTime? timestamp;
         public DateTime? orderbookTime;
-        public string market;
+        public Enums.market market;
         public string? streamId;
         public string? symbol;
         public SocketUpdateType? updateType;
@@ -130,7 +131,7 @@ namespace Utils
         {
             this.timestamp = null;
             this.orderbookTime = null;
-            this.market = "";
+            this.market = market.NONE;
             this.streamId = "";
             this.symbol = "";
             this.updateType = null;
@@ -144,7 +145,7 @@ namespace Utils
             this.timestamp = DateTime.UtcNow;
             this.orderbookTime = update.DataTime;
             this.updateType = update.UpdateType;
-            this.market = update.Exchange;
+            this.market = market.NONE;//Undifined
             this.streamId = update.StreamId;
             this.symbol = update.Symbol;
 
@@ -170,7 +171,7 @@ namespace Utils
             this.timestamp = DateTime.UtcNow;
             this.orderbookTime = update.DataTime;
             this.updateType = update.UpdateType;
-            this.market = "Bybit";
+            this.market = market.bybit;
             this.streamId = update.StreamId;
             this.symbol = update.Symbol;
 
@@ -196,7 +197,7 @@ namespace Utils
             this.timestamp = DateTime.UtcNow;
             this.orderbookTime = update.DataTime;
             this.updateType = update.UpdateType;
-            this.market = "Coinbase";
+            this.market = market.coinbase;
             this.streamId = update.StreamId;
             this.symbol = update.Symbol;
 
@@ -219,10 +220,11 @@ namespace Utils
         public void setGMOCoinOrderBook(JsonDocument js)
         {
             this.timestamp = DateTime.UtcNow;
-            this.market = "gmocoin";
+            this.market = market.gmocoin;
             this.symbol = js.RootElement.GetProperty("symbol").GetString();
             this.updateType = SocketUpdateType.Snapshot;
-            this.orderbookTime = DateTime.ParseExact(js.RootElement.GetProperty("timestamp").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'",CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+            this.orderbookTime = Functions.convertToDateTime(js.RootElement.GetProperty("timestamp").GetString(), this.market);
+            //this.orderbookTime = DateTime.ParseExact(js.RootElement.GetProperty("timestamp").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'",CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
             var asks = js.RootElement.GetProperty("asks").EnumerateArray();
             foreach (var item in asks)
             {
@@ -238,7 +240,7 @@ namespace Utils
         public void setBitbankOrderBook(JsonElement js, string symbol, bool snapshot)
         {
             this.timestamp = DateTime.UtcNow;
-            this.market = "bitbank";
+            this.market = market.bitbank;
             this.symbol = symbol;
 
             if (snapshot)
@@ -279,7 +281,7 @@ namespace Utils
         public void setBitTradeOrderBook(JsonElement js, string symbol, Int64 unixTime)
         {
             this.timestamp = DateTime.UtcNow;
-            this.market = "bittrade";
+            this.market = market.bittrade;
             this.symbol = symbol;
             this.updateType = SocketUpdateType.Snapshot;
             this.orderbookTime = DateTimeOffset.FromUnixTimeMilliseconds(unixTime).UtcDateTime;
@@ -297,7 +299,7 @@ namespace Utils
         public void setCoincheckOrderBook(JsonElement js, string symbol)
         {
             this.timestamp = DateTime.UtcNow;
-            this.market = "coincheck";
+            this.market = market.coincheck;
             this.symbol = symbol;
             JsonElement current_time;
             if (js.TryGetProperty("last_update_at", out current_time))
@@ -342,7 +344,7 @@ namespace Utils
         {
             this.timestamp = null;
             this.orderbookTime = null;
-            this.market = "";
+            this.market = market.NONE;
             this.streamId = "";
             this.symbol = "";
             this.updateType = null;
@@ -355,7 +357,7 @@ namespace Utils
     {
         public DateTime? timestamp;
         public string symbol_market;
-        public string market;
+        public Enums.market market;
         public decimal order_quantity;
         public decimal executed_quantity;
         public decimal quantity;
@@ -385,7 +387,7 @@ namespace Utils
         {
             this.timestamp = null;
             this.symbol_market = "";
-            this.market = "";
+            this.market = market.NONE;
             this.quantity = 0;
             this.order_quantity = 0;
             this.executed_quantity = 0;
@@ -426,8 +428,8 @@ namespace Utils
             }
 
             this.symbol = js.GetProperty("pair").GetString();
-            this.market = "coincheck";
-            this.symbol_market = this.symbol + "@" + this.market;
+            this.market = market.coincheck;
+            this.symbol_market = this.symbol + "@" + this.market.ToString();
             this.internal_order_id = this.market + this.order_id;
             string maker_taker = js.GetProperty("liquidity").GetString();
             if (maker_taker == "M")
@@ -487,8 +489,8 @@ namespace Utils
             this.maker_taker = js.GetProperty("maker_taker").GetString();
             this.order_id = js.GetProperty("order_id").GetInt64().ToString();
             this.symbol = js.GetProperty("pair").GetString();
-            this.market = "bitbank";
-            this.symbol_market = this.symbol + "@" + this.market;
+            this.market = market.bitbank;
+            this.symbol_market = this.symbol + "@" + this.market.ToString();
             this.internal_order_id = this.market + this.order_id;
             this.price = decimal.Parse(js.GetProperty("price").GetString());
             string side = js.GetProperty("side").GetString();
@@ -551,15 +553,15 @@ namespace Utils
         }
         public void setGMOCoinFill(JsonElement js)
         {
+            this.market = market.gmocoin;
             this.timestamp = DateTime.UtcNow;
             this.quantity = decimal.Parse(js.GetProperty("executionSize").GetString());
-            this.filled_time = DateTime.ParseExact(js.GetProperty("executionTimestamp").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+            this.filled_time = Functions.convertToDateTime(js.GetProperty("executionTimestamp").GetString(), this.market);
             this.fee_quote = decimal.Parse(js.GetProperty("fee").GetString());
             this.order_id = js.GetProperty("orderId").GetInt64().ToString();
             this.position_id = js.GetProperty("positionId").GetInt64().ToString();
             this.symbol = js.GetProperty("symbol").GetString();
-            this.market = "gmocoin";
-            this.symbol_market = this.symbol + "@" + this.market;
+            this.symbol_market = this.symbol + "@" + this.market.ToString();
             this.internal_order_id = this.market + this.order_id;
             this.price = decimal.Parse(js.GetProperty("executionPrice").GetString());
             this.order_quantity = decimal.Parse(js.GetProperty("orderSize").GetString());
@@ -639,15 +641,16 @@ namespace Utils
         }
         public void setGMOCoinHistFill(JsonElement js,string symbol)
         {
+            this.market = market.gmocoin;
             this.timestamp = DateTime.UtcNow;
             this.quantity = decimal.Parse(js.GetProperty("size").GetString());
-            this.filled_time = DateTime.ParseExact(js.GetProperty("timestamp").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+            //this.filled_time = DateTime.ParseExact(js.GetProperty("timestamp").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+            this.filled_time = Functions.convertToDateTime(js.GetProperty("timestamp").GetString(), this.market);
             this.fee_quote = decimal.Parse(js.GetProperty("fee").GetString());
             this.order_id = js.GetProperty("orderId").GetInt64().ToString();
             this.position_id = js.GetProperty("positionId").GetInt64().ToString();
             this.symbol = symbol;
-            this.market = "gmocoin";
-            this.symbol_market = this.symbol + "@" + this.market;
+            this.symbol_market = this.symbol + "@" + this.market.ToString();
             this.internal_order_id = this.market + this.order_id;
             this.price = decimal.Parse(js.GetProperty("price").GetString());
             this.order_quantity = decimal.Parse(js.GetProperty("size").GetString());
@@ -720,8 +723,8 @@ namespace Utils
             this.price = -1;
             this.filled_time = DateTimeOffset.FromUnixTimeMilliseconds(js.GetProperty("tradeTime").GetInt64()).UtcDateTime;
             this.symbol = js.GetProperty("symbol").GetString();
-            this.market = "bittrade";
-            this.symbol_market = this.symbol + "@" + this.market;
+            this.market = market.bittrade;
+            this.symbol_market = this.symbol + "@" + this.market.ToString();
             this.internal_order_id = this.market + this.order_id;
             this.order_id = js.GetProperty("orderId").GetInt64().ToString();
             bool aggressor = js.GetProperty("aggressor").GetBoolean();
@@ -791,7 +794,7 @@ namespace Utils
         {
             this.timestamp = null;
             this.symbol_market = "";
-            this.market = "";
+            this.market = market.NONE;
             this.quantity = 0;
             this.order_quantity = 0;
             this.executed_quantity = 0;
@@ -820,7 +823,7 @@ namespace Utils
     {
         public DateTime? timestamp;
         public string symbol_market;
-        public string market;
+        public Enums.market market;
         public string order_id;
         public string symbol;
         public orderType order_type;
@@ -860,7 +863,7 @@ namespace Utils
         {
             this.timestamp = null;
             this.symbol_market = "";
-            this.market = "";
+            this.market = market.NONE;
             this.order_id = "";
             this.symbol = "";
             this.order_type = orderType.NONE;
@@ -924,8 +927,8 @@ namespace Utils
         {
             this.timestamp = DateTime.UtcNow;
             this.symbol = js.GetProperty("pair").GetString();
-            this.symbol_market = this.symbol + "@coincheck";
-            this.market = "coincheck";
+            this.market = market.coincheck;
+            this.symbol_market = this.symbol + "@" + this.market.ToString();
             this.order_id = js.GetProperty("id").GetInt64().ToString();
             string str_status = js.GetProperty("order_event").GetString();
             switch (str_status)
@@ -1008,8 +1011,8 @@ namespace Utils
         {
             this.timestamp = DateTime.UtcNow;
             this.symbol = js.GetProperty("symbol").GetString();
-            this.market = "gmocoin";
-            this.symbol_market = this.symbol + "@" + this.market;
+            this.market = market.gmocoin;
+            this.symbol_market = this.symbol + "@" + this.market.ToString();
             this.order_id = js.GetProperty("orderId").GetInt64().ToString();
             string _type = js.GetProperty("executionType").GetString();
             switch (_type)
@@ -1097,7 +1100,8 @@ namespace Utils
                     this.status = orderStatus.INVALID;
                     break;
             }
-            this.create_time = DateTime.ParseExact(js.GetProperty("orderTimestamp").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+            this.create_time = Functions.convertToDateTime(js.GetProperty("orderTimestamp").GetString(), this.market);
+            //this.create_time = DateTime.ParseExact(js.GetProperty("orderTimestamp").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
             this.update_time = this.timestamp;
             string time_in_force = js.GetProperty("timeInForce").GetString();
 
@@ -1134,8 +1138,8 @@ namespace Utils
         {
             this.timestamp = DateTime.UtcNow;
             this.symbol = js.GetProperty("symbol").GetString();
-            this.market = "gmocoin";
-            this.symbol_market = this.symbol + "@" + this.market;
+            this.market = market.gmocoin;
+            this.symbol_market = this.symbol + "@" + this.market.ToString();
             this.order_id = js.GetProperty("orderId").GetInt64().ToString();
             string _type = js.GetProperty("executionType").GetString();
             switch (_type)
@@ -1223,7 +1227,8 @@ namespace Utils
             //        this.status = orderStatus.INVALID;
             //        break;
             //}
-            this.create_time = DateTime.ParseExact(js.GetProperty("orderTimestamp").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+            this.create_time = Functions.convertToDateTime(js.GetProperty("orderTimestamp").GetString(), this.market);
+            //this.create_time = DateTime.ParseExact(js.GetProperty("orderTimestamp").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
             this.update_time = this.timestamp;
             string time_in_force = js.GetProperty("timeInForce").GetString();
 
@@ -1268,8 +1273,8 @@ namespace Utils
         {
             this.timestamp = DateTime.UtcNow;
             this.symbol = js.GetProperty("pair").GetString();
-            this.symbol_market = this.symbol + "@bitbank";
-            this.market = "bitbank";
+            this.market = market.bitbank;
+            this.symbol_market = this.symbol + "@" + this.market.ToString();
             this.order_id = js.GetProperty("order_id").GetInt64().ToString();
             string _type = js.GetProperty("type").GetString();
             switch (_type)
@@ -1369,8 +1374,8 @@ namespace Utils
             string str_status;
             this.timestamp = DateTime.UtcNow;
             this.symbol = js.GetProperty("symbol").GetString();
-            this.symbol_market = this.symbol + "@bittrade";
-            this.market = "bittrade";
+            this.market = market.bittrade;
+            this.symbol_market = this.symbol + "@" + this.market.ToString();
             this.order_id = js.GetProperty("orderId").GetInt64().ToString();
             string eventType = js.GetProperty("eventType").GetString();
             switch (eventType)
@@ -1574,8 +1579,8 @@ namespace Utils
         {
             this.timestamp = DateTime.UtcNow;
             this.symbol = js.GetProperty("symbol").GetString();
-            this.symbol_market = this.symbol + "@bittrade";
-            this.market = "bittrade";
+            this.market = market.bittrade;
+            this.symbol_market = this.symbol + "@" + this.market.ToString();
             this.order_id = js.GetProperty("orderId").GetInt64().ToString();
 
             string side = js.GetProperty("orderSide").GetString();
@@ -1674,10 +1679,10 @@ namespace Utils
         public void setSharedSpotOrder(SharedSpotOrder update, string market, DateTime? timestamp)
         {
             this.timestamp = DateTime.UtcNow;
-            this.market = market;
+            this.market = Enums.market.NONE;//Undefined
             this.order_id = update.OrderId;
             this.symbol = update.Symbol;
-            this.symbol_market = update.Symbol + "@" + market;
+            this.symbol_market = update.Symbol + "@" + market.ToString();
             this.order_type = (orderType)Enum.Parse(typeof(orderType), update.OrderType.ToString());
             this.side = (orderSide)Enum.Parse(typeof(orderSide), update.Side.ToString());
             this.status = (orderStatus)Enum.Parse(typeof(orderStatus), update.Status.ToString());
@@ -1795,7 +1800,7 @@ namespace Utils
         {
             this.timestamp = null;
             this.symbol_market = "";
-            this.market = "";
+            this.market = market.NONE;
             this.order_id = "";
             this.symbol = "";
             this.order_type = orderType.NONE;
@@ -1854,7 +1859,7 @@ namespace Utils
     }
     public class DataTrade
     {
-        public string? market;
+        public Enums.market market;
         public string? symbol;
         public DateTime? timestamp;
         public DateTime? filled_time;
@@ -1864,7 +1869,7 @@ namespace Utils
 
         public DataTrade()
         {
-            this.market = "";
+            this.market = market.NONE;
             this.symbol = "";
             this.timestamp = null;
             this.filled_time = null;
@@ -1874,7 +1879,7 @@ namespace Utils
         }
         public void setSharedTrade(SharedTrade trd, string? market, string? symbol, DateTime? time)
         {
-            this.market = market;
+            this.market = Enums.market.NONE;//Undefined
             this.symbol = symbol;
             this.timestamp = DateTime.UtcNow;
             this.filled_time = trd.Timestamp;
@@ -1893,7 +1898,7 @@ namespace Utils
             this.price = trd.Price;
             this.quantity = trd.Quantity;
         }
-        public void setBitbankTrade(JsonElement js, string? market, string? symbol)
+        public void setBitbankTrade(JsonElement js, Enums.market market, string? symbol)
         {
             this.market = market;
             this.symbol = symbol;
@@ -1913,10 +1918,11 @@ namespace Utils
         }
         public void setGMOCoinTrade(JsonDocument js)
         {
-            this.market = "gmocoin";
+            this.market = market.gmocoin;
             this.symbol = js.RootElement.GetProperty("symbol").GetString();
             this.timestamp = DateTime.UtcNow;
-            this.filled_time = DateTime.ParseExact(js.RootElement.GetProperty("timestamp").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+            this.filled_time = Functions.convertToDateTime(js.RootElement.GetProperty("timestamp").GetString(), this.market);
+            //this.filled_time = DateTime.ParseExact(js.RootElement.GetProperty("timestamp").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
             string str_side = js.RootElement.GetProperty("side").GetString();
             if (str_side == "BUY")
             {
@@ -1933,7 +1939,7 @@ namespace Utils
         {
             int i = 0;
             this.timestamp = DateTime.UtcNow;
-            this.market = "bittrade";
+            this.market = market.bittrade;
             this.symbol = symbol;
             this.filled_time = DateTimeOffset.FromUnixTimeMilliseconds(js.GetProperty("ts").GetInt64()).UtcDateTime;
             this.price = js.GetProperty("price").GetDecimal();
@@ -1952,7 +1958,7 @@ namespace Utils
         {
             int i = 0;
             this.timestamp = DateTime.UtcNow;
-            this.market = "coincheck";
+            this.market = market.coincheck;
             foreach (var item in js.EnumerateArray())
             {
                 string str_item = item.GetString();
@@ -1995,7 +2001,7 @@ namespace Utils
         }
         public void init()
         {
-            this.market = "";
+            this.market = market.NONE;
             this.symbol = "";
             this.timestamp = null;
             this.filled_time = null;
@@ -2008,6 +2014,160 @@ namespace Utils
         {
             return this.market + "," + this.symbol + "," + ((DateTime)this.timestamp).ToString("yyyy-MM-dd HH:mm:ss.fff") + "," + ((DateTime)this.filled_time).ToString("yyyy-MM-dd HH:mm:ss.fff") + "," + this.side.ToString() + "," + this.price.ToString() + "," + this.quantity.ToString();
         }
+    }
+    public class tradeSummary
+    {
+        public string id;
+        public DateTime? timestamp;
+        public bool BBook;
+        public string maker_symbolmarket;
+        public string taker_symbolmarket;
+        public string maker_orderid;
+        public string taker_orderid;
+
+        public orderSide maker_side;
+        public orderSide taker_side;
+        public decimal maker_avgprice;
+        public decimal taker_avgprice;
+        public decimal maker_quantity;
+        public decimal taker_quantity;
+        public decimal maker_markup;
+        public decimal taker_markup;
+        public decimal skew;
+        public decimal maker_priceAdjustment;
+        public decimal taker_priceAdjustment;
+
+        public decimal totalPnL;
+        public decimal totalFee;
+        public decimal skewPnL;
+        public decimal priceAdjPnL;
+        public decimal markupPnL;
+        public decimal residualPnL;
+
+        public tradeSummary()
+        {
+            this.init();   
+        }
+        public bool setTakerFill(DataFill fill)
+        {
+            if(this.taker_symbolmarket == fill.symbol_market)
+            {
+                if(this.taker_orderid == "")
+                {
+                    this.taker_orderid = fill.internal_order_id;
+                    this.taker_side = fill.side;
+                }
+                else if(this.taker_orderid != fill.internal_order_id || this.taker_side != fill.side)
+                {
+                    return false;
+                }
+                this.taker_avgprice = (this.taker_avgprice * this.taker_quantity + fill.price * fill.quantity) / (this.taker_quantity + fill.quantity);
+                this.taker_quantity += fill.quantity;
+                this.totalFee += fill.fee_quote + fill.fee_base * fill.price;
+            }
+            else
+            {
+                return false;
+            }
+            return true;
+        }
+        public bool setMakerFill(DataFill fill)
+        {
+            if (this.maker_symbolmarket == fill.symbol_market)
+            {
+                if (this.maker_orderid== "")
+                {
+                    this.maker_orderid = fill.internal_order_id;
+                    this.timestamp = fill.filled_time;
+                    this.maker_side = fill.side;
+                }
+                else if (this.maker_orderid != fill.internal_order_id || this.maker_side != fill.side)
+                {
+                    return false;
+                }
+                this.maker_avgprice = (this.maker_avgprice * this.maker_quantity + fill.price * fill.quantity) / (this.maker_quantity + fill.quantity);
+                this.maker_quantity += fill.quantity;
+                this.totalFee += fill.fee_quote + fill.fee_base * fill.price; 
+            }
+            else
+            {
+                return false;
+            }
+            return true;
+        }
+        public void setPricingInfo(string m_symbolmarket,string t_symbolmarket,decimal makerMarkup = 0,decimal takerMarkup = 0,decimal skew = 0,decimal makerPrAdj = 0,decimal takerPrAdj = 0)
+        {
+            this.maker_symbolmarket = m_symbolmarket;
+            this.taker_symbolmarket = t_symbolmarket;
+            this.maker_markup = makerMarkup;
+            this.taker_markup = takerMarkup;
+            this.skew = skew;
+            this.maker_priceAdjustment = makerPrAdj;
+            this.taker_priceAdjustment = takerPrAdj;
+        }
+        public void calcPnL()
+        {
+            decimal quantity = Math.Min(this.taker_quantity,this.maker_quantity);
+            int sign = 1;
+            if(this.maker_side == orderSide.Buy)
+            {
+                sign = -1;
+            }
+            this.totalPnL = quantity * (this.maker_avgprice - this.taker_avgprice) - this.totalFee;
+            if(sign > 0)
+            {
+                this.markupPnL = quantity * (this.maker_avgprice * (1 - 1_000_000 / (1_000_000 + this.maker_markup)) + this.taker_avgprice * (1_000_000 / (1_000_000 - this.taker_markup) - 1));
+            }
+            else if(sign < 0)
+            {
+                this.markupPnL = quantity * (this.maker_avgprice * (1_000_000 / (1_000_000 - this.maker_markup) - 1) + this.taker_avgprice * (1 - 1_000_000 / (1_000_000 + this.taker_markup)));
+            }
+            this.skewPnL = quantity * sign * (this.skew / 1_000_000 * this.taker_avgprice);
+            this.priceAdjPnL = quantity * sign * (this.maker_avgprice * this.maker_priceAdjustment + this.taker_avgprice * - this.taker_priceAdjustment);
+            this.residualPnL = this.totalPnL + this.totalFee - this.markupPnL - this.skewPnL - this.priceAdjPnL;
+        }
+        public void init()
+        {
+            this.id = "";
+            this.timestamp = new DateTime(2000, 1, 1, 0, 0, 0);
+            this.BBook = false;
+            this.maker_symbolmarket = "";
+            this.taker_symbolmarket = "";
+            this.maker_orderid = "";
+            this.taker_orderid = "";
+            this.maker_side = orderSide.NONE;
+            this.taker_side = orderSide.NONE;
+            this.maker_avgprice = 0;
+            this.taker_avgprice = 0;
+            this.maker_quantity = 0;
+            this.taker_quantity = 0;
+            this.maker_markup = 0;
+            this.taker_markup = 0;
+            this.skew = 0;
+            this.maker_priceAdjustment = 0;
+            this.taker_priceAdjustment = 0;
+            this.totalPnL = 0;
+            this.totalFee = 0;
+            this.skewPnL = 0;
+            this.priceAdjPnL = 0;
+            this.markupPnL = 0;
+            this.residualPnL = 0;
+        }
+        public string ToString()
+        {
+            string strtime;
+            if(this.timestamp.HasValue)
+            {
+                strtime = this.timestamp.Value.ToString(GlobalVariables.tmMsecFormat);
+            }
+            else
+            {
+                strtime = "";
+            }
+            //id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,maker_side,maker_avgprice,maker_quantity,taker_side,taker_avgprice,taker_quantity,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL;
+            return $"{strtime},{this.id},{this.BBook},{this.maker_symbolmarket},{this.taker_symbolmarket},{this.maker_orderid},{this.taker_orderid},{this.maker_side},{this.maker_avgprice},{this.maker_quantity},{this.taker_side},{this.taker_avgprice},{this.taker_quantity},{this.maker_markup},{this.taker_markup},{this.skew},{this.maker_priceAdjustment},{this.taker_priceAdjustment},{this.markupPnL},{this.skewPnL},{this.priceAdjPnL},{this.residualPnL},{this.totalFee},{this.totalPnL}";
+        }
+
     }
     public class logEntry
     {

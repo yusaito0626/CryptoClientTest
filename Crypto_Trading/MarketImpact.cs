@@ -66,7 +66,7 @@ namespace Crypto_Trading
         public void startRecording(DataTrade trd, Instrument ins)
         {
             this.fill_id = "";
-            this.symbol_market = trd.symbol + "@" + trd.market;
+            this.symbol_market = trd.symbol + "@" + trd.market.ToString();
             this.filled_quantity = trd.quantity;
             this.filled_price = trd.price;
             switch(trd.side)

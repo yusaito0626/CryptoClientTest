@@ -12,7 +12,7 @@ namespace Crypto_Trading
 {
     public class ExchangeBalance
     {
-        public string market;
+        public Enums.market market;
         public Dictionary<string, Balance> balance;
         public Dictionary<string, BalanceMargin> marginLong;
         public Dictionary<string,BalanceMargin> marginShort;
@@ -23,7 +23,7 @@ namespace Crypto_Trading
 
         public ExchangeBalance()
         {
-            this.market = "";
+            this.market = market.NONE;
             this.balance = new Dictionary<string,Balance>();
             this.marginLong = new Dictionary<string,BalanceMargin>();
             this.marginShort = new Dictionary<string, BalanceMargin>();
@@ -102,7 +102,7 @@ namespace Crypto_Trading
     public class Balance
     {
         public string ccy;
-        public string market;
+        public Enums.market market;
 
         public decimal current_price;
         public string valuation_pair;
@@ -115,7 +115,7 @@ namespace Crypto_Trading
         public Balance() 
         {
             this.ccy = "";
-            this.market = "";
+            this.market = market.NONE;
             this._total = 0;
             this._inuse = 0;
             this.current_price = 1;
@@ -124,7 +124,7 @@ namespace Crypto_Trading
         public void setFromBalanceInfo(balanceInfo info)
         {
             this.ccy = info.symbol;
-            this.market = info.market;
+            this.market = (market)Enum.Parse(typeof(market),info.market);
             this.total = info.total;
             this.current_price = info.current_price;
             this.valuation_pair = info.valuation_pair;
@@ -171,8 +171,8 @@ namespace Crypto_Trading
     public class BalanceMargin
     {
         public string symbol;
-        public string market;
-        public string symbol_market { get { return symbol + "@" + market; } }
+        public Enums.market market;
+        public string symbol_market { get { return symbol + "@" + market.ToString(); } }
         public positionSide side;
         public decimal avg_price;
         private decimal _total;
@@ -215,7 +215,7 @@ namespace Crypto_Trading
         public void setFromBalanceInfo(balanceInfo info)
         {
             this.symbol = info.symbol;
-            this.market = info.market;
+            this.market = (market)Enum.Parse(typeof(market),info.market);
             if(info.side.ToLower() == "long")
             {
                 this.side = positionSide.Long;

@@ -205,7 +205,7 @@ namespace Crypto_Linux
             {
                 instrumentInfo insInfo = new instrumentInfo();
                 insInfo.symbol = ins.symbol;
-                insInfo.market = ins.market;
+                insInfo.market = ins.market.ToString();
                 insInfo.symbol_market = ins.symbol_market;
                 insInfo.baseCcy = ins.baseCcy;
                 insInfo.quoteCcy = ins.quoteCcy;
@@ -227,7 +227,7 @@ namespace Crypto_Linux
             {
                 masterInfo ms = new masterInfo();
                 ms.symbol = ins.Value.symbol;
-                ms.market = ins.Value.market;
+                ms.market = ins.Value.market.ToString();
                 ms.baseCcy = ins.Value.baseCcy;
                 ms.quoteCcy = ins.Value.quoteCcy;
                 ms.taker_fee = ins.Value.taker_fee;
@@ -245,8 +245,8 @@ namespace Crypto_Linux
                 setting.name = stg.Value.name;
                 setting.baseCcy = stg.Value.baseCcy;
                 setting.quoteCcy = stg.Value.quoteCcy;
-                setting.taker_market = stg.Value.taker_market;
-                setting.maker_market = stg.Value.maker_market;
+                setting.taker_market = stg.Value.taker_market.ToString();
+                setting.maker_market = stg.Value.maker_market.ToString();
                 setting.order_throttle = stg.Value.order_throttle;
                 setting.markup = stg.Value.const_markup;
                 setting.min_markup = stg.Value.min_markup;
@@ -264,7 +264,7 @@ namespace Crypto_Linux
                 setting.rv_penalty_multiplier = stg.Value.rv_penalty_multiplier;
                 setting.rv_base_param = stg.Value.rv_base_param;
                 setting.maxBaseMarkup = stg.Value.max_baseMarkup;
-                setting.predictFill = stg.Value.predictFill;
+                //setting.predictFill = stg.Value.predictFill;
                 setting.skew_type = stg.Value.skew_type.ToString();
                 setting.skew_step = stg.Value.skew_step;
                 stgSettings[stg.Key] = setting;
@@ -297,7 +297,7 @@ namespace Crypto_Linux
                 i = 0;
                 int trial = 3;
                 Stopwatch sw = new Stopwatch();
-                Dictionary<string, double> avgLatency = new Dictionary<string, double>();
+                Dictionary<market, double> avgLatency = new Dictionary<market, double>();
                 double latency = 0;
 
                 while (i < trial)
@@ -529,7 +529,7 @@ namespace Crypto_Linux
             latency_msg += "Live Order Count:" + oManager.live_orders.Count.ToString() + "\n";
             foreach (var o in oManager.live_orders.Values)
             {
-                latency_msg += o.internal_order_id + " " + o.side.ToString() + " " + o.order_quantity.ToString() + "@" + o.order_price.ToString("N0") + "\n";
+                latency_msg += o.internal_order_id + " " + o.side.ToString() + " " + o.order_quantity.ToString() + "@" + o.order_price.ToString() + "\n";
             }
             pnl = new intradayPnL();
             pnl.strategy_name = "Total";
@@ -756,7 +756,7 @@ namespace Crypto_Linux
                         {
                             fInfo.timestamp = "";
                         }
-                        fInfo.market = fill.market;
+                        fInfo.market = fill.market.ToString();
                         fInfo.symbol = fill.symbol;
                         fInfo.side = fill.side.ToString();
                         fInfo.fill_price = fill.price.ToString("N" + ins.price_scale);
@@ -969,7 +969,7 @@ namespace Crypto_Linux
             {
                 foreach (var mkt in qManager._markets.Keys)
                 {
-                    APIList.Add(mkt.ToUpper() + "_" + tradeState);
+                    APIList.Add(mkt.ToString().ToUpper() + "_" + tradeState);
                 }
             }
 
@@ -1028,7 +1028,7 @@ namespace Crypto_Linux
                 {
                     addLog("The API secret key for " + mkt + "is not found", Enums.logType.ERROR);
                 }
-                crypto_client.setCredentials(mkt, api_name, api_key);
+                crypto_client.setCredentials((market)Enum.Parse(typeof(market),mkt), api_name, api_key);
             }
         }
         static private void setStrategies(string strategyFile)
@@ -1050,8 +1050,8 @@ namespace Crypto_Linux
                     strategyInfo stginfo = new strategyInfo();
                     stginfo.baseCcy = stg.baseCcy;
                     stginfo.quoteCcy = stg.quoteCcy;
-                    stginfo.maker_market = stg.maker_market;
-                    stginfo.taker_market = stg.taker_market;
+                    stginfo.maker_market = stg.maker_market.ToString();
+                    stginfo.taker_market = stg.taker_market.ToString();
                     stginfo.maker_symbol_market = stg.maker_symbol_market;
                     stginfo.taker_symbol_market = stg.taker_symbol_market;
                     stginfo.name = stg.name;
@@ -1096,24 +1096,25 @@ namespace Crypto_Linux
                             return false;
                         }
                     }
-                    connectionStates[mkt.Key] = new connecitonStatus() { market = mkt.Key, publicState = WebSocketState.None.ToString(), privateState = WebSocketState.None.ToString(), avgRTT = 0.0 };
+                    connectionStates[mkt.Key.ToString()] = new connecitonStatus() { market = mkt.Key.ToString(), publicState = WebSocketState.None.ToString(), privateState = WebSocketState.None.ToString(), avgRTT = 0.0 };
                 }
 
                 foreach (var ins in qManager.instruments.Values)
                 {
-                    string[] markets = [ins.market];
-                    if (ins.market == Exchange.Bybit)
-                    {
-                        await crypto_client.subscribeBybitOrderBook(ins.baseCcy, ins.quoteCcy);
-                    }
-                    else if (ins.market == Exchange.Coinbase)
-                    {
-                        await crypto_client.subscribeCoinbaseOrderBook(ins.baseCcy, ins.quoteCcy);
-                    }
-                    else
-                    {
-                        await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
-                    }
+                    market[] markets = [ins.market];
+                    //if (ins.market == Exchange.Bybit)
+                    //{
+                    //    await crypto_client.subscribeBybitOrderBook(ins.baseCcy, ins.quoteCcy);
+                    //}
+                    //else if (ins.market == Exchange.Coinbase)
+                    //{
+                    //    await crypto_client.subscribeCoinbaseOrderBook(ins.baseCcy, ins.quoteCcy);
+                    //}
+                    //else
+                    //{
+                    //    await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
+                    //}
+                    await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
                     await crypto_client.subscribeTrades(markets, ins.baseCcy, ins.quoteCcy);
                 }
 
@@ -1489,7 +1490,7 @@ namespace Crypto_Linux
                             if (balanceType == "SPOT")
                             {
                                 Balance b = new Balance();
-                                b.market = items[1];
+                                b.market = (market)Enum.Parse(typeof(market),items[1]);
                                 b.ccy = items[3];
                                 b.total = decimal.Parse(items[5]);
                                 b.current_price = decimal.Parse(items[7]);
@@ -1508,7 +1509,7 @@ namespace Crypto_Linux
 
 
                                 b = new Balance();
-                                b.market = items[1];
+                                b.market = (market)Enum.Parse(typeof(market), items[1]);
                                 b.ccy = items[3];
                                 b.total = decimal.Parse(items[5]);
                                 b.current_price = decimal.Parse(items[7]);
@@ -1526,7 +1527,7 @@ namespace Crypto_Linux
                                 exBalance.balance[b.ccy] = b;
 
                                 balanceInfo bi = new balanceInfo();
-                                bi.market = b.market;
+                                bi.market = b.market.ToString();
                                 bi.posType = "SPOT";
                                 bi.symbol = b.ccy;
                                 bi.side = "";
@@ -1542,7 +1543,7 @@ namespace Crypto_Linux
                             else if (balanceType == "MARGIN")
                             {
                                 BalanceMargin bm = new BalanceMargin();
-                                bm.market = items[1];
+                                bm.market = (market)Enum.Parse(typeof(market), items[1]);
                                 bm.symbol = items[3];
                                 string str_side = items[4];
                                 if (str_side.ToLower() == "long")
@@ -1582,7 +1583,7 @@ namespace Crypto_Linux
                                 }
 
                                 bm = new BalanceMargin();
-                                bm.market = items[1];
+                                bm.market = (market)Enum.Parse(typeof(market), items[1]);
                                 bm.symbol = items[3];
                                 str_side = items[4];
                                 if (str_side.ToLower() == "long")
@@ -1622,7 +1623,7 @@ namespace Crypto_Linux
                                 }
 
                                 balanceInfo bi = new balanceInfo();
-                                bi.market = bm.market;
+                                bi.market = bm.market.ToString();
                                 bi.posType = "MARGIN";
                                 bi.symbol = bm.symbol;
                                 bi.side = bm.side.ToString();
@@ -1732,7 +1733,7 @@ namespace Crypto_Linux
                 foreach (var mkt in qManager._markets.Keys)
                 {
                     List<DataFill> temp_histFill;
-                    if (mkt == "gmocoin")
+                    if (mkt == market.gmocoin)
                     {
                         foreach(Instrument ins in qManager.instruments.Values)
                         {
@@ -1873,7 +1874,7 @@ namespace Crypto_Linux
                 foreach (var mkt in qManager._markets.Keys)
                 {
                     List<DataFill> temp_histFill;
-                    if (mkt == "gmocoin")
+                    if (mkt == market.gmocoin)
                     {
                         foreach (Instrument ins in qManager.instruments.Values)
                         {
@@ -2170,23 +2171,47 @@ namespace Crypto_Linux
 
                         foreach (var stg in strategies.Values)
                         {
-                            decimal baseBalance_open = stg.maker.SoD_baseBalance.total + stg.taker.SoD_baseBalance.total;
+                            //decimal baseBalance_open = stg.maker.SoD_baseBalance.total + stg.taker.SoD_baseBalance.total;
+                            //decimal quoteBalance_open = stg.maker.SoD_quoteBalance.total + stg.taker.SoD_quoteBalance.total;
+                            //decimal baseBalance_close = stg.maker.baseBalance.total + stg.taker.baseBalance.total;
+                            //decimal quoteBalance_close = stg.maker.quoteBalance.total + stg.taker.quoteBalance.total;
+
+                            decimal baseBalance_open = stg.maker.SoD_baseBalance.total + stg.maker.SoD_longPosition.total - stg.maker.SoD_shortPosition.total
+                                                        + stg.taker.SoD_baseBalance.total + stg.taker.SoD_longPosition.total - stg.taker.SoD_shortPosition.total;
                             decimal quoteBalance_open = stg.maker.SoD_quoteBalance.total + stg.taker.SoD_quoteBalance.total;
-                            decimal baseBalance_close = stg.maker.baseBalance.total + stg.taker.baseBalance.total;
+                            decimal baseBalance_close = stg.maker.baseBalance.total + stg.maker.longPosition.total - stg.maker.shortPosition.total
+                                                        + stg.taker.baseBalance.total + stg.taker.longPosition.total - stg.taker.shortPosition.total; ;
                             decimal quoteBalance_close = stg.maker.quoteBalance.total + stg.taker.quoteBalance.total;
 
-                            stg.taker.mid = await crypto_client.getCurrentMid(stg.taker.market, stg.taker.symbol);
-                            stg.maker.mid = await crypto_client.getCurrentMid(stg.maker.market, stg.maker.symbol);
+                            decimal temp_mid;
+                            temp_mid = await crypto_client.getCurrentMid(stg.taker.market, stg.taker.symbol);
+                            if(temp_mid > 0)
+                            {
+                                stg.taker.mid = temp_mid;
+                            }
+                            temp_mid = await crypto_client.getCurrentMid(stg.maker.market, stg.maker.symbol);
+                            if(temp_mid > 0)
+                            {
+                                stg.maker.mid = temp_mid;
+                            }
 
-                            decimal notionalVolume = stg.maker.my_buy_notional + stg.maker.my_sell_notional;
+                            stg.netExposure = stg.maker.net_pos + stg.taker.net_pos;
+                            stg.notionalVolume = stg.maker.my_buy_notional + stg.maker.my_sell_notional;
+                            stg.posPnL = stg.SoD_baseCcyPos * (stg.taker.mid - stg.taker.open_mid);
+                            stg.tradingPnL = (stg.taker.my_sell_notional - stg.taker.my_sell_quantity * stg.taker.mid) + (stg.taker.my_buy_quantity * stg.taker.mid - stg.taker.my_buy_notional);
+                            stg.tradingPnL += (stg.maker.my_sell_notional - stg.maker.my_sell_quantity * stg.taker.mid) + (stg.maker.my_buy_quantity * stg.taker.mid - stg.maker.my_buy_notional);
+                            stg.totalFee = stg.taker.base_fee * stg.taker.mid + stg.taker.quote_fee + stg.maker.base_fee * stg.taker.mid + stg.maker.quote_fee;
+                            stg.totalPnL = stg.posPnL + stg.tradingPnL - stg.totalFee;
+
+                            //decimal notionalVolume = stg.maker.my_buy_notional + stg.maker.my_sell_notional;
 
                             decimal sell_avgprice = stg.maker.my_sell_quantity > 0 ? stg.maker.my_sell_notional / stg.maker.my_sell_quantity : 0;
                             decimal buy_avgprice = stg.maker.my_buy_quantity > 0 ? stg.maker.my_buy_notional / stg.maker.my_buy_quantity : 0;
 
-                            decimal totalPnL = (stg.maker.SoD_baseBalance.total + stg.maker.SoD_longPosition.total - stg.maker.SoD_shortPosition.total + stg.taker.SoD_baseBalance.total) * (stg.taker.mid - stg.taker.open_mid)
-                                + (stg.taker.my_sell_notional - stg.taker.my_sell_quantity * stg.taker.mid) + (stg.taker.my_buy_quantity * stg.taker.mid - stg.taker.my_buy_notional)
-                                + (stg.maker.my_sell_notional - stg.maker.my_sell_quantity * stg.taker.mid) + (stg.maker.my_buy_quantity * stg.taker.mid - stg.maker.my_buy_notional)
-                                - (stg.taker.base_fee * stg.taker.mid + stg.taker.quote_fee + stg.maker.base_fee * stg.taker.mid + stg.maker.quote_fee);
+                            //decimal totalPnL = (stg.maker.SoD_baseBalance.total + stg.maker.SoD_longPosition.total - stg.maker.SoD_shortPosition.total + stg.taker.SoD_baseBalance.total) * (stg.taker.mid - stg.taker.open_mid)
+                            //    + (stg.taker.my_sell_notional - stg.taker.my_sell_quantity * stg.taker.mid) + (stg.taker.my_buy_quantity * stg.taker.mid - stg.taker.my_buy_notional)
+                            //    + (stg.maker.my_sell_notional - stg.maker.my_sell_quantity * stg.taker.mid) + (stg.maker.my_buy_quantity * stg.taker.mid - stg.maker.my_buy_notional)
+                            //    - (stg.taker.base_fee * stg.taker.mid + stg.taker.quote_fee + stg.maker.base_fee * stg.taker.mid + stg.maker.quote_fee);
 
                             decimal interest = stg.taker.realized_Interest + stg.maker.realized_Interest
                                                 + stg.taker.shortPosition.unrealized_interest - stg.taker.SoD_shortPosition.unrealized_interest
@@ -2211,16 +2236,32 @@ namespace Crypto_Linux
                             decimal BBookPnL = (sell_avgprice - stg.maker.mid) * stg.maker.my_sell_quantity + (stg.maker.mid - buy_avgprice) * stg.maker.my_buy_quantity;
 
                             string line = today + "," + stg.name + "," + baseBalance_open.ToString() + "," + quoteBalance_open.ToString() + ","
-                                + baseBalance_close.ToString() + "," + quoteBalance_close.ToString() + "," + stg.maxMakerPosition.ToString() + "," + notionalVolume.ToString() + "," + stg.taker.open_mid.ToString() + "," + stg.taker.mid.ToString() + ","
+                                + baseBalance_close.ToString() + "," + quoteBalance_close.ToString() + "," + stg.maxMakerPosition.ToString() + "," + stg.notionalVolume.ToString() + "," + stg.taker.open_mid.ToString() + "," + stg.taker.mid.ToString() + ","
                                 + stg.maker.my_buy_quantity + "," + buy_avgprice + "," + stg.maker.my_sell_quantity + "," + sell_avgprice + ","
-                                + totalPnL.ToString() + "," + (- interest).ToString() + "," + pos_diff.ToString() + "," + unrealized_diff.ToString() + "," + BBookPnL.ToString();
+                                + stg.totalPnL.ToString() + "," + (- interest).ToString() + "," + pos_diff.ToString() + "," + unrealized_diff.ToString() + "," + BBookPnL.ToString();
 
                             lines.Add(line);
                         }
 
                         File.WriteAllLines(performanceFile, lines);
                     }
-                    
+
+                    addLog("Trade per trade");
+                    string TPT_file = outputPath + "/TPT_" + DateTime.UtcNow.ToString("HHmmss") + ".csv";
+                    using (StreamWriter tpt = new StreamWriter(new FileStream(TPT_file, FileMode.Create, FileAccess.Write)))
+                    {
+                        tpt.WriteLine("timestamp,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,maker_side,maker_avgprice,maker_quantity,taker_side,taker_avgprice,taker_quantity,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL");
+                        foreach(var stg in strategies.Values)
+                        {
+                            foreach(var ts in stg.tradeSummaries.Values)
+                            {
+                                ts.calcPnL();
+                                tpt.WriteLine(ts.ToString());
+                            }
+                            stg.tradeSummaries.Clear();
+                        }
+                    }
+
                     string dt = (DateTime.UtcNow + TimeSpan.FromDays(1)).ToString("yyyy-MM-dd");
                     string newpath = outputPath_org + "/" + dt;
                     if (!Directory.Exists(newpath))
@@ -2337,26 +2378,26 @@ namespace Crypto_Linux
             oManager.checkConnections();
             foreach (var mkt in qManager._markets)
             {
-                status = connectionStates[mkt.Key];
+                status = connectionStates[mkt.Key.ToString()];
                 status.publicState = mkt.Value.ToString();
             }
 
             foreach (var mkt in oManager.connections)
             {
-                status = connectionStates[mkt.Key];
+                status = connectionStates[mkt.Key.ToString()];
                 status.privateState = mkt.Value.ToString();
                 switch (mkt.Key)
                 {
-                    case "bitbank":
+                    case market.bitbank:
                         status.avgRTT = crypto_client.bitbank_client.avgLatency() / 1000;
                         break;
-                    case "gmocoin":
+                    case market.gmocoin:
                         status.avgRTT = crypto_client.gmocoin_client.avgLatency() / 1000;
                         break;
-                    case "coincheck":
+                    case market.coincheck:
                         status.avgRTT = crypto_client.coincheck_client.avgLatency() / 1000;
                         break;
-                    case "bittrade":
+                    case market.bittrade:
                         status.avgRTT = crypto_client.bittrade_client.avgLatency() / 1000;
                         break;
                     default:
@@ -2419,7 +2460,7 @@ namespace Crypto_Linux
                         addLog("Public Connection to " + market + " lost reconnecting in 5 sec", Enums.logType.WARNING);
                         thManager.disposeThread(stoppedTh);
                         Thread.Sleep(5000);
-                        if(!await qManager.connectPublicChannel(market))
+                        if(!await qManager.connectPublicChannel((market)Enum.Parse(typeof(market),market)))
                         {
                             addLog("Failed to reconnect public. market:" + market, logType.ERROR);
                             return;
@@ -2427,21 +2468,22 @@ namespace Crypto_Linux
                         Thread.Sleep(5000);
                         foreach (var ins in qManager.instruments.Values)
                         {
-                            string[] markets = [ins.market];
-                            if (market == ins.market)
+                            market[] markets = [ins.market];
+                            if (market == ins.market.ToString())
                             {
-                                if (ins.market == Exchange.Bybit)
-                                {
-                                    await crypto_client.subscribeBybitOrderBook(ins.baseCcy, ins.quoteCcy);
-                                }
-                                else if (ins.market == Exchange.Coinbase)
-                                {
-                                    await crypto_client.subscribeCoinbaseOrderBook(ins.baseCcy, ins.quoteCcy);
-                                }
-                                else
-                                {
-                                    await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
-                                }
+                                //if (ins.market == Exchange.Bybit)
+                                //{
+                                //    await crypto_client.subscribeBybitOrderBook(ins.baseCcy, ins.quoteCcy);
+                                //}
+                                //else if (ins.market == Exchange.Coinbase)
+                                //{
+                                //    await crypto_client.subscribeCoinbaseOrderBook(ins.baseCcy, ins.quoteCcy);
+                                //}
+                                //else
+                                //{
+                                //    await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
+                                //}
+                                await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
                                 await crypto_client.subscribeTrades(markets, ins.baseCcy, ins.quoteCcy);
                             }
                         }
@@ -2487,13 +2529,13 @@ namespace Crypto_Linux
                         addLog("Private Connection to " + market + " lost reconnecting in 5 sec", Enums.logType.WARNING);
                         thManager.disposeThread(stoppedTh);
                         Thread.Sleep(5000);
-                        if(!await oManager.connectPrivateChannel(market))
+                        if(!await oManager.connectPrivateChannel((market)Enum.Parse(typeof(market),market)))
                         {
                             addLog("Failed to reconnect private. market:" + market, logType.ERROR);
                             return;
                         }
                         Thread.Sleep(5000);
-                        string[] markets = [market];
+                        market[] markets = [(market)Enum.Parse(typeof(market), market)];
                         if (live || privateConnect)
                         {
                             await crypto_client.subscribeSpotOrderUpdates(markets);
@@ -2772,6 +2814,28 @@ namespace Crypto_Linux
                                     if (mismatch_count >= 3)
                                     {
                                         addLog("Order count didn't match " + stg.maker.market + ":" + ordList.Count.ToString() + " live_orders:" + live_orders_count.ToString(), logType.WARNING);
+                                        while(Interlocked.CompareExchange(ref oManager.order_lock,1,0) != 0)
+                                        {
+                                            
+                                        }
+                                        List<string> removing = new List<string>();
+                                        foreach(var o in oManager.live_orders)
+                                        {
+                                            if((o.Value.status != orderStatus.WaitOpen && o.Value.status != orderStatus.Open && o.Value.status != orderStatus.WaitCancel))
+                                            {
+                                                addLog(o.Value.ToString());
+                                                removing.Add(o.Key);
+                                            }
+                                            else if(o.Value.side == orderSide.NONE)
+                                            {
+                                                addLog(o.Value.ToString());
+                                            }
+                                        }
+                                        foreach (var r in removing)
+                                        {
+                                            oManager.live_orders.Remove(r);
+                                        }
+                                        Volatile.Write(ref oManager.order_lock, 0);
                                     }
                                 }
                                 else

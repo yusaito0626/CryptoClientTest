@@ -159,25 +159,25 @@ namespace Crypto_Clients
             }
         }
 
-        public Func<Action, Action, CancellationToken, int, Task<bool>>? setMsgLogging(string market, string outputPath)
+        public Func<Action, Action, CancellationToken, int, Task<bool>>? setMsgLogging(Enums.market market, string outputPath)
         {
             this.megLogging = true;
             Func<Action, Action, CancellationToken, int, Task<bool>>? ret = null;
             switch (market)
             {
-                case "bitbank":
+                case market.bitbank:
                     this.bitbank_client.setLogFile(outputPath);
                     ret = this.bitbank_client.msgLogging;
                     break;
-                case "gmocoin":
+                case market.gmocoin:
                     this.gmocoin_client.setLogFile(outputPath);
                     ret = this.gmocoin_client.msgLogging;
                     break;
-                case "coincheck":
+                case market.coincheck:
                     this.coincheck_client.setLogFile(outputPath);
                     ret = this.coincheck_client.msgLogging;
                     break;
-                case "bittrade":
+                case market.bittrade:
                     this.addLog("Message logging is not defined for " + market, logType.WARNING);
                     //this.bittrade_client.setLogFile(outputPath);
                     break;
@@ -203,7 +203,7 @@ namespace Crypto_Clients
         //    {
         //        switch(market)
         //        {
-        //            case "bitbank":
+        //            case market.bitbank:
         //                await this.bitbank_client.connectPublicAsync();
         //                this.bitbankPublicChannelTh = new Thread(() =>
         //                {
@@ -211,7 +211,7 @@ namespace Crypto_Clients
         //                });
         //                this.bitbankPublicChannelTh.Start();
         //                break;
-        //            case "coincheck":
+        //            case market.coincheck:
         //                await this.coincheck_client.connectPublicAsync();
         //                this.coincheckPublicChannelsTh = new Thread(() =>
         //                {
@@ -225,7 +225,7 @@ namespace Crypto_Clients
         //                //});
         //                //this.coincheckPrivateChannelsTh.Start();
         //                break;
-        //            case "bittrade":
+        //            case market.bittrade:
         //                await this.bittrade_client.connectPublicAsync();
         //                this.bittradePublicChannelTh = new Thread(() =>
         //                {
@@ -260,26 +260,26 @@ namespace Crypto_Clients
             this.ordUpdateStack.push(msg);
         }
 
-        public void setCredentials(string market,string name, string key)
+        public void setCredentials(Enums.market market,string name, string key)
         {
             switch (market)
             {
-                case string value when value == Exchange.Bybit:
-                    this.creds.Bybit = new CryptoExchange.Net.Authentication.ApiCredentials(name, key);
-                    break;
-                case string value when value == Exchange.Coinbase:
-                    this.creds.Coinbase = new CryptoExchange.Net.Authentication.ApiCredentials(name, key);
-                    break;
-                case "bitbank":
+                //case string value when value == Exchange.Bybit:
+                //    this.creds.Bybit = new CryptoExchange.Net.Authentication.ApiCredentials(name, key);
+                //    break;
+                //case string value when value == Exchange.Coinbase:
+                //    this.creds.Coinbase = new CryptoExchange.Net.Authentication.ApiCredentials(name, key);
+                //    break;
+                case market.bitbank:
                     this.bitbank_client.SetApiCredentials(name, key);
                     break;
-                case "coincheck":
+                case market.coincheck:
                     this.coincheck_client.SetApiCredentials(name, key);
                     break;
-                case "bittrade":
+                case market.bittrade:
                     this.bittrade_client.SetApiCredentials(name, key);
                     break;
-                case "gmocoin":
+                case market.gmocoin:
                     this.gmocoin_client.SetApiCredentials(name, key);
                     break;
             }
@@ -293,7 +293,7 @@ namespace Crypto_Clients
             using JsonDocument doc = JsonDocument.Parse(fileContent);
             var root = doc.RootElement;
 
-            string market = root.GetProperty("market").GetString();
+            Enums.market market = (market)Enum.Parse(typeof(market),root.GetProperty("market").GetString());
             string name = root.GetProperty("name").GetString();
             string key = root.GetProperty("privateKey").GetString();
 
@@ -307,13 +307,13 @@ namespace Crypto_Clients
             //    case string value when value == Exchange.Coinbase:
             //        this.creds.Coinbase = new CryptoExchange.Net.Authentication.ApiCredentials(root.GetProperty("name").ToString(), root.GetProperty("privateKey").ToString());
             //        break;
-            //    case "bitbank":
+            //    case market.bitbank:
             //        this.bitbank_client.SetApiCredentials(root.GetProperty("name").ToString(), root.GetProperty("privateKey").ToString());
             //        break;
-            //    case "coincheck":
+            //    case market.coincheck:
             //        this.coincheck_client.SetApiCredentials(root.GetProperty("name").ToString(), root.GetProperty("privateKey").ToString());
             //        break;
-            //    case "bittrade":
+            //    case market.bittrade:
             //        this.bittrade_client.SetApiCredentials(root.GetProperty("name").ToString(), root.GetProperty("privateKey").ToString());
             //        break;
             //}
@@ -322,7 +322,7 @@ namespace Crypto_Clients
         }
 
         //REST API
-        async public Task<DataBalance[]> getBalance(IEnumerable<string>? markets)
+        async public Task<DataBalance[]> getBalance(IEnumerable<Enums.market>? markets)
         {
             GetBalancesRequest req = new GetBalancesRequest(TradingMode.Spot);
             List<DataBalance> temp = new List<DataBalance>();
@@ -331,7 +331,7 @@ namespace Crypto_Clients
             {
                 switch(m)
                 {
-                    case "bitbank":
+                    case market.bitbank:
                         js = await this.bitbank_client.getBalance();
                         if(js.RootElement.GetProperty("success").GetUInt16() == 1)
                         {
@@ -352,7 +352,7 @@ namespace Crypto_Clients
                             this.addLog(JsonSerializer.Serialize(js), Enums.logType.WARNING);
                         }
                         break;
-                    case "gmocoin":
+                    case market.gmocoin:
                         js = await this.gmocoin_client.getBalance();
                         JsonElement res;
                         if (js.RootElement.TryGetProperty("status",out res) && res.GetInt32() == 0)
@@ -373,9 +373,8 @@ namespace Crypto_Clients
                             this.addLog("Failed to get the balance information. Exchange:" + m, Enums.logType.WARNING);
                             this.addLog(JsonSerializer.Serialize(js), Enums.logType.WARNING);
                         }
-                        Thread.Sleep(1000);
                         break;
-                    case "coincheck":
+                    case market.coincheck:
                         js = await this.coincheck_client.getBalance();
                         if (js.RootElement.GetProperty("success").GetBoolean())
                         {
@@ -431,7 +430,7 @@ namespace Crypto_Clients
                             this.addLog(JsonSerializer.Serialize(js), Enums.logType.WARNING);
                         }
                         break;
-                    case "bittrade":
+                    case market.bittrade:
                         js = await this.bittrade_client.getBalance();
                         if(js.RootElement.GetProperty("status").GetString()=="ok")
                         {
@@ -485,7 +484,7 @@ namespace Crypto_Clients
                         }
                         break;
                     default:
-                        var result = await this._rest_client.GetBalancesAsync(m, req);
+                        var result = await this._rest_client.GetBalancesAsync(m.ToString(), req);
                         if(result.Success)
                         {
                             foreach(var d in result.Data)
@@ -507,15 +506,15 @@ namespace Crypto_Clients
             }
             return temp.ToArray();
         }
-        async public Task<DataMarginPos[]> getMarginPos(IEnumerable<string>? markets)
+        async public Task<DataMarginPos[]> getMarginPos(IEnumerable<market>? markets)
         {
             List<DataMarginPos> temp = new List<DataMarginPos>();
             JsonDocument js;
-            foreach(string market in markets)
+            foreach(market market in markets)
             {
                 switch (market)
                 {
-                    case "bitbank":
+                    case market.bitbank:
                         js = await this.bitbank_client.getMarginPosition();
                         if (js.RootElement.GetProperty("success").GetInt16() == 1)
                         {
@@ -545,7 +544,7 @@ namespace Crypto_Clients
                             this.addLog($"Failed to get the margin position of {market}. message:{js.RootElement.ToString()}", logType.WARNING);
                         }
                         break;
-                    case "gmocoin":
+                    case market.gmocoin:
                         js = await this.gmocoin_client.getMarginPosition();
                         JsonElement res;
                         if (js.RootElement.TryGetProperty("status", out res) && res.GetInt32() == 0)
@@ -575,14 +574,14 @@ namespace Crypto_Clients
             }            
             return temp.ToArray();
         }
-        public async Task<List<DataSpotOrderUpdate>> getActiveOrders(string market,List<string> symList = null)
+        public async Task<List<DataSpotOrderUpdate>> getActiveOrders(Enums.market market,List<string> symList = null)
         {
             DataSpotOrderUpdate ord;
             List<DataSpotOrderUpdate> l = new List<DataSpotOrderUpdate>();
             JsonDocument js;
             switch (market)
             {
-                case "bitbank":
+                case market.bitbank:
                     js = await this.bitbank_client.getActiveOrders();
                     if (js.RootElement.GetProperty("success").GetInt16() == 1)
                     {
@@ -605,7 +604,7 @@ namespace Crypto_Clients
                         l = null;
                     }
                     break;
-                case "coincheck":
+                case market.coincheck:
                     js = await this.coincheck_client.getActiveOrders();
                     if (js.RootElement.GetProperty("success").GetBoolean())
                     {
@@ -622,7 +621,7 @@ namespace Crypto_Clients
                                 ord = new DataSpotOrderUpdate();
                             }
                             ord.symbol = item.GetProperty("pair").GetString();
-                            ord.market = "coincheck";
+                            ord.market = market;
                             string ord_type = item.GetProperty("order_type").GetString();
                             switch(ord_type)
                             {
@@ -638,7 +637,7 @@ namespace Crypto_Clients
                             }
                             ord.order_type = orderType.Limit;
                             ord.status = orderStatus.Open;
-                            ord.symbol_market = ord.symbol + "@" + ord.market;
+                            ord.symbol_market = ord.symbol + "@" + ord.market.ToString();
                             ord.order_id = item.GetProperty("id").GetInt64().ToString();
                             ord.order_price = decimal.Parse(item.GetProperty("rate").GetString());
                             ord.order_quantity = decimal.Parse(item.GetProperty("pending_amount").GetString());
@@ -653,7 +652,7 @@ namespace Crypto_Clients
                         l = null;
                     }
                     break;
-                case "bittrade":
+                case market.bittrade:
                     js = await this.bittrade_client.getActiveOrders();
                     //this.addLog(JsonSerializer.Serialize(js));
                     if (js.RootElement.GetProperty("status").GetString() == "ok")
@@ -742,7 +741,7 @@ namespace Crypto_Clients
                         l = null;
                     }
                     break;
-                case "gmocoin":
+                case market.gmocoin:
                     if(symList != null)
                     {
                         foreach(string symbol in symList)
@@ -763,7 +762,8 @@ namespace Crypto_Clients
                                             ord = new DataSpotOrderUpdate();
                                         }
                                         ord.symbol = elem.GetProperty("symbol").GetString();
-                                        ord.create_time = DateTime.ParseExact(elem.GetProperty("timestamp").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+                                        ord.create_time = Functions.convertToDateTime(elem.GetProperty("timestamp").GetString(), Enums.market.gmocoin);
+                                        //ord.create_time = DateTime.ParseExact(elem.GetProperty("timestamp").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
                                         ord.update_time = ord.create_time;
                                         ord.order_quantity = decimal.Parse(elem.GetProperty("size").GetString());
                                         ord.filled_quantity = decimal.Parse(elem.GetProperty("executedSize").GetString());
@@ -843,7 +843,7 @@ namespace Crypto_Clients
             return l;
         }
 
-        public async Task<List<DataTrade>> getVolumeHistory(string market,string symbol, DateTime? startTime = null, DateTime? endTime = null)
+        public async Task<List<DataTrade>> getVolumeHistory(Enums.market market,string symbol, DateTime? startTime = null, DateTime? endTime = null)
         {
             List<DataTrade> output = new List<DataTrade>();
             JsonDocument js;
@@ -852,7 +852,7 @@ namespace Crypto_Clients
             string test;
             switch (market)
             {
-                case "bitbank":
+                case market.bitbank:
                     if(startTime == null && endTime == null)
                     {
                         js = await this.bitbank_client.getVolumeHistory(symbol);
@@ -926,7 +926,7 @@ namespace Crypto_Clients
                     
                     
                     break;
-                case "coincheck":
+                case market.coincheck:
                     js_list = await this.coincheck_client.getVolumeHistory(symbol,startTime, endTime);
                     foreach (var js_elem in js_list)
                     {
@@ -938,7 +938,7 @@ namespace Crypto_Clients
                         {
                             trade = new DataTrade();
                         }
-                        trade.market = "coincheck";
+                        trade.market = market;
                         trade.symbol = js_elem.GetProperty("pair").GetString();
                         trade.quantity = decimal.Parse(js_elem.GetProperty("amount").GetString());
                         trade.price = decimal.Parse(js_elem.GetProperty("rate").GetString());
@@ -964,7 +964,7 @@ namespace Crypto_Clients
             return output;
         }
 
-        public async Task<List<DataFill>> getTradeHistory(string market,string symbol = "",DateTime? startTime = null,DateTime? endTime = null)
+        public async Task<List<DataFill>> getTradeHistory(Enums.market market,string symbol = "",DateTime? startTime = null,DateTime? endTime = null)
         {
             List<DataFill> output = new List<DataFill>();
             JsonDocument js;
@@ -973,7 +973,7 @@ namespace Crypto_Clients
             string test;
             switch(market)
             {
-                case "bitbank":
+                case market.bitbank:
                     js = await this.bitbank_client.getTradeHistory(symbol, startTime, endTime);
                     if(js.RootElement.GetProperty("success").GetInt32() == 1)
                     {
@@ -995,7 +995,7 @@ namespace Crypto_Clients
                         addLog("Failed to get trade history from bitbank.", logType.WARNING);
                     }
                     break;
-                case "coincheck":
+                case market.coincheck:
                     js_list = await this.coincheck_client.getTradeHistoryPagenation(startTime, endTime);
                     foreach(var js_elem in js_list)
                     {
@@ -1013,7 +1013,7 @@ namespace Crypto_Clients
                         addLog("Failed to get trade history from coincheck.", logType.WARNING);
                     }
                     break;
-                case "gmocoin":
+                case market.gmocoin:
                     if(symbol == "")
                     {
                         addLog("Symbol is required to get trade history from gmocoin.", logType.WARNING);
@@ -1021,7 +1021,7 @@ namespace Crypto_Clients
                     }
                     else
                     {
-                        js_list = await this.gmocoin_client.getTradeHistory(symbol);
+                        js_list = await this.gmocoin_client.getTradeHistory(symbol,100,100);
                         foreach (var js_elem in js_list)
                         {
                             fill = this.fillStack.pop();
@@ -1057,14 +1057,14 @@ namespace Crypto_Clients
             return output;
         }
 
-        public async Task<decimal> getCurrentMid(string market, string symbol)
+        public async Task<decimal> getCurrentMid(Enums.market market, string symbol)
         {
             decimal mid = -1;
             JsonDocument js;
 
             switch(market)
             {
-                case "bitbank":
+                case market.bitbank:
                     js = await this.bitbank_client.getTicker(symbol);
                     if(js.RootElement.GetProperty("success").GetInt32() == 1)
                     {
@@ -1077,7 +1077,7 @@ namespace Crypto_Clients
                         addLog(js.RootElement.GetRawText(), logType.WARNING);
                     }
                     break;
-                case "coincheck":
+                case market.coincheck:
                     js = await this.coincheck_client.getTicker(symbol);
                     JsonElement success;
                     if(js.RootElement.TryGetProperty("success",out success))
@@ -1151,7 +1151,7 @@ namespace Crypto_Clients
             GetFeeRequest req = new GetFeeRequest(symbol);
             return await this._rest_client.GetFeesAsync(req, markets);
         }
-        async public Task<DataSpotOrderUpdate?> placeNewSpotOrder(string market, string baseCcy, string quoteCcy, orderSide _side,orderType _ordtype, decimal quantity, decimal price, timeInForce? _timeinforce = null, string? clordId = null, ExchangeParameters? param = null)
+        async public Task<DataSpotOrderUpdate?> placeNewSpotOrder(Enums.market market, string baseCcy, string quoteCcy, orderSide _side,orderType _ordtype, decimal quantity, decimal price, timeInForce? _timeinforce = null, string? clordId = null, ExchangeParameters? param = null)
         {
             SharedSymbol symbol = new SharedSymbol(TradingMode.Spot, baseCcy, quoteCcy);
             SharedQuantity qty = new SharedQuantity();
@@ -1170,7 +1170,7 @@ namespace Crypto_Clients
 
             PlaceSpotOrderRequest req = new PlaceSpotOrderRequest(symbol, side, ordtype, qty, price, timeinforce, clordId, param);
             
-            var result = await this._rest_client.PlaceSpotOrderAsync(market, req);
+            var result = await this._rest_client.PlaceSpotOrderAsync(market.ToString(), req);
             if (result.Success)
             {
                 DataSpotOrderUpdate ord;
@@ -1202,11 +1202,11 @@ namespace Crypto_Clients
                 return null;
             }
         }
-        async public Task<DataSpotOrderUpdate?> placeCancelSpotOrder(string market, string baseCcy, string quoteCcy, string orderId, ExchangeParameters? param = null)
+        async public Task<DataSpotOrderUpdate?> placeCancelSpotOrder(Enums.market market, string baseCcy, string quoteCcy, string orderId, ExchangeParameters? param = null)
         {
             SharedSymbol symbol = new SharedSymbol(TradingMode.Spot, baseCcy, quoteCcy);
             CancelOrderRequest req = new CancelOrderRequest(symbol, orderId, param);
-            var result = await this._rest_client.CancelSpotOrderAsync(market, req);
+            var result = await this._rest_client.CancelSpotOrderAsync(market.ToString(), req);
             if (result.Success)
             {
                 DataSpotOrderUpdate ord;
@@ -1235,34 +1235,34 @@ namespace Crypto_Clients
             }
         }
         //Websocket
-        async public Task subscribeSpotOrderUpdates(IEnumerable<string>? markets)
+        async public Task subscribeSpotOrderUpdates(IEnumerable<Enums.market>? markets)
         {
             SubscribeSpotOrderRequest request = new SubscribeSpotOrderRequest();
-            foreach(string m in markets)
+            foreach(market m in markets)
             {
                 switch(m)
                 {
-                    case "bitbank":
+                    case market.bitbank:
                         //await this.bitbank_client.connectPrivateAsync();
                         //this.addLog("For bitbank spot order updates, please subscribe separately and register it on the thread manager.", Enums.logType.WARNING);
                         //this.bitbankOrderUpdateTh = new Thread(this.bitbankOrderUpdates);
                         //this.bitbankOrderUpdateTh.Start();
                         break;
-                    case "coincheck":
+                    case market.coincheck:
                         await this.coincheck_client.subscribeOrderEvent();
                         await this.coincheck_client.subscribeExecutionEvent();
                         break;
-                    case "bittrade":
+                    case market.bittrade:
                         await this.bittrade_client.subscribeOrderEvent();
                         await this.bittrade_client.subscribeExecutionEvent();
                         break;
-                    case "gmocoin":
+                    case market.gmocoin:
                         await this.gmocoin_client.subscribeOrderEvent();
                         Thread.Sleep(1100);//GMO Coin doesn't allow more than 1 request per a second.
                         await this.gmocoin_client.subscribeExecutionEvent();
                         break;
                     default:
-                        var subResult = await this._client.SubscribeToSpotOrderUpdatesAsync(m, request, LogOrderUpdates);
+                        var subResult = await this._client.SubscribeToSpotOrderUpdatesAsync(m.ToString(), request, LogOrderUpdates);
                         this.addLog($"{subResult.Exchange} subscribe spot order updates result: {subResult.Success} {subResult.Error}");
                         break;
                 }
@@ -1283,30 +1283,30 @@ namespace Crypto_Clients
             }
         }
 
-        async public Task subscribeTrades(IEnumerable<string>? markets, string baseCcy, string quoteCcy)
+        async public Task subscribeTrades(IEnumerable<market>? markets, string baseCcy, string quoteCcy)
         {
             var symbol = new SharedSymbol(TradingMode.Spot, baseCcy, quoteCcy);
             
             // Subscribe to trade updates for the specified exchange
-            foreach (string m in markets)
+            foreach (market m in markets)
             {
                 switch (m)
                 {
-                    case "bitbank":
+                    case market.bitbank:
                         await this.bitbank_client.subscribeTrades(baseCcy, quoteCcy);
                         break;
-                    case "coincheck":
+                    case market.coincheck:
                         await this.coincheck_client.subscribeTrades(baseCcy, quoteCcy);
                         break;
-                    case "bittrade":
+                    case market.bittrade:
                         await this.bittrade_client.subscribeTrades(baseCcy, quoteCcy);
                         break;
-                    case "gmocoin":
+                    case market.gmocoin:
                         await this.gmocoin_client.subscribeTrades(baseCcy, quoteCcy);
                         Thread.Sleep(1100);//GMO Coin doesn't allow more than 1 request per a second.
                         break;
                     default:
-                        var subResult = await this._client.SubscribeToTradeUpdatesAsync(m, new SubscribeTradeRequest(symbol), LogTrades);
+                        var subResult = await this._client.SubscribeToTradeUpdatesAsync(m.ToString(), new SubscribeTradeRequest(symbol), LogTrades);
                         this.addLog($"{subResult.Exchange} subscribe trades result: {subResult.Success} {subResult.Error}");
                         break;
                 }
@@ -1328,18 +1328,18 @@ namespace Crypto_Clients
             }
         }
         async public Task 
-            subscribeOrderBook(IEnumerable<string>? markets, string baseCcy, string quoteCcy)
+            subscribeOrderBook(IEnumerable<market>? markets, string baseCcy, string quoteCcy)
         {
             var symbol = new SharedSymbol(TradingMode.Spot, baseCcy, quoteCcy);
             var req = new SubscribeOrderBookRequest(symbol);
-            foreach (string m in markets)
+            foreach (market m in markets)
             {
                 switch(m)
                 {
-                    case "bitbank":
+                    case market.bitbank:
                         await this.bitbank_client.subscribeOrderBook(baseCcy, quoteCcy);
                         break;
-                    case "coincheck":
+                    case market.coincheck:
                         string coincheck_symbol = baseCcy.ToLower() + "_" + quoteCcy.ToLower();
                         var js = await this.coincheck_client.getOrderBooks(coincheck_symbol);
                         DataOrderBook ord;
@@ -1352,15 +1352,15 @@ namespace Crypto_Clients
                         this.ordBookQueue.Enqueue(ord);
                         await this.coincheck_client.subscribeOrderBook(baseCcy, quoteCcy);
                         break;
-                    case "bittrade":
+                    case market.bittrade:
                         await this.bittrade_client.subscribeOrderBook(baseCcy, quoteCcy);
                         break;
-                    case "gmocoin":
+                    case market.gmocoin:
                         await this.gmocoin_client.subscribeOrderBook(baseCcy,quoteCcy);
                         Thread.Sleep(1100);//GMO Coin doesn't allow more than 1 request per a second.
                         break;
                     default:
-                        var subResult = await this._client.SubscribeToOrderBookUpdatesAsync(m, req, LogOrderBook);
+                        var subResult = await this._client.SubscribeToOrderBookUpdatesAsync(m.ToString(), req, LogOrderBook);
                         this.addLog($"{subResult.Exchange} subscribe trades result: {subResult.Success} {subResult.Error}");
                         break;
                 }
@@ -1607,7 +1607,7 @@ namespace Crypto_Clients
                         {
                             trd = new DataTrade();
                         }
-                        trd.setBitbankTrade(element, "bitbank", symbol);
+                        trd.setBitbankTrade(element, market.bitbank, symbol);
                         this.tradeQueue.Enqueue(trd);
                     }
                 }

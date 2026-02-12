@@ -17,11 +17,11 @@ namespace Crypto_Trading
         public string symbol;
         public string baseCcy;
         public string quoteCcy;
-        public string market;
+        public Enums.market market;
         public string master_symbol;
         public string symbol_market
         {
-            get { return symbol + "@" + market; }
+            get { return symbol + "@" + market.ToString(); }
         }
 
         public DateTime? last_quote_updated_time;
@@ -164,7 +164,7 @@ namespace Crypto_Trading
             this.symbol = "";
             this.baseCcy = "";
             this.quoteCcy = "";
-            this.market = "";
+            this.market = Enums.market.NONE;
             this.master_symbol = "";
 
             this.last_quote_updated_time = null;
@@ -281,7 +281,7 @@ namespace Crypto_Trading
                     case 0: this.symbol = item; break;
                     case 1: this.baseCcy = item; break;
                     case 2: this.quoteCcy = item; break;
-                    case 3: this.market = item; break;
+                    case 3: this.market = (market)Enum.Parse(typeof(market), item); break;
                     case 4: this.taker_fee = decimal.Parse(item); break;
                     case 5: this.maker_fee = decimal.Parse(item); break;
                     case 6: this.price_unit = decimal.Parse(item); break;
@@ -313,7 +313,7 @@ namespace Crypto_Trading
             this.symbol = msinfo.symbol;
             this.baseCcy = msinfo.baseCcy;
             this.quoteCcy = msinfo.quoteCcy;
-            this.market = msinfo.market;
+            this.market = (market)Enum.Parse(typeof(market),msinfo.market);
             this.taker_fee = msinfo.taker_fee;
             this.maker_fee = msinfo.maker_fee;
             this.price_unit = msinfo.price_unit;
@@ -711,41 +711,52 @@ namespace Crypto_Trading
                 this.mid = 0;
             }
 
-            if(this.mid > 0 && this.prev_mid > 0)
+            if(this.mid > 0)
             {
-                if(Math.Pow(Math.Log((double)this.mid / (double)this.prev_mid), 2) < 0.1)
+                if(this.shortPosition != null)
                 {
-                    this.cumlative_RV += Math.Pow(Math.Log((double)this.mid / (double)this.prev_mid), 2);
-                    if (this.RV_startTime == null)
+                    this.shortPosition.current_price = this.mid;
+                }
+                if (this.longPosition != null)
+                {
+                    this.longPosition.current_price = this.mid;
+                }
+                if (this.prev_mid > 0)
+                {
+                    if (Math.Pow(Math.Log((double)this.mid / (double)this.prev_mid), 2) < 0.1)
                     {
-                        this.RV_startTime = current;
+                        this.cumlative_RV += Math.Pow(Math.Log((double)this.mid / (double)this.prev_mid), 2);
+                        if (this.RV_startTime == null)
+                        {
+                            this.RV_startTime = current;
+                        }
+                        else
+                        {
+                            this.avg_RV = Math.Sqrt(this.cumlative_RV / (current - this.RV_startTime.Value).TotalMinutes * this.RV_minute);
+                        }
+                        if (this.RV_currentPeriodStart == null)
+                        {
+                            this.RV_currentPeriodStart = current;
+                            this.prev_cumRV = this.cumlative_RV;
+                        }
+                        else if ((current - this.RV_currentPeriodStart.Value).TotalMinutes > this.RV_minute)
+                        {
+                            this.prev_RV = this.realized_volatility;
+                            this.realized_volatility = Math.Sqrt((this.cumlative_RV - this.prev_cumRV) / (current - this.RV_currentPeriodStart.Value).TotalMinutes * this.RV_minute);
+                            this.prev_cumRV = this.cumlative_RV;
+                            this.RV_currentPeriodStart = current;
+                        }
                     }
                     else
                     {
-                        this.avg_RV = Math.Sqrt(this.cumlative_RV / (current - this.RV_startTime.Value).TotalMinutes * this.RV_minute);
-                    }
-                    if (this.RV_currentPeriodStart == null)
-                    {
-                        this.RV_currentPeriodStart = current;
-                        this.prev_cumRV = this.cumlative_RV;
-                    }
-                    else if ((current - this.RV_currentPeriodStart.Value).TotalMinutes > this.RV_minute)
-                    {
-                        this.prev_RV = this.realized_volatility;
-                        this.realized_volatility = Math.Sqrt((this.cumlative_RV - this.prev_cumRV) / (current - this.RV_currentPeriodStart.Value).TotalMinutes * this.RV_minute);
-                        this.prev_cumRV = this.cumlative_RV;
-                        this.RV_currentPeriodStart = current;
+                        Console.WriteLine($"market:{this.market} symbol:{this.symbol} bestask:{this.bestask.Item1} bestbid:{this.bestbid.Item1} mid:{this.mid} prev_mid:{this.prev_mid}");
                     }
                 }
-                else
-                {
-                    Console.WriteLine($"market:{this.market} symbol:{this.symbol} bestask:{this.bestask.Item1} bestbid:{this.bestbid.Item1} mid:{this.mid} prev_mid:{this.prev_mid}");
-                }
-            }
 
-            if(this.open_mid < 0 && this.mid > 0)
-            {
-                this.open_mid = this.mid;
+                if (this.open_mid < 0)
+                {
+                    this.open_mid = this.mid;
+                }
             }
             return ret;
         }
@@ -1009,13 +1020,13 @@ namespace Crypto_Trading
 
             if (!new_ord.isVirtual)
             {
-                if(new_ord.market == "bitbank")
+                if(new_ord.market == market.bitbank)
                 {
                     filledQuantity = 0;
                     fee = 0;
                     filledPrice = 0;
                 }
-                else if(new_ord.market == "bittrade")
+                else if(new_ord.market == market.bittrade)
                 {
                     if (new_ord.current_traded_quantity > 0)
                     {
@@ -1037,7 +1048,7 @@ namespace Crypto_Trading
 
                     }
                 }
-                else if (new_ord.market == "coincheck")
+                else if (new_ord.market == market.coincheck)
                 {
                     filledQuantity = 0;
                     fee = 0;

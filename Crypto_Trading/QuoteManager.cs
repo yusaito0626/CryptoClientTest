@@ -26,11 +26,11 @@ namespace Crypto_Trading
         public Dictionary<string, Instrument> instruments;
         public Dictionary<string, Instrument> ins_bymaster;
 
-        public Dictionary<string, ExchangeBalance> exchange_balances;
-        public Dictionary<string, ExchangeBalance> SoD_exchange_balances;
+        public Dictionary<market, ExchangeBalance> exchange_balances;
+        public Dictionary<market, ExchangeBalance> SoD_exchange_balances;
         public Dictionary<string, Balance> balances;
 
-        public Dictionary<string, WebSocketState> _markets;
+        public Dictionary<Enums.market, WebSocketState> _markets;
 
         public MIMOQueue<DataOrderBook> ordBookQueue;
         private LockFreeStack<DataOrderBook> ordBookStack;
@@ -64,10 +64,10 @@ namespace Crypto_Trading
         {
             this.instruments = new Dictionary<string, Instrument>();
             this.ins_bymaster = new Dictionary<string, Instrument>();
-            this.exchange_balances = new Dictionary<string, ExchangeBalance>();
-            this.SoD_exchange_balances = new Dictionary<string, ExchangeBalance>();
+            this.exchange_balances = new Dictionary<market, ExchangeBalance>();
+            this.SoD_exchange_balances = new Dictionary<market, ExchangeBalance>();
             this.balances = new Dictionary<string, Balance>();
-            this._markets = new Dictionary<string, WebSocketState>();
+            this._markets = new Dictionary<Enums.market, WebSocketState>();
             this.strategies = new Dictionary<string, Strategy>();
             this.optQueue = new MIMOQueue<Strategy>();
             this.oManager = OrderManager.GetInstance();
@@ -86,7 +86,7 @@ namespace Crypto_Trading
         }
 
         
-        public async Task<bool> connectPublicChannel(string market)
+        public async Task<bool> connectPublicChannel(Enums.market market)
         {
             bool ret = false;
             ThreadManager thManager = ThreadManager.GetInstance();
@@ -95,7 +95,7 @@ namespace Crypto_Trading
             int trials = 0;
             switch (market)
             {
-                case "bitbank":
+                case market.bitbank:
                     ret = await this.crypto_client.bitbank_client.connectPublicAsync();
                     while (!ret)
                     {
@@ -125,7 +125,7 @@ namespace Crypto_Trading
                     thManager.addThread(market + "Public", this.crypto_client.bitbank_client.Listening,onClosing,this.crypto_client.bitbank_client.onListenOnError);
                     this._markets[market] = this.crypto_client.bitbank_client.GetSocketStatePublic();
                     break;
-                case "gmocoin":
+                case market.gmocoin:
                     ret = await this.crypto_client.gmocoin_client.connectPublicAsync();
                     while (!ret)
                     {
@@ -154,7 +154,7 @@ namespace Crypto_Trading
                     thManager.addThread(market + "Public", this.crypto_client.gmocoin_client.Listening, onClosing, this.crypto_client.gmocoin_client.onListenOnError);
                     this._markets[market] = this.crypto_client.gmocoin_client.GetSocketStatePublic();
                     break;
-                case "coincheck":
+                case market.coincheck:
                     ret = await this.crypto_client.coincheck_client.connectPublicAsync();
                     while (!ret)
                     {
@@ -183,7 +183,7 @@ namespace Crypto_Trading
                     thManager.addThread(market + "Public", this.crypto_client.coincheck_client.Listening,onClosing,this.crypto_client.coincheck_client.onListenOnError);
                     this._markets[market] = this.crypto_client.coincheck_client.GetSocketStatePublic();
                     break;
-                case "bittrade":
+                case market.bittrade:
                     ret = await this.crypto_client.bittrade_client.connectPublicAsync();
                     while (!ret)
                     {
@@ -221,16 +221,16 @@ namespace Crypto_Trading
             {
                 switch (market.Key)
                 {
-                    case "bitbank":
+                    case Enums.market.bitbank:
                         this._markets[market.Key] = this.crypto_client.bitbank_client.GetSocketStatePublic();
                         break;
-                    case "gmocoin":
+                    case Enums.market.gmocoin:
                         this._markets[market.Key] = this.crypto_client.gmocoin_client.GetSocketStatePublic();
                         break;
-                    case "coincheck":
+                    case Enums.market.coincheck:
                         this._markets[market.Key] = this.crypto_client.coincheck_client.GetSocketStatePublic();
                         break;
-                    case "bittrade":
+                    case Enums.market.bittrade:
                         this._markets[market.Key] = this.crypto_client.bittrade_client.GetSocketStatePublic();
                         break;
                     default:
@@ -262,7 +262,7 @@ namespace Crypto_Trading
                         ins = new Instrument();
                         ins.initialize(line);
                         this.instruments[ins.symbol_market] = ins;
-                        this.ins_bymaster[ins.master_symbol + "@" + ins.market] = ins;
+                        this.ins_bymaster[ins.master_symbol + "@" + ins.market.ToString()] = ins;
                         if(!this._markets.ContainsKey(ins.market))
                         {
                             this._markets[ins.market] = WebSocketState.None;
@@ -285,7 +285,7 @@ namespace Crypto_Trading
                 ins = new Instrument();
                 ins.initialize(m.Value);
                 this.instruments[ins.symbol_market] = ins;
-                this.ins_bymaster[ins.master_symbol + "@" + ins.market] = ins;
+                this.ins_bymaster[ins.master_symbol + "@" + ins.market.ToString()] = ins;
                 if (!this._markets.ContainsKey(ins.market))
                 {
                     this._markets[ins.market] = WebSocketState.None;
@@ -293,7 +293,7 @@ namespace Crypto_Trading
             }
         }
 
-        public Instrument getInstrument(string baseCcy,string quoteCcy, string market)
+        public Instrument getInstrument(string baseCcy,string quoteCcy, Enums.market market)
         {
             Instrument output = null;
             foreach(var ins in this.instruments.Values)
@@ -330,7 +330,7 @@ namespace Crypto_Trading
                         {
                             Balance balance = new Balance();
                             balance.ccy = items[1];
-                            balance.market = items[0];
+                            balance.market = (market)Enum.Parse(typeof(market),items[0]);
                             balance.total = decimal.Parse(items[2]);
                             this.balances[key] = balance;
                             foreach (var ins in this.instruments.Values)
@@ -370,7 +370,7 @@ namespace Crypto_Trading
             }
             foreach(var item in results)
             {
-                key = item.asset.ToUpper() + "@" + item.market;
+                key = item.asset.ToUpper() + "@" + item.market.ToString();
                 if (this.balances.ContainsKey(key))
                 {
                     this.balances[key].total = item.total;
@@ -417,7 +417,7 @@ namespace Crypto_Trading
                 exBalance.balance[item.asset.ToUpper()] = this.balances[key];
                 switch(item.market)
                 {
-                    case "bitbank":
+                    case market.bitbank:
                         if(item.asset.ToUpper() == "JPY")
                         {
                             exBalance.marginAvailability += item.total;
@@ -427,7 +427,7 @@ namespace Crypto_Trading
                             exBalance.marginAvailability += item.total / 2;
                         }
                         break;
-                    case "gmocoin":
+                    case market.gmocoin:
                         if(item.asset.ToUpper() == "JPY")
                         {
                             exBalance.marginAvailability += item.total;
@@ -519,7 +519,7 @@ namespace Crypto_Trading
                     while(msg != null)
                     {
                         start();
-                        symbol_market = msg.symbol + "@" + msg.market;
+                        symbol_market = msg.symbol + "@" + msg.market.ToString();
                         if (this.instruments.ContainsKey(symbol_market))
                         {
                             ins = instruments[symbol_market];
@@ -615,7 +615,7 @@ namespace Crypto_Trading
                 msg = this.ordBookQueue.Dequeue();
                 if (msg != null)
                 {
-                    symbol_market = msg.symbol + "@" + msg.market;
+                    symbol_market = msg.symbol + "@" + msg.market.ToString();
                     if (this.instruments.ContainsKey(symbol_market))
                     {
                         ins = instruments[symbol_market];
@@ -645,9 +645,9 @@ namespace Crypto_Trading
             this.oManager.virtual_order_lock = 0;
         }
 
-        public async Task refreshAndCancelAllorders(string market = "")
+        public async Task refreshAndCancelAllorders(Enums.market market = market.NONE)
         {
-            if(market =="")
+            if(market == market.NONE)
             {
                 this.addLog("Cancelling all the orders including unknown.", Enums.logType.WARNING);
                 //await this.oManager.cancelAllOrders();
@@ -656,7 +656,7 @@ namespace Crypto_Trading
 
                 if (this.live)
                 {
-                    foreach (string mkt in this._markets.Keys)
+                    foreach (market mkt in this._markets.Keys)
                     {
                         addLog("Order List of " + mkt, logType.WARNING);
                         List<DataSpotOrderUpdate> ordList = await this.crypto_client.getActiveOrders(mkt);
@@ -885,7 +885,7 @@ namespace Crypto_Trading
                             }
                             addLog("All the strategy orders have been reset.");
                         }
-                        else if(stg.maker.market == "bitbank" && (this.crypto_client.bitbank_client.pubnubReconnected || this.crypto_client.bitbank_client.pubnubReconnecting))
+                        else if(stg.maker.market == market.bitbank && (this.crypto_client.bitbank_client.pubnubReconnected || this.crypto_client.bitbank_client.pubnubReconnecting))
                         {
                             int i = 0;
                             while (!this.crypto_client.bitbank_client.pubnubReconnected)
@@ -1053,7 +1053,7 @@ namespace Crypto_Trading
                     {
                         start();
                         this.sw_updateTrades.Start();
-                        symbol_market = msg.symbol + "@" + msg.market;
+                        symbol_market = msg.symbol + "@" + msg.market.ToString();
                         foreach (var stg in this.strategies)
                         {
                             if (stg.Value.enabled)
@@ -1138,7 +1138,7 @@ namespace Crypto_Trading
                 msg = this.tradeQueue.Dequeue();
                 if (msg != null)
                 {
-                    symbol_market = msg.symbol + "@" + msg.market;
+                    symbol_market = msg.symbol + "@" + msg.market.ToString();
                     if (this.instruments.ContainsKey(symbol_market))
                     {
                         ins = instruments[symbol_market];

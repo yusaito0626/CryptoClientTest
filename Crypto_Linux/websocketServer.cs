@@ -143,8 +143,8 @@ namespace Crypto_Linux
                 setting.name = stg.Value.name;
                 setting.baseCcy = stg.Value.baseCcy;
                 setting.quoteCcy = stg.Value.quoteCcy;
-                setting.taker_market = stg.Value.taker_market;
-                setting.maker_market = stg.Value.maker_market;
+                setting.taker_market = stg.Value.taker_market.ToString();
+                setting.maker_market = stg.Value.maker_market.ToString();
                 setting.order_throttle = stg.Value.order_throttle;
                 setting.markup = stg.Value.const_markup;
                 setting.min_markup = stg.Value.min_markup;
@@ -161,7 +161,7 @@ namespace Crypto_Linux
                 setting.rv_penalty_multiplier = stg.Value.rv_penalty_multiplier;
                 setting.rv_base_param = stg.Value.rv_base_param;
                 setting.maxBaseMarkup = stg.Value.max_baseMarkup;
-                setting.predictFill = stg.Value.predictFill;
+                //setting.predictFill = stg.Value.predictFill;
                 setting.skew_type = stg.Value.skew_type.ToString();
                 setting.skew_step = stg.Value.skew_step;
                 this.strategySetting[stg.Key] = setting;

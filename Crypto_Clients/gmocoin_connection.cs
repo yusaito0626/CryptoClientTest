@@ -21,6 +21,7 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Utils;
 using XT.Net.Objects.Models;
 
 namespace Crypto_Clients
@@ -317,7 +318,8 @@ namespace Crypto_Clients
             }
 
             this.token = accToken.RootElement.GetProperty("data").GetString();
-            this.lastAccTokenObtained = DateTime.ParseExact(accToken.RootElement.GetProperty("responsetime").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+            this.lastAccTokenObtained = (DateTime)Functions.convertToDateTime(accToken.RootElement.GetProperty("responsetime").GetString(), Enums.market.gmocoin);
+            //this.lastAccTokenObtained = DateTime.ParseExact(accToken.RootElement.GetProperty("responsetime").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
 
             var uri = new Uri(gmocoin_connection.private_wss + "/v1/" + this.token);
 
@@ -377,7 +379,7 @@ namespace Crypto_Clients
             {
                 symbol = baseCcy.ToUpper() + "_" + quoteCcy.ToUpper();
             }
-            string subscribeJson = "{ \"command\" : \"subscribe\", \"channel\": \"trades\", \"symbol\": \"" + symbol + "\" }";
+            string subscribeJson = "{ \"command\" : \"subscribe\", \"channel\": \"trades\", \"symbol\": \"" + symbol + "\", \"option\": \"TAKER_ONLY\"}";
             var bytes = Encoding.UTF8.GetBytes(subscribeJson);
             if (this.websocket_client.State == WebSocketState.Open)
             {
@@ -1389,7 +1391,6 @@ namespace Crypto_Clients
         }
         public async Task<List<JsonElement>> getTradeHistory(string symbol = "", int page = 1, int count = 100)
         {
-            addLog("getTradeHistory Called");
             List<JsonElement> res = new List<JsonElement>();
             if (page < 1)
             {

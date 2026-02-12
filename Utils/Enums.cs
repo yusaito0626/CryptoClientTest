@@ -8,7 +8,16 @@
         ERROR = 3,
         FATAL = 4
     }
-
+    public enum market
+    {
+        NONE = 0,
+        bitbank = 1,
+        coincheck = 2,
+        gmocoin = 3,
+        bittrade = 4,
+        bybit = 5,
+        coinbase = 6
+    }
     public enum skewType
     {
         NONE = 0,
