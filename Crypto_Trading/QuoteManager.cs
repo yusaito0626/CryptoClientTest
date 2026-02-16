@@ -26,8 +26,8 @@ namespace Crypto_Trading
         public Dictionary<string, Instrument> instruments;
         public Dictionary<string, Instrument> ins_bymaster;
 
-        public Dictionary<market, ExchangeBalance> exchange_balances;
-        public Dictionary<market, ExchangeBalance> SoD_exchange_balances;
+        public Dictionary<market, Exchange> exchanges;
+        public Dictionary<market, Exchange> exchanges_SoD;
         public Dictionary<string, Balance> balances;
 
         public Dictionary<Enums.market, WebSocketState> _markets;
@@ -64,8 +64,8 @@ namespace Crypto_Trading
         {
             this.instruments = new Dictionary<string, Instrument>();
             this.ins_bymaster = new Dictionary<string, Instrument>();
-            this.exchange_balances = new Dictionary<market, ExchangeBalance>();
-            this.SoD_exchange_balances = new Dictionary<market, ExchangeBalance>();
+            this.exchanges = new Dictionary<market, Exchange>();
+            this.exchanges_SoD = new Dictionary<market, Exchange>();
             this.balances = new Dictionary<string, Balance>();
             this._markets = new Dictionary<Enums.market, WebSocketState>();
             this.strategies = new Dictionary<string, Strategy>();
@@ -364,7 +364,7 @@ namespace Crypto_Trading
         {
             bool output = true;
             string key;
-            foreach(var exBalance in this.exchange_balances.Values)
+            foreach(var exBalance in this.exchanges.Values)
             {
                 exBalance.marginAvailability = 0;
             }
@@ -403,16 +403,16 @@ namespace Crypto_Trading
                         }
                     }
                 }
-                ExchangeBalance exBalance;
-                if(this.exchange_balances.ContainsKey(item.market))
+                Exchange exBalance;
+                if(this.exchanges.ContainsKey(item.market))
                 {
-                    exBalance = this.exchange_balances[item.market];
+                    exBalance = this.exchanges[item.market];
                 }
                 else
                 {
-                    exBalance = new ExchangeBalance();
+                    exBalance = new Exchange();
                     exBalance.market = item.market;
-                    this.exchange_balances[item.market] = exBalance;
+                    this.exchanges[item.market] = exBalance;
                 }
                 exBalance.balance[item.asset.ToUpper()] = this.balances[key];
                 switch(item.market)
@@ -444,16 +444,16 @@ namespace Crypto_Trading
             {
                 if (this.instruments.ContainsKey(item.symbol_market))
                 {
-                    ExchangeBalance exBalance;
-                    if (this.exchange_balances.ContainsKey(item.market))
+                    Exchange exBalance;
+                    if (this.exchanges.ContainsKey(item.market))
                     {
-                        exBalance = this.exchange_balances[item.market];
+                        exBalance = this.exchanges[item.market];
                     }
                     else
                     {
-                        exBalance = new ExchangeBalance();
+                        exBalance = new Exchange();
                         exBalance.market = item.market;
-                        this.exchange_balances[item.market] = exBalance;
+                        this.exchanges[item.market] = exBalance;
                     }
 
                     Instrument ins = this.instruments[item.symbol_market];
@@ -505,10 +505,12 @@ namespace Crypto_Trading
         }
         public async Task<bool> updateQuotes(Action start, Action end, CancellationToken ct, int spinningMax)
         {
-            Instrument ins;
-            DataOrderBook msg;
+            Instrument ins = null;
+            Exchange exc = null;
+            DataOrderBook msg = null;
             string symbol_market;
             var spinner = new SpinWait();
+            bool lantencyCalcUpdated = false;
             bool ret = true;
             try
             {
@@ -520,6 +522,26 @@ namespace Crypto_Trading
                     {
                         start();
                         symbol_market = msg.symbol + "@" + msg.market.ToString();
+                        lantencyCalcUpdated = false;
+                        if (this.exchanges.ContainsKey(msg.market))
+                        {
+                            exc = this.exchanges[msg.market];
+                            lantencyCalcUpdated = exc.recordLatency(msg);
+
+                            if (lantencyCalcUpdated)
+                            {
+                                foreach(var temp_ins in this.instruments.Values)
+                                {
+                                    if(temp_ins.market == exc.market)
+                                    {
+                                        temp_ins.coef = exc.coef;
+                                        temp_ins.intercept = exc.intercept;
+                                        temp_ins.intercept_time = exc.intercept_time;
+                                        temp_ins.readyToTrade = true;
+                                    }
+                                }
+                            }
+                        }
                         if (this.instruments.ContainsKey(symbol_market))
                         {
                             ins = instruments[symbol_market];

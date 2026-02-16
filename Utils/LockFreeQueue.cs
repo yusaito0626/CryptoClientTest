@@ -195,11 +195,11 @@ namespace LockFreeQueue
     public class MIMOQueue<T> : IDisposable
     {
         Node<T> _pHead;
-        Node<T> _pHeadTemp;
+        //Node<T> _pHeadTemp;
         Node<T> _pTail;
         LockFreePool<T> _NodePool;
-        int _Enqueues;
-        int _Dequeues;
+        public int _Enqueues;
+        public int _Dequeues;
 
         volatile int _EnqueueLock;
         volatile int _DequeueLock;
@@ -217,7 +217,7 @@ namespace LockFreeQueue
             this._NodePool = new LockFreePool<T>(PoolSize);
             this._pHead = this._NodePool.pop();
             this._pTail = this._pHead;
-            this._pHeadTemp = this._NodePool.pop();
+            //this._pHeadTemp = this._NodePool.pop();
         }
         public void Dispose()
         {
@@ -253,9 +253,10 @@ namespace LockFreeQueue
                 newNode.Next = OldHead;
                 this._pHead = newNode;
                 OldHead.Back = newNode;
-                this._pHeadTemp.value = newNode.value;
-                this._pHeadTemp.Next = newNode.Next;
-                this._pHeadTemp.Back = newNode.Back;
+
+                //this._pHeadTemp.value = newNode.value;
+                //this._pHeadTemp.Next = newNode.Next;
+                //this._pHeadTemp.Back = newNode.Back;
                 ++(this._Enqueues);
             }
         }
@@ -581,6 +582,7 @@ namespace LockFreeQueue
             newNode.Next = OldHead;
             this._pHead = newNode;
             OldHead.Back = newNode;
+
             this._pHeadTemp.value = newNode.value;
             this._pHeadTemp.Next = newNode.Next;
             this._pHeadTemp.Back = newNode.Back;

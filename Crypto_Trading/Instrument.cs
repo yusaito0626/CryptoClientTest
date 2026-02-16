@@ -47,7 +47,7 @@ namespace Crypto_Trading
         int NofSample = 100;
         public double coef;
         public double intercept;
-        DateTime intercept_time;
+        public DateTime intercept_time;
         public double base_latency = 20;
 
         public int count_Allquotes;
@@ -144,6 +144,10 @@ namespace Crypto_Trading
         public decimal net_pos
         {
             get {return this.baseBalance.total + this.longPosition.total - this.shortPosition.total;}
+        }
+        public decimal SoD_net_pos
+        {
+            get { return this.SoD_baseBalance.total + this.SoD_longPosition.total - this.SoD_shortPosition.total; }
         }
 
 
@@ -346,6 +350,18 @@ namespace Crypto_Trading
                 return -60000;
             }
         }
+        public DateTime? getAdjustedTimeStamp(DateTime timestamp)
+        {
+            double diff = this.getTheoLatency(timestamp);
+            if(diff > -60000)
+            {
+                return timestamp + TimeSpan.FromMilliseconds(diff);
+            }
+            else
+            {
+                return null;
+            }
+        }
 
         public void updateQuotes(DataOrderBook update)
         {
@@ -355,94 +371,94 @@ namespace Crypto_Trading
             {
                 this.quoteTime = update.orderbookTime.Value;
 
-                if(this.count < this.NofSample)
-                {
-                    if(this.count == 0)
-                    {
-                        if(this.currentSampling == 0)
-                        {
-                            this.sample_latency1 = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
-                            this.sample1Time = this.last_quote_updated_time.Value;
-                            ++(this.count);
-                        }
-                        else if(currentSampling == 1 && (this.last_quote_updated_time.Value - this.sample1Time).TotalSeconds > this.sample_gap)
-                        {
-                            this.intercept_latency1 = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
-                            this.intercept_time1 = this.last_quote_updated_time.Value;
-                            ++(this.count);
-                        }
-                        else if(currentSampling == 2 && (this.last_quote_updated_time.Value - this.sample1Time).TotalSeconds > this.sample_gap2)
-                        {
-                            this.intercept_latency2 = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
-                            this.intercept_time2 = this.last_quote_updated_time.Value;
-                            ++(this.count);
-                        }
-                    }
-                    else
-                    {
-                        if(this.currentSampling == 0)
-                        {
-                            double currentValue = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
-                            if(currentValue < this.sample_latency1)
-                            {
-                                this.sample_latency1 = currentValue;
-                                this.sample1Time = this.last_quote_updated_time.Value;
-                            }
-                            ++(this.count);
-                            if(count == this.NofSample)
-                            {
-                                count = 0;
-                                ++(this.currentSampling);
-                            }
-                        }
-                        else if(currentSampling == 1)
-                        {
-                            double currentValue = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
-                            if (currentValue < this.intercept_latency1)
-                            {
-                                this.intercept_latency1 = currentValue;
-                                this.intercept_time1 = this.last_quote_updated_time.Value;
-                            }
-                            ++(this.count);
-                            if (count == this.NofSample)
-                            {
-                                this.coef = (this.intercept_latency1 - this.sample_latency1) / (this.intercept_time1 - this.sample1Time).TotalSeconds;
-                                this.intercept = this.intercept_latency1;
-                                this.intercept_time = this.intercept_time1;
-                                this.readyToTrade = true;
-                                count = 0;
-                                ++(this.currentSampling);
-                            }
-                        }
-                        else if (currentSampling == 2)
-                        {
-                            double currentValue = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
-                            if (currentValue < this.intercept_latency2)
-                            {
-                                this.intercept_latency2 = currentValue;
-                                this.intercept_time2 = this.last_quote_updated_time.Value;
-                            }
-                            ++(this.count);
-                            if (count == this.NofSample)
-                            {
-                                this.coef = (this.intercept_latency2 - this.sample_latency1) / (this.intercept_time2 - this.sample1Time).TotalSeconds;
-                                this.intercept = this.intercept_latency2;
-                                this.intercept_time = this.intercept_time2;
-                                ++(this.currentSampling);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    double currentValue = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
-                    if(currentValue < this.intercept)
-                    {
-                        this.coef = (currentValue - this.sample_latency1) / (this.last_quote_updated_time.Value - this.sample1Time).TotalSeconds;
-                        this.intercept = currentValue;
-                        this.intercept_time = this.last_quote_updated_time.Value;
-                    }
-                }
+                //if(this.count < this.NofSample)
+                //{
+                //    if(this.count == 0)
+                //    {
+                //        if(this.currentSampling == 0)
+                //        {
+                //            this.sample_latency1 = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
+                //            this.sample1Time = this.last_quote_updated_time.Value;
+                //            ++(this.count);
+                //        }
+                //        else if(currentSampling == 1 && (this.last_quote_updated_time.Value - this.sample1Time).TotalSeconds > this.sample_gap)
+                //        {
+                //            this.intercept_latency1 = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
+                //            this.intercept_time1 = this.last_quote_updated_time.Value;
+                //            ++(this.count);
+                //        }
+                //        else if(currentSampling == 2 && (this.last_quote_updated_time.Value - this.sample1Time).TotalSeconds > this.sample_gap2)
+                //        {
+                //            this.intercept_latency2 = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
+                //            this.intercept_time2 = this.last_quote_updated_time.Value;
+                //            ++(this.count);
+                //        }
+                //    }
+                //    else
+                //    {
+                //        if(this.currentSampling == 0)
+                //        {
+                //            double currentValue = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
+                //            if(currentValue < this.sample_latency1)
+                //            {
+                //                this.sample_latency1 = currentValue;
+                //                this.sample1Time = this.last_quote_updated_time.Value;
+                //            }
+                //            ++(this.count);
+                //            if(count == this.NofSample)
+                //            {
+                //                count = 0;
+                //                ++(this.currentSampling);
+                //            }
+                //        }
+                //        else if(currentSampling == 1)
+                //        {
+                //            double currentValue = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
+                //            if (currentValue < this.intercept_latency1)
+                //            {
+                //                this.intercept_latency1 = currentValue;
+                //                this.intercept_time1 = this.last_quote_updated_time.Value;
+                //            }
+                //            ++(this.count);
+                //            if (count == this.NofSample)
+                //            {
+                //                this.coef = (this.intercept_latency1 - this.sample_latency1) / (this.intercept_time1 - this.sample1Time).TotalMilliseconds;
+                //                this.intercept = this.intercept_latency1;
+                //                this.intercept_time = this.intercept_time1;
+                //                this.readyToTrade = true;
+                //                count = 0;
+                //                ++(this.currentSampling);
+                //            }
+                //        }
+                //        else if (currentSampling == 2)
+                //        {
+                //            double currentValue = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
+                //            if (currentValue < this.intercept_latency2)
+                //            {
+                //                this.intercept_latency2 = currentValue;
+                //                this.intercept_time2 = this.last_quote_updated_time.Value;
+                //            }
+                //            ++(this.count);
+                //            if (count == this.NofSample)
+                //            {
+                //                this.coef = (this.intercept_latency2 - this.sample_latency1) / (this.intercept_time2 - this.sample1Time).TotalMilliseconds;
+                //                this.intercept = this.intercept_latency2;
+                //                this.intercept_time = this.intercept_time2;
+                //                ++(this.currentSampling);
+                //            }
+                //        }
+                //    }
+                //}
+                //else
+                //{
+                //    double currentValue = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
+                //    if(currentValue < this.intercept)
+                //    {
+                //        this.coef = (currentValue - this.sample_latency1) / (this.last_quote_updated_time.Value - this.sample1Time).TotalMilliseconds;
+                //        this.intercept = currentValue;
+                //        this.intercept_time = this.last_quote_updated_time.Value;
+                //    }
+                //}
             }
 
             switch (update.updateType)

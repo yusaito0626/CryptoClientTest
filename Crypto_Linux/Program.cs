@@ -1141,13 +1141,13 @@ namespace Crypto_Linux
                         {
                             Instrument takerins = stg.Value.taker;
                             Instrument makerins = stg.Value.maker;
-                            ExchangeBalance takerExchange;
-                            ExchangeBalance makerExchange;
-                            if (!qManager.exchange_balances.ContainsKey(takerins.market))
+                            Crypto_Trading.Exchange takerExchange;
+                            Crypto_Trading.Exchange makerExchange;
+                            if (!qManager.exchanges.ContainsKey(takerins.market))
                             {
-                                takerExchange = new ExchangeBalance();
+                                takerExchange = new Crypto_Trading.Exchange();
                                 takerExchange.market = takerins.market;
-                                qManager.exchange_balances[takerExchange.market] = takerExchange;
+                                qManager.exchanges[takerExchange.market] = takerExchange;
                                 Balance jpy_balance = new Balance();
                                 jpy_balance.market = takerExchange.market;
                                 jpy_balance.ccy = "JPY";
@@ -1156,13 +1156,13 @@ namespace Crypto_Linux
                             }
                             else
                             {
-                                takerExchange = qManager.exchange_balances[takerins.market];
+                                takerExchange = qManager.exchanges[takerins.market];
                             }
-                            if (!qManager.exchange_balances.ContainsKey(makerins.market))
+                            if (!qManager.exchanges.ContainsKey(makerins.market))
                             {
-                                makerExchange = new ExchangeBalance();
+                                makerExchange = new Crypto_Trading.Exchange();
                                 makerExchange.market = makerins.market;
-                                qManager.exchange_balances[makerExchange.market] = makerExchange;
+                                qManager.exchanges[makerExchange.market] = makerExchange;
                                 Balance jpy_balance = new Balance();
                                 jpy_balance.market = makerExchange.market;
                                 jpy_balance.ccy = "JPY";
@@ -1171,7 +1171,7 @@ namespace Crypto_Linux
                             }
                             else
                             {
-                                makerExchange = qManager.exchange_balances[makerins.market];
+                                makerExchange = qManager.exchanges[makerins.market];
                             }
 
                             if (takerins.quoteCcy == "JPY")
@@ -1406,7 +1406,7 @@ namespace Crypto_Linux
                     {
 
                         //stg.SoD_baseCcyPos = (stg.maker.SoD_baseBalance.total + stg.taker.SoD_baseBalance.total) - stg.baseCcyQuantity;
-                        stg.SoD_baseCcyPos = stg.maker.SoD_baseBalance.total + stg.maker.SoD_longPosition.total - stg.maker.SoD_shortPosition.total + stg.taker.SoD_baseBalance.total;
+                        stg.SoD_baseCcyPos = stg.maker.SoD_net_pos + stg.taker.SoD_net_pos;
                         addLog("SoD Balance strategy " + stg.name + "  Balance:" + stg.SoD_baseCcyPos.ToString());
                         //decimal baseBalance_diff = stg.baseCcyQuantity - (stg.maker.baseBalance.total + stg.taker.baseBalance.total);
                         //decimal baseBalance_diff = - (stg.maker.net_pos + stg.taker.baseBalance.total);
@@ -1477,7 +1477,7 @@ namespace Crypto_Linux
                 addLog("New SoD file found File:" + NewSoDPosFile);
                 int i = 0;
                 StreamReader sr = new StreamReader(new FileStream(NewSoDPosFile, FileMode.Open, FileAccess.Read));
-                ExchangeBalance exBalance;
+                Crypto_Trading.Exchange exBalance;
                 List<balanceInfo> binfos = new List<balanceInfo>();
                 while (sr.ReadLine() is string line)
                 {
@@ -1495,15 +1495,15 @@ namespace Crypto_Linux
                                 b.total = decimal.Parse(items[5]);
                                 b.current_price = decimal.Parse(items[7]);
                                 b.valuation_pair = items[8];
-                                if (qManager.SoD_exchange_balances.ContainsKey(b.market))
+                                if (qManager.exchanges_SoD.ContainsKey(b.market))
                                 {
-                                    exBalance = qManager.SoD_exchange_balances[b.market];
+                                    exBalance = qManager.exchanges_SoD[b.market];
                                 }
                                 else
                                 {
-                                    exBalance = new ExchangeBalance();
+                                    exBalance = new Crypto_Trading.Exchange();
                                     exBalance.market = b.market;
-                                    qManager.SoD_exchange_balances[b.market] = exBalance;
+                                    qManager.exchanges_SoD[b.market] = exBalance;
                                 }
                                 exBalance.balance[b.ccy] = b;
 
@@ -1514,15 +1514,15 @@ namespace Crypto_Linux
                                 b.total = decimal.Parse(items[5]);
                                 b.current_price = decimal.Parse(items[7]);
                                 b.valuation_pair = items[8];
-                                if (qManager.exchange_balances.ContainsKey(b.market))
+                                if (qManager.exchanges.ContainsKey(b.market))
                                 {
-                                    exBalance = qManager.exchange_balances[b.market];
+                                    exBalance = qManager.exchanges[b.market];
                                 }
                                 else
                                 {
-                                    exBalance = new ExchangeBalance();
+                                    exBalance = new Crypto_Trading.Exchange();
                                     exBalance.market = b.market;
-                                    qManager.exchange_balances[b.market] = exBalance;
+                                    qManager.exchanges[b.market] = exBalance;
                                 }
                                 exBalance.balance[b.ccy] = b;
 
@@ -1563,15 +1563,15 @@ namespace Crypto_Linux
                                 bm.current_price = decimal.Parse(items[7]);
                                 bm.unrealized_fee = decimal.Parse(items[9]);
                                 bm.unrealized_interest = decimal.Parse(items[10]);
-                                if (qManager.SoD_exchange_balances.ContainsKey(bm.market))
+                                if (qManager.exchanges_SoD.ContainsKey(bm.market))
                                 {
-                                    exBalance = qManager.SoD_exchange_balances[bm.market];
+                                    exBalance = qManager.exchanges_SoD[bm.market];
                                 }
                                 else
                                 {
-                                    exBalance = new ExchangeBalance();
+                                    exBalance = new Crypto_Trading.Exchange();
                                     exBalance.market = bm.market;
-                                    qManager.SoD_exchange_balances[bm.market] = exBalance;
+                                    qManager.exchanges_SoD[bm.market] = exBalance;
                                 }
                                 if (bm.side == positionSide.Long)
                                 {
@@ -1603,15 +1603,15 @@ namespace Crypto_Linux
                                 bm.current_price = decimal.Parse(items[7]);
                                 bm.unrealized_fee = decimal.Parse(items[9]);
                                 bm.unrealized_interest = decimal.Parse(items[10]);
-                                if (qManager.exchange_balances.ContainsKey(bm.market))
+                                if (qManager.exchanges.ContainsKey(bm.market))
                                 {
-                                    exBalance = qManager.exchange_balances[bm.market];
+                                    exBalance = qManager.exchanges[bm.market];
                                 }
                                 else
                                 {
-                                    exBalance = new ExchangeBalance();
+                                    exBalance = new Crypto_Trading.Exchange();
                                     exBalance.market = bm.market;
-                                    qManager.exchange_balances[bm.market] = exBalance;
+                                    qManager.exchanges[bm.market] = exBalance;
                                 }
                                 if (bm.side == positionSide.Long)
                                 {
@@ -1651,9 +1651,9 @@ namespace Crypto_Linux
 
                 foreach (Instrument ins in qManager.instruments.Values)
                 {
-                    if (qManager.exchange_balances.ContainsKey(ins.market))
+                    if (qManager.exchanges.ContainsKey(ins.market))
                     {
-                        exBalance = qManager.exchange_balances[ins.market];
+                        exBalance = qManager.exchanges[ins.market];
                         if (exBalance.balance.ContainsKey(ins.baseCcy))
                         {
                             ins.baseBalance = exBalance.balance[ins.baseCcy];
@@ -1683,12 +1683,12 @@ namespace Crypto_Linux
                     {
                         addLog("[SetRealPosition]Exchange not found. Exchange:" + ins.market);
                     }
-                    if (qManager.SoD_exchange_balances.ContainsKey(ins.market))
+                    if (qManager.exchanges_SoD.ContainsKey(ins.market))
                     {
-                        exBalance = qManager.SoD_exchange_balances[ins.market];
+                        exBalance = qManager.exchanges_SoD[ins.market];
                         if (exBalance.balance.ContainsKey(ins.baseCcy))
                         {
-                            ins.baseBalance = exBalance.balance[ins.baseCcy];
+                            ins.SoD_baseBalance = exBalance.balance[ins.baseCcy];
                         }
                         else
                         {
@@ -1696,7 +1696,7 @@ namespace Crypto_Linux
                         }
                         if (exBalance.balance.ContainsKey(ins.quoteCcy))
                         {
-                            ins.quoteBalance = exBalance.balance[ins.quoteCcy];
+                            ins.SoD_quoteBalance = exBalance.balance[ins.quoteCcy];
                         }
                         else
                         {
@@ -1704,11 +1704,11 @@ namespace Crypto_Linux
                         }
                         if (exBalance.marginShort.ContainsKey(ins.symbol))
                         {
-                            ins.shortPosition = exBalance.marginShort[ins.symbol];
+                            ins.SoD_shortPosition = exBalance.marginShort[ins.symbol];
                         }
                         if (exBalance.marginLong.ContainsKey(ins.symbol))
                         {
-                            ins.longPosition = exBalance.marginLong[ins.symbol];
+                            ins.SoD_longPosition = exBalance.marginLong[ins.symbol];
                         }
                         if (ins.SoD_shortPosition.current_price > 0)
                         {
@@ -1976,7 +1976,7 @@ namespace Crypto_Linux
                     //Timestamp,Exchange,Margin or Spot,symbol,side(margin),quantity,avg_price(margin),current_price,valuation_pair,unrealized_fee(margin),unrealized_interest
                     sod.WriteLine("timestamp,exchange,Margin or Spot,symbol,side(margin),quantity,avg_price(margin),current_price,valuation_pair,unrealized_fee(margin),unrealized_interest(margin)");
                     DateTime current = DateTime.UtcNow;
-                    foreach (var exBalance in qManager.exchange_balances.Values)
+                    foreach (var exBalance in qManager.exchanges.Values)
                     {
                         sod.Write(exBalance.OutputToFile(qManager.instruments, current));
                         sod.Flush();
@@ -2176,8 +2176,7 @@ namespace Crypto_Linux
                             //decimal baseBalance_close = stg.maker.baseBalance.total + stg.taker.baseBalance.total;
                             //decimal quoteBalance_close = stg.maker.quoteBalance.total + stg.taker.quoteBalance.total;
 
-                            decimal baseBalance_open = stg.maker.SoD_baseBalance.total + stg.maker.SoD_longPosition.total - stg.maker.SoD_shortPosition.total
-                                                        + stg.taker.SoD_baseBalance.total + stg.taker.SoD_longPosition.total - stg.taker.SoD_shortPosition.total;
+                            decimal baseBalance_open = stg.maker.SoD_net_pos + stg.taker.SoD_net_pos;
                             decimal quoteBalance_open = stg.maker.SoD_quoteBalance.total + stg.taker.SoD_quoteBalance.total;
                             decimal baseBalance_close = stg.maker.baseBalance.total + stg.maker.longPosition.total - stg.maker.shortPosition.total
                                                         + stg.taker.baseBalance.total + stg.taker.longPosition.total - stg.taker.shortPosition.total; ;
@@ -2247,10 +2246,10 @@ namespace Crypto_Linux
                     }
 
                     addLog("Trade per trade");
-                    string TPT_file = outputPath + "/TPT_" + DateTime.UtcNow.ToString("HHmmss") + ".csv";
+                    string TPT_file = outputPath + "/TPT_" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".csv";
                     using (StreamWriter tpt = new StreamWriter(new FileStream(TPT_file, FileMode.Create, FileAccess.Write)))
                     {
-                        tpt.WriteLine("timestamp,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,maker_side,maker_avgprice,maker_quantity,taker_side,taker_avgprice,taker_quantity,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL");
+                        tpt.WriteLine("timestamp,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,maker_side,maker_avgprice,maker_quantity,maker_avgExecutedTime,taker_side,taker_avgprice,taker_quantity,taker_avgExecutedTime,realized_volatility,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency");
                         foreach(var stg in strategies.Values)
                         {
                             foreach(var ts in stg.tradeSummaries.Values)
@@ -2318,9 +2317,9 @@ namespace Crypto_Linux
                         //Timestamp,Exchange,Margin or Spot,symbol,side(margin),quantity,avg_price(margin),current_price,valuation_pair,unrealized_fee(margin),unrealized_interest
                         sod.WriteLine("timestamp,exchange,Margin or Spot,symbol,side(margin),quantity,avg_price(margin),current_price,valuation_pair,unrealized_fee(margin),unrealized_interest(margin)");
                         DateTime currentTime = DateTime.UtcNow;
-                        foreach (var exBalance in qManager.exchange_balances)
+                        foreach (var exBalance in qManager.exchanges)
                         {
-                            ExchangeBalance ex = exBalance.Value;
+                            Crypto_Trading.Exchange ex = exBalance.Value;
                             //addLog($"Exchange:{ex.market}[{exBalance.Key}] Balance:{ex.balance.Count} Long:{ex.marginLong.Count} Short:{ex.marginShort}");
                             //foreach (var b in ex.balance)
                             //{

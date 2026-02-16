@@ -919,31 +919,31 @@ namespace Crypto_GUI
                                                 {
                                                     Balance balance = new Balance();
                                                     balance.setFromBalanceInfo(b);
-                                                    if(qManager.SoD_exchange_balances.ContainsKey(balance.market))
+                                                    if(qManager.exchanges_SoD.ContainsKey(balance.market))
                                                     {
-                                                        qManager.SoD_exchange_balances[balance.market].balance[balance.ccy] = balance;
+                                                        qManager.exchanges_SoD[balance.market].balance[balance.ccy] = balance;
                                                     }
                                                     else
                                                     {
-                                                        ExchangeBalance exBalance = new ExchangeBalance();
+                                                        Crypto_Trading.Exchange exBalance = new Crypto_Trading.Exchange();
                                                         exBalance.market = balance.market;
                                                         exBalance.balance[balance.ccy] = balance;
-                                                        qManager.SoD_exchange_balances[balance.market] = exBalance;
+                                                        qManager.exchanges_SoD[balance.market] = exBalance;
                                                     }
                                                     balance = new Balance();
                                                     balance.setFromBalanceInfo(b);
-                                                    if (qManager.exchange_balances.ContainsKey(balance.market))
+                                                    if (qManager.exchanges.ContainsKey(balance.market))
                                                     {
-                                                        qManager.exchange_balances[balance.market].balance[balance.ccy] = balance;
-                                                        qManager.exchange_balances[balance.market].valueAtSoD += balance.current_price * balance.total;
+                                                        qManager.exchanges[balance.market].balance[balance.ccy] = balance;
+                                                        qManager.exchanges[balance.market].valueAtSoD += balance.current_price * balance.total;
                                                     }
                                                     else
                                                     {
-                                                        ExchangeBalance exBalance = new ExchangeBalance();
+                                                        Crypto_Trading.Exchange exBalance = new Crypto_Trading.Exchange();
                                                         exBalance.market = balance.market;
                                                         exBalance.balance[balance.ccy] = balance;
                                                         exBalance.valueAtSoD += balance.current_price * balance.total;
-                                                        qManager.exchange_balances[balance.market] = exBalance;
+                                                        qManager.exchanges[balance.market] = exBalance;
                                                     }
                                                     if(b.total > 0 && ccy_list.Contains(b.symbol) == false)
                                                     {
@@ -955,60 +955,60 @@ namespace Crypto_GUI
                                                 {
                                                     BalanceMargin balanceMargin = new BalanceMargin();
                                                     balanceMargin.setFromBalanceInfo(b);
-                                                    if (qManager.SoD_exchange_balances.ContainsKey(balanceMargin.market))
+                                                    if (qManager.exchanges_SoD.ContainsKey(balanceMargin.market))
                                                     {
                                                         if(balanceMargin.side == positionSide.Long)
                                                         {
-                                                            qManager.SoD_exchange_balances[balanceMargin.market].marginLong[balanceMargin.symbol] = balanceMargin;
+                                                            qManager.exchanges_SoD[balanceMargin.market].marginLong[balanceMargin.symbol] = balanceMargin;
                                                         }
                                                         else if(balanceMargin.side == positionSide.Short)
                                                         {
-                                                            qManager.SoD_exchange_balances[balanceMargin.market].marginShort[balanceMargin.symbol] = balanceMargin;
+                                                            qManager.exchanges_SoD[balanceMargin.market].marginShort[balanceMargin.symbol] = balanceMargin;
                                                         }
                                                     }
                                                     else
                                                     {
-                                                        ExchangeBalance exBalance = new ExchangeBalance();
+                                                        Crypto_Trading.Exchange exBalance = new Crypto_Trading.Exchange();
                                                         exBalance.market = balanceMargin.market;
-                                                        qManager.SoD_exchange_balances[balanceMargin.market] = exBalance;
+                                                        qManager.exchanges_SoD[balanceMargin.market] = exBalance;
                                                         if (balanceMargin.side == positionSide.Long)
                                                         {
-                                                            qManager.SoD_exchange_balances[balanceMargin.market].marginLong[balanceMargin.symbol] = balanceMargin;
+                                                            qManager.exchanges_SoD[balanceMargin.market].marginLong[balanceMargin.symbol] = balanceMargin;
                                                         }
                                                         else if (balanceMargin.side == positionSide.Short)
                                                         {
-                                                            qManager.SoD_exchange_balances[balanceMargin.market].marginShort[balanceMargin.symbol] = balanceMargin;
+                                                            qManager.exchanges_SoD[balanceMargin.market].marginShort[balanceMargin.symbol] = balanceMargin;
                                                         }
                                                     }
                                                     balanceMargin = new BalanceMargin();
                                                     balanceMargin.setFromBalanceInfo(b);
-                                                    if (qManager.exchange_balances.ContainsKey(balanceMargin.market))
+                                                    if (qManager.exchanges.ContainsKey(balanceMargin.market))
                                                     {
                                                         if (balanceMargin.side == positionSide.Long)
                                                         {
-                                                            qManager.exchange_balances[balanceMargin.market].marginLong[balanceMargin.symbol] = balanceMargin;
-                                                            qManager.exchange_balances[balanceMargin.market].valueAtSoD += (balanceMargin.current_price - balanceMargin.avg_price) * balanceMargin.total;
+                                                            qManager.exchanges[balanceMargin.market].marginLong[balanceMargin.symbol] = balanceMargin;
+                                                            qManager.exchanges[balanceMargin.market].valueAtSoD += (balanceMargin.current_price - balanceMargin.avg_price) * balanceMargin.total;
                                                         }
                                                         else if (balanceMargin.side == positionSide.Short)
                                                         {
-                                                            qManager.exchange_balances[balanceMargin.market].marginShort[balanceMargin.symbol] = balanceMargin;
-                                                            qManager.exchange_balances[balanceMargin.market].valueAtSoD += (balanceMargin.avg_price - balanceMargin.current_price) * balanceMargin.total;
+                                                            qManager.exchanges[balanceMargin.market].marginShort[balanceMargin.symbol] = balanceMargin;
+                                                            qManager.exchanges[balanceMargin.market].valueAtSoD += (balanceMargin.avg_price - balanceMargin.current_price) * balanceMargin.total;
                                                         }
                                                     }
                                                     else
                                                     {
-                                                        ExchangeBalance exBalance = new ExchangeBalance();
+                                                        Crypto_Trading.Exchange exBalance = new Crypto_Trading.Exchange();
                                                         exBalance.market = balanceMargin.market;
-                                                        qManager.exchange_balances[balanceMargin.market] = exBalance;
+                                                        qManager.exchanges[balanceMargin.market] = exBalance;
                                                         if (balanceMargin.side == positionSide.Long)
                                                         {
-                                                            qManager.exchange_balances[balanceMargin.market].marginLong[balanceMargin.symbol] = balanceMargin;
-                                                            qManager.exchange_balances[balanceMargin.market].valueAtSoD += (balanceMargin.current_price - balanceMargin.avg_price) * balanceMargin.total;
+                                                            qManager.exchanges[balanceMargin.market].marginLong[balanceMargin.symbol] = balanceMargin;
+                                                            qManager.exchanges[balanceMargin.market].valueAtSoD += (balanceMargin.current_price - balanceMargin.avg_price) * balanceMargin.total;
                                                         }
                                                         else if (balanceMargin.side == positionSide.Short)
                                                         {
-                                                            qManager.exchange_balances[balanceMargin.market].marginShort[balanceMargin.symbol] = balanceMargin;
-                                                            qManager.exchange_balances[balanceMargin.market].valueAtSoD += (balanceMargin.avg_price - balanceMargin.current_price) * balanceMargin.total;
+                                                            qManager.exchanges[balanceMargin.market].marginShort[balanceMargin.symbol] = balanceMargin;
+                                                            qManager.exchanges[balanceMargin.market].valueAtSoD += (balanceMargin.avg_price - balanceMargin.current_price) * balanceMargin.total;
                                                         }
                                                     }
                                                 }
@@ -1023,9 +1023,9 @@ namespace Crypto_GUI
                                                     {
                                                         ccy_list.Add(ins.baseCcy);
                                                     }
-                                                    if (qManager.SoD_exchange_balances.ContainsKey(ins.market))
+                                                    if (qManager.exchanges_SoD.ContainsKey(ins.market))
                                                     {
-                                                        ExchangeBalance exBalance = qManager.SoD_exchange_balances[ins.market];
+                                                        Crypto_Trading.Exchange exBalance = qManager.exchanges_SoD[ins.market];
                                                         if (exBalance.balance.ContainsKey(ins.baseCcy))
                                                         {
                                                             ins.SoD_baseBalance = exBalance.balance[ins.baseCcy];
@@ -1055,9 +1055,9 @@ namespace Crypto_GUI
                                                             ins.open_mid = ins.SoD_baseBalance.current_price;
                                                         }
                                                     }
-                                                    if (qManager.exchange_balances.ContainsKey(ins.market))
+                                                    if (qManager.exchanges.ContainsKey(ins.market))
                                                     {
-                                                        ExchangeBalance exBalance = qManager.exchange_balances[ins.market];
+                                                        Crypto_Trading.Exchange exBalance = qManager.exchanges[ins.market];
                                                         if (exBalance.balance.ContainsKey(ins.baseCcy))
                                                         {
                                                             ins.baseBalance = exBalance.balance[ins.baseCcy];
@@ -1798,7 +1798,7 @@ namespace Crypto_GUI
         private void update_Balance()
         {
             bool found = false;
-            foreach(var exBalance in qManager.exchange_balances.Values)
+            foreach(var exBalance in qManager.exchanges.Values)
             {
                 foreach (DataGridViewRow row in this.gridView_balance.Rows)
                 {

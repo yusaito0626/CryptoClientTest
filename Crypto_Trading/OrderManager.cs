@@ -3493,8 +3493,12 @@ namespace Crypto_Trading
         {
             if(this.virtualMode)
             {
+                decimal peek_DequeueCount;
+                decimal peek_EnqueueCount;
                 DateTime current = DateTime.UtcNow;
                 DataSpotOrderUpdate output = this.virtual_order_queue.Peek();
+                peek_DequeueCount = this.virtual_order_queue._Dequeues;
+                peek_EnqueueCount = this.virtual_order_queue._Enqueues;
                 DataSpotOrderUpdate output_temp;
                 DataSpotOrderUpdate update = null;
                 while (output != null)
@@ -3517,6 +3521,7 @@ namespace Crypto_Trading
                             {
                                 addLog("output_temp:" + output_temp.ToString());
                             }
+                            addLog($"Peek Enqueue Count:{peek_EnqueueCount} Peek Dequeue Count:{peek_EnqueueCount} Dequeue Enqueue Count:{this.virtual_order_queue._Enqueues} Enqueue Dequeue Count:{this.virtual_order_queue._Dequeues}");
                         }
                         if (this.Instruments.ContainsKey(output.symbol_market))
                         {
@@ -3620,7 +3625,6 @@ namespace Crypto_Trading
                                     }
                                     if (this.virtual_liveorders.ContainsKey(output.internal_order_id))
                                     {
-
                                         update = this.ord_client.ordUpdateStack.pop();
                                         if (update == null)
                                         {
@@ -3641,6 +3645,13 @@ namespace Crypto_Trading
                         }
                     }
                     output = this.virtual_order_queue.Peek();
+                    output_temp = this.virtual_order_queue.Peek();
+                    if(output != output_temp)
+                    {
+
+                    }
+                    peek_DequeueCount = this.virtual_order_queue._Dequeues;
+                    peek_EnqueueCount = this.virtual_order_queue._Enqueues;
                 }
             }
         }

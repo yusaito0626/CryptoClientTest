@@ -2031,11 +2031,16 @@ namespace Utils
         public decimal taker_avgprice;
         public decimal maker_quantity;
         public decimal taker_quantity;
+        public double realized_volatility;
         public decimal maker_markup;
         public decimal taker_markup;
         public decimal skew;
+        public decimal skew_widening;
         public decimal maker_priceAdjustment;
         public decimal taker_priceAdjustment;
+
+        public double maker_avgExecutedTime;
+        public double taker_avgExecutedTime;
 
         public decimal totalPnL;
         public decimal totalFee;
@@ -2043,12 +2048,13 @@ namespace Utils
         public decimal priceAdjPnL;
         public decimal markupPnL;
         public decimal residualPnL;
+        public double avg_latency;
 
         public tradeSummary()
         {
             this.init();   
         }
-        public bool setTakerFill(DataFill fill)
+        public bool setTakerFill(DataFill fill,DateTime? timestamp = null)
         {
             if(this.taker_symbolmarket == fill.symbol_market)
             {
@@ -2061,6 +2067,11 @@ namespace Utils
                 {
                     return false;
                 }
+                if(!timestamp.HasValue)
+                {
+                    timestamp = fill.timestamp;
+                }
+                this.taker_avgExecutedTime = (this.taker_avgExecutedTime * (double)this.taker_quantity + timestamp.Value.Ticks * (double)fill.quantity) / (double)(this.taker_quantity + fill.quantity);
                 this.taker_avgprice = (this.taker_avgprice * this.taker_quantity + fill.price * fill.quantity) / (this.taker_quantity + fill.quantity);
                 this.taker_quantity += fill.quantity;
                 this.totalFee += fill.fee_quote + fill.fee_base * fill.price;
@@ -2071,7 +2082,7 @@ namespace Utils
             }
             return true;
         }
-        public bool setMakerFill(DataFill fill)
+        public bool setMakerFill(DataFill fill, DateTime? timestamp = null)
         {
             if (this.maker_symbolmarket == fill.symbol_market)
             {
@@ -2085,6 +2096,11 @@ namespace Utils
                 {
                     return false;
                 }
+                if (!timestamp.HasValue)
+                {
+                    timestamp = fill.timestamp;
+                }
+                this.maker_avgExecutedTime = (this.maker_avgExecutedTime * (double)this.maker_quantity + timestamp.Value.Ticks * (double)fill.quantity) / (double)(this.maker_quantity + fill.quantity);
                 this.maker_avgprice = (this.maker_avgprice * this.maker_quantity + fill.price * fill.quantity) / (this.maker_quantity + fill.quantity);
                 this.maker_quantity += fill.quantity;
                 this.totalFee += fill.fee_quote + fill.fee_base * fill.price; 
@@ -2095,13 +2111,15 @@ namespace Utils
             }
             return true;
         }
-        public void setPricingInfo(string m_symbolmarket,string t_symbolmarket,decimal makerMarkup = 0,decimal takerMarkup = 0,decimal skew = 0,decimal makerPrAdj = 0,decimal takerPrAdj = 0)
+        public void setPricingInfo(string m_symbolmarket,string t_symbolmarket,decimal makerMarkup = 0,decimal takerMarkup = 0,double rv = 0,decimal skew = 0,decimal skew_widening = 0,decimal makerPrAdj = 0,decimal takerPrAdj = 0)
         {
             this.maker_symbolmarket = m_symbolmarket;
             this.taker_symbolmarket = t_symbolmarket;
+            this.realized_volatility = rv;
             this.maker_markup = makerMarkup;
             this.taker_markup = takerMarkup;
             this.skew = skew;
+            this.skew_widening = skew_widening;
             this.maker_priceAdjustment = makerPrAdj;
             this.taker_priceAdjustment = takerPrAdj;
         }
@@ -2109,11 +2127,20 @@ namespace Utils
         {
             decimal quantity = Math.Min(this.taker_quantity,this.maker_quantity);
             int sign = 1;
+            decimal extra_skew = this.skew_widening;
+            if(this.skew < 0)
+            {
+                extra_skew = 0;
+            }
             if(this.maker_side == orderSide.Buy)
             {
                 sign = -1;
+                if (this.skew > 0)
+                {
+                    extra_skew = 0;
+                }
             }
-            this.totalPnL = quantity * (this.maker_avgprice - this.taker_avgprice) - this.totalFee;
+            this.totalPnL = quantity * sign * (this.maker_avgprice - this.taker_avgprice) - this.totalFee;
             if(sign > 0)
             {
                 this.markupPnL = quantity * (this.maker_avgprice * (1 - 1_000_000 / (1_000_000 + this.maker_markup)) + this.taker_avgprice * (1_000_000 / (1_000_000 - this.taker_markup) - 1));
@@ -2122,9 +2149,10 @@ namespace Utils
             {
                 this.markupPnL = quantity * (this.maker_avgprice * (1_000_000 / (1_000_000 - this.maker_markup) - 1) + this.taker_avgprice * (1 - 1_000_000 / (1_000_000 + this.taker_markup)));
             }
-            this.skewPnL = quantity * sign * (this.skew / 1_000_000 * this.taker_avgprice);
+            this.skewPnL = quantity * sign * ((1 + extra_skew) * this.skew / 1_000_000 * this.taker_avgprice);
             this.priceAdjPnL = quantity * sign * (this.maker_avgprice * this.maker_priceAdjustment + this.taker_avgprice * - this.taker_priceAdjustment);
             this.residualPnL = this.totalPnL + this.totalFee - this.markupPnL - this.skewPnL - this.priceAdjPnL;
+            this.avg_latency = (this.taker_avgExecutedTime - this.maker_avgExecutedTime) / 10000.0;
         }
         public void init()
         {
@@ -2141,8 +2169,11 @@ namespace Utils
             this.taker_avgprice = 0;
             this.maker_quantity = 0;
             this.taker_quantity = 0;
+            this.realized_volatility = 0;
             this.maker_markup = 0;
             this.taker_markup = 0;
+            this.maker_avgExecutedTime = 0;
+            this.taker_avgExecutedTime = 0;
             this.skew = 0;
             this.maker_priceAdjustment = 0;
             this.taker_priceAdjustment = 0;
@@ -2152,6 +2183,7 @@ namespace Utils
             this.priceAdjPnL = 0;
             this.markupPnL = 0;
             this.residualPnL = 0;
+            this.avg_latency = 0;
         }
         public string ToString()
         {
@@ -2164,8 +2196,8 @@ namespace Utils
             {
                 strtime = "";
             }
-            //id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,maker_side,maker_avgprice,maker_quantity,taker_side,taker_avgprice,taker_quantity,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL;
-            return $"{strtime},{this.id},{this.BBook},{this.maker_symbolmarket},{this.taker_symbolmarket},{this.maker_orderid},{this.taker_orderid},{this.maker_side},{this.maker_avgprice},{this.maker_quantity},{this.taker_side},{this.taker_avgprice},{this.taker_quantity},{this.maker_markup},{this.taker_markup},{this.skew},{this.maker_priceAdjustment},{this.taker_priceAdjustment},{this.markupPnL},{this.skewPnL},{this.priceAdjPnL},{this.residualPnL},{this.totalFee},{this.totalPnL}";
+            //timestamp,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,maker_side,maker_avgprice,maker_quantity,maker_avgExecutedTime,taker_side,taker_avgprice,taker_quantity,taker_avgExecutedTime,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency;
+            return $"{strtime},{this.id},{this.BBook},{this.maker_symbolmarket},{this.taker_symbolmarket},{this.maker_orderid},{this.taker_orderid},{this.maker_side},{this.maker_avgprice},{this.maker_quantity},{this.maker_avgExecutedTime},{this.taker_side},{this.taker_avgprice},{this.taker_quantity},{this.taker_avgExecutedTime},{this.realized_volatility},{this.maker_markup},{this.taker_markup},{this.skew},{this.maker_priceAdjustment},{this.taker_priceAdjustment},{this.markupPnL},{this.skewPnL},{this.priceAdjPnL},{this.residualPnL},{this.totalFee},{this.totalPnL},{this.avg_latency}";
         }
 
     }
