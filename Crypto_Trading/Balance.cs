@@ -122,6 +122,7 @@ namespace Crypto_Trading
             this._inuse = 0;
             this.unrealized_fee= position.unrealizedFee;
             this.unrealized_interest= position.unrealizedInterest;
+            this.unrealized_pnl = position.unrealizedPnL;
         }
         public void setFromBalanceInfo(balanceInfo info)
         {

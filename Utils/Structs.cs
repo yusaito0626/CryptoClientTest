@@ -52,6 +52,7 @@ namespace Utils
         public decimal avgPrice;
         public decimal unrealizedFee;
         public decimal unrealizedInterest;
+        public decimal unrealizedPnL;
 
         public DataMarginPos()
         {
@@ -62,6 +63,7 @@ namespace Utils
             this.avgPrice = 0;
             this.unrealizedFee = 0;
             this.unrealizedInterest = 0;
+            this.unrealizedPnL = 0;
         }
         public void setBitbankJson(JsonElement js)
         {
@@ -96,6 +98,7 @@ namespace Utils
             }
             this.quantity = decimal.Parse(js.GetProperty("sumPositionQuantity").GetString());
             this.avgPrice = decimal.Parse(js.GetProperty("averagePositionRate").GetString());
+            this.unrealizedPnL = decimal.Parse(js.GetProperty("positionLossGain").GetString());
         }
         public string ToString()
         {
@@ -111,6 +114,7 @@ namespace Utils
             this.avgPrice = 0;
             this.unrealizedFee = 0;
             this.unrealizedInterest = 0;
+            this.unrealizedPnL = 0;
         }
     }
     public class DataOrderBook

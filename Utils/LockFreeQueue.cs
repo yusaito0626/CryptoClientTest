@@ -109,6 +109,7 @@ namespace LockFreeStack
             while (_pushes < PreservingSize)
             {
                 Node<T> NewNode = new Node<T>();
+                NewNode.node_id = this._pushes;
                 if (_pushes == 0)
                 {
                     NewNode.Next = null;
@@ -173,12 +174,14 @@ namespace LockFreeStack
         public T value;
         public Node<T>? Next;
         public Node<T>? Back;
+        public int node_id;
 
         public Node()
         {
             Next = null;
             Back = null;
             value = default!;
+            node_id = -1;
         }
 
         public void Dispose()
@@ -186,6 +189,7 @@ namespace LockFreeStack
             Next = null;
             Back = null;
             value = default!;
+            node_id = -1;
         }
     }
 }
@@ -248,6 +252,11 @@ namespace LockFreeQueue
             {
                 Node<T> newNode;
                 newNode = _NodePool.pop();
+                if(newNode.lock_count > 0)
+                {
+                    Console.WriteLine("Node {0} is locked when enqueuing", newNode.node_id);
+                }
+                Interlocked.Increment(ref newNode.lock_count);
                 newNode.value = val;
                 Node<T> OldHead = this._pHead;
                 newNode.Next = OldHead;
@@ -275,6 +284,7 @@ namespace LockFreeQueue
                 this._pTail.Next = null;
                 this._pTail.value = default!;
                 preTail.Back = null;
+                Interlocked.Decrement(ref preTail.lock_count);
                 this._NodePool.push(preTail);
                 ++(this._Dequeues);
             }
@@ -368,6 +378,11 @@ namespace LockFreeQueue
             {
                 Node<T> newNode;
                 newNode = _NodePool.pop();
+                if (newNode.lock_count > 0)
+                {
+                    Console.WriteLine("Node {0} is locked when enqueuing", newNode.node_id);
+                }
+                Interlocked.Increment(ref newNode.lock_count);
                 newNode.value = val;
                 Node<T> OldHead = this._pHead;
                 newNode.Next = OldHead;
@@ -392,6 +407,7 @@ namespace LockFreeQueue
             this._pTail.Next = null;
             this._pTail.value = default!;
             preTail.Back = null;
+            Interlocked.Decrement(ref preTail.lock_count);
             this._NodePool.push(preTail);
             ++(this._Dequeues);
 
@@ -472,6 +488,11 @@ namespace LockFreeQueue
         {
             Node<T> newNode;
             newNode = _NodePool.pop();
+            if (newNode.lock_count > 0)
+            {
+                Console.WriteLine("Node {0} is locked when enqueuing", newNode.node_id);
+            }
+            Interlocked.Increment(ref newNode.lock_count);
             newNode.value = val;
             Node<T> OldHead = this._pHead;
             newNode.Next = OldHead;
@@ -497,6 +518,7 @@ namespace LockFreeQueue
                 this._pTail.Next = null;
                 this._pTail.value = default!;
                 preTail.Back = null;
+                Interlocked.Decrement(ref preTail.lock_count);
                 this._NodePool.push(preTail);
                 ++(this._Dequeues);
             }
@@ -577,6 +599,11 @@ namespace LockFreeQueue
         {
             Node<T> newNode;
             newNode = _NodePool.pop();
+            if (newNode.lock_count > 0)
+            {
+                Console.WriteLine("Node {0} is locked when enqueuing", newNode.node_id);
+            }
+            Interlocked.Increment(ref newNode.lock_count);
             newNode.value = val;
             Node<T> OldHead = this._pHead;
             newNode.Next = OldHead;
@@ -601,6 +628,7 @@ namespace LockFreeQueue
             this._pTail.Next = null;
             this._pTail.value = default!;
             preTail.Back = null;
+            Interlocked.Decrement(ref preTail.lock_count);
             this._NodePool.push(preTail);
             ++(this._Dequeues);
             return val;
@@ -635,6 +663,7 @@ namespace LockFreeQueue
             while (_pushes < PreservingSize)
             {
                 Node<T> NewNode = new Node<T>();
+                NewNode.node_id = this._pushes;
                 if (_pushes == 0)
                 {
                     NewNode.Next = null;
@@ -699,12 +728,16 @@ namespace LockFreeQueue
         public T value;
         public Node<T>? Next;
         public Node<T>? Back;
+        public int node_id;
+        public volatile int lock_count;
 
         public Node()
         {
             Next = null;
             Back = null;
             value = default!;
+            node_id = -1;
+            lock_count = 0;
         }
 
         public void Dispose()
@@ -712,6 +745,8 @@ namespace LockFreeQueue
             Next = null;
             Back = null;
             value = default!;
+            node_id = -1;
+            lock_count = 0;
         }
     }
 }

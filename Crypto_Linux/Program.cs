@@ -2093,36 +2093,12 @@ namespace Crypto_Linux
                         }
                     }
                     
-
-                    
-
                     foreach(var stg in strategies.Values)
                     {
                         stg.adjustPosition();
-                        //decimal baseBalance_diff = stg.baseCcyQuantity - (stg.maker.baseBalance.total + stg.taker.baseBalance.total);
-                        //decimal baseBalance_diff = -(stg.maker.net_pos + stg.taker.net_pos);
-                        //orderSide side = orderSide.Buy;
-                        //if(baseBalance_diff < 0)
-                        //{
-                        //    baseBalance_diff *= -1;
-                        //    side = orderSide.Sell;
-                        //}
-                        //baseBalance_diff = Math.Round(baseBalance_diff / stg.taker.quantity_unit) * stg.taker.quantity_unit;
-                        //addLog("EoD balance of " + stg.name + " BaseCcy:" + (stg.maker.net_pos + stg.taker.net_pos).ToString() + " QuoteCcy:" + (stg.maker.quoteBalance.total + stg.taker.quoteBalance.total).ToString());
-                        //if(baseBalance_diff >= stg.taker.quantity_unit)
-                        //{
-                        //    addLog("Adjustment at EoD: " + side.ToString() + " " + baseBalance_diff.ToString());
-                        //    oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, positionSide.NONE, null, true, false);
-                        //}
                     }
 
                     Thread.Sleep(1000);
-
-                    //string msg = "EoD PnL\n" + messagePnL();
-
-                    //await MsgDeliverer.sendMessage(msg, msg_type);
-
-                    //addLog(msg);
 
                     string msg = "EoD PnL\n";
                     await MsgDeliverer.sendMessage(msg, msg_type);
@@ -2144,122 +2120,10 @@ namespace Crypto_Linux
 
                     Thread.Sleep(1000);
 
-                    //if(live)
-                    {
-                        addLog("Updating the performance file...");
-                        string performanceFile = outputPath_org + "/performance.csv";
+                    await outputPerformance(outputPath_org + "/performance.csv");
 
-                        List<string> lines;
-                        if (!File.Exists(performanceFile))
-                        {
-                            lines = new List<string>();
-                            lines.Add("date,strategy,baseBalance_open,quoteBalance_open,baseBalance_close,quoteBalance_close,baseHedge_quantity,notional_volume,open_mid,close_mid,buy_quantity,buy_avgPrice,sell_quantity,sell_avgPrice,TotalPnL,pos_diff,BBookPnL");
-
-                        }
-                        else
-                        {
-                            lines = File.ReadAllLines(performanceFile).ToList();
-                        }
-                        string today = DateTime.UtcNow.ToString("yyyy-MM-dd");
-                        lines = lines
-                            .Where(line =>
-                            {
-                                var cols = line.Split(',');
-                                return cols.Length > 0 && cols[0] != today;
-                            })
-                            .ToList();
-
-                        foreach (var stg in strategies.Values)
-                        {
-                            //decimal baseBalance_open = stg.maker.SoD_baseBalance.total + stg.taker.SoD_baseBalance.total;
-                            //decimal quoteBalance_open = stg.maker.SoD_quoteBalance.total + stg.taker.SoD_quoteBalance.total;
-                            //decimal baseBalance_close = stg.maker.baseBalance.total + stg.taker.baseBalance.total;
-                            //decimal quoteBalance_close = stg.maker.quoteBalance.total + stg.taker.quoteBalance.total;
-
-                            decimal baseBalance_open = stg.maker.SoD_net_pos + stg.taker.SoD_net_pos;
-                            decimal quoteBalance_open = stg.maker.SoD_quoteBalance.total + stg.taker.SoD_quoteBalance.total;
-                            decimal baseBalance_close = stg.maker.baseBalance.total + stg.maker.longPosition.total - stg.maker.shortPosition.total
-                                                        + stg.taker.baseBalance.total + stg.taker.longPosition.total - stg.taker.shortPosition.total; ;
-                            decimal quoteBalance_close = stg.maker.quoteBalance.total + stg.taker.quoteBalance.total;
-
-                            decimal temp_mid;
-                            temp_mid = await crypto_client.getCurrentMid(stg.taker.market, stg.taker.symbol);
-                            if(temp_mid > 0)
-                            {
-                                stg.taker.mid = temp_mid;
-                            }
-                            temp_mid = await crypto_client.getCurrentMid(stg.maker.market, stg.maker.symbol);
-                            if(temp_mid > 0)
-                            {
-                                stg.maker.mid = temp_mid;
-                            }
-
-                            stg.netExposure = stg.maker.net_pos + stg.taker.net_pos;
-                            stg.notionalVolume = stg.maker.my_buy_notional + stg.maker.my_sell_notional;
-                            stg.posPnL = stg.SoD_baseCcyPos * (stg.taker.mid - stg.taker.open_mid);
-                            stg.tradingPnL = (stg.taker.my_sell_notional - stg.taker.my_sell_quantity * stg.taker.mid) + (stg.taker.my_buy_quantity * stg.taker.mid - stg.taker.my_buy_notional);
-                            stg.tradingPnL += (stg.maker.my_sell_notional - stg.maker.my_sell_quantity * stg.taker.mid) + (stg.maker.my_buy_quantity * stg.taker.mid - stg.maker.my_buy_notional);
-                            stg.totalFee = stg.taker.base_fee * stg.taker.mid + stg.taker.quote_fee + stg.maker.base_fee * stg.taker.mid + stg.maker.quote_fee;
-                            stg.totalPnL = stg.posPnL + stg.tradingPnL - stg.totalFee;
-
-                            //decimal notionalVolume = stg.maker.my_buy_notional + stg.maker.my_sell_notional;
-
-                            decimal sell_avgprice = stg.maker.my_sell_quantity > 0 ? stg.maker.my_sell_notional / stg.maker.my_sell_quantity : 0;
-                            decimal buy_avgprice = stg.maker.my_buy_quantity > 0 ? stg.maker.my_buy_notional / stg.maker.my_buy_quantity : 0;
-
-                            //decimal totalPnL = (stg.maker.SoD_baseBalance.total + stg.maker.SoD_longPosition.total - stg.maker.SoD_shortPosition.total + stg.taker.SoD_baseBalance.total) * (stg.taker.mid - stg.taker.open_mid)
-                            //    + (stg.taker.my_sell_notional - stg.taker.my_sell_quantity * stg.taker.mid) + (stg.taker.my_buy_quantity * stg.taker.mid - stg.taker.my_buy_notional)
-                            //    + (stg.maker.my_sell_notional - stg.maker.my_sell_quantity * stg.taker.mid) + (stg.maker.my_buy_quantity * stg.taker.mid - stg.maker.my_buy_notional)
-                            //    - (stg.taker.base_fee * stg.taker.mid + stg.taker.quote_fee + stg.maker.base_fee * stg.taker.mid + stg.maker.quote_fee);
-
-                            decimal interest = stg.taker.realized_Interest + stg.maker.realized_Interest
-                                                + stg.taker.shortPosition.unrealized_interest - stg.taker.SoD_shortPosition.unrealized_interest
-                                                + stg.taker.longPosition.unrealized_interest - stg.taker.SoD_longPosition.unrealized_interest
-                                                + stg.maker.shortPosition.unrealized_interest - stg.maker.SoD_shortPosition.unrealized_interest
-                                                + stg.maker.longPosition.unrealized_interest - stg.maker.SoD_longPosition.unrealized_interest;
-                            decimal pos_diff = (stg.maker.baseBalance.total + stg.taker.baseBalance.total) * stg.taker.mid - (stg.maker.SoD_baseBalance.total + stg.taker.SoD_baseBalance.total) * stg.taker.open_mid + quoteBalance_close - quoteBalance_open;
-
-
-                            decimal unrealized_pnl = stg.maker.longPosition.total * (stg.taker.mid - stg.maker.longPosition.avg_price) + stg.maker.shortPosition.total * (stg.maker.shortPosition.avg_price - stg.taker.mid)
-                                                    + stg.taker.longPosition.total * (stg.taker.mid - stg.maker.longPosition.avg_price) + stg.taker.shortPosition.total * (stg.taker.shortPosition.avg_price - stg.taker.mid);
-                            decimal unrealized_sod = stg.maker.SoD_longPosition.total * (stg.taker.open_mid - stg.maker.SoD_longPosition.avg_price) + stg.maker.SoD_shortPosition.total * (stg.maker.SoD_shortPosition.avg_price - stg.taker.open_mid)
-                                                    + stg.taker.SoD_longPosition.total * (stg.taker.open_mid - stg.maker.SoD_longPosition.avg_price) + stg.taker.SoD_shortPosition.total * (stg.taker.SoD_shortPosition.avg_price - stg.taker.mid);
-                            decimal unrealized_fee = stg.maker.longPosition.unrealized_fee - stg.maker.SoD_longPosition.unrealized_fee + stg.maker.shortPosition.unrealized_fee - stg.maker.SoD_shortPosition.unrealized_fee
-                                                    + stg.taker.longPosition.unrealized_fee - stg.taker.SoD_longPosition.unrealized_fee + stg.taker.shortPosition.unrealized_fee - stg.taker.SoD_shortPosition.unrealized_fee;
-                            decimal unrealized_interest = stg.taker.shortPosition.unrealized_interest - stg.taker.SoD_shortPosition.unrealized_interest
-                                                + stg.taker.longPosition.unrealized_interest - stg.taker.SoD_longPosition.unrealized_interest
-                                                + stg.maker.shortPosition.unrealized_interest - stg.maker.SoD_shortPosition.unrealized_interest
-                                                + stg.maker.longPosition.unrealized_interest - stg.maker.SoD_longPosition.unrealized_interest;
-                            decimal unrealized_diff = unrealized_pnl - unrealized_sod - unrealized_fee - unrealized_interest;
-
-                            decimal BBookPnL = (sell_avgprice - stg.maker.mid) * stg.maker.my_sell_quantity + (stg.maker.mid - buy_avgprice) * stg.maker.my_buy_quantity;
-
-                            string line = today + "," + stg.name + "," + baseBalance_open.ToString() + "," + quoteBalance_open.ToString() + ","
-                                + baseBalance_close.ToString() + "," + quoteBalance_close.ToString() + "," + stg.maxMakerPosition.ToString() + "," + stg.notionalVolume.ToString() + "," + stg.taker.open_mid.ToString() + "," + stg.taker.mid.ToString() + ","
-                                + stg.maker.my_buy_quantity + "," + buy_avgprice + "," + stg.maker.my_sell_quantity + "," + sell_avgprice + ","
-                                + stg.totalPnL.ToString() + "," + (- interest).ToString() + "," + pos_diff.ToString() + "," + unrealized_diff.ToString() + "," + BBookPnL.ToString();
-
-                            lines.Add(line);
-                        }
-
-                        File.WriteAllLines(performanceFile, lines);
-                    }
-
-                    addLog("Trade per trade");
-                    string TPT_file = outputPath + "/TPT_" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".csv";
-                    using (StreamWriter tpt = new StreamWriter(new FileStream(TPT_file, FileMode.Create, FileAccess.Write)))
-                    {
-                        tpt.WriteLine("timestamp,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,maker_side,maker_avgprice,maker_quantity,maker_avgExecutedTime,taker_side,taker_avgprice,taker_quantity,taker_avgExecutedTime,realized_volatility,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency");
-                        foreach(var stg in strategies.Values)
-                        {
-                            foreach(var ts in stg.tradeSummaries.Values)
-                            {
-                                ts.calcPnL();
-                                tpt.WriteLine(ts.ToString());
-                            }
-                            stg.tradeSummaries.Clear();
-                        }
-                    }
+                    string TPT_file = outputPath + "/TradePerTrade_" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".csv";
+                    outputTradePerTrade(TPT_file);
 
                     string dt = (DateTime.UtcNow + TimeSpan.FromDays(1)).ToString("yyyy-MM-dd");
                     string newpath = outputPath_org + "/" + dt;
@@ -2267,77 +2131,51 @@ namespace Crypto_Linux
                     {
                         Directory.CreateDirectory(newpath);
                     }
-                    
+
+
                     addLog("Exporting SoD position file...");
-                    string SoDPosFile = newpath + "/SoD_Position.csv";
-                    if(live)
-                    {
-                        qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys));
-                        qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys));
-                    }
-                    //foreach (var exvk in qManager.exchange_balances)
+
+                    //string SoDPosFile = newpath + "/SoD_Position.csv";
+                    string HistBalanceFile = outputPath_org + "/historicalBalance.csv";
+                    string new_SoDFile = newpath + "/SoD_Position_new.csv";
+
+                    await outputHistoricalBalance(HistBalanceFile, new_SoDFile);
+                    //if (live)
                     //{
-                    //    ExchangeBalance ex = exvk.Value;
-                    //    addLog($"Exchange:{ex.market}[{exvk.Key}] Balance:{ex.balance.Count} Long:{ex.marginLong.Count} Short:{ex.marginShort.Count}");
-                    //    foreach (var b in ex.balance)
+                    //    qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys));
+                    //    qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys));
+                    //}
+                    
+
+                    //StreamWriter sw = new StreamWriter(new FileStream(SoDPosFile, FileMode.Create, FileAccess.Write));
+                    //using (StreamWriter sod = new StreamWriter(new FileStream(SoDPosFile, FileMode.Create, FileAccess.Write)))
+                    //{
+                    //    sod.WriteLine("timestamp,symbol,market,symbol_market,base_ccy,quote_ccy,baseccy_balance,quoteccy_balance,long_position,long_avgprice,long_unrealized_fee,long_unrealized_interest,short_position,short_avgprice,short_unrealized_fee,short_unrealized_interest,open_mid");
+                    //    string currentTime = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
+                    //    foreach (var ins in qManager.instruments.Values)
                     //    {
-                    //        addLog($"Key:{b.Key}  Value:{b.Value.ToString()}");
-                    //    }
-                    //    foreach (var m in ex.marginLong)
-                    //    {
-                    //        addLog($"Key:{m.Key} Value:{m.Value.ToString()}");
-                    //    }
-                    //    foreach (var m in ex.marginShort)
-                    //    {
-                    //        addLog($"Key:{m.Key} Value:{m.Value.ToString()}");
+                    //        //decimal mid = await crypto_client.getCurrentMid(ins.market, ins.symbol);
+                    //        //string line = currentTime + "," + ins.symbol + "," + ins.market + "," + ins.symbol_market + "," + ins.baseCcy + "," + ins.quoteCcy + "," + ins.baseBalance.total.ToString() + "," + ins.quoteBalance.total.ToString() + "," + ins.longPosition.total.ToString() + "," + ins.shortPosition.total.ToString() + "," + ins.mid.ToString();
+                    //        string line = currentTime + "," + ins.symbol + "," + ins.market + "," + ins.symbol_market + "," + ins.baseCcy + "," + ins.quoteCcy + "," + ins.baseBalance.total.ToString() + "," + ins.quoteBalance.total.ToString()
+                    //                + "," + ins.longPosition.total.ToString() + "," + ins.longPosition.avg_price.ToString() + "," + ins.longPosition.unrealized_fee.ToString() + "," + ins.longPosition.unrealized_interest.ToString()
+                    //                + "," + ins.shortPosition.total.ToString() + "," + ins.shortPosition.avg_price.ToString() + "," + ins.shortPosition.unrealized_fee.ToString() + "," + ins.shortPosition.unrealized_interest.ToString() + "," + ins.mid.ToString();
+
+                    //        sod.WriteLine(line);
+                    //        sod.Flush();
                     //    }
                     //}
 
-                    //StreamWriter sw = new StreamWriter(new FileStream(SoDPosFile, FileMode.Create, FileAccess.Write));
-                    using (StreamWriter sod = new StreamWriter(new FileStream(SoDPosFile, FileMode.Create, FileAccess.Write)))
-                    {
-                        sod.WriteLine("timestamp,symbol,market,symbol_market,base_ccy,quote_ccy,baseccy_balance,quoteccy_balance,long_position,long_avgprice,long_unrealized_fee,long_unrealized_interest,short_position,short_avgprice,short_unrealized_fee,short_unrealized_interest,open_mid");
-                        string currentTime = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
-                        foreach (var ins in qManager.instruments.Values)
-                        {
-                            //decimal mid = await crypto_client.getCurrentMid(ins.market, ins.symbol);
-                            //string line = currentTime + "," + ins.symbol + "," + ins.market + "," + ins.symbol_market + "," + ins.baseCcy + "," + ins.quoteCcy + "," + ins.baseBalance.total.ToString() + "," + ins.quoteBalance.total.ToString() + "," + ins.longPosition.total.ToString() + "," + ins.shortPosition.total.ToString() + "," + ins.mid.ToString();
-                            string line = currentTime + "," + ins.symbol + "," + ins.market + "," + ins.symbol_market + "," + ins.baseCcy + "," + ins.quoteCcy + "," + ins.baseBalance.total.ToString() + "," + ins.quoteBalance.total.ToString()
-                                    + "," + ins.longPosition.total.ToString() + "," + ins.longPosition.avg_price.ToString() + "," + ins.longPosition.unrealized_fee.ToString() + "," + ins.longPosition.unrealized_interest.ToString()
-                                    + "," + ins.shortPosition.total.ToString() + "," + ins.shortPosition.avg_price.ToString() + "," + ins.shortPosition.unrealized_fee.ToString() + "," + ins.shortPosition.unrealized_interest.ToString() + "," + ins.mid.ToString();
-
-                            sod.WriteLine(line);
-                            sod.Flush();
-                        }
-                    }
-
-                    string new_SoDFile = newpath + "/SoD_Position_new.csv";
-                    using (StreamWriter sod = new StreamWriter(new FileStream(new_SoDFile, FileMode.Create, FileAccess.Write)))
-                    {
-                        //Timestamp,Exchange,Margin or Spot,symbol,side(margin),quantity,avg_price(margin),current_price,valuation_pair,unrealized_fee(margin),unrealized_interest
-                        sod.WriteLine("timestamp,exchange,Margin or Spot,symbol,side(margin),quantity,avg_price(margin),current_price,valuation_pair,unrealized_fee(margin),unrealized_interest(margin)");
-                        DateTime currentTime = DateTime.UtcNow;
-                        foreach (var exBalance in qManager.exchanges)
-                        {
-                            Crypto_Trading.Exchange ex = exBalance.Value;
-                            //addLog($"Exchange:{ex.market}[{exBalance.Key}] Balance:{ex.balance.Count} Long:{ex.marginLong.Count} Short:{ex.marginShort}");
-                            //foreach (var b in ex.balance)
-                            //{
-                            //    addLog($"Key:{b.Key}  Value:{b.Value.ToString()}");
-                            //}
-                            //foreach (var m in ex.marginLong)
-                            //{
-                            //    addLog($"Key:{m.Key} Value:{m.Value.ToString()}");
-                            //}
-                            //foreach (var m in ex.marginShort)
-                            //{
-                            //    addLog($"Key:{m.Key} Value:{m.Value.ToString()}");
-                            //}
-                            sod.Write(exBalance.Value.OutputToFile(qManager.instruments,currentTime));
-                            sod.Flush();
-                        }
-                    }
-                    
+                    //using (StreamWriter sod = new StreamWriter(new FileStream(new_SoDFile, FileMode.Create, FileAccess.Write)))
+                    //{
+                    //    sod.WriteLine("timestamp,exchange,Margin or Spot,symbol,side(margin),quantity,avg_price(margin),current_price,valuation_pair,unrealized_fee(margin),unrealized_interest(margin)");
+                    //    DateTime currentTime = DateTime.UtcNow;
+                    //    foreach (var exBalance in qManager.exchanges)
+                    //    {
+                    //        Crypto_Trading.Exchange ex = exBalance.Value;
+                    //        sod.Write(exBalance.Value.OutputToFile(qManager.instruments,currentTime));
+                    //        sod.Flush();
+                    //    }
+                    //}
 
                     outputMI();
                     marketImpactFile.Flush();
@@ -2364,6 +2202,177 @@ namespace Crypto_Linux
             }
         }
 
+        static private async Task outputPerformance(string filename = "perfomance.csv")
+        {
+            addLog("Updating the performance file...");
+
+            List<string> lines;
+            if (!File.Exists(filename))
+            {
+                lines = new List<string>();
+                lines.Add("date,strategy,baseBalance_open,quoteBalance_open,baseBalance_close,quoteBalance_close,baseHedge_quantity,notional_volume,open_mid,close_mid,buy_quantity,buy_avgPrice,sell_quantity,sell_avgPrice,TotalPnL,pos_diff,BBookPnL");
+
+            }
+            else
+            {
+                lines = File.ReadAllLines(filename).ToList();
+            }
+            string today = DateTime.UtcNow.ToString("yyyy-MM-dd");
+            lines = lines
+                .Where(line =>
+                {
+                    var cols = line.Split(',');
+                    return cols.Length > 0 && cols[0] != today;
+                })
+                .ToList();
+
+            foreach (var stg in strategies.Values)
+            {
+                decimal baseBalance_open = stg.maker.SoD_net_pos + stg.taker.SoD_net_pos;
+                decimal quoteBalance_open = stg.maker.SoD_quoteBalance.total + stg.taker.SoD_quoteBalance.total;
+                decimal baseBalance_close = stg.maker.baseBalance.total + stg.maker.longPosition.total - stg.maker.shortPosition.total
+                                            + stg.taker.baseBalance.total + stg.taker.longPosition.total - stg.taker.shortPosition.total; ;
+                decimal quoteBalance_close = stg.maker.quoteBalance.total + stg.taker.quoteBalance.total;
+
+                decimal temp_mid;
+                temp_mid = await crypto_client.getCurrentMid(stg.taker.market, stg.taker.symbol);
+                if (temp_mid > 0)
+                {
+                    stg.taker.mid = temp_mid;
+                }
+                temp_mid = await crypto_client.getCurrentMid(stg.maker.market, stg.maker.symbol);
+                if (temp_mid > 0)
+                {
+                    stg.maker.mid = temp_mid;
+                }
+
+                stg.netExposure = stg.maker.net_pos + stg.taker.net_pos;
+                stg.notionalVolume = stg.maker.my_buy_notional + stg.maker.my_sell_notional;
+                stg.posPnL = stg.SoD_baseCcyPos * (stg.taker.mid - stg.taker.open_mid);
+                stg.tradingPnL = (stg.taker.my_sell_notional - stg.taker.my_sell_quantity * stg.taker.mid) + (stg.taker.my_buy_quantity * stg.taker.mid - stg.taker.my_buy_notional);
+                stg.tradingPnL += (stg.maker.my_sell_notional - stg.maker.my_sell_quantity * stg.taker.mid) + (stg.maker.my_buy_quantity * stg.taker.mid - stg.maker.my_buy_notional);
+                stg.totalFee = stg.taker.base_fee * stg.taker.mid + stg.taker.quote_fee + stg.maker.base_fee * stg.taker.mid + stg.maker.quote_fee;
+                stg.totalPnL = stg.posPnL + stg.tradingPnL - stg.totalFee;
+
+                decimal sell_avgprice = stg.maker.my_sell_quantity > 0 ? stg.maker.my_sell_notional / stg.maker.my_sell_quantity : 0;
+                decimal buy_avgprice = stg.maker.my_buy_quantity > 0 ? stg.maker.my_buy_notional / stg.maker.my_buy_quantity : 0;
+
+                decimal interest = stg.taker.realized_Interest + stg.maker.realized_Interest
+                                    + stg.taker.shortPosition.unrealized_interest - stg.taker.SoD_shortPosition.unrealized_interest
+                                    + stg.taker.longPosition.unrealized_interest - stg.taker.SoD_longPosition.unrealized_interest
+                                    + stg.maker.shortPosition.unrealized_interest - stg.maker.SoD_shortPosition.unrealized_interest
+                                    + stg.maker.longPosition.unrealized_interest - stg.maker.SoD_longPosition.unrealized_interest;
+                decimal pos_diff = (stg.maker.baseBalance.total + stg.taker.baseBalance.total) * stg.taker.mid - (stg.maker.SoD_baseBalance.total + stg.taker.SoD_baseBalance.total) * stg.taker.open_mid + quoteBalance_close - quoteBalance_open;
+
+
+                decimal unrealized_pnl = stg.maker.longPosition.total * (stg.taker.mid - stg.maker.longPosition.avg_price) + stg.maker.shortPosition.total * (stg.maker.shortPosition.avg_price - stg.taker.mid)
+                                        + stg.taker.longPosition.total * (stg.taker.mid - stg.maker.longPosition.avg_price) + stg.taker.shortPosition.total * (stg.taker.shortPosition.avg_price - stg.taker.mid);
+                decimal unrealized_sod = stg.maker.SoD_longPosition.total * (stg.taker.open_mid - stg.maker.SoD_longPosition.avg_price) + stg.maker.SoD_shortPosition.total * (stg.maker.SoD_shortPosition.avg_price - stg.taker.open_mid)
+                                        + stg.taker.SoD_longPosition.total * (stg.taker.open_mid - stg.maker.SoD_longPosition.avg_price) + stg.taker.SoD_shortPosition.total * (stg.taker.SoD_shortPosition.avg_price - stg.taker.mid);
+                decimal unrealized_fee = stg.maker.longPosition.unrealized_fee - stg.maker.SoD_longPosition.unrealized_fee + stg.maker.shortPosition.unrealized_fee - stg.maker.SoD_shortPosition.unrealized_fee
+                                        + stg.taker.longPosition.unrealized_fee - stg.taker.SoD_longPosition.unrealized_fee + stg.taker.shortPosition.unrealized_fee - stg.taker.SoD_shortPosition.unrealized_fee;
+                decimal unrealized_interest = stg.taker.shortPosition.unrealized_interest - stg.taker.SoD_shortPosition.unrealized_interest
+                                    + stg.taker.longPosition.unrealized_interest - stg.taker.SoD_longPosition.unrealized_interest
+                                    + stg.maker.shortPosition.unrealized_interest - stg.maker.SoD_shortPosition.unrealized_interest
+                                    + stg.maker.longPosition.unrealized_interest - stg.maker.SoD_longPosition.unrealized_interest;
+                decimal unrealized_diff = unrealized_pnl - unrealized_sod - unrealized_fee - unrealized_interest;
+
+                decimal BBookPnL = (sell_avgprice - stg.maker.mid) * stg.maker.my_sell_quantity + (stg.maker.mid - buy_avgprice) * stg.maker.my_buy_quantity;
+
+                string line = today + "," + stg.name + "," + baseBalance_open.ToString() + "," + quoteBalance_open.ToString() + ","
+                    + baseBalance_close.ToString() + "," + quoteBalance_close.ToString() + "," + stg.maxMakerPosition.ToString() + "," + stg.notionalVolume.ToString() + "," + stg.taker.open_mid.ToString() + "," + stg.taker.mid.ToString() + ","
+                    + stg.maker.my_buy_quantity + "," + buy_avgprice + "," + stg.maker.my_sell_quantity + "," + sell_avgprice + ","
+                    + stg.totalPnL.ToString() + "," + (-interest).ToString() + "," + pos_diff.ToString() + "," + unrealized_diff.ToString() + "," + BBookPnL.ToString();
+
+                lines.Add(line);
+            }
+
+            File.WriteAllLines(filename, lines);
+        }
+        static private async Task outputHistoricalBalance(string HistFile = "HitoricalBalance.csv",string DailyFile = "SoD_Position_new.csv")
+        {
+            addLog("Exporting Balance...");
+            if (live)
+            {
+                qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys));
+                qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys));
+            }
+            using StreamWriter sod = new StreamWriter(new FileStream(DailyFile, FileMode.Create, FileAccess.Write));
+            sod.WriteLine("timestamp,exchange,Margin or Spot,symbol,side(margin),quantity,avg_price(margin),current_price,valuation_pair,unrealized_fee(margin),unrealized_interest(margin)");
+            DateTime currentTime = DateTime.UtcNow;
+            List<string> lines;
+            if (!File.Exists(HistFile))
+            {
+                lines = new List<string>();
+                lines.Add("date,exchange,type,ccy,amount,value(UnrealizedPnL)");
+            }
+            else
+            {
+                lines = File.ReadAllLines(HistFile).ToList();
+            }
+            string today = DateTime.UtcNow.ToString("yyyy-MM-dd");
+            lines = lines
+                .Where(line =>
+                {
+                    var cols = line.Split(',');
+                    return cols.Length > 0 && cols[0] != today;
+                })
+                .ToList();
+            decimal totalValue = 0;
+            decimal totalAmount = 0;
+            foreach(Crypto_Trading.Exchange ex in qManager.exchanges.Values)
+            {
+                bool updateUnrealized = true;
+                if(ex.market == market.gmocoin)
+                {
+                    updateUnrealized = false;
+                }
+                sod.Write(ex.OutputToFile(qManager.instruments, currentTime,updateUnrealized));
+                sod.Flush();
+                string histline = ex.outputHistorical(qManager.instruments, today,false);
+                lines.Add(histline);
+                foreach(Balance b in ex.balance.Values)
+                {
+                    totalValue += b.total * b.current_price;
+                    if(b.ccy != "JPY")
+                    {
+                        totalAmount += b.total * b.current_price;
+                    }
+                }
+                foreach(BalanceMargin b in ex.marginLong.Values)
+                {
+                    totalValue += b.unrealized_pnl - b.unrealized_fee - b.unrealized_interest;
+                    totalAmount += b.total * b.current_price;
+                }
+                foreach (BalanceMargin b in ex.marginShort.Values)
+                {
+                    totalValue += b.unrealized_pnl - b.unrealized_fee - b.unrealized_interest;
+                    totalAmount -= b.total * b.current_price;
+                }
+            }
+            lines.Add($"{today},Total,,,{totalAmount},{totalValue}");
+            File.WriteAllLines(HistFile, lines);
+        }
+        static private void outputTradePerTrade(string filename = "TradePerTrade.csv")
+        {
+            addLog("Trade per trade");
+            using (StreamWriter tpt = new StreamWriter(new FileStream(filename, FileMode.Create, FileAccess.Write)))
+            {
+                tpt.WriteLine("timestamp,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,maker_side,maker_avgprice,maker_quantity,maker_avgExecutedTime,taker_side,taker_avgprice,taker_quantity,taker_avgExecutedTime,realized_volatility,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency");
+                foreach (var stg in strategies.Values)
+                {
+                    foreach (var ts in stg.tradeSummaries.Values)
+                    {
+                        if (ts.maker_quantity > 0 && ts.taker_quantity > 0)
+                        {
+                            ts.calcPnL();
+                            tpt.WriteLine(ts.ToString());
+                        }
+                    }
+                    stg.tradeSummaries.Clear();
+                }
+            }
+        }
         static async Task statusCheck()
         {
             //Declare variables that store the latency and status.

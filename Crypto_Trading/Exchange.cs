@@ -182,7 +182,7 @@ namespace Crypto_Trading
             }
             return res;
         }
-        public string OutputToFile(Dictionary<string, Instrument> ins_dict, DateTime? currentTime = null)
+        public string OutputToFile(Dictionary<string, Instrument> ins_dict, DateTime? currentTime = null,bool updateUnrealizedPnL = true)
         {
             string str_time;
             if (currentTime.HasValue)
@@ -195,8 +195,10 @@ namespace Crypto_Trading
             }
             //Timestamp,Exchange,Margin or Spot,symbol,side(margin),quantity,avg_price(margin),current_price,valuation_pair,unrealized_fee(margin),unrealized_interest
             string res = "";
-
-            this.getUnrealizedPnL(ins_dict);
+            if(updateUnrealizedPnL)
+            {
+                this.getUnrealizedPnL(ins_dict);
+            }
 
             foreach (var b in this.balance)
             {
@@ -209,6 +211,52 @@ namespace Crypto_Trading
             foreach (var b in this.marginLong.Values)
             {
                 res += str_time + "," + this.market + ",MARGIN," + b.symbol + "," + b.side.ToString() + "," + b.total.ToString() + "," + b.avg_price.ToString() + "," + b.current_price.ToString() + "," + b.symbol + "," + b.unrealized_fee.ToString() + "," + b.unrealized_interest.ToString() + "\n";
+            }
+            return res;
+        }
+        public string outputHistorical(Dictionary<string, Instrument> ins_dict, string today = "", bool updateUnrealizedPnL = true)
+        {
+            string str_time;
+            if (today == "")
+            {
+                str_time = DateTime.UtcNow.ToString("yyyy-MM-dd");
+            }
+            else
+            {
+                str_time = today;
+            }
+            string res = "";
+            if (updateUnrealizedPnL)
+            {
+                this.getUnrealizedPnL(ins_dict);
+            }
+            //"date,exchange,type,ccy,side,amount,value(UnrealizedPnL)"
+            foreach (var b in this.balance)
+            {
+                if(!updateUnrealizedPnL)
+                {
+                    if (b.Value.valuation_pair == "")
+                    {
+                        b.Value.current_price = 1;
+                    }
+                    else if (ins_dict.ContainsKey(b.Value.valuation_pair) && ins_dict[b.Value.valuation_pair].mid > 0)
+                    {
+                        b.Value.current_price = ins_dict[b.Value.valuation_pair].mid;
+                    }
+                }
+
+                res += $"{str_time},{this.market},SPOT,{b.Value.ccy},,{b.Value.total},{b.Value.total * b.Value.current_price}\n";
+                //res += str_time + "," + this.market + ",SPOT," + b.Value.ccy + "," + b.Value.total.ToString() + ",0," + b.Value.current_price.ToString() + "," + b.Value.valuation_pair + ",0,0\n";
+            }
+            foreach (var b in this.marginShort.Values)
+            {
+                res += $"{str_time},{this.market},MARGIN,{b.symbol},{b.side},{- b.total},{b.unrealized_pnl - b.unrealized_interest - b.unrealized_fee}\n";
+                //res += str_time + "," + this.market + ",MARGIN," + b.symbol + "," + b.side.ToString() + "," + b.total.ToString() + "," + b.avg_price.ToString() + "," + b.current_price.ToString() + "," + b.symbol + "," + b.unrealized_fee.ToString() + "," + b.unrealized_interest.ToString() + "\n";
+            }
+            foreach (var b in this.marginLong.Values)
+            {
+                res += $"{str_time},{this.market},MARGIN,{b.symbol},{b.side},{b.total},{b.unrealized_pnl - b.unrealized_interest - b.unrealized_fee}\n";
+                //res += str_time + "," + this.market + ",MARGIN," + b.symbol + "," + b.side.ToString() + "," + b.total.ToString() + "," + b.avg_price.ToString() + "," + b.current_price.ToString() + "," + b.symbol + "," + b.unrealized_fee.ToString() + "," + b.unrealized_interest.ToString() + "\n";
             }
             return res;
         }
