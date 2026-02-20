@@ -501,12 +501,12 @@ namespace Crypto_Linux
                             
                             msg += "Live Orders [Sell]\n" + sells + "Live Orders [Buy]\n" + buys;
                         }
-                        while (Interlocked.CompareExchange(ref oManager.order_lock, 1, 0) != 0)
-                        {
+                        //while (Interlocked.CompareExchange(ref oManager.order_lock, 1, 0) != 0)
+                        //{
 
-                        }
+                        //}
                         
-                        Volatile.Write(ref oManager.order_lock, 0);
+                        //Volatile.Write(ref oManager.order_lock, 0);
                     }
                     else
                     {
@@ -1282,7 +1282,7 @@ namespace Crypto_Linux
                             ins.longPosition.avg_price = mid;
                             ins.shortPosition.unrealized_fee = - ins.shortPosition.total * ins.shortPosition.avg_price * ins.maker_fee;
                             ins.longPosition.unrealized_fee = - ins.longPosition.total * ins.longPosition.avg_price * ins.maker_fee;
-                            ins.shortPosition.unrealized_interest = 10000;//test
+                            ins.shortPosition.unrealized_interest = 0;//test
                             ins.SoD_longPosition.copy(ins.longPosition);
                             ins.SoD_shortPosition.copy(ins.shortPosition);
                             ins.open_mid = mid;
@@ -2304,7 +2304,7 @@ namespace Crypto_Linux
             if (!File.Exists(HistFile))
             {
                 lines = new List<string>();
-                lines.Add("date,exchange,type,ccy,amount,value(UnrealizedPnL)");
+                lines.Add("date,exchange,type,ccy,side,amount,value(UnrealizedPnL)");
             }
             else
             {
@@ -2323,13 +2323,13 @@ namespace Crypto_Linux
             foreach(Crypto_Trading.Exchange ex in qManager.exchanges.Values)
             {
                 bool updateUnrealized = true;
-                if(ex.market == market.gmocoin)
+                if(ex.market == market.gmocoin && live)
                 {
                     updateUnrealized = false;
                 }
                 sod.Write(ex.OutputToFile(qManager.instruments, currentTime,updateUnrealized));
                 sod.Flush();
-                string histline = ex.outputHistorical(qManager.instruments, today,false);
+                string histline = ex.outputHistorical(qManager.instruments, today,false).TrimEnd('\r', '\n');
                 lines.Add(histline);
                 foreach(Balance b in ex.balance.Values)
                 {
@@ -2350,7 +2350,7 @@ namespace Crypto_Linux
                     totalAmount -= b.total * b.current_price;
                 }
             }
-            lines.Add($"{today},Total,,,{totalAmount},{totalValue}");
+            lines.Add($"{today},Total,,,,{totalAmount},{totalValue}");
             File.WriteAllLines(HistFile, lines);
         }
         static private void outputTradePerTrade(string filename = "TradePerTrade.csv")

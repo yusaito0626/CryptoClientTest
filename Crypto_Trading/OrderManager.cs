@@ -2890,34 +2890,34 @@ namespace Crypto_Trading
 
                 this.orders[ord.internal_order_id] = ord;
 
+                while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
+                {
+                }
                 if (this.live_orders.ContainsKey(ord.internal_order_id))
                 {
                     this.live_orders[ord.internal_order_id] = ord;
                 }
                 else
                 {
-                    while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
-                    {
-                    }
                     //addLog("[New live order at handleOpen] " + ord.ToString());
                     this.live_orders[ord.internal_order_id] = ord;
-                    Volatile.Write(ref this.order_lock, 0);
                 }
+                Volatile.Write(ref this.order_lock, 0);
                 if (ins != null)
                 {
                     ins.updateOrders(ord);
+                    while (Interlocked.CompareExchange(ref ins.order_lock, 1, 0) != 0)
+                    {
+                    }
                     if (ins.live_orders.ContainsKey(ord.internal_order_id))
                     {
                         ins.live_orders[ord.internal_order_id] = ord;
                     }
                     else
                     {
-                        while (Interlocked.CompareExchange(ref ins.order_lock, 1, 0) != 0)
-                        {
-                        }
                         ins.live_orders[ord.internal_order_id] = ord;
-                        Volatile.Write(ref ins.order_lock, 0);
                     }
+                    Volatile.Write(ref ins.order_lock, 0);
                     decimal filled_quantity;
                     if(prevord != null)
                     {
@@ -3082,28 +3082,28 @@ namespace Crypto_Trading
                 }
                 this.orders[ord.internal_order_id] = ord;
 
+                while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
+                {
+                }
                 if (this.live_orders.ContainsKey(ord.internal_order_id))
                 {
-                    while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
-                    {
-                    }
                     this.live_orders.Remove(ord.internal_order_id);
                     //addLog("[Live order removed at handleCancel] " + ord.ToString());
-                    Volatile.Write(ref this.order_lock, 0);
                 }
+                Volatile.Write(ref this.order_lock, 0);
 
                 if (ins != null)
                 {
                     ins.updateOrders(ord);
-                    
+
+                    while (Interlocked.CompareExchange(ref ins.order_lock, 1, 0) != 0)
+                    {
+                    }
                     if (ins.live_orders.ContainsKey(ord.internal_order_id))
                     {
-                        while (Interlocked.CompareExchange(ref ins.order_lock, 1, 0) != 0)
-                        {
-                        }
                         ins.live_orders.Remove(ord.internal_order_id);
-                        Volatile.Write(ref ins.order_lock, 0);
                     }
+                    Volatile.Write(ref ins.order_lock, 0);
                     decimal filled_quantity;//cancelled quantity + unprocessed filled quantity
                     if (prevord != null)
                     {
@@ -3329,26 +3329,25 @@ namespace Crypto_Trading
                     ins.updateOrders(ord);
                 }
 
+                while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
+                {
+                }
                 if (this.live_orders.ContainsKey(ord.internal_order_id))
                 {
-                    while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
-                    {
-                    }
                     this.live_orders.Remove(ord.internal_order_id);
                     //addLog("[Live order removed at handleFilled] " + ord.ToString());
-                    Volatile.Write(ref this.order_lock, 0);
-
                 }
+                Volatile.Write(ref this.order_lock, 0);
                 if (ins != null)
                 {
+                    while (Interlocked.CompareExchange(ref ins.order_lock, 1, 0) != 0)
+                    {
+                    }
                     if (ins.live_orders.ContainsKey(ord.internal_order_id))
                     {
-                        while (Interlocked.CompareExchange(ref ins.order_lock, 1, 0) != 0)
-                        {
-                        }
                         ins.live_orders.Remove(ord.internal_order_id);
-                        Volatile.Write(ref ins.order_lock, 0);
                     }
+                    Volatile.Write(ref ins.order_lock, 0);
                     decimal filled_quantity;
                     if(prevord != null)
                     {
@@ -3521,7 +3520,7 @@ namespace Crypto_Trading
                             {
                                 addLog("output_temp:" + output_temp.ToString());
                             }
-                            addLog($"Peek Enqueue Count:{peek_EnqueueCount} Peek Dequeue Count:{peek_EnqueueCount} Dequeue Enqueue Count:{this.virtual_order_queue._Enqueues} Enqueue Dequeue Count:{this.virtual_order_queue._Dequeues}");
+                            addLog($"Peek Enqueue Count:{peek_EnqueueCount} Peek Dequeue Count:{peek_EnqueueCount} Dequeue Enqueue Count:{this.virtual_order_queue._Enqueues} Enqueue Dequeue Count:{this.virtual_order_queue._Dequeues}", logType.ERROR);
                         }
                         if (this.Instruments.ContainsKey(output.symbol_market))
                         {
