@@ -783,10 +783,6 @@ namespace Crypto_Trading
                 output.trigger_price = 0;
                 output.update_time = DateTime.UtcNow;
                 output.msg = sndOrd.msg;
-                while (Interlocked.CompareExchange(ref this.mapping_lock, 1, 0) != 0)
-                {
-
-                }
                 using (var mlock = this.mapping_lock.getlock())
                 {
                     this.ordIdMapping[output.market + output.order_id] = sndOrd.internalOrdId;
