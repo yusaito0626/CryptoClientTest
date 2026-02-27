@@ -58,6 +58,8 @@ namespace Crypto_Trading
         public MISOQueue<sendingOrder> sendingOrders;
         public LockFreeStack<sendingOrder> sendingOrdersStack;
         CancellationTokenSource OrderProcessingStop;
+
+        public myLock mapping_lock = new myLock();
         public Dictionary<string, string> ordIdMapping;
 
         public volatile int virtual_order_lock;
@@ -781,7 +783,14 @@ namespace Crypto_Trading
                 output.trigger_price = 0;
                 output.update_time = DateTime.UtcNow;
                 output.msg = sndOrd.msg;
-                this.ordIdMapping[output.market + output.order_id] = sndOrd.internalOrdId;
+                while (Interlocked.CompareExchange(ref this.mapping_lock, 1, 0) != 0)
+                {
+
+                }
+                using (var mlock = this.mapping_lock.getlock())
+                {
+                    this.ordIdMapping[output.market + output.order_id] = sndOrd.internalOrdId;
+                }
                 if (output.order_type == orderType.Limit || output.order_type == orderType.LimitMaker)
                 {
                     if (output.position_side == positionSide.Long)
@@ -850,7 +859,10 @@ namespace Crypto_Trading
                         output = new DataSpotOrderUpdate();
                     }
                     output.order_id = ord_id;
-                    this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
+                    using (var mlock = this.mapping_lock.getlock())
+                    {
+                        this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
+                    }
                     output.timestamp = sendTime;
                     output.symbol = sndOrd.ins.symbol;
                     output.market = sndOrd.ins.market;
@@ -920,7 +932,10 @@ namespace Crypto_Trading
                         output = new DataSpotOrderUpdate();
                     }
                     output.order_id = "";
-                    this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
+                    using (var mlock = this.mapping_lock.getlock())
+                    {
+                        this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
+                    }
                     output.timestamp = sendTime;
                     output.symbol = sndOrd.ins.symbol;
                     output.market = sndOrd.ins.market;
@@ -993,7 +1008,10 @@ namespace Crypto_Trading
                         output = new DataSpotOrderUpdate();
                     }
                     output.order_id = ord_obj.GetProperty("order_id").GetInt64().ToString();
-                    this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
+                    using (var mlock = this.mapping_lock.getlock())
+                    {
+                        this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
+                    }
                     output.timestamp = sendTime;
                     output.symbol = ord_obj.GetProperty("pair").GetString();
                     output.market = sndOrd.ins.market;
@@ -1304,7 +1322,10 @@ namespace Crypto_Trading
                         output = new DataSpotOrderUpdate();
                     }
                     output.order_id = ord_obj.GetProperty("id").GetInt64().ToString();
-                    this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
+                    using (var mlock = this.mapping_lock.getlock())
+                    {
+                        this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
+                    }
                     output.timestamp = sendTime;
                     output.symbol = ord_obj.GetProperty("pair").GetString();
                     output.market = sndOrd.ins.market;
@@ -1493,7 +1514,10 @@ namespace Crypto_Trading
                         output = new DataSpotOrderUpdate();
                     }
                     output.order_id = js.RootElement.GetProperty("data").GetString();
-                    this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
+                    using (var mlock = this.mapping_lock.getlock())
+                    {
+                        this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
+                    }
                     output.timestamp = sendTime;
                     output.symbol = sndOrd.ins.symbol;
                     output.market = sndOrd.ins.market;
@@ -1560,7 +1584,10 @@ namespace Crypto_Trading
                 output = await this.ord_client.placeNewSpotOrder(sndOrd.ins.market, sndOrd.ins.baseCcy, sndOrd.ins.quoteCcy, sndOrd.side, sndOrd.order_type, quantity, sndOrd.price, sndOrd.time_in_force);
                 if (output != null)
                 {
-                    this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
+                    using (var mlock = this.mapping_lock.getlock())
+                    {
+                        this.ordIdMapping[sndOrd.ins.market + output.order_id] = sndOrd.internalOrdId;
+                    }
                     output.timestamp = sendTime;
                     output.symbol_market = sndOrd.ins.symbol_market;
                     output.internal_order_id = sndOrd.internalOrdId;
@@ -2010,7 +2037,7 @@ namespace Crypto_Trading
                         JsonElement fails;
                         if(js_data.TryGetProperty("success",out successes))
                         {
-                            foreach(var elem in successes.EnumerateArray())
+                            foreach (var elem in successes.EnumerateArray())
                             {
                                 ordObj = this.ord_client.ordUpdateStack.pop();
                                 if (ordObj == null)
@@ -2024,7 +2051,10 @@ namespace Crypto_Trading
                                 ordObj.market = sndOrd.ins.market;
                                 ordObj.symbol = sndOrd.ins.symbol;
                                 ordObj.symbol_market = sndOrd.ins.symbol_market;
-                                ordObj.internal_order_id = this.ordIdMapping[ordObj.market + ordObj.order_id];
+                                using (var mlock = this.mapping_lock.getlock())
+                                {
+                                    ordObj.internal_order_id = this.ordIdMapping[ordObj.market + ordObj.order_id];
+                                }
                                 ordObj.filled_quantity = 0;
                                 ordObj.status = orderStatus.WaitCancel;
                                 this.ord_client.ordUpdateQueue.Enqueue(ordObj);
@@ -2112,7 +2142,10 @@ namespace Crypto_Trading
                                 ordObj.market = sndOrd.ins.market;
                                 ordObj.symbol = sndOrd.ins.symbol;
                                 ordObj.symbol_market = sndOrd.ins.symbol_market;
-                                ordObj.internal_order_id = this.ordIdMapping[ordObj.market + ordObj.order_id];
+                                using (var mlock = this.mapping_lock.getlock())
+                                {
+                                    ordObj.internal_order_id = this.ordIdMapping[ordObj.market + ordObj.order_id];
+                                }
                                 ordObj.filled_quantity = 0;
                                 ordObj.status = orderStatus.WaitCancel;
                                 this.ord_client.ordUpdateQueue.Enqueue(ordObj);
@@ -2183,7 +2216,10 @@ namespace Crypto_Trading
                             ordObj.market = sndOrd.ins.market;
                             ordObj.symbol = sndOrd.ins.symbol;
                             ordObj.symbol_market = sndOrd.ins.symbol_market;
-                            ordObj.internal_order_id = this.ordIdMapping[ordObj.market + ordObj.order_id];
+                            using (var mlock = this.mapping_lock.getlock())
+                            {
+                                ordObj.internal_order_id = this.ordIdMapping[ordObj.market + ordObj.order_id];
+                            }
                             ordObj.filled_quantity = 0;
                             ordObj.status = orderStatus.WaitCancel;
                             this.ord_client.ordUpdateQueue.Enqueue(ordObj);
@@ -2279,7 +2315,10 @@ namespace Crypto_Trading
                         ordObj.order_quantity = 0;
                         ordObj.market = sndOrd.ins.market;
                         ordObj.symbol = sndOrd.ins.symbol;
-                        ordObj.internal_order_id = this.ordIdMapping[ordObj.market + ordObj.order_id];
+                        using (var mlock = this.mapping_lock.getlock())
+                        {
+                            ordObj.internal_order_id = this.ordIdMapping[ordObj.market + ordObj.order_id];
+                        }
                         ordObj.filled_quantity = 0;
                         ordObj.status = orderStatus.WaitCancel;
                         output.Add(ordObj);
@@ -2341,7 +2380,10 @@ namespace Crypto_Trading
                         ordObj.order_quantity = 0;
                         ordObj.market = sndOrd.ins.market;
                         ordObj.symbol = sndOrd.ins.symbol;
-                        ordObj.internal_order_id = this.ordIdMapping[ordObj.market + ordObj.order_id];
+                        using (var mlock = this.mapping_lock.getlock())
+                        {
+                            ordObj.internal_order_id = this.ordIdMapping[ordObj.market + ordObj.order_id];
+                        }
                         ordObj.filled_quantity = 0;
                         ordObj.status = orderStatus.WaitCancel;
                         output.Add(ordObj);
@@ -2502,7 +2544,13 @@ namespace Crypto_Trading
                     fill = this.ord_client.fillQueue.Dequeue();
                     while(fill != null)
                     {
-                        if (this.ordIdMapping.ContainsKey(fill.market + fill.order_id))
+                        bool idMapping = false;
+                        using (var mlock = this.mapping_lock.getlock())
+                        {
+                            idMapping = this.ordIdMapping.ContainsKey(fill.market + fill.order_id);
+                        }
+                        
+                        if (idMapping)
                         {
                             start();
                             await this.processFill(fill,true);
@@ -2582,14 +2630,18 @@ namespace Crypto_Trading
         public async Task processFill(DataFill fill,bool stgRunning = true)
         {
             MarketImpact mi;
-            if (this.ordIdMapping.ContainsKey(fill.market + fill.order_id))
+            using (var mlock = this.mapping_lock.getlock())
             {
-                fill.internal_order_id = this.ordIdMapping[fill.market + fill.order_id];
+                if (this.ordIdMapping.ContainsKey(fill.market + fill.order_id))
+                {
+                    fill.internal_order_id = this.ordIdMapping[fill.market + fill.order_id];
+                }
+                else
+                {
+                    fill.internal_order_id = fill.market + fill.order_id;
+                }
             }
-            else
-            {
-                fill.internal_order_id = fill.market + fill.order_id;
-            }
+                
             if (this.orders.ContainsKey(fill.internal_order_id))
             {
                 DataSpotOrderUpdate filled = this.orders[fill.internal_order_id];
@@ -2853,13 +2905,20 @@ namespace Crypto_Trading
             {
                 ins = this.Instruments[ord.symbol_market];
             }
-
-            if (this.ordIdMapping.ContainsKey(ord.market + ord.order_id))
+            bool idMapping = false;
+            using (var mlock = this.mapping_lock.getlock())
+            {
+                idMapping = this.ordIdMapping.ContainsKey(ord.market + ord.order_id);
+                if(idMapping)
+                {
+                    ord.internal_order_id = this.ordIdMapping[ord.market + ord.order_id];
+                }
+            }
+            if (idMapping)
             {
                 //1. Get if there is an older order.
                 //2. If the order doesn't exist in live_order, add it othewise update from the previous.
                 //3. If the order is filled, update the balance
-                ord.internal_order_id = this.ordIdMapping[ord.market + ord.order_id];
                 if (this.orders.ContainsKey(ord.internal_order_id))
                 {
                     prevord = this.orders[ord.internal_order_id];
@@ -2982,7 +3041,10 @@ namespace Crypto_Trading
                         addLog("Cancelling the order and removing from strategies...");
                         ins = this.Instruments[ord.symbol_market];
                         ord.internal_order_id = ord.market + ord.order_id;
-                        this.ordIdMapping[ord.internal_order_id] = ord.market + ord.order_id;
+                        using (var mlock = this.mapping_lock.getlock())
+                        {
+                            this.ordIdMapping[ord.internal_order_id] = ord.market + ord.order_id;
+                        }
                         //Add the order_id in the mapping and queue it again.
                         foreach (var stg in this.strategies.Values)
                         {
@@ -3045,12 +3107,21 @@ namespace Crypto_Trading
             {
                 ins = this.Instruments[ord.symbol_market];
             }
-            if (this.ordIdMapping.ContainsKey(ord.market + ord.order_id))
+            bool idMapping = false;
+            using (var mlock = this.mapping_lock.getlock())
+            {
+                idMapping = this.ordIdMapping.ContainsKey(ord.market + ord.order_id);
+                if(idMapping)
+                {
+                    ord.internal_order_id = this.ordIdMapping[ord.market + ord.order_id];
+                }
+            }
+
+            if (idMapping)
             {
                 //1. Update order dictionary
                 //2. Remove from live_orders
                 //3. Call ins.updateOrders, remove from ins.live_orders, adjust balance
-                ord.internal_order_id = this.ordIdMapping[ord.market + ord.order_id];
                 if (this.orders.ContainsKey(ord.internal_order_id))
                 {
                     prevord = this.orders[ord.internal_order_id];
@@ -3274,15 +3345,22 @@ namespace Crypto_Trading
             {
                 ins = this.Instruments[ord.symbol_market];
             }
-
-            if (this.ordIdMapping.ContainsKey(ord.market + ord.order_id))
+            bool idMapping = false;
+            using (var mlock = this.mapping_lock.getlock())
+            {
+                idMapping = this.ordIdMapping.ContainsKey(ord.market + ord.order_id);
+                if(idMapping)
+                {
+                    ord.internal_order_id = this.ordIdMapping[ord.market + ord.order_id];
+                }
+            }
+            if (idMapping)
             {
                 //1. Strategy update
                 //2. Update orders
                 //3. Remove from live_orders
                 //4. Update on the ins side.
                 //5. update balance
-                ord.internal_order_id = this.ordIdMapping[ord.market + ord.order_id];
                 if (this.orders.ContainsKey(ord.internal_order_id))
                 {
                     prevord = this.orders[ord.internal_order_id];
@@ -3674,12 +3752,15 @@ namespace Crypto_Trading
                         this.addLog("The key and the order id didn't match while checking virtual orders.", Enums.logType.WARNING);
                         this.addLog($"The dictionary key:{key} The internal order id:{ord.internal_order_id}", Enums.logType.WARNING);
                         this.addLog(ord.ToString(), Enums.logType.WARNING);
-                        foreach (var kv in this.ordIdMapping)
+                        using (var mlock = this.mapping_lock.getlock())
                         {
-                            if(kv.Value == key)
+                            foreach (var kv in this.ordIdMapping)
                             {
-                                addLog(key + " is registered as " + kv.Key + " in the mapping");
-                                this.addLog(this.orders[key].ToString());
+                                if (kv.Value == key)
+                                {
+                                    addLog(key + " is registered as " + kv.Key + " in the mapping");
+                                    this.addLog(this.orders[key].ToString());
+                                }
                             }
                         }
                     }

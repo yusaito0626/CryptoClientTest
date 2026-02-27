@@ -23,6 +23,29 @@ namespace Utils
         }
     };
 
+    public class myLock
+    {
+        int l;
+
+        public myLock()
+        {
+            l = 0;
+        }
+        public funcContainer getlock()
+        {
+            while(Interlocked.CompareExchange(ref this.l,1,0) != 0)
+            {
+
+            }
+            return new funcContainer(() => { return this.release; });
+        }
+
+        private void release()
+        {
+            Volatile.Write(ref l, 0);
+        }
+    }
+
     public static class Functions
     {
         public static DateTime? convertToDateTime(string str, market m)

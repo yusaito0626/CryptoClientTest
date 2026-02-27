@@ -699,28 +699,34 @@ namespace Crypto_Trading
 
                         this.addLog("The number of active orders:" + ordList.Count.ToString("N0"), Enums.logType.WARNING);
                         Dictionary<Instrument, List<string>> id_list = new Dictionary<Instrument, List<string>>();
-                        foreach (DataSpotOrderUpdate ord in ordList)
+                        using (var mlock = this.oManager.mapping_lock.getlock())
                         {
-                            if (this.oManager.ordIdMapping.ContainsKey(ord.market + ord.order_id))
+                            foreach (DataSpotOrderUpdate ord in ordList)
                             {
-                                ord.internal_order_id = this.oManager.ordIdMapping[ord.market + ord.order_id];
-                            }
-                            else
-                            {
-                                ord.internal_order_id = ord.market + ord.order_id;
-                                this.oManager.ordIdMapping[ord.market + ord.order_id] = ord.market + ord.order_id;
-                            }
-                            if (this.instruments.ContainsKey(ord.symbol_market))
-                            {
-                                Instrument ins = this.instruments[ord.symbol_market];
-                                if (!id_list.ContainsKey(ins))
+
+                                if (this.oManager.ordIdMapping.ContainsKey(ord.market + ord.order_id))
                                 {
-                                    id_list[ins] = new List<string>();
+                                    ord.internal_order_id = this.oManager.ordIdMapping[ord.market + ord.order_id];
                                 }
-                                id_list[ins].Add(ord.internal_order_id);
+                                else
+                                {
+                                    ord.internal_order_id = ord.market + ord.order_id;
+                                    this.oManager.ordIdMapping[ord.market + ord.order_id] = ord.market + ord.order_id;
+                                }
+
+                                if (this.instruments.ContainsKey(ord.symbol_market))
+                                {
+                                    Instrument ins = this.instruments[ord.symbol_market];
+                                    if (!id_list.ContainsKey(ins))
+                                    {
+                                        id_list[ins] = new List<string>();
+                                    }
+                                    id_list[ins].Add(ord.internal_order_id);
+                                }
+                                this.oManager.orders[ord.internal_order_id] = ord;
                             }
-                            this.oManager.orders[ord.internal_order_id] = ord;
                         }
+                        
                         if (id_list.Count > 0)
                         {
                             foreach (var keyValue in id_list)
@@ -780,27 +786,30 @@ namespace Crypto_Trading
 
                     this.addLog("The number of active orders:" + ordList.Count.ToString("N0"), Enums.logType.WARNING);
                     Dictionary<Instrument, List<string>> id_list = new Dictionary<Instrument, List<string>>();
-                    foreach (DataSpotOrderUpdate ord in ordList)
+                    using (var mlock = this.oManager.mapping_lock.getlock())
                     {
-                        if (this.oManager.ordIdMapping.ContainsKey(ord.market + ord.order_id))
+                        foreach (DataSpotOrderUpdate ord in ordList)
                         {
-                            ord.internal_order_id = this.oManager.ordIdMapping[ord.market + ord.order_id];
-                        }
-                        else
-                        {
-                            ord.internal_order_id = ord.market + ord.order_id;
-                            this.oManager.ordIdMapping[ord.market + ord.order_id] = ord.market + ord.order_id;
-                        }
-                        if (this.instruments.ContainsKey(ord.symbol_market))
-                        {
-                            Instrument ins = this.instruments[ord.symbol_market];
-                            if (!id_list.ContainsKey(ins))
+                            if (this.oManager.ordIdMapping.ContainsKey(ord.market + ord.order_id))
                             {
-                                id_list[ins] = new List<string>();
+                                ord.internal_order_id = this.oManager.ordIdMapping[ord.market + ord.order_id];
                             }
-                            id_list[ins].Add(ord.internal_order_id);
+                            else
+                            {
+                                ord.internal_order_id = ord.market + ord.order_id;
+                                this.oManager.ordIdMapping[ord.market + ord.order_id] = ord.market + ord.order_id;
+                            }
+                            if (this.instruments.ContainsKey(ord.symbol_market))
+                            {
+                                Instrument ins = this.instruments[ord.symbol_market];
+                                if (!id_list.ContainsKey(ins))
+                                {
+                                    id_list[ins] = new List<string>();
+                                }
+                                id_list[ins].Add(ord.internal_order_id);
+                            }
+                            this.oManager.orders[ord.internal_order_id] = ord;
                         }
-                        this.oManager.orders[ord.internal_order_id] = ord;
                     }
                     if (id_list.Count > 0)
                     {

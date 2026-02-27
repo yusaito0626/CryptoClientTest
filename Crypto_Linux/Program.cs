@@ -1,11 +1,16 @@
 ﻿using Binance.Net.Enums;
+using Binance.Net.Objects.Options;
+using CoinW.Net.Clients;
 using Crypto_Clients;
 using Crypto_Trading;
 using CryptoClients.Net.Enums;
+using CryptoExchange.Net;
 using CryptoExchange.Net.Logging.Extensions;
 using CryptoExchange.Net.SharedApis;
 using Discord;
 using Enums;
+using LockFreeQueue;
+using LockFreeStack;
 using PubnubApi.EndPoint;
 using System;
 using System.Collections.Concurrent;
@@ -20,11 +25,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 //using Terminal.Gui;
 using Utils;
-using LockFreeStack;
-using LockFreeQueue;
-using CryptoExchange.Net;
-using Binance.Net.Objects.Options;
-using CoinW.Net.Clients;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 //using static Terminal.Gui.View;
 
 
@@ -2073,7 +2074,10 @@ namespace Crypto_Linux
                                         {
                                             ordId_list[ins] = new List<string>();
                                         }
-                                        oManager.ordIdMapping[ord.market + ord.order_id] = ord.market + ord.order_id;
+                                        using (var f = oManager.mapping_lock.getlock())
+                                        {
+                                            oManager.ordIdMapping[ord.market + ord.order_id] = ord.market + ord.order_id;
+                                        }
                                         oManager.orders[ord.market + ord.order_id] = ord;
                                         ordId_list[ins].Add(ord.market + ord.order_id);
                                     }
@@ -2122,8 +2126,9 @@ namespace Crypto_Linux
 
                     await outputPerformance(outputPath_org + "/performance.csv");
 
-                    string TPT_file = outputPath + "/TradePerTrade_" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".csv";
-                    outputTradePerTrade(TPT_file);
+                    string TPT_file = outputPath + "/TradePerTrade.csv";
+                    string PnlBreakDown_file = outputPath_org + "/PnLBreakDown.csv";
+                    outputTradePerTrade(TPT_file,PnlBreakDown_file);
 
                     string dt = (DateTime.UtcNow + TimeSpan.FromDays(1)).ToString("yyyy-MM-dd");
                     string newpath = outputPath_org + "/" + dt;
@@ -2353,25 +2358,113 @@ namespace Crypto_Linux
             lines.Add($"{today},Total,,,,{totalAmount},{totalValue}");
             File.WriteAllLines(HistFile, lines);
         }
-        static private void outputTradePerTrade(string filename = "TradePerTrade.csv")
+        static private void outputTradePerTrade(string filename = "TradePerTrade.csv",string HistFile = "PnLBreakdown.csv",string today = "")
         {
             addLog("Trade per trade");
-            using (StreamWriter tpt = new StreamWriter(new FileStream(filename, FileMode.Create, FileAccess.Write)))
+            Dictionary<string, PnLBreakDown> summary = new Dictionary<string, PnLBreakDown>();
+            if (File.Exists(filename))
             {
-                tpt.WriteLine("timestamp,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,maker_side,maker_avgprice,maker_quantity,maker_avgExecutedTime,taker_side,taker_avgprice,taker_quantity,taker_avgExecutedTime,realized_volatility,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency");
-                foreach (var stg in strategies.Values)
+                using (StreamReader tpt = new StreamReader(new FileStream(filename, FileMode.Create, FileAccess.Write)))
                 {
-                    foreach (var ts in stg.tradeSummaries.Values)
+                    while (tpt.ReadLine() is string line)
                     {
-                        if (ts.maker_quantity > 0 && ts.taker_quantity > 0)
+                        string[] data = line.Split(",");
+                        if (!summary.ContainsKey(data[1]))
                         {
-                            ts.calcPnL();
-                            tpt.WriteLine(ts.ToString());
+                            PnLBreakDown newdata = new PnLBreakDown();
+                            newdata.strategy = data[1];
+                            newdata.symbol = data[4];
+                            newdata.addData(data);
+                            if(strategies.ContainsKey(newdata.strategy))
+                            {
+                                Strategy stg = strategies[newdata.strategy];
+                                newdata.SoDBalance = stg.maker.SoD_net_pos - stg.targetMakerPosition;
+                                newdata.EoDBalance = stg.maker.net_pos - stg.targetMakerPosition;
+                            }
+                            summary[data[1]] = newdata;
+                        }
+                        else
+                        {
+                            summary[data[1]].addData(data);
                         }
                     }
-                    stg.tradeSummaries.Clear();
+                }
+                using (StreamWriter tpt = new StreamWriter(new FileStream(filename,FileMode.Append,FileAccess.Write)))
+                {
+                    foreach (var stg in strategies.Values)
+                    {
+                        foreach (var ts in stg.tradeSummaries.Values)
+                        {
+                            if (ts.maker_quantity > 0 && ts.taker_quantity > 0)
+                            {
+                                ts.calcPnL();
+                                tpt.WriteLine(ts.ToString());
+                            }
+                        }
+                        stg.tradeSummaries.Clear();
+                    }
                 }
             }
+            else
+            {
+                using (StreamWriter tpt = new StreamWriter(new FileStream(filename, FileMode.Create, FileAccess.Write)))
+                {
+                    tpt.WriteLine("timestamp,strategy,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,maker_side,maker_avgprice,maker_quantity,maker_avgExecutedTime,taker_side,taker_avgprice,taker_quantity,taker_avgExecutedTime,realized_volatility,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency");
+                    foreach (var stg in strategies.Values)
+                    {
+                        foreach (var ts in stg.tradeSummaries.Values)
+                        {
+                            if (ts.maker_quantity > 0 && ts.taker_quantity > 0)
+                            {
+                                ts.calcPnL();
+                                tpt.WriteLine(ts.ToString());
+                                if (!summary.ContainsKey(ts.strategy))
+                                {
+                                    PnLBreakDown newdata = new PnLBreakDown();
+                                    newdata.strategy = ts.strategy;
+                                    newdata.symbol = ts.maker_symbolmarket;
+                                    newdata.addData(ts);
+                                    newdata.SoDBalance = stg.maker.SoD_net_pos - stg.targetMakerPosition;
+                                    newdata.EoDBalance = stg.maker.net_pos - stg.targetMakerPosition;
+                                    summary[ts.strategy] = newdata;
+                                }
+                                else
+                                {
+                                    summary[ts.strategy].addData(ts);
+                                }
+                            }
+                        }
+                        stg.tradeSummaries.Clear();
+                    }
+                }
+            }
+            
+            if(today == "")
+            {
+                today = DateTime.UtcNow.ToString("yyyy-MM-dd");
+            }
+            List<string> lines;
+            if (!File.Exists(HistFile))
+            {
+                lines = new List<string>();
+                lines.Add("date,strategy,symbol,SoDOutStanding,EoDOutStanding,count,totalAmount,notionalVolume,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency");
+            }
+            else
+            {
+                lines = File.ReadAllLines(HistFile).ToList();
+            }
+            lines = lines
+                .Where(line =>
+                {
+                    var cols = line.Split(',');
+                    return cols.Length > 0 && cols[0] != today;
+                })
+                .ToList();
+            foreach(var s in summary.Values)
+            {
+                lines.Add(today + "," + s.ToString());
+            }
+            File.WriteAllLines(HistFile, lines);
         }
         static async Task statusCheck()
         {

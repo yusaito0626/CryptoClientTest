@@ -1501,12 +1501,14 @@ namespace Crypto_Trading
                                 cancelling_ord.Add(this.live_buyorders[i]);
                                 this.live_buyorders[i] = "";
                                 this.current_bids[i] = 0;
+                                this.bids[i] = 0;
                             }
                             else if (((isPriceChanged && bidChanged) || bid_price > this.current_bids[i]) && ord.status == orderStatus.Open/*this.current_bids[i] != bid_price*/)
                             {
                                 cancelling_ord.Add(this.live_buyorders[i]);
                                 this.live_buyorders[i] = "";
                                 this.current_bids[i] = 0;
+                                this.bids[i] = 0;
                                 newBuyOrder |= (1 << i);
                             }
                         }
@@ -1515,7 +1517,7 @@ namespace Crypto_Trading
                             //if (bid_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) > this.maxMakerPosition * ((decimal)0.5 + this.oneSideThreshold / 200)))
                             if (bid_price == 0 || ((this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100))
                             {
-
+                                this.bids[i] = 0;
                             }
                             else if (this.last_filled_time_buy == null || (decimal)(current - this.last_filled_time_buy).Value.TotalSeconds > this.intervalAfterFill)
                             {
@@ -1531,12 +1533,14 @@ namespace Crypto_Trading
                                 cancelling_ord.Add(this.live_sellorders[i]);
                                 this.live_sellorders[i] = "";
                                 this.current_asks[i] = 0;
+                                this.asks[i] = 0;
                             }
                             else if (((isPriceChanged && askChanged) || ask_price < this.current_asks[i]) && ord.status == orderStatus.Open/*this.current_asks[i] != ask_price*/)
                             {
                                 cancelling_ord.Add(this.live_sellorders[i]);
                                 this.live_sellorders[i] = "";
                                 this.current_asks[i] = 0;
+                                this.asks[i] = 0;
                                 newSellOrder |= (1 << i);
                             }
                         }
@@ -1545,7 +1549,7 @@ namespace Crypto_Trading
                             //if (ask_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) < this.maxMakerPosition * ((decimal)0.5 - this.oneSideThreshold / 200)))
                             if (ask_price == 0 || (- (this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100))
                             {
-                                
+                                this.asks[i] = 0;
                             }
                             else if (this.last_filled_time_sell == null || (decimal)(current - this.last_filled_time_sell).Value.TotalSeconds > this.intervalAfterFill)
                             {
@@ -1554,8 +1558,8 @@ namespace Crypto_Trading
                         }
                     }
 
-                    this.live_askprice = this.current_asks[0];
-                    this.live_bidprice = this.current_bids[0];
+                    this.live_askprice = this.asks[0];
+                    this.live_bidprice = this.bids[0];
 
                     this.oManager.placeCancelSpotOrders(this.maker, cancelling_ord);
 
@@ -1608,7 +1612,7 @@ namespace Crypto_Trading
                                             ts = new tradeSummary();
                                         }
                                         ts.id = this.live_buyorders[i];
-                                        ts.setPricingInfo(this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                        ts.setPricingInfo(this.name,this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
                                         //ts.maker_orderid = this.live_buyorders[i];
                                         this.tempTradeSummaries[ts.id] = ts;
                                         Volatile.Write(ref this.tradeSummary_lock, 0);
@@ -1626,7 +1630,7 @@ namespace Crypto_Trading
                                             ts = new tradeSummary();
                                         }
                                         ts.id = this.live_buyorders[i];
-                                        ts.setPricingInfo(this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                        ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
                                         //ts.maker_orderid = this.live_buyorders[i];
                                         this.tempTradeSummaries[ts.id] = ts;
                                         Volatile.Write(ref this.tradeSummary_lock, 0);
@@ -1645,7 +1649,7 @@ namespace Crypto_Trading
                                         ts = new tradeSummary();
                                     }
                                     ts.id = this.live_buyorders[i];
-                                    ts.setPricingInfo(this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point,this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point,this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
                                     //ts.maker_orderid = this.live_buyorders[i];
                                     this.tempTradeSummaries[ts.id] = ts;
                                     Volatile.Write(ref this.tradeSummary_lock, 0);
@@ -1673,7 +1677,7 @@ namespace Crypto_Trading
                                             ts = new tradeSummary();
                                         }
                                         ts.id = this.live_sellorders[i];
-                                        ts.setPricingInfo(this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                        ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
                                         //ts.maker_orderid = this.live_sellorders[i];
                                         this.tempTradeSummaries[ts.id] = ts;
                                         Volatile.Write(ref this.tradeSummary_lock, 0);
@@ -1691,7 +1695,7 @@ namespace Crypto_Trading
                                             ts = new tradeSummary();
                                         }
                                         ts.id = this.live_sellorders[i];
-                                        ts.setPricingInfo(this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                        ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
                                         //ts.maker_orderid = this.live_sellorders[i];
                                         this.tempTradeSummaries[ts.id] = ts;
                                         Volatile.Write(ref this.tradeSummary_lock, 0);
@@ -1710,7 +1714,7 @@ namespace Crypto_Trading
                                         ts = new tradeSummary();
                                     }
                                     ts.id = this.live_sellorders[i];
-                                    ts.setPricingInfo(this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
                                     //ts.maker_orderid = this.live_sellorders[i];
                                     this.tempTradeSummaries[ts.id] = ts;
                                     Volatile.Write(ref this.tradeSummary_lock, 0);
@@ -1744,7 +1748,7 @@ namespace Crypto_Trading
                                             ts = new tradeSummary();
                                         }
                                         ts.id = this.live_sellorders[i];
-                                        ts.setPricingInfo(this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                        ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
                                         //ts.maker_orderid = this.live_sellorders[i];
                                         this.tempTradeSummaries[ts.id] = ts;
                                         Volatile.Write(ref this.tradeSummary_lock, 0);
@@ -1762,7 +1766,7 @@ namespace Crypto_Trading
                                             ts = new tradeSummary();
                                         }
                                         ts.id = this.live_sellorders[i];
-                                        ts.setPricingInfo(this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                        ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
                                         //ts.maker_orderid = this.live_sellorders[i];
                                         this.tempTradeSummaries[ts.id] = ts;
                                         Volatile.Write(ref this.tradeSummary_lock, 0);
@@ -1781,7 +1785,7 @@ namespace Crypto_Trading
                                         ts = new tradeSummary();
                                     }
                                     ts.id = this.live_sellorders[i];
-                                    ts.setPricingInfo(this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
                                     //ts.maker_orderid = this.live_sellorders[i];
                                     this.tempTradeSummaries[ts.id] = ts;
                                     Volatile.Write(ref this.tradeSummary_lock, 0);
@@ -1809,7 +1813,7 @@ namespace Crypto_Trading
                                         }
                                         ts.id = this.live_buyorders[i];
                                         ++this.tradeid_num;
-                                        ts.setPricingInfo(this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                        ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
                                         //ts.maker_orderid = this.live_buyorders[i];
                                         this.tempTradeSummaries[ts.id] = ts;
                                         Volatile.Write(ref this.tradeSummary_lock, 0);
@@ -1827,7 +1831,7 @@ namespace Crypto_Trading
                                             ts = new tradeSummary();
                                         }
                                         ts.id = this.live_buyorders[i];
-                                        ts.setPricingInfo(this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                        ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
                                         //ts.maker_orderid = this.live_buyorders[i];
                                         this.tempTradeSummaries[ts.id] = ts;
                                         Volatile.Write(ref this.tradeSummary_lock, 0);
@@ -1846,7 +1850,7 @@ namespace Crypto_Trading
                                         ts = new tradeSummary();
                                     }
                                     ts.id = this.live_buyorders[i];
-                                    ts.setPricingInfo(this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
                                     //ts.maker_orderid = this.live_buyorders[i];
                                     this.tempTradeSummaries[ts.id] = ts;
                                     Volatile.Write(ref this.tradeSummary_lock, 0);

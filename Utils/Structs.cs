@@ -15,6 +15,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Globalization;
 using Binance.Net.Enums;
+using Discord.Rest;
 
 namespace Utils
 {
@@ -2022,6 +2023,7 @@ namespace Utils
     public class tradeSummary
     {
         public string id;
+        public string strategy;
         public DateTime? timestamp;
         public bool BBook;
         public string maker_symbolmarket;
@@ -2115,8 +2117,9 @@ namespace Utils
             }
             return true;
         }
-        public void setPricingInfo(string m_symbolmarket,string t_symbolmarket,decimal makerMarkup = 0,decimal takerMarkup = 0,double rv = 0,decimal skew = 0,decimal skew_widening = 0,decimal makerPrAdj = 0,decimal takerPrAdj = 0)
+        public void setPricingInfo(string strategy_name,string m_symbolmarket,string t_symbolmarket,decimal makerMarkup = 0,decimal takerMarkup = 0,double rv = 0,decimal skew = 0,decimal skew_widening = 0,decimal makerPrAdj = 0,decimal takerPrAdj = 0)
         {
+            this.strategy = strategy_name;
             this.maker_symbolmarket = m_symbolmarket;
             this.taker_symbolmarket = t_symbolmarket;
             this.realized_volatility = rv;
@@ -2161,6 +2164,7 @@ namespace Utils
         public void init()
         {
             this.id = "";
+            this.strategy = "";
             this.timestamp = new DateTime(2000, 1, 1, 0, 0, 0);
             this.BBook = false;
             this.maker_symbolmarket = "";
@@ -2201,7 +2205,7 @@ namespace Utils
                 strtime = "";
             }
             //timestamp,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,maker_side,maker_avgprice,maker_quantity,maker_avgExecutedTime,taker_side,taker_avgprice,taker_quantity,taker_avgExecutedTime,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency;
-            return $"{strtime},{this.id},{this.BBook},{this.maker_symbolmarket},{this.taker_symbolmarket},{this.maker_orderid},{this.taker_orderid},{this.maker_side},{this.maker_avgprice},{this.maker_quantity},{this.maker_avgExecutedTime},{this.taker_side},{this.taker_avgprice},{this.taker_quantity},{this.taker_avgExecutedTime},{this.realized_volatility},{this.maker_markup},{this.taker_markup},{this.skew},{this.maker_priceAdjustment},{this.taker_priceAdjustment},{this.markupPnL},{this.skewPnL},{this.priceAdjPnL},{this.residualPnL},{this.totalFee},{this.totalPnL},{this.avg_latency}";
+            return $"{strtime},{strategy},{this.id},{this.BBook},{this.maker_symbolmarket},{this.taker_symbolmarket},{this.maker_orderid},{this.taker_orderid},{this.maker_side},{this.maker_avgprice},{this.maker_quantity},{this.maker_avgExecutedTime},{this.taker_side},{this.taker_avgprice},{this.taker_quantity},{this.taker_avgExecutedTime},{this.realized_volatility},{this.maker_markup},{this.taker_markup},{this.skew},{this.maker_priceAdjustment},{this.taker_priceAdjustment},{this.markupPnL},{this.skewPnL},{this.priceAdjPnL},{this.residualPnL},{this.totalFee},{this.totalPnL},{this.avg_latency}";
         }
 
     }
@@ -2442,6 +2446,78 @@ namespace Utils
         public override string ToString()
         {
             return this.name + "," + this.count.ToString() + "," + this.avgLatency.ToString() + "," + this.maxElapsedTime.ToString();
+        }
+    }
+
+    public class PnLBreakDown
+    {
+        public string strategy;
+        public string symbol;
+        public decimal totalAmount;
+        public decimal notionalVolume;
+        public decimal SoDBalance;
+        public decimal EoDBalance;
+        public decimal markupPnL;
+        public decimal skewPnL;
+        public decimal priceAdjPnL;
+        public decimal residualPnL;
+        public decimal totalFee;
+        public decimal totalPnL;
+        public double avg_Latency;
+        public int count;
+
+        public PnLBreakDown()
+        {
+            strategy = "";
+            symbol = "";
+            totalAmount = 0;
+            notionalVolume = 0;
+            SoDBalance = 0;
+            EoDBalance = 0;
+            markupPnL = 0;
+            skewPnL = 0;
+            priceAdjPnL = 0;
+            residualPnL = 0;
+            totalFee = 0;
+            totalPnL = 0;
+            avg_Latency = 0;
+            count = 0;
+        }
+        public void addData(string[] str_data)
+        {
+            //"0timestamp,1strategy,1id,2BBook,3maker_symbolmarket,4taker_symbolmarket,5maker_orderid,6taker_orderid,7maker_side,8maker_avgprice,9maker_quantity,
+            //10maker_avgExecutedTime,11taker_side,12taker_avgprice,13taker_quantity,14taker_avgExecutedTime,15realized_volatility,16maker_markup,17taker_markup,18skew,19maker_priceAdj,
+            //20taker_priceAdj,21markupPnL,22skewPnL,23priceAdjPnL,24residualPnL,25totalFee,26totalPnL,27avg_Latency"
+            ++this.count;
+            this.markupPnL += Decimal.Parse(str_data[22]);
+            this.skewPnL += Decimal.Parse(str_data[23]);
+            this.priceAdjPnL += Decimal.Parse(str_data[24]);
+            this.residualPnL += Decimal.Parse(str_data[25]);
+            this.totalFee += Decimal.Parse(str_data[26]);
+            this.totalPnL += Decimal.Parse(str_data[27]);
+            decimal min_quantity = Math.Min(Decimal.Parse(str_data[10]), Decimal.Parse(str_data[14]));
+            this.avg_Latency = (this.avg_Latency * (double)this.totalAmount + Double.Parse(str_data[28]) * (double)min_quantity) / (double)(this.totalAmount + min_quantity);
+            this.totalAmount += min_quantity;
+            this.notionalVolume += Decimal.Parse(str_data[10]) * Decimal.Parse(str_data[9]);
+        }
+        public void addData(tradeSummary tpt_data)
+        {
+            ++this.count;
+            this.markupPnL += tpt_data.markupPnL;
+            this.skewPnL += tpt_data.skewPnL;
+            this.priceAdjPnL += tpt_data.priceAdjPnL;
+            this.residualPnL += tpt_data.residualPnL;
+            this.totalFee += tpt_data.totalFee;
+            this.totalPnL += tpt_data.totalPnL;
+            decimal min_quantity = Math.Min(tpt_data.maker_quantity, tpt_data.taker_quantity);
+            this.avg_Latency = (this.avg_Latency * (double)this.totalAmount + tpt_data.avg_latency * (double)min_quantity) / (double)(this.totalAmount + min_quantity);
+            this.totalAmount += min_quantity;
+            this.notionalVolume += tpt_data.maker_quantity * tpt_data.maker_avgprice;
+        }
+
+        public string ToString()
+        {
+            return $"{this.strategy},{this.symbol},{this.SoDBalance},{this.EoDBalance},{this.count},{this.totalAmount},{this.notionalVolume},{this.markupPnL},{this.skewPnL},{this.priceAdjPnL},{this.residualPnL},{this.totalFee},{this.totalPnL},{this.avg_Latency}";
         }
     }
 }
