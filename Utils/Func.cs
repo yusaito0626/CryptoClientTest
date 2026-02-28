@@ -25,7 +25,7 @@ namespace Utils
 
     public class myLock
     {
-        int l;
+        volatile int l;
 
         public myLock()
         {
@@ -37,11 +37,13 @@ namespace Utils
             {
 
             }
+            //Console.WriteLine("lock");
             return new funcContainer(() => { return this.release; });
         }
 
         private void release()
         {
+            //Console.WriteLine("released");
             Volatile.Write(ref l, 0);
         }
     }

@@ -846,38 +846,42 @@ namespace Crypto_Trading
                 DateTime currentTime = DateTime.UtcNow;
                 if (this.live_buyorder_id != "")
                 {
-                    if (this.oManager.orders.ContainsKey(this.live_buyorder_id))
+                    using(var olock = this.oManager.order_lock.getlock())
                     {
-                        ord = this.oManager.orders[this.live_buyorder_id];
-                        switch (ord.status)
+                        if (this.oManager.orders.ContainsKey(this.live_buyorder_id))
                         {
-                            case orderStatus.NONE:
-                                addLog("Something wrong. " + ord.ToString(), logType.WARNING);
-                                this.live_buyorder_id = "";
-                                this.live_bidprice = 0;
-                                break;
-                            case orderStatus.Filled:
-                            case orderStatus.Canceled:
-                            case orderStatus.INVALID:
-                            case orderStatus.WaitCancel:
-                                this.live_buyorder_id = "";
-                                this.live_bidprice = 0;
-                                break;
+                            ord = this.oManager.orders[this.live_buyorder_id];
+                            switch (ord.status)
+                            {
+                                case orderStatus.NONE:
+                                    addLog("Something wrong. " + ord.ToString(), logType.WARNING);
+                                    this.live_buyorder_id = "";
+                                    this.live_bidprice = 0;
+                                    break;
+                                case orderStatus.Filled:
+                                case orderStatus.Canceled:
+                                case orderStatus.INVALID:
+                                case orderStatus.WaitCancel:
+                                    this.live_buyorder_id = "";
+                                    this.live_bidprice = 0;
+                                    break;
+                            }
+                            if (ord.status == orderStatus.Open && !this.oManager.live_orders.ContainsKey(ord.internal_order_id))
+                            {
+                                addLog("The order status is open but doesn't exist in liveorders", logType.WARNING);
+                                addLog(ord.ToString(), logType.WARNING);
+                            }
                         }
-                        if (ord.status == orderStatus.Open && !this.oManager.live_orders.ContainsKey(ord.internal_order_id))
+                        else if (currentTime - this.live_buyorder_time > TimeSpan.FromSeconds(10))
                         {
-                            addLog("The order status is open but doesn't exist in liveorders", logType.WARNING);
-                            addLog(ord.ToString(), logType.WARNING);
+                            addLog("Strategy buy order not found. order_id:" + this.live_buyorder_id);
+                            //await RefreshLiveOrders();
+                            ret = false;
+                            this.live_buyorder_id = "";
+                            this.live_bidprice = 0;
                         }
                     }
-                    else if(currentTime - this.live_buyorder_time > TimeSpan.FromSeconds(10))
-                    {
-                        addLog("Strategy buy order not found. order_id:" + this.live_buyorder_id);
-                        //await RefreshLiveOrders();
-                        ret = false;
-                        this.live_buyorder_id = "";
-                        this.live_bidprice = 0;
-                    }
+                    
                 }
                 else
                 {
@@ -886,38 +890,42 @@ namespace Crypto_Trading
 
                 if (this.live_sellorder_id != "")
                 {
-                    if (this.oManager.orders.ContainsKey(this.live_sellorder_id))
+                    using (var olock = this.oManager.order_lock.getlock())
                     {
-                        ord = this.oManager.orders[this.live_sellorder_id];
-                        switch (ord.status)
+                        if (this.oManager.orders.ContainsKey(this.live_sellorder_id))
                         {
-                            case orderStatus.NONE:
-                                addLog("Something wrong. " + ord.ToString(), logType.WARNING);
-                                this.live_sellorder_id = "";
-                                this.live_askprice = 0;
-                                break;
-                            case orderStatus.Filled:
-                            case orderStatus.Canceled:
-                            case orderStatus.INVALID:
-                            case orderStatus.WaitCancel:
-                                this.live_sellorder_id = "";
-                                this.live_askprice = 0;
-                                break;
+                            ord = this.oManager.orders[this.live_sellorder_id];
+                            switch (ord.status)
+                            {
+                                case orderStatus.NONE:
+                                    addLog("Something wrong. " + ord.ToString(), logType.WARNING);
+                                    this.live_sellorder_id = "";
+                                    this.live_askprice = 0;
+                                    break;
+                                case orderStatus.Filled:
+                                case orderStatus.Canceled:
+                                case orderStatus.INVALID:
+                                case orderStatus.WaitCancel:
+                                    this.live_sellorder_id = "";
+                                    this.live_askprice = 0;
+                                    break;
+                            }
+                            if (ord.status == orderStatus.Open && !this.oManager.live_orders.ContainsKey(ord.internal_order_id))
+                            {
+                                addLog("The order status is open but doesn't exist in liveorders", logType.WARNING);
+                                addLog(ord.ToString(), logType.WARNING);
+                            }
                         }
-                        if(ord.status == orderStatus.Open && !this.oManager.live_orders.ContainsKey(ord.internal_order_id))
+                        else if (currentTime - this.live_sellorder_time > TimeSpan.FromSeconds(10))
                         {
-                            addLog("The order status is open but doesn't exist in liveorders", logType.WARNING);
-                            addLog(ord.ToString(), logType.WARNING);
+                            addLog("Strategy sell order not found. order_id:" + this.live_sellorder_id);
+                            //await RefreshLiveOrders();
+                            ret = false;
+                            this.live_sellorder_id = "";
+                            this.live_askprice = 0;
                         }
                     }
-                    else if (currentTime - this.live_sellorder_time > TimeSpan.FromSeconds(10))
-                    {
-                        addLog("Strategy sell order not found. order_id:" + this.live_sellorder_id);
-                        //await RefreshLiveOrders();
-                        ret = false;
-                        this.live_sellorder_id = "";
-                        this.live_askprice = 0;
-                    }
+                        
                 }
                 else
                 {
@@ -951,67 +959,69 @@ namespace Crypto_Trading
                 }
 
                 List<string> cancelling_ord = new List<string>();
-                if (this.oManager.orders.ContainsKey(this.live_buyorder_id))
+                using(var olock = this.oManager.order_lock.getlock())
                 {
-                    ord = this.oManager.orders[this.live_buyorder_id];
-                    //if (ord.status == orderStatus.Open && (bid_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) > this.maxMakerPosition * ((decimal)0.5 + this.oneSideThreshold / 200))))
-                    if (ord.status == orderStatus.Open && (bid_price == 0 || ((this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100)))
+                    if (this.oManager.orders.ContainsKey(this.live_buyorder_id))
                     {
-                        cancelling_ord.Add(this.live_buyorder_id);
-                        this.live_buyorder_id = "";
-                        this.live_bidprice = 0;
+                        ord = this.oManager.orders[this.live_buyorder_id];
+                        if (ord.status == orderStatus.Open && (bid_price == 0 || ((this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100)))
+                        {
+                            cancelling_ord.Add(this.live_buyorder_id);
+                            this.live_buyorder_id = "";
+                            this.live_bidprice = 0;
+                        }
+                        else if (((bidChanged && isPriceChanged) || bid_price > this.live_bidprice) && ord.status == orderStatus.Open/*this.live_bidprice != bid_price*/)
+                        {
+                            cancelling_ord.Add(this.live_buyorder_id);
+                            this.live_buyorder_id = "";
+                            this.live_bidprice = 0;
+                            newBuyOrder = true;
+                        }
                     }
-                    else if (((bidChanged && isPriceChanged) || bid_price > this.live_bidprice) && ord.status == orderStatus.Open/*this.live_bidprice != bid_price*/)
+                    else if (this.live_buyorder_id == "")
                     {
-                        cancelling_ord.Add(this.live_buyorder_id);
-                        this.live_buyorder_id = "";
-                        this.live_bidprice = 0;
-                        newBuyOrder = true;
-                    }
-                }
-                else if(this.live_buyorder_id == "")
-                {
-                    //if (bid_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) > this.maxMakerPosition * ((decimal)0.5 + this.oneSideThreshold / 200)))
-                    if (bid_price == 0 || ((this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100))
-                    {
+                        //if (bid_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) > this.maxMakerPosition * ((decimal)0.5 + this.oneSideThreshold / 200)))
+                        if (bid_price == 0 || ((this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100))
+                        {
 
+                        }
+                        else if (this.last_filled_time_buy == null || (decimal)(DateTime.UtcNow - this.last_filled_time_buy).Value.TotalSeconds > this.intervalAfterFill)
+                        {
+                            newBuyOrder = true;
+                        }
                     }
-                    else if (this.last_filled_time_buy == null || (decimal)(DateTime.UtcNow - this.last_filled_time_buy).Value.TotalSeconds > this.intervalAfterFill)
+                    if (this.oManager.orders.ContainsKey(this.live_sellorder_id))
                     {
-                        newBuyOrder = true;
+                        ord = this.oManager.orders[this.live_sellorder_id];
+                        //if (ord.status == orderStatus.Open && (ask_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) < this.maxMakerPosition * ((decimal)0.5 - this.oneSideThreshold / 200))))
+                        if (ord.status == orderStatus.Open && (ask_price == 0 || (-(this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100)))
+                        {
+                            cancelling_ord.Add(this.live_sellorder_id);
+                            this.live_sellorder_id = "";
+                            this.live_askprice = 0;
+                        }
+                        else if (((isPriceChanged && askChanged) || ask_price < this.live_askprice) && ord.status == orderStatus.Open/*this.live_askprice != ask_price*/)
+                        {
+                            cancelling_ord.Add(this.live_sellorder_id);
+                            this.live_sellorder_id = "";
+                            this.live_askprice = 0;
+                            newSellOrder = true;
+                        }
                     }
-                }
-                if (this.oManager.orders.ContainsKey(this.live_sellorder_id))
-                {
-                    ord = this.oManager.orders[this.live_sellorder_id];
-                    //if (ord.status == orderStatus.Open && (ask_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) < this.maxMakerPosition * ((decimal)0.5 - this.oneSideThreshold / 200))))
-                    if (ord.status == orderStatus.Open && (ask_price == 0 || (- (this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100)))
+                    else if (this.live_sellorder_id == "")
                     {
-                        cancelling_ord.Add(this.live_sellorder_id);
-                        this.live_sellorder_id = "";
-                        this.live_askprice = 0;
-                    }
-                    else if (((isPriceChanged && askChanged) || ask_price < this.live_askprice) && ord.status == orderStatus.Open/*this.live_askprice != ask_price*/)
-                    {
-                        cancelling_ord.Add(this.live_sellorder_id);
-                        this.live_sellorder_id = "";
-                        this.live_askprice = 0;
-                        newSellOrder = true;
-                    }
-                }
-                else if (this.live_sellorder_id == "")
-                {
-                    //if (ask_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) < this.maxMakerPosition * ((decimal)0.5 - this.oneSideThreshold / 200)))
-                    if (ask_price == 0 || (- (this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100))
-                    {
-                        
-                    }
-                    else if (this.last_filled_time_sell == null || (decimal)(DateTime.UtcNow - this.last_filled_time_sell).Value.TotalSeconds > this.intervalAfterFill)
-                    {
-                        newSellOrder = true;
-                    }
-                }
+                        //if (ask_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) < this.maxMakerPosition * ((decimal)0.5 - this.oneSideThreshold / 200)))
+                        if (ask_price == 0 || (-(this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100))
+                        {
 
+                        }
+                        else if (this.last_filled_time_sell == null || (decimal)(DateTime.UtcNow - this.last_filled_time_sell).Value.TotalSeconds > this.intervalAfterFill)
+                        {
+                            newSellOrder = true;
+                        }
+                    }
+                }
+                
                 this.oManager.placeCancelSpotOrders(this.maker, cancelling_ord);
 
                 if ((current - this.live_buyorder_time).TotalMilliseconds < this.order_throttle || (current - this.live_sellorder_time).TotalMilliseconds < this.order_throttle)
@@ -1386,38 +1396,42 @@ namespace Crypto_Trading
                         ordid = this.live_buyorders[i];
                         if (ordid != "")
                         {
-                            if (this.oManager.orders.ContainsKey(ordid))
+                            using(var olock = this.oManager.order_lock.getlock())
                             {
-                                ord = this.oManager.orders[ordid];
-                                switch (ord.status)
+                                if (this.oManager.orders.ContainsKey(ordid))
                                 {
-                                    case orderStatus.NONE:
-                                        addLog("Something wrong. " + ord.ToString(), logType.WARNING);
-                                        this.live_buyorders[i] = "";
-                                        this.current_bids[i] = 0;
-                                        break;
-                                    case orderStatus.Filled:
-                                    case orderStatus.Canceled:
-                                    case orderStatus.INVALID:
-                                    case orderStatus.WaitCancel:
-                                        this.live_buyorders[i] = "";
-                                        this.current_bids[i] = 0;
-                                        break;
+                                    ord = this.oManager.orders[ordid];
+                                    switch (ord.status)
+                                    {
+                                        case orderStatus.NONE:
+                                            addLog("Something wrong. " + ord.ToString(), logType.WARNING);
+                                            this.live_buyorders[i] = "";
+                                            this.current_bids[i] = 0;
+                                            break;
+                                        case orderStatus.Filled:
+                                        case orderStatus.Canceled:
+                                        case orderStatus.INVALID:
+                                        case orderStatus.WaitCancel:
+                                            this.live_buyorders[i] = "";
+                                            this.current_bids[i] = 0;
+                                            break;
+                                    }
+                                    if (ord.status == orderStatus.Open && !this.oManager.live_orders.ContainsKey(ord.internal_order_id))
+                                    {
+                                        addLog("The order status is open but doesn't exist in liveorders", logType.WARNING);
+                                        addLog(ord.ToString(), logType.WARNING);
+                                    }
                                 }
-                                if (ord.status == orderStatus.Open && !this.oManager.live_orders.ContainsKey(ord.internal_order_id))
+                                else if (current - this.live_buyorder_time > TimeSpan.FromSeconds(10))
                                 {
-                                    addLog("The order status is open but doesn't exist in liveorders", logType.WARNING);
-                                    addLog(ord.ToString(), logType.WARNING);
+                                    addLog("Strategy buy order not found. order_id:" + ordid);
+                                    //await RefreshLiveOrders();
+                                    ret = false;
+                                    this.live_buyorders[i] = "";
+                                    this.current_bids[i] = 0;
                                 }
                             }
-                            else if (current - this.live_buyorder_time > TimeSpan.FromSeconds(10))
-                            {
-                                addLog("Strategy buy order not found. order_id:" + ordid);
-                                //await RefreshLiveOrders();
-                                ret = false;
-                                this.live_buyorders[i] = "";
-                                this.current_bids[i] = 0;
-                            }
+                            
                         }
                         else
                         {
@@ -1427,37 +1441,40 @@ namespace Crypto_Trading
                         ordid = this.live_sellorders[i];
                         if (ordid != "")
                         {
-                            if (this.oManager.orders.ContainsKey(ordid))
+                            using (var olock = this.oManager.order_lock.getlock())
                             {
-                                ord = this.oManager.orders[ordid];
-                                switch (ord.status)
+                                if (this.oManager.orders.ContainsKey(ordid))
                                 {
-                                    case orderStatus.NONE:
-                                        addLog("Something wrong. " + ord.ToString(), logType.WARNING);
-                                        this.live_sellorders[i] = "";
-                                        this.current_asks[i] = 0;
-                                        break;
-                                    case orderStatus.Filled:
-                                    case orderStatus.Canceled:
-                                    case orderStatus.INVALID:
-                                    case orderStatus.WaitCancel:
-                                        this.live_sellorders[i] = "";
-                                        this.current_asks[i] = 0;
-                                        break;
+                                    ord = this.oManager.orders[ordid];
+                                    switch (ord.status)
+                                    {
+                                        case orderStatus.NONE:
+                                            addLog("Something wrong. " + ord.ToString(), logType.WARNING);
+                                            this.live_sellorders[i] = "";
+                                            this.current_asks[i] = 0;
+                                            break;
+                                        case orderStatus.Filled:
+                                        case orderStatus.Canceled:
+                                        case orderStatus.INVALID:
+                                        case orderStatus.WaitCancel:
+                                            this.live_sellorders[i] = "";
+                                            this.current_asks[i] = 0;
+                                            break;
+                                    }
+                                    if (ord.status == orderStatus.Open && !this.oManager.live_orders.ContainsKey(ord.internal_order_id))
+                                    {
+                                        addLog("The order status is open but doesn't exist in liveorders", logType.WARNING);
+                                        addLog(ord.ToString(), logType.WARNING);
+                                    }
                                 }
-                                if (ord.status == orderStatus.Open && !this.oManager.live_orders.ContainsKey(ord.internal_order_id))
+                                else if (current - this.live_sellorder_time > TimeSpan.FromSeconds(10))
                                 {
-                                    addLog("The order status is open but doesn't exist in liveorders", logType.WARNING);
-                                    addLog(ord.ToString(), logType.WARNING);
+                                    addLog("Strategy sell order not found. order_id:" + ordid);
+                                    //await RefreshLiveOrders();
+                                    ret = false;
+                                    this.live_sellorders[i] = "";
+                                    this.current_asks[i] = 0;
                                 }
-                            }
-                            else if (current - this.live_sellorder_time > TimeSpan.FromSeconds(10))
-                            {
-                                addLog("Strategy sell order not found. order_id:" + ordid);
-                                //await RefreshLiveOrders();
-                                ret = false;
-                                this.live_sellorders[i] = "";
-                                this.current_asks[i] = 0;
                             }
                         }
                         else
@@ -1491,69 +1508,71 @@ namespace Crypto_Trading
                         {
                             askChanged = true;
                         }
-
-                        if (this.oManager.orders.ContainsKey(this.live_buyorders[i]))
+                        using (var olock = this.oManager.order_lock.getlock())
                         {
-                            ord = this.oManager.orders[this.live_buyorders[i]];
-                            //if (ord.status == orderStatus.Open && (bid_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) > this.maxMakerPosition * ((decimal)0.5 + this.oneSideThreshold / 200))))
-                            if (ord.status == orderStatus.Open && (bid_price == 0 || ((this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100)))
+                            if (this.oManager.orders.ContainsKey(this.live_buyorders[i]))
                             {
-                                cancelling_ord.Add(this.live_buyorders[i]);
-                                this.live_buyorders[i] = "";
-                                this.current_bids[i] = 0;
-                                this.bids[i] = 0;
+                                ord = this.oManager.orders[this.live_buyorders[i]];
+                                //if (ord.status == orderStatus.Open && (bid_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) > this.maxMakerPosition * ((decimal)0.5 + this.oneSideThreshold / 200))))
+                                if (ord.status == orderStatus.Open && (bid_price == 0 || ((this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100)))
+                                {
+                                    cancelling_ord.Add(this.live_buyorders[i]);
+                                    this.live_buyorders[i] = "";
+                                    this.current_bids[i] = 0;
+                                    this.bids[i] = 0;
+                                }
+                                else if (((isPriceChanged && bidChanged) || bid_price > this.current_bids[i]) && ord.status == orderStatus.Open/*this.current_bids[i] != bid_price*/)
+                                {
+                                    cancelling_ord.Add(this.live_buyorders[i]);
+                                    this.live_buyorders[i] = "";
+                                    this.current_bids[i] = 0;
+                                    this.bids[i] = 0;
+                                    newBuyOrder |= (1 << i);
+                                }
                             }
-                            else if (((isPriceChanged && bidChanged) || bid_price > this.current_bids[i]) && ord.status == orderStatus.Open/*this.current_bids[i] != bid_price*/)
+                            else if (this.live_buyorders[i] == "")
                             {
-                                cancelling_ord.Add(this.live_buyorders[i]);
-                                this.live_buyorders[i] = "";
-                                this.current_bids[i] = 0;
-                                this.bids[i] = 0;
-                                newBuyOrder |= (1 << i);
+                                //if (bid_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) > this.maxMakerPosition * ((decimal)0.5 + this.oneSideThreshold / 200)))
+                                if (bid_price == 0 || ((this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100))
+                                {
+                                    this.bids[i] = 0;
+                                }
+                                else if (this.last_filled_time_buy == null || (decimal)(current - this.last_filled_time_buy).Value.TotalSeconds > this.intervalAfterFill)
+                                {
+                                    newBuyOrder |= (1 << i);
+                                }
                             }
-                        }
-                        else if (this.live_buyorders[i] == "")
-                        {
-                            //if (bid_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) > this.maxMakerPosition * ((decimal)0.5 + this.oneSideThreshold / 200)))
-                            if (bid_price == 0 || ((this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100))
+                            if (this.oManager.orders.ContainsKey(this.live_sellorders[i]))
                             {
-                                this.bids[i] = 0;
+                                ord = this.oManager.orders[this.live_sellorders[i]];
+                                //if (ord.status == orderStatus.Open && (ask_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) < this.maxMakerPosition * ((decimal)0.5 - this.oneSideThreshold / 200))))
+                                if (ord.status == orderStatus.Open && (ask_price == 0 || (-(this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100)))
+                                {
+                                    cancelling_ord.Add(this.live_sellorders[i]);
+                                    this.live_sellorders[i] = "";
+                                    this.current_asks[i] = 0;
+                                    this.asks[i] = 0;
+                                }
+                                else if (((isPriceChanged && askChanged) || ask_price < this.current_asks[i]) && ord.status == orderStatus.Open/*this.current_asks[i] != ask_price*/)
+                                {
+                                    cancelling_ord.Add(this.live_sellorders[i]);
+                                    this.live_sellorders[i] = "";
+                                    this.current_asks[i] = 0;
+                                    this.asks[i] = 0;
+                                    newSellOrder |= (1 << i);
+                                }
                             }
-                            else if (this.last_filled_time_buy == null || (decimal)(current - this.last_filled_time_buy).Value.TotalSeconds > this.intervalAfterFill)
+                            else if (this.live_sellorders[i] == "")
                             {
-                                newBuyOrder |= (1 << i);
-                            }
-                        }
-                        if (this.oManager.orders.ContainsKey(this.live_sellorders[i]))
-                        {
-                            ord = this.oManager.orders[this.live_sellorders[i]];
-                            //if (ord.status == orderStatus.Open && (ask_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) < this.maxMakerPosition * ((decimal)0.5 - this.oneSideThreshold / 200))))
-                            if (ord.status == orderStatus.Open && (ask_price == 0 || (- (this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100)))
-                            {
-                                cancelling_ord.Add(this.live_sellorders[i]);
-                                this.live_sellorders[i] = "";
-                                this.current_asks[i] = 0;
-                                this.asks[i] = 0;
-                            }
-                            else if (((isPriceChanged && askChanged) || ask_price < this.current_asks[i]) && ord.status == orderStatus.Open/*this.current_asks[i] != ask_price*/)
-                            {
-                                cancelling_ord.Add(this.live_sellorders[i]);
-                                this.live_sellorders[i] = "";
-                                this.current_asks[i] = 0;
-                                this.asks[i] = 0;
-                                newSellOrder |= (1 << i);
-                            }
-                        }
-                        else if (this.live_sellorders[i] == "")
-                        {
-                            //if (ask_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) < this.maxMakerPosition * ((decimal)0.5 - this.oneSideThreshold / 200)))
-                            if (ask_price == 0 || (- (this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100))
-                            {
-                                this.asks[i] = 0;
-                            }
-                            else if (this.last_filled_time_sell == null || (decimal)(current - this.last_filled_time_sell).Value.TotalSeconds > this.intervalAfterFill)
-                            {
-                                newSellOrder |= (1 << i);
+                                //if (ask_price == 0 || ((this.maxMakerPosition + this.maker.net_pos) < this.maxMakerPosition * ((decimal)0.5 - this.oneSideThreshold / 200)))
+                                if (ask_price == 0 || (-(this.maker.net_pos - this.targetMakerPosition) > this.maxMakerPosition * this.oneSideThreshold / 100))
+                                {
+                                    this.asks[i] = 0;
+                                }
+                                else if (this.last_filled_time_sell == null || (decimal)(current - this.last_filled_time_sell).Value.TotalSeconds > this.intervalAfterFill)
+                                {
+                                    newSellOrder |= (1 << i);
+                                }
                             }
                         }
                     }
@@ -1983,27 +2002,27 @@ namespace Crypto_Trading
             List<string> maker_orders = new List<string>();
             List<string> taker_orders = new List<string>();
 
-            while (Interlocked.CompareExchange(ref this.oManager.order_lock, 1, 0) != 0)
+            using (var olock = this.oManager.order_lock.getlock())
             {
-            }
-            foreach (var ord in this.oManager.live_orders)
-            {
-                if (ord.Key != this.live_buyorder_id && ord.Key != this.live_sellorder_id && ord.Value.status == orderStatus.Open)
+                foreach (var ord in this.oManager.live_orders)
                 {
-                    if (this.maker.symbol_market == ord.Value.symbol_market)
+                    if (ord.Key != this.live_buyorder_id && ord.Key != this.live_sellorder_id && ord.Value.status == orderStatus.Open)
                     {
-                        maker_orders.Add(ord.Key);
-                    }
-                    else if (this.taker.symbol_market == ord.Value.symbol_market)
-                    {
-                        taker_orders.Add(ord.Key);
-                    }
-                    else
-                    {
+                        if (this.maker.symbol_market == ord.Value.symbol_market)
+                        {
+                            maker_orders.Add(ord.Key);
+                        }
+                        else if (this.taker.symbol_market == ord.Value.symbol_market)
+                        {
+                            taker_orders.Add(ord.Key);
+                        }
+                        else
+                        {
+                        }
                     }
                 }
             }
-            Volatile.Write(ref this.oManager.order_lock, 0);
+                
             if (maker_orders.Count > 0)
             {
                 this.oManager.placeCancelSpotOrders(this.maker, maker_orders, true);
@@ -2019,27 +2038,27 @@ namespace Crypto_Trading
             List<string> maker_orders = new List<string>();
             List<string> taker_orders = new List<string>();
 
-            while (Interlocked.CompareExchange(ref this.oManager.order_lock, 1, 0) != 0)
+            using (var olock = this.oManager.order_lock.getlock())
             {
-            }
-            foreach (var ord in this.oManager.live_orders)
-            {
-                if (this.live_buyorders.Contains(ord.Key) == false && this.live_sellorders.Contains(ord.Key) == false && ord.Value.status == orderStatus.Open)
+                foreach (var ord in this.oManager.live_orders)
                 {
-                    if (this.maker.symbol_market == ord.Value.symbol_market)
+                    if (this.live_buyorders.Contains(ord.Key) == false && this.live_sellorders.Contains(ord.Key) == false && ord.Value.status == orderStatus.Open)
                     {
-                        maker_orders.Add(ord.Key);
-                    }
-                    else if (this.taker.symbol_market == ord.Value.symbol_market)
-                    {
-                        taker_orders.Add(ord.Key);
-                    }
-                    else
-                    {
+                        if (this.maker.symbol_market == ord.Value.symbol_market)
+                        {
+                            maker_orders.Add(ord.Key);
+                        }
+                        else if (this.taker.symbol_market == ord.Value.symbol_market)
+                        {
+                            taker_orders.Add(ord.Key);
+                        }
+                        else
+                        {
+                        }
                     }
                 }
             }
-            Volatile.Write(ref this.oManager.order_lock, 0);
+            
             if (maker_orders.Count > 0)
             {
                 this.oManager.placeCancelSpotOrders(this.maker, maker_orders, true);
@@ -2122,14 +2141,18 @@ namespace Crypto_Trading
                         while (Interlocked.CompareExchange(ref this.fill_lock, 1, 0) != 0)
                         {
                         }
-                        if (this.oManager.orders.ContainsKey(ord_id))
+                        using(var olock = this.oManager.order_lock.getlock())
                         {
-                            ord = this.oManager.orders[ord_id];
+                            if (this.oManager.orders.ContainsKey(ord_id))
+                            {
+                                ord = this.oManager.orders[ord_id];
+                            }
+                            else
+                            {
+                                ord = null;
+                            }
                         }
-                        else
-                        {
-                            ord = null;
-                        }
+                        
                         if (ord != null && ord.status == orderStatus.Open)
                         {
                             if (ord.order_price < trade.price && ord.update_time + this.onTrade_timeBuf < trade.filled_time)//Assuming those 2 times are from same clock. If the buy trade price is higher than our ask
@@ -2191,13 +2214,16 @@ namespace Crypto_Trading
                         while (Interlocked.CompareExchange(ref this.fill_lock, 1, 0) != 0)
                         {
                         }
-                        if (this.oManager.orders.ContainsKey(ord_id))
+                        using (var olock = this.oManager.order_lock.getlock())
                         {
-                            ord = this.oManager.orders[ord_id];
-                        }
-                        else
-                        {
-                            ord = null;
+                            if (this.oManager.orders.ContainsKey(ord_id))
+                            {
+                                ord = this.oManager.orders[ord_id];
+                            }
+                            else
+                            {
+                                ord = null;
+                            }
                         }
                         if (ord != null && ord.status == orderStatus.Open)
                         {
@@ -2287,14 +2313,18 @@ namespace Crypto_Trading
                             for (int i = 0; i < this.layers; ++i)
                             {
                                 ord_id = this.live_sellorders[i];
-                                if (this.oManager.orders.ContainsKey(ord_id))
+                                using (var olock = this.oManager.order_lock.getlock())
                                 {
-                                    ord = this.oManager.orders[ord_id];
+                                    if (this.oManager.orders.ContainsKey(ord_id))
+                                    {
+                                        ord = this.oManager.orders[ord_id];
+                                    }
+                                    else
+                                    {
+                                        ord = null;
+                                    }
                                 }
-                                else
-                                {
-                                    ord = null;
-                                }
+                                    
                                 if (ord != null && ord.status == orderStatus.Open)
                                 {
                                     if (ord.order_price < trade.price && ord.update_time + this.onTrade_timeBuf < trade.filled_time)//Assuming those 2 times are from same clock. If the buy trade price is higher than our ask
@@ -2358,13 +2388,16 @@ namespace Crypto_Trading
                             for (int i = 0; i < this.layers; ++i)
                             {
                                 ord_id = this.live_buyorders[i];
-                                if (this.oManager.orders.ContainsKey(ord_id))
+                                using (var olock = this.oManager.order_lock.getlock())
                                 {
-                                    ord = this.oManager.orders[ord_id];
-                                }
-                                else
-                                {
-                                    ord = null;
+                                    if (this.oManager.orders.ContainsKey(ord_id))
+                                    {
+                                        ord = this.oManager.orders[ord_id];
+                                    }
+                                    else
+                                    {
+                                        ord = null;
+                                    }
                                 }
                                 if (ord != null && ord.status == orderStatus.Open)
                                 {
@@ -2457,14 +2490,18 @@ namespace Crypto_Trading
                 string ord_id;
                 DataSpotOrderUpdate ord;
                 ord_id = this.live_sellorder_id;
-                if (this.oManager.orders.ContainsKey(ord_id))
+                using (var olock = this.oManager.order_lock.getlock())
                 {
-                    ord = this.oManager.orders[ord_id];
+                    if (this.oManager.orders.ContainsKey(ord_id))
+                    {
+                        ord = this.oManager.orders[ord_id];
+                    }
+                    else
+                    {
+                        ord = null;
+                    }
                 }
-                else
-                {
-                    ord = null;
-                }
+                    
                 if (ord != null && ord.status == orderStatus.Open)
                 {
                     if(ord.update_time < quote.orderbookTime && quote.asks.ContainsKey(ord.order_price) && quote.asks[ord.order_price] == 0)
@@ -2523,14 +2560,18 @@ namespace Crypto_Trading
                 }
 
                 ord_id = this.live_buyorder_id;
-                if (this.oManager.orders.ContainsKey(ord_id))
+                using (var olock = this.oManager.order_lock.getlock())
                 {
-                    ord = this.oManager.orders[ord_id];
+                    if (this.oManager.orders.ContainsKey(ord_id))
+                    {
+                        ord = this.oManager.orders[ord_id];
+                    }
+                    else
+                    {
+                        ord = null;
+                    }
                 }
-                else
-                {
-                    ord = null;
-                }
+                    
                 if (ord != null && ord.status == orderStatus.Open)
                 {
                     if (ord.update_time < quote.orderbookTime && quote.bids.ContainsKey(ord.order_price) && quote.bids[ord.order_price] == 0)
@@ -2612,14 +2653,19 @@ namespace Crypto_Trading
                     {
                         bool exit = true;
                         ord_id = this.live_sellorders[i];
-                        if (this.oManager.orders.ContainsKey(ord_id))
+                        using (var olock = this.oManager.order_lock.getlock())
                         {
-                            ord = this.oManager.orders[ord_id];
+                            if (this.oManager.orders.ContainsKey(ord_id))
+                            {
+                                ord = this.oManager.orders[ord_id];
+                            }
+                            else
+                            {
+                                ord = null;
+                            }
                         }
-                        else
-                        {
-                            ord = null;
-                        }
+
+                        
                         if (ord != null && ord.status == orderStatus.Open)
                         {
                             if (ord.update_time < quote.orderbookTime && quote.asks.ContainsKey(ord.order_price) && quote.asks[ord.order_price] == 0)
@@ -2679,13 +2725,16 @@ namespace Crypto_Trading
                             }
                         }
                         ord_id = this.live_buyorders[i];
-                        if (this.oManager.orders.ContainsKey(ord_id))
+                        using (var olock = this.oManager.order_lock.getlock())
                         {
-                            ord = this.oManager.orders[ord_id];
-                        }
-                        else
-                        {
-                            ord = null;
+                            if (this.oManager.orders.ContainsKey(ord_id))
+                            {
+                                ord = this.oManager.orders[ord_id];
+                            }
+                            else
+                            {
+                                ord = null;
+                            }
                         }
                         if (ord != null && ord.status == orderStatus.Open)
                         {
@@ -3000,26 +3049,29 @@ namespace Crypto_Trading
                                     {
                                         await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, false, fill.internal_order_id);
                                     }
-
-                                    if (this.oManager.orders.ContainsKey(fill.internal_order_id))
+                                    using(var olock = this.oManager.order_lock.getlock())
                                     {
-                                        ord = this.oManager.orders[fill.internal_order_id];
-                                        if (ord.order_quantity - ord.filled_quantity <= fill.quantity || ord.status == orderStatus.Filled)
+                                        if (this.oManager.orders.ContainsKey(fill.internal_order_id))
                                         {
-                                            addLog(ord.ToString() + ",  onFill at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + fill.internal_order_id + " " + fill.msg);
-                                            this.last_filled_time_buy = DateTime.UtcNow;
-                                            this.last_filled_time = this.last_filled_time_buy;
+                                            ord = this.oManager.orders[fill.internal_order_id];
+                                            if (ord.order_quantity - ord.filled_quantity <= fill.quantity || ord.status == orderStatus.Filled)
+                                            {
+                                                addLog(ord.ToString() + ",  onFill at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + fill.internal_order_id + " " + fill.msg);
+                                                this.last_filled_time_buy = DateTime.UtcNow;
+                                                this.last_filled_time = this.last_filled_time_buy;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            this.addLog("[OnFill]Order Not Found:" + fill.ToString(), Enums.logType.WARNING);
+                                            if (fill.quantity == this.ToBsize)
+                                            {
+                                                this.last_filled_time_buy = DateTime.UtcNow;
+                                                this.last_filled_time = this.last_filled_time_buy;
+                                            }
                                         }
                                     }
-                                    else
-                                    {
-                                        this.addLog("[OnFill]Order Not Found:" + fill.ToString(), Enums.logType.WARNING);
-                                        if (fill.quantity == this.ToBsize)
-                                        {
-                                            this.last_filled_time_buy = DateTime.UtcNow;
-                                            this.last_filled_time = this.last_filled_time_buy;
-                                        }
-                                    }
+                                    
                                     break;
                                 case orderSide.Sell:
                                     if (this.taker.marginTrade)
@@ -3037,27 +3089,30 @@ namespace Crypto_Trading
                                     {
                                         await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, false, fill.internal_order_id);
                                     }
-
-                                    if (this.oManager.orders.ContainsKey(fill.internal_order_id))
+                                    using (var olock = this.oManager.order_lock.getlock())
                                     {
-                                        ord = this.oManager.orders[fill.internal_order_id];
-
-                                        if (ord.order_quantity - ord.filled_quantity <= fill.quantity || ord.status == orderStatus.Filled)
+                                        if (this.oManager.orders.ContainsKey(fill.internal_order_id))
                                         {
-                                            this.last_filled_time_sell = DateTime.UtcNow;
-                                            this.last_filled_time = this.last_filled_time_sell;
-                                            addLog(ord.ToString() + ",  onFill at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + fill.internal_order_id + " " + fill.msg);
+                                            ord = this.oManager.orders[fill.internal_order_id];
+
+                                            if (ord.order_quantity - ord.filled_quantity <= fill.quantity || ord.status == orderStatus.Filled)
+                                            {
+                                                this.last_filled_time_sell = DateTime.UtcNow;
+                                                this.last_filled_time = this.last_filled_time_sell;
+                                                addLog(ord.ToString() + ",  onFill at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + fill.internal_order_id + " " + fill.msg);
+                                            }
+                                        }
+                                        else
+                                        {
+                                            this.addLog("[OnFill]Order Not Found:" + fill.ToString(), Enums.logType.WARNING);
+                                            if (fill.quantity == this.ToBsize)
+                                            {
+                                                this.last_filled_time_sell = DateTime.UtcNow;
+                                                this.last_filled_time = this.last_filled_time_sell;
+                                            }
                                         }
                                     }
-                                    else
-                                    {
-                                        this.addLog("[OnFill]Order Not Found:" + fill.ToString(), Enums.logType.WARNING);
-                                        if (fill.quantity == this.ToBsize)
-                                        {
-                                            this.last_filled_time_sell = DateTime.UtcNow;
-                                            this.last_filled_time = this.last_filled_time_sell;
-                                        }
-                                    }
+                                        
                                     break;
                             }
                             //Once onFill triggered, onFill has the responsibility to hedge the entire order.

@@ -47,7 +47,8 @@ namespace Crypto_Trading
 
         Crypto_Clients.Crypto_Clients ord_client = Crypto_Clients.Crypto_Clients.GetInstance();
 
-        public volatile int order_lock;
+        //public volatile int order_lock;
+        public myLock order_lock = new myLock();
         public Dictionary<string, DataSpotOrderUpdate> orders;
         public Dictionary<string, DataSpotOrderUpdate> live_orders;
 
@@ -118,7 +119,6 @@ namespace Crypto_Trading
             this.aborting = false;
             this.updateOrderStopped = false;
             this.virtualMode = true;
-            this.order_lock = 0;
             this.orders = new Dictionary<string, DataSpotOrderUpdate>();
             this.live_orders = new Dictionary<string, DataSpotOrderUpdate>();
             this.virtual_order_lock = 0;
@@ -1628,55 +1628,11 @@ namespace Crypto_Trading
             DataSpotOrderUpdate? output = null;
             sendingOrder sndOrd2;
 
-            if (sndOrd.waitCancel)
+            using (var olock = this.order_lock.getlock())
             {
                 if (this.orders.ContainsKey(sndOrd.ref_IntOrdId))
                 {
                     ord = this.orders[sndOrd.ref_IntOrdId];
-                    mod = this.modifingOrdStack.pop();
-                    mod.ordId = ord.order_id;
-                    mod.newPrice = sndOrd.price;
-                    mod.newQuantity = sndOrd.quantity;
-                    mod.side = ord.side;
-                    mod.order_type = ord.order_type;
-                    mod.time_in_force = ord.time_in_force;
-                    mod.ins = sndOrd.ins;
-                    this.modifingOrders[sndOrd.ref_IntOrdId] = mod;
-                    output = await this.processCanOrder(sndOrd);
-
-                    return output;
-                }
-                else
-                {
-                    sndOrd.init();
-                    this.sendingOrdersStack.push(sndOrd);
-                    return null;
-                }
-            }
-            else
-            {
-                if (this.orders.ContainsKey(sndOrd.ref_IntOrdId))
-                {
-                    ord = this.orders[sndOrd.ref_IntOrdId];
-                    sndOrd.side = ord.side;
-                    sndOrd.order_type = ord.order_type;
-                    sndOrd.time_in_force = ord.time_in_force;
-                    if(ord.status == orderStatus.Open)
-                    {
-                        sndOrd2 = this.sendingOrdersStack.pop();
-                        sndOrd2.copy(sndOrd);
-                        sndOrd2.msg += " ModOrder from " + sndOrd.ref_IntOrdId + " ";
-                        this.processCanOrder(sndOrd);
-                        Thread.Sleep(1);
-                        output = await this.processNewOrder(sndOrd2);
-                    }
-                    else
-                    {
-                        sndOrd.init();
-                        this.sendingOrdersStack.push(sndOrd);
-                        output = null;
-                    }
-                    return output;
                 }
                 else
                 {
@@ -1686,11 +1642,64 @@ namespace Crypto_Trading
                     return null;
                 }
             }
+
+            if (sndOrd.waitCancel)
+            {
+                mod = this.modifingOrdStack.pop();
+                mod.ordId = ord.order_id;
+                mod.newPrice = sndOrd.price;
+                mod.newQuantity = sndOrd.quantity;
+                mod.side = ord.side;
+                mod.order_type = ord.order_type;
+                mod.time_in_force = ord.time_in_force;
+                mod.ins = sndOrd.ins;
+                this.modifingOrders[sndOrd.ref_IntOrdId] = mod;
+                output = await this.processCanOrder(sndOrd);
+
+                return output;
+            }
+            else
+            {
+                sndOrd.side = ord.side;
+                sndOrd.order_type = ord.order_type;
+                sndOrd.time_in_force = ord.time_in_force;
+                if (ord.status == orderStatus.Open)
+                {
+                    sndOrd2 = this.sendingOrdersStack.pop();
+                    sndOrd2.copy(sndOrd);
+                    sndOrd2.msg += " ModOrder from " + sndOrd.ref_IntOrdId + " ";
+                    this.processCanOrder(sndOrd);
+                    Thread.Sleep(1);
+                    output = await this.processNewOrder(sndOrd2);
+                }
+                else
+                {
+                    sndOrd.init();
+                    this.sendingOrdersStack.push(sndOrd);
+                    output = null;
+                }
+                return output;
+            }
         }
         async public Task<DataSpotOrderUpdate?> processCanOrder(sendingOrder sndOrd)
         {
             using var f = new funcContainer(this.Latency["processCanOrder"].MeasureLatency);
             DataSpotOrderUpdate? output = null;
+            DataSpotOrderUpdate prev;
+            using(var olock = this.order_lock.getlock())
+            {
+                if (this.orders.ContainsKey(sndOrd.ref_IntOrdId))
+                {
+                    prev = this.orders[sndOrd.ref_IntOrdId];
+                }
+                else
+                {
+                    addLog("Order not found. order id:" + sndOrd.ref_IntOrdId, logType.WARNING);
+                    sndOrd.init();
+                    this.sendingOrdersStack.push(sndOrd);
+                    return null;
+                }
+            }
             JsonDocument js;
             if (this.virtualMode)
             {
@@ -1699,8 +1708,6 @@ namespace Crypto_Trading
                 {
                     output = new DataSpotOrderUpdate();
                 }
-                DataSpotOrderUpdate prev = this.orders[sndOrd.ref_IntOrdId];
-                
                 output.isVirtual = true;
                 output.order_id = prev.order_id;
                 output.symbol = sndOrd.ins.symbol;
@@ -1732,7 +1739,6 @@ namespace Crypto_Trading
             else if(sndOrd.ins.market == market.gmocoin)
             {
                 DateTime sendTime = DateTime.UtcNow;
-                DataSpotOrderUpdate prev = this.orders[sndOrd.ref_IntOrdId];
                 js = await this.ord_client.gmocoin_client.placeCanOrder(prev.order_id);
                 JsonElement res;
                 if (js.RootElement.TryGetProperty("status", out res) && res.GetInt32() == 0)
@@ -1794,7 +1800,6 @@ namespace Crypto_Trading
             else if (sndOrd.ins.market == market.bitbank)
             {
                 DateTime sendTime = DateTime.UtcNow;
-                DataSpotOrderUpdate prev = this.orders[sndOrd.ref_IntOrdId];
                 js = await this.ord_client.bitbank_client.placeCanOrder(sndOrd.ins.symbol, prev.order_id);
                 if (js.RootElement.GetProperty("success").GetUInt16() == 1)
                 {
@@ -1874,7 +1879,6 @@ namespace Crypto_Trading
             else if (sndOrd.ins.market == market.coincheck)
             {
                 DateTime sendTime = DateTime.UtcNow;
-                DataSpotOrderUpdate prev = this.orders[sndOrd.ref_IntOrdId];
                 js = await this.ord_client.coincheck_client.placeCanOrder(prev.order_id);
                 if (js.RootElement.GetProperty("success").GetBoolean())
                 {
@@ -1927,7 +1931,6 @@ namespace Crypto_Trading
             else if (sndOrd.ins.market == market.bittrade)
             {
                 DateTime sendTime = DateTime.UtcNow;
-                DataSpotOrderUpdate prev = this.orders[sndOrd.ref_IntOrdId];
                 js = await this.ord_client.bittrade_client.placeCanOrder(prev.order_id);
                 if (js.RootElement.GetProperty("status").GetString() == "ok")
                 {
@@ -1950,7 +1953,6 @@ namespace Crypto_Trading
             }
             else
             {
-                DataSpotOrderUpdate prev = this.orders[sndOrd.ref_IntOrdId];
                 output = await this.ord_client.placeCancelSpotOrder(sndOrd.ins.market, sndOrd.ins.baseCcy, sndOrd.ins.quoteCcy, prev.order_id);
                 if (output != null)
                 {
@@ -1980,7 +1982,19 @@ namespace Crypto_Trading
                     {
                         ordObj = new DataSpotOrderUpdate();
                     }
-                    DataSpotOrderUpdate prev = this.orders[ordid];
+                    DataSpotOrderUpdate prev;
+                    using (var olock = this.order_lock.getlock())
+                    {
+                        if(this.orders.ContainsKey(ordid))
+                        {
+                            prev = this.orders[ordid];
+                        }
+                        else
+                        {
+                            addLog("[processCanOrders]Order not found. order id:" + ordid, logType.WARNING);
+                            continue;
+                        }
+                    }
 
                     ordObj.isVirtual = true;
                     ordObj.order_id = prev.order_id;
@@ -2014,11 +2028,14 @@ namespace Crypto_Trading
             {
                 DateTime sendTime = DateTime.UtcNow;
                 List<string> ord_ids = new List<string>();
-                foreach (string order_id in sndOrd.order_ids)
+                using(var olock = this.order_lock.getlock())
                 {
-                    if (this.orders.ContainsKey(order_id) && (this.orders[order_id].status == orderStatus.Open || this.orders[order_id].status == orderStatus.WaitOpen))
+                    foreach (string order_id in sndOrd.order_ids)
                     {
-                        ord_ids.Add(this.orders[order_id].order_id);
+                        if (this.orders.ContainsKey(order_id) && (this.orders[order_id].status == orderStatus.Open || this.orders[order_id].status == orderStatus.WaitOpen))
+                        {
+                            ord_ids.Add(this.orders[order_id].order_id);
+                        }
                     }
                 }
                 
@@ -2185,13 +2202,17 @@ namespace Crypto_Trading
             {
                 DateTime sendTime = DateTime.UtcNow;
                 List<string> ord_ids = new List<string>();
-                foreach(string order_id in sndOrd.order_ids)
+                using (var olock = this.order_lock.getlock())
                 {
-                    if(this.orders.ContainsKey(order_id) && (this.orders[order_id].status == orderStatus.Open || this.orders[order_id].status == orderStatus.WaitOpen))
+                    foreach (string order_id in sndOrd.order_ids)
                     {
-                        ord_ids.Add(this.orders[order_id].order_id);
+                        if (this.orders.ContainsKey(order_id) && (this.orders[order_id].status == orderStatus.Open || this.orders[order_id].status == orderStatus.WaitOpen))
+                        {
+                            ord_ids.Add(this.orders[order_id].order_id);
+                        }
                     }
                 }
+                    
                 js_list = await this.ord_client.bitbank_client.placeCanOrders(sndOrd.ins.symbol, ord_ids);
                 foreach (var elem in js_list)
                 {
@@ -2286,11 +2307,14 @@ namespace Crypto_Trading
             {
                 DateTime sendTime = DateTime.UtcNow;
                 List<string> ord_ids = new List<string>();
-                foreach (string order_id in sndOrd.order_ids)
+                using(var olock = this.order_lock.getlock())
                 {
-                    if (this.orders.ContainsKey(order_id) && (this.orders[order_id].status == orderStatus.Open || this.orders[order_id].status == orderStatus.WaitOpen))
+                    foreach (string order_id in sndOrd.order_ids)
                     {
-                        ord_ids.Add(this.orders[order_id].order_id);
+                        if (this.orders.ContainsKey(order_id) && (this.orders[order_id].status == orderStatus.Open || this.orders[order_id].status == orderStatus.WaitOpen))
+                        {
+                            ord_ids.Add(this.orders[order_id].order_id);
+                        }
                     }
                 }
                 
@@ -2353,13 +2377,17 @@ namespace Crypto_Trading
             {
                 DateTime sendTime = DateTime.UtcNow;
                 List<string> ord_ids = new List<string>();
-                foreach (string order_id in sndOrd.order_ids)
+                using(var olock = this.order_lock.getlock())
                 {
-                    if (this.orders.ContainsKey(order_id) && (this.orders[order_id].status == orderStatus.Open || this.orders[order_id].status == orderStatus.WaitOpen))
+                    foreach (string order_id in sndOrd.order_ids)
                     {
-                        ord_ids.Add(this.orders[order_id].order_id);
+                        if (this.orders.ContainsKey(order_id) && (this.orders[order_id].status == orderStatus.Open || this.orders[order_id].status == orderStatus.WaitOpen))
+                        {
+                            ord_ids.Add(this.orders[order_id].order_id);
+                        }
                     }
                 }
+                    
                 js_list = await this.ord_client.bittrade_client.placeCanOrders(ord_ids);
                 foreach(var elem in js_list)
                 {
@@ -2394,16 +2422,26 @@ namespace Crypto_Trading
                 List<string> ord_ids = new List<string>();
                 foreach (string order_id in sndOrd.order_ids)
                 {
-                    if (this.orders.ContainsKey(order_id))
+                    string ordid;
+                    using (var olock = this.order_lock.getlock())
                     {
-                        ordObj = await this.ord_client.placeCancelSpotOrder(sndOrd.ins.market, sndOrd.ins.baseCcy, sndOrd.ins.quoteCcy, this.orders[order_id].order_id);
-                        if (ordObj != null)
+                        if (this.orders.ContainsKey(order_id))
                         {
-                            ordObj.symbol_market = sndOrd.ins.symbol_market;
-                            ordObj.internal_order_id = order_id;
-                            output.Add(ordObj);
-                            this.ord_client.ordUpdateQueue.Enqueue(ordObj);
+                            ordid = this.orders[order_id].order_id;
                         }
+                        else
+                        {
+                            addLog("[processCanOrders]Order not found. order id:" + order_id, logType.WARNING);
+                            continue;
+                        }
+                    }
+                    ordObj = await this.ord_client.placeCancelSpotOrder(sndOrd.ins.market, sndOrd.ins.baseCcy, sndOrd.ins.quoteCcy, ordid);
+                    if (ordObj != null)
+                    {
+                        ordObj.symbol_market = sndOrd.ins.symbol_market;
+                        ordObj.internal_order_id = order_id;
+                        output.Add(ordObj);
+                        this.ord_client.ordUpdateQueue.Enqueue(ordObj);
                     }
                 }
             }
@@ -2455,33 +2493,32 @@ namespace Crypto_Trading
             this.addLog("Cancelling all orders...");
             Instrument ins;
             Dictionary<Instrument, List<string>> order_list = new Dictionary<Instrument, List<string>>();
-            while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
+            using (var olock = this.order_lock.getlock())
             {
-
-            }
-            foreach (var ord in this.live_orders.Values)
-            {
-                if(this.Instruments.ContainsKey(ord.symbol_market))
+                foreach (var ord in this.live_orders.Values)
                 {
-                    ins = this.Instruments[ord.symbol_market];
-                    if(!order_list.ContainsKey(ins))
+                    if (this.Instruments.ContainsKey(ord.symbol_market))
                     {
-                        order_list[ins] = new List<string>();
+                        ins = this.Instruments[ord.symbol_market];
+                        if (!order_list.ContainsKey(ins))
+                        {
+                            order_list[ins] = new List<string>();
+                        }
+                        order_list[ins].Add(ord.internal_order_id);
+                        //this.placeCancelSpotOrder(ins, ord.internal_order_id, true);
                     }
-                    order_list[ins].Add(ord.internal_order_id);
-                    //this.placeCancelSpotOrder(ins, ord.internal_order_id, true);
-                }
-                else
-                {
-                    addLog("Unknown symbol.", logType.WARNING);
-                    addLog(ord.ToString(), logType.WARNING);
+                    else
+                    {
+                        addLog("Unknown symbol.", logType.WARNING);
+                        addLog(ord.ToString(), logType.WARNING);
+                    }
                 }
             }
+            
             foreach(var list in order_list)
             {
                 await this.placeCancelSpotOrders(list.Key, list.Value,true,true);
             }
-            Volatile.Write(ref this.order_lock, 0);
         }
 
 
@@ -2637,16 +2674,19 @@ namespace Crypto_Trading
                     fill.internal_order_id = fill.market + fill.order_id;
                 }
             }
-                
-            if (this.orders.ContainsKey(fill.internal_order_id))
+            using (var olock = this.order_lock.getlock())
             {
-                DataSpotOrderUpdate filled = this.orders[fill.internal_order_id];
-                if (fill.market == market.coincheck || fill.market == market.gmocoin)
+                if (this.orders.ContainsKey(fill.internal_order_id))
                 {
-                    filled.average_price = fill.price;//For viewing purpose
+                    DataSpotOrderUpdate filled = this.orders[fill.internal_order_id];
+                    if (fill.market == market.coincheck || fill.market == market.gmocoin)
+                    {
+                        filled.average_price = fill.price;//For viewing purpose
+                    }
+                    fill.msg = filled.msg;
                 }
-                fill.msg = filled.msg;
             }
+                
             if (stgRunning)
             {
                 foreach (var stg in this.strategies)
@@ -2824,22 +2864,28 @@ namespace Crypto_Trading
                     stg.Value.stg_orders_dict[ord.internal_order_id] = 0;
                 }
             }
-            this.orders[ord.internal_order_id] = ord;
+            using (var olock = this.order_lock.getlock())
+            {
+                this.orders[ord.internal_order_id] = ord;
+            }
             this.ordLogQueue.Enqueue(ord.ToString());
         }
         public void handleWaitOpen(DataSpotOrderUpdate ord)
         {
             this.ordLogQueue.Enqueue(ord.ToString());
             ord.update_time = DateTime.UtcNow;
-            if(this.orders.ContainsKey(ord.internal_order_id))
+            using (var olock = this.order_lock.getlock())
             {
-                DataSpotOrderUpdate prev = this.orders[ord.internal_order_id];
-                prev.msg = ord.msg;
-                this.order_pool.Enqueue(ord);
-            }
-            else
-            {
-                this.orders[ord.internal_order_id] = ord;
+                if (this.orders.ContainsKey(ord.internal_order_id))
+                {
+                    DataSpotOrderUpdate prev = this.orders[ord.internal_order_id];
+                    prev.msg = ord.msg;
+                    this.order_pool.Enqueue(ord);
+                }
+                else
+                {
+                    this.orders[ord.internal_order_id] = ord;
+                }
             }
         }
         public void handleWaitMod(DataSpotOrderUpdate ord)
@@ -2852,45 +2898,45 @@ namespace Crypto_Trading
         {
             DataSpotOrderUpdate prevord;
 
-            if (this.orders.ContainsKey(ord.internal_order_id))
+            using (var olock = this.order_lock.getlock())
             {
-                prevord = this.orders[ord.internal_order_id];
-                if (prevord.status != orderStatus.Canceled)
+                if (this.orders.ContainsKey(ord.internal_order_id))
                 {
-                    ord.filled_quantity = prevord.filled_quantity;
-                    ord.order_price = prevord.order_price;
-                    ord.order_quantity = prevord.order_quantity;
-                    ord.msg = prevord.msg;
-                    this.orders[ord.internal_order_id] = ord;
-                    //while(Interlocked.CompareExchange(ref this.order_lock,1,0) != 0)
-                    //{
-
-                    //}
-                    //live_orders.Remove or .Add is only called in this thread.
-                    if (this.live_orders.ContainsKey(ord.internal_order_id))
+                    prevord = this.orders[ord.internal_order_id];
+                    if (prevord.status != orderStatus.Canceled)
                     {
-                        this.live_orders[ord.internal_order_id] = ord;
+                        ord.filled_quantity = prevord.filled_quantity;
+                        ord.order_price = prevord.order_price;
+                        ord.order_quantity = prevord.order_quantity;
+                        ord.msg = prevord.msg;
+                        this.orders[ord.internal_order_id] = ord;
+                        if (this.live_orders.ContainsKey(ord.internal_order_id))
+                        {
+                            this.live_orders[ord.internal_order_id] = ord;
+                        }
+                        if (this.Instruments.ContainsKey(ord.symbol_market) && this.Instruments[ord.symbol_market].live_orders.ContainsKey(ord.internal_order_id))
+                        {
+                            this.Instruments[ord.symbol_market].live_orders[ord.internal_order_id] = ord;
+                        }
+                        prevord.update_time = DateTime.UtcNow;
+                        this.order_pool.Enqueue(prevord);
                     }
-                    //Volatile.Write(ref this.order_lock, 0);
-                    if (this.Instruments.ContainsKey(ord.symbol_market) && this.Instruments[ord.symbol_market].live_orders.ContainsKey(ord.internal_order_id))
+                    else
                     {
-                        this.Instruments[ord.symbol_market].live_orders[ord.internal_order_id] = ord;
+                        ord.update_time = DateTime.UtcNow;
+                        this.order_pool.Enqueue(ord);
                     }
-                    prevord.update_time = DateTime.UtcNow;
-                    this.order_pool.Enqueue(prevord);
+                    this.ordLogQueue.Enqueue(ord.ToString());
                 }
                 else
                 {
                     ord.update_time = DateTime.UtcNow;
                     this.order_pool.Enqueue(ord);
+                    this.ordLogQueue.Enqueue(ord.ToString());
                 }
             }
-            else
-            {
-                ord.update_time = DateTime.UtcNow;
-                this.order_pool.Enqueue(ord);
-            }
-            this.ordLogQueue.Enqueue(ord.ToString());
+
+            
         }
         public void handleOpen(DataSpotOrderUpdate ord)
         {
@@ -2915,49 +2961,49 @@ namespace Crypto_Trading
                 //1. Get if there is an older order.
                 //2. If the order doesn't exist in live_order, add it othewise update from the previous.
                 //3. If the order is filled, update the balance
-                if (this.orders.ContainsKey(ord.internal_order_id))
+                using (var olock = this.order_lock.getlock())
                 {
-                    prevord = this.orders[ord.internal_order_id];
-                    ord.msg = prevord.msg;
-                    if ((ord.status < prevord.status || ord.filled_quantity < prevord.filled_quantity) && !(prevord.status == orderStatus.WaitCancel && ord.status == orderStatus.Open))
+                    if (this.orders.ContainsKey(ord.internal_order_id))
                     {
-                        ord.update_time = DateTime.UtcNow;
-                        this.order_pool.Enqueue(ord);
-                        this.ordLogQueue.Enqueue(ord.ToString());
-                        return;
+                        prevord = this.orders[ord.internal_order_id];
+                        ord.msg = prevord.msg;
+                        if ((ord.status < prevord.status || ord.filled_quantity < prevord.filled_quantity) && !(prevord.status == orderStatus.WaitCancel && ord.status == orderStatus.Open))
+                        {
+                            ord.update_time = DateTime.UtcNow;
+                            this.order_pool.Enqueue(ord);
+                            this.ordLogQueue.Enqueue(ord.ToString());
+                            return;
+                        }
+
+                    }
+                    else
+                    {
+                        prevord = null;
                     }
 
-                    //foreach (var stg in this.strategies)
-                    //{
-                    //    if (stg.Value.enabled)
-                    //    {
-                    //        if (ord.symbol_market == stg.Value.maker.symbol_market)
-                    //        {
-                    //            stg.Value.onOrdUpdate(ord, prevord);
-                    //        }
-                    //    }
-                    //}
-                }
-                else
-                {
-                    prevord = null;
+                    this.orders[ord.internal_order_id] = ord;
+
+                    if (this.live_orders.ContainsKey(ord.internal_order_id))
+                    {
+                        this.live_orders[ord.internal_order_id] = ord;
+                    }
+                    else
+                    {
+                        this.live_orders[ord.internal_order_id] = ord;
+                    }
                 }
 
-                this.orders[ord.internal_order_id] = ord;
+                //foreach (var stg in this.strategies)
+                //{
+                //    if (stg.Value.enabled)
+                //    {
+                //        if (ord.symbol_market == stg.Value.maker.symbol_market)
+                //        {
+                //            stg.Value.onOrdUpdate(ord, prevord);
+                //        }
+                //    }
+                //}
 
-                while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
-                {
-                }
-                if (this.live_orders.ContainsKey(ord.internal_order_id))
-                {
-                    this.live_orders[ord.internal_order_id] = ord;
-                }
-                else
-                {
-                    //addLog("[New live order at handleOpen] " + ord.ToString());
-                    this.live_orders[ord.internal_order_id] = ord;
-                }
-                Volatile.Write(ref this.order_lock, 0);
                 if (ins != null)
                 {
                     ins.updateOrders(ord);
@@ -3118,46 +3164,44 @@ namespace Crypto_Trading
                 //1. Update order dictionary
                 //2. Remove from live_orders
                 //3. Call ins.updateOrders, remove from ins.live_orders, adjust balance
-                if (this.orders.ContainsKey(ord.internal_order_id))
+                using (var olock = this.order_lock.getlock())
                 {
-                    prevord = this.orders[ord.internal_order_id];
-                    ord.msg = prevord.msg;
-                    foreach (var stg in this.strategies)
+                    if (this.orders.ContainsKey(ord.internal_order_id))
                     {
-                        if (stg.Value.enabled)
+                        prevord = this.orders[ord.internal_order_id];
+                        ord.msg = prevord.msg;
+                    }
+                    else
+                    {
+                        prevord = null;
+                    }
+                    this.orders[ord.internal_order_id] = ord;
+
+                    if (this.live_orders.ContainsKey(ord.internal_order_id))
+                    {
+                        this.live_orders.Remove(ord.internal_order_id);
+                        //addLog("[Live order removed at handleCancel] " + ord.ToString());
+                    }
+                }
+
+                foreach (var stg in this.strategies)
+                {
+                    if (stg.Value.enabled)
+                    {
+                        if (ord.symbol_market == stg.Value.maker.symbol_market)
                         {
-                            if (ord.symbol_market == stg.Value.maker.symbol_market)
+                            if(prevord == null)
+                            {
+                                stg.Value.onOrdUpdate(ord, ord);
+                            }
+                            else
                             {
                                 stg.Value.onOrdUpdate(ord, prevord);
                             }
                         }
                     }
                 }
-                else
-                {
-                    prevord = null;
-                    foreach (var stg in this.strategies)
-                    {
-                        if (stg.Value.enabled)
-                        {
-                            if (ord.symbol_market == stg.Value.maker.symbol_market)
-                            {
-                                stg.Value.onOrdUpdate(ord, ord);
-                            }
-                        }
-                    }
-                }
-                this.orders[ord.internal_order_id] = ord;
 
-                while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
-                {
-                }
-                if (this.live_orders.ContainsKey(ord.internal_order_id))
-                {
-                    this.live_orders.Remove(ord.internal_order_id);
-                    //addLog("[Live order removed at handleCancel] " + ord.ToString());
-                }
-                Volatile.Write(ref this.order_lock, 0);
 
                 if (ins != null)
                 {
@@ -3253,35 +3297,34 @@ namespace Crypto_Trading
                     addLog(ord.ToString());
                     if (ord.queued_count > 1_000_000)
                     {
-                        while(Interlocked.CompareExchange(ref this.order_lock,1,0) != 0)
+                        decimal filled_quantity = 0;
+                        using (var olock = this.order_lock.getlock())
                         {
-
-                        }
-                        string removing = "";
-                        foreach(var o in this.live_orders)
-                        {
-                            if(o.Value.market == ord.market && o.Value.order_id == ord.order_id)
+                            string removing = "";
+                            foreach (var o in this.live_orders)
                             {
-                                removing = o.Key;
-                                break;
+                                if (o.Value.market == ord.market && o.Value.order_id == ord.order_id)
+                                {
+                                    removing = o.Key;
+                                    break;
+                                }
+                            }
+                            if (removing != "")
+                            {
+                                this.live_orders.Remove(removing);
+                            }
+                            if (this.orders.ContainsKey(ord.market + ord.order_id))
+                            {
+                                DataSpotOrderUpdate prev = this.orders[ord.market + ord.order_id];
+                                filled_quantity = ord.order_quantity - prev.filled_quantity;
+                            }
+                            else
+                            {
+                                filled_quantity = ord.order_quantity;
                             }
                         }
-                        if(removing != "")
-                        {
-                            this.live_orders.Remove(removing);
-                        }
-                        Volatile.Write(ref this.order_lock, 0);
-                        decimal filled_quantity = 0;
+                        
                         ins = this.Instruments[ord.symbol_market];
-                        if (this.orders.ContainsKey(ord.market + ord.order_id))
-                        {
-                            DataSpotOrderUpdate prev = this.orders[ord.market + ord.order_id];
-                            filled_quantity = ord.order_quantity - prev.filled_quantity;
-                        }
-                        else
-                        {
-                            filled_quantity = ord.order_quantity;
-                        }
                         if (filled_quantity > 0 /*&& ord.order_type != orderType.Market*/)
                         {
                             if (ord.position_side == positionSide.Long)
@@ -3357,63 +3400,57 @@ namespace Crypto_Trading
                 //3. Remove from live_orders
                 //4. Update on the ins side.
                 //5. update balance
-                if (this.orders.ContainsKey(ord.internal_order_id))
+                using (var olock = this.order_lock.getlock())
                 {
-                    prevord = this.orders[ord.internal_order_id];
-                    ord.msg = prevord.msg;
-                    foreach (var stg in this.strategies)
+                    if (this.orders.ContainsKey(ord.internal_order_id))
                     {
-                        if (stg.Value.enabled)
+                        prevord = this.orders[ord.internal_order_id];
+                        ord.msg = prevord.msg;
+
+                        if ((ord.status < prevord.status || ord.filled_quantity < prevord.filled_quantity) && !(prevord.status == orderStatus.WaitCancel && ord.status == orderStatus.Open))
                         {
-                            if (ord.symbol_market == stg.Value.maker.symbol_market)
+                            ord.update_time = DateTime.UtcNow;
+                            this.order_pool.Enqueue(ord);
+                            this.ordLogQueue.Enqueue(ord.ToString());
+                            return;
+                        }
+
+                    }
+                    else
+                    {
+                        prevord = null;
+                    }
+
+                    this.orders[ord.internal_order_id] = ord;
+                    if (this.live_orders.ContainsKey(ord.internal_order_id))
+                    {
+                        this.live_orders.Remove(ord.internal_order_id);
+                        //addLog("[Live order removed at handleFilled] " + ord.ToString());
+                    }
+                }
+
+                foreach (var stg in this.strategies)
+                {
+                    if (stg.Value.enabled)
+                    {
+                        if (ord.symbol_market == stg.Value.maker.symbol_market)
+                        {
+                            if(prevord == null)
+                            {
+                                stg.Value.onOrdUpdate(ord, ord);
+                            }
+                            else
                             {
                                 stg.Value.onOrdUpdate(ord, prevord);
                             }
                         }
                     }
-
-                    if ((ord.status < prevord.status || ord.filled_quantity < prevord.filled_quantity) && !(prevord.status == orderStatus.WaitCancel && ord.status == orderStatus.Open))
-                    {
-                        ord.update_time = DateTime.UtcNow;
-                        this.order_pool.Enqueue(ord);
-                        this.ordLogQueue.Enqueue(ord.ToString());
-                        return;
-                    }
-
                 }
-                else
-                {
-                    prevord = null;
-                    foreach (var stg in this.strategies)
-                    {
-                        if (stg.Value.enabled)
-                        {
-                            if (ord.symbol_market == stg.Value.maker.symbol_market)
-                            {
-                                stg.Value.onOrdUpdate(ord, ord);
-                            }
-                        }
 
-                    }
-                }
-                
-                this.orders[ord.internal_order_id] = ord;
                 if (ins != null)
                 {
+
                     ins.updateOrders(ord);
-                }
-
-                while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
-                {
-                }
-                if (this.live_orders.ContainsKey(ord.internal_order_id))
-                {
-                    this.live_orders.Remove(ord.internal_order_id);
-                    //addLog("[Live order removed at handleFilled] " + ord.ToString());
-                }
-                Volatile.Write(ref this.order_lock, 0);
-                if (ins != null)
-                {
                     while (Interlocked.CompareExchange(ref ins.order_lock, 1, 0) != 0)
                     {
                     }
@@ -3486,15 +3523,19 @@ namespace Crypto_Trading
                     {
                         decimal filled_quantity = 0;
                         ins = this.Instruments[ord.symbol_market];
-                        if (this.orders.ContainsKey(ord.market + ord.order_id))
+                        using (var olock = this.order_lock.getlock())
                         {
-                            DataSpotOrderUpdate prev = this.orders[ord.market + ord.order_id];
-                            filled_quantity = ord.order_quantity - prev.filled_quantity;
+                            if (this.orders.ContainsKey(ord.market + ord.order_id))
+                            {
+                                DataSpotOrderUpdate prev = this.orders[ord.market + ord.order_id];
+                                filled_quantity = ord.order_quantity - prev.filled_quantity;
+                            }
+                            else
+                            {
+                                filled_quantity = ord.order_quantity;
+                            }
                         }
-                        else
-                        {
-                            filled_quantity = ord.order_quantity;
-                        }
+
                         if (filled_quantity > 0/* && ord.order_type != orderType.Market*/)
                         {
                             if (ord.position_side == positionSide.Long)
@@ -3555,7 +3596,7 @@ namespace Crypto_Trading
 
         public void updateOrdersOnError()
         {
-            this.order_lock = 0;
+            //this.order_lock = 0;
             foreach(var ins in this.Instruments.Values)
             {
                 ins.order_lock = 0;
@@ -3755,7 +3796,7 @@ namespace Crypto_Trading
                                 if (kv.Value == key)
                                 {
                                     addLog(key + " is registered as " + kv.Key + " in the mapping");
-                                    this.addLog(this.orders[key].ToString());
+                                    //this.addLog(this.orders[key].ToString());
                                 }
                             }
                         }

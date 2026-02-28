@@ -473,41 +473,39 @@ namespace Crypto_Linux
                         DataSpotOrderUpdate ord;
                         using (funcContainer f = new funcContainer(stg.obtainUpdating))
                         {
-                            string sells = "";
-                            string buys = "";
-                            for (int i = 0; i < stg.layers; ++i)
+                            using (var olock = oManager.order_lock.getlock())
                             {
-                                ord_id = stg.live_sellorders[stg.layers - 1 - i];
-                                if (oManager.orders.ContainsKey(ord_id))
+                                string sells = "";
+                                string buys = "";
+                                for (int i = 0; i < stg.layers; ++i)
                                 {
-                                    ord = oManager.orders[ord_id];
-                                    sells += "Layer " + (stg.layers - 1 - i).ToString() + " " + ord.status.ToString() + "  " + ord.order_quantity.ToString() + "@" + ord.order_price.ToString("N" + stg.maker.price_scale) + "\n";
-                                }
-                                else
-                                {
-                                    sells += "Layer " + (stg.layers - 1 - i).ToString() + " " + ord_id + " Not Found\n";
+
+                                    ord_id = stg.live_sellorders[stg.layers - 1 - i];
+                                    if (oManager.orders.ContainsKey(ord_id))
+                                    {
+                                        ord = oManager.orders[ord_id];
+                                        sells += "Layer " + (stg.layers - 1 - i).ToString() + " " + ord.status.ToString() + "  " + ord.order_quantity.ToString() + "@" + ord.order_price.ToString("N" + stg.maker.price_scale) + "\n";
+                                    }
+                                    else
+                                    {
+                                        sells += "Layer " + (stg.layers - 1 - i).ToString() + " " + ord_id + " Not Found\n";
+                                    }
+
+                                    ord_id = stg.live_buyorders[i];
+                                    if (oManager.orders.ContainsKey(ord_id))
+                                    {
+                                        ord = oManager.orders[ord_id];
+                                        buys += "Layer " + (i).ToString() + " " + ord.status.ToString() + "  " + ord.order_quantity.ToString() + "@" + ord.order_price.ToString("N" + stg.maker.price_scale) + "\n";
+                                    }
+                                    else
+                                    {
+                                        buys += "Layer " + (i).ToString() + " " + ord_id + " Not Found\n";
+                                    }
                                 }
 
-                                ord_id = stg.live_buyorders[i];
-                                if (oManager.orders.ContainsKey(ord_id))
-                                {
-                                    ord = oManager.orders[ord_id];
-                                    buys += "Layer " + (i).ToString() + " " + ord.status.ToString() + "  " + ord.order_quantity.ToString() + "@" + ord.order_price.ToString("N" + stg.maker.price_scale) + "\n";
-                                }
-                                else
-                                {
-                                    buys += "Layer " + (i).ToString() + " " + ord_id + " Not Found\n";
-                                }
+                                msg += "Live Orders [Sell]\n" + sells + "Live Orders [Buy]\n" + buys;
                             }
-                            
-                            msg += "Live Orders [Sell]\n" + sells + "Live Orders [Buy]\n" + buys;
                         }
-                        //while (Interlocked.CompareExchange(ref oManager.order_lock, 1, 0) != 0)
-                        //{
-
-                        //}
-                        
-                        //Volatile.Write(ref oManager.order_lock, 0);
                     }
                     else
                     {
@@ -527,11 +525,15 @@ namespace Crypto_Linux
             latency_msg += "<Trades> All count:" + feedCountTradeAll.ToString("N0") + "  Latent Feed:" + feedCountTradeLatent.ToString("N0") + "\n";
             latency_msg += "<OrderUpdate> All count:" + feedCountOrderAll.ToString("N0") + "  Latent Feed:" + feedCountOrderLatent.ToString("N0") + "\n";
             latency_msg += "<Fill> All count:" + feedCountFillAll.ToString("N0") + "  Latent Feed:" + feedCountFillLatent.ToString("N0") + "\n";
-            latency_msg += "Live Order Count:" + oManager.live_orders.Count.ToString() + "\n";
-            foreach (var o in oManager.live_orders.Values)
+            using (var olock = oManager.order_lock.getlock())
             {
-                latency_msg += o.internal_order_id + " " + o.side.ToString() + " " + o.order_quantity.ToString() + "@" + o.order_price.ToString() + "\n";
+                latency_msg += "Live Order Count:" + oManager.live_orders.Count.ToString() + "\n";
+                foreach (var o in oManager.live_orders.Values)
+                {
+                    latency_msg += o.internal_order_id + " " + o.side.ToString() + " " + o.order_quantity.ToString() + "@" + o.order_price.ToString() + "\n";
+                }
             }
+            
             pnl = new intradayPnL();
             pnl.strategy_name = "Total";
             pnl.OADatetime = current.ToOADate();
@@ -555,173 +557,20 @@ namespace Crypto_Linux
 
         static private async Task testFunc()
         {
-            Instrument ins = qManager.instruments["BTC_JPY@gmocoin"];
-            decimal price_buy = 13_000_000;
-            decimal price_sell = 14_000_000;
-            decimal quantity = (decimal)0.001;
-            Console.WriteLine("GMO Coin order test");
-
-            foreach(var stg in strategies)
+            Console.WriteLine("Lock Test");
+            using (var f = oManager.mapping_lock.getlock())
             {
-                stg.Value.enabled = false;
+                Console.WriteLine("In lock");
             }
-            oManager.setVirtualMode(false);
-
-            Console.WriteLine("New Order");
-            string ordid = await oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Limit, quantity, price_buy,positionSide.Long);
-            DataSpotOrderUpdate ord;
-            if(ordid == "")
+            Thread.Sleep(2000);
+            using (var f = oManager.mapping_lock.getlock())
             {
-                Console.WriteLine("New Order Failed");
-                await EoDProcess();
-                isRunning = false;
-                return;
-            }
-
-            Thread.Sleep(3000);
-            if (oManager.orders.ContainsKey(ordid))
-            {
-                ord = oManager.orders[ordid];
-                Console.WriteLine(ord.ToString());
-            }
-            Console.WriteLine("Cancel Order");
-            ordid = await oManager.placeCancelSpotOrder(ins, ordid);
-            if (ordid == "")
-            {
-                Console.WriteLine("Can Order Failed");
-                await EoDProcess();
-                isRunning = false;
-                return;
-            }
-
-            Thread.Sleep(3000);
-            if (oManager.orders.ContainsKey(ordid))
-            {
-                ord = oManager.orders[ordid];
-                Console.WriteLine(ord.ToString());
-            }
-            
-            Console.WriteLine("Market Order");
-            ordid = await oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Market, quantity, 0, positionSide.Long);
-            if (ordid == "")
-            {
-                Console.WriteLine("New Order Failed");
-                await EoDProcess();
-                isRunning = false;
-                return;
-            }
-
-            Thread.Sleep(3000);
-            if (oManager.orders.ContainsKey(ordid))
-            {
-                ord = oManager.orders[ordid];
-                Console.WriteLine(ord.ToString());
-            }
-
-            Console.WriteLine("Close New Order");
-            ordid = await oManager.placeNewSpotOrder(ins, orderSide.Sell, orderType.Limit, quantity, price_sell,positionSide.Long);
-            if (ordid == "")
-            {
-                Console.WriteLine("Close New Order Failed");
-                await EoDProcess();
-                isRunning = false;
-                return;
-            }
-
-            Thread.Sleep(3000);
-            if (oManager.orders.ContainsKey(ordid))
-            {
-                ord = oManager.orders[ordid];
-                Console.WriteLine(ord.ToString());
-            }
-
-            Console.WriteLine("Cancel Order");
-            ordid = await oManager.placeCancelSpotOrder(ins, ordid);
-            if (ordid == "")
-            {
-                Console.WriteLine("Can Order Failed");
-                await EoDProcess();
-                isRunning = false;
-                return;
-            }
-
-            Thread.Sleep(3000);
-            if (oManager.orders.ContainsKey(ordid))
-            {
-                ord = oManager.orders[ordid];
-                Console.WriteLine(ord.ToString());
-            }
-
-            Console.WriteLine("Close Market Order");
-            ordid = await oManager.placeNewSpotOrder(ins, orderSide.Sell, orderType.Market, quantity, 0,positionSide.Long);
-            if (ordid == "")
-            {
-                Console.WriteLine("Close Market Order Failed");
-                await EoDProcess();
-                isRunning = false;
-                return;
-            }
-
-            Thread.Sleep(3000);
-            if (oManager.orders.ContainsKey(ordid))
-            {
-                ord = oManager.orders[ordid];
-                Console.WriteLine(ord.ToString());
-            }
-
-            Console.WriteLine("Multi cancel");
-            Console.WriteLine("New Order");
-            ordid = await oManager.placeNewSpotOrder(ins, orderSide.Buy, orderType.Limit, quantity, price_buy,positionSide.Long);
-            if (ordid == "")
-            {
-                Console.WriteLine("Close Market Order Failed");
-                await EoDProcess();
-                isRunning = false;
-                return;
-            }
-
-            Thread.Sleep(3000);
-            if (oManager.orders.ContainsKey(ordid))
-            {
-                ord = oManager.orders[ordid];
-                Console.WriteLine(ord.ToString());
-            }
-            List<string> ordids = new List<string>();
-            ordids.Add(ordid);
-            Console.WriteLine("New Order");
-            ordid = await oManager.placeNewSpotOrder(ins, orderSide.Sell, orderType.Limit, quantity, price_sell, positionSide.Short);
-            if (ordid == "")
-            {
-                Console.WriteLine("Close Market Order Failed");
-                await EoDProcess();
-                isRunning = false;
-                return;
-            }
-
-            Thread.Sleep(3000);
-            if (oManager.orders.ContainsKey(ordid))
-            {
-                ord = oManager.orders[ordid];
-                Console.WriteLine(ord.ToString());
-            }
-            ordids.Add(ordid);
-
-            foreach (string id in ordids)
-            {
-                Console.WriteLine(id);
-            }
-
-            List<string> result = (await oManager.placeCancelSpotOrders(ins, ordids)).ToList();
-            Thread.Sleep(3000);
-            foreach(string id in result)
-            {
-                if(oManager.orders.ContainsKey(id))
+                Console.WriteLine("In lock");
+                using (var test = oManager.mapping_lock.getlock())
                 {
-                    ord = oManager.orders[id];
-                    Console.WriteLine(ord.ToString());
+                    Console.WriteLine("In nested lock");
                 }
             }
-
             Console.WriteLine("Completed");
 
             await EoDProcess();
@@ -2049,6 +1898,7 @@ namespace Crypto_Linux
             {
                 return;
             }
+            
             stopStrategies();
             if (threadsStarted)
             {
@@ -2364,7 +2214,7 @@ namespace Crypto_Linux
             Dictionary<string, PnLBreakDown> summary = new Dictionary<string, PnLBreakDown>();
             if (File.Exists(filename))
             {
-                using (StreamReader tpt = new StreamReader(new FileStream(filename, FileMode.Create, FileAccess.Write)))
+                using (StreamReader tpt = new StreamReader(new FileStream(filename, FileMode.Create, FileAccess.Read)))
                 {
                     while (tpt.ReadLine() is string line)
                     {
@@ -2725,34 +2575,42 @@ namespace Crypto_Linux
             {
                 strategyInfo stginfo = strategyInfos[stg.name];
                 DataSpotOrderUpdate? ord;
-                string ord_id = stg.live_buyorder_id;
-                if(oManager.orders.ContainsKey(ord_id))
+                using (var olock = oManager.order_lock.getlock())
                 {
-                    ord = oManager.orders[ord_id];
-                    if(ord.status == orderStatus.Open)
+                    string ord_id = stg.live_buyorder_id;
+                    if (oManager.orders.ContainsKey(ord_id))
                     {
-                        stginfo.bid = ord.order_price;
-                        stginfo.bidSize = ord.order_quantity;
+                        ord = oManager.orders[ord_id];
+                        if (ord.status == orderStatus.Open)
+                        {
+                            stginfo.bid = ord.order_price;
+                            stginfo.bidSize = ord.order_quantity;
+                        }
+                        else
+                        {
+                            stginfo.bid = stg.live_bidprice;
+                            stginfo.bidSize = 0;
+                        }
                     }
                     else
                     {
                         stginfo.bid = stg.live_bidprice;
                         stginfo.bidSize = 0;
                     }
-                }
-                else
-                {
-                    stginfo.bid = stg.live_bidprice;
-                    stginfo.bidSize = 0;
-                }
-                ord_id = stg.live_sellorder_id;
-                if (oManager.orders.ContainsKey(ord_id))
-                {
-                    ord = oManager.orders[ord_id];
-                    if (ord.status == orderStatus.Open)
+                    ord_id = stg.live_sellorder_id;
+                    if (oManager.orders.ContainsKey(ord_id))
                     {
-                        stginfo.ask = ord.order_price;
-                        stginfo.askSize = ord.order_quantity;
+                        ord = oManager.orders[ord_id];
+                        if (ord.status == orderStatus.Open)
+                        {
+                            stginfo.ask = ord.order_price;
+                            stginfo.askSize = ord.order_quantity;
+                        }
+                        else
+                        {
+                            stginfo.ask = stg.live_askprice;
+                            stginfo.askSize = 0;
+                        }
                     }
                     else
                     {
@@ -2760,12 +2618,6 @@ namespace Crypto_Linux
                         stginfo.askSize = 0;
                     }
                 }
-                else
-                {
-                    stginfo.ask = stg.live_askprice;
-                    stginfo.askSize = 0;
-                }
-
                 stginfo.liquidity_ask = stg.taker.adjusted_bestask.Item1;
                 stginfo.liquidity_ask = stg.taker.adjusted_bestbid.Item1;
 
@@ -2901,7 +2753,11 @@ namespace Crypto_Linux
                         ordList = await crypto_client.getActiveOrders(stg.maker.market);
                         if (ordList != null)
                         {
-                            int live_orders_count = oManager.live_orders.Count;
+                            int live_orders_count;
+                            using (var olock = oManager.order_lock.getlock())
+                            {
+                                live_orders_count = oManager.live_orders.Count;
+                            }
                             if (ordList.Count != live_orders_count)
                             {
                                 if(count_diff == 0)
@@ -2915,28 +2771,26 @@ namespace Crypto_Linux
                                     if (mismatch_count >= 3)
                                     {
                                         addLog("Order count didn't match " + stg.maker.market + ":" + ordList.Count.ToString() + " live_orders:" + live_orders_count.ToString(), logType.WARNING);
-                                        while(Interlocked.CompareExchange(ref oManager.order_lock,1,0) != 0)
+                                        using (var olock = oManager.order_lock.getlock())
                                         {
-                                            
-                                        }
-                                        List<string> removing = new List<string>();
-                                        foreach(var o in oManager.live_orders)
-                                        {
-                                            if((o.Value.status != orderStatus.WaitOpen && o.Value.status != orderStatus.Open && o.Value.status != orderStatus.WaitCancel))
+                                            List<string> removing = new List<string>();
+                                            foreach (var o in oManager.live_orders)
                                             {
-                                                addLog(o.Value.ToString());
-                                                removing.Add(o.Key);
+                                                if ((o.Value.status != orderStatus.WaitOpen && o.Value.status != orderStatus.Open && o.Value.status != orderStatus.WaitCancel))
+                                                {
+                                                    addLog(o.Value.ToString());
+                                                    removing.Add(o.Key);
+                                                }
+                                                else if (o.Value.side == orderSide.NONE)
+                                                {
+                                                    addLog(o.Value.ToString());
+                                                }
                                             }
-                                            else if(o.Value.side == orderSide.NONE)
+                                            foreach (var r in removing)
                                             {
-                                                addLog(o.Value.ToString());
+                                                oManager.live_orders.Remove(r);
                                             }
                                         }
-                                        foreach (var r in removing)
-                                        {
-                                            oManager.live_orders.Remove(r);
-                                        }
-                                        Volatile.Write(ref oManager.order_lock, 0);
                                     }
                                 }
                                 else

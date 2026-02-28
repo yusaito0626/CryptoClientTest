@@ -1,22 +1,23 @@
 ﻿using Crypto_Clients;
 using CryptoExchange.Net;
 using CryptoExchange.Net.SharedApis;
+using Enums;
+using LockFreeQueue;
+using LockFreeStack;
 using System;
 using System.Collections.Concurrent;
-using System.Net.WebSockets;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.WebSockets;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using Enums;
-using System.Diagnostics;
 using Utils;
-using LockFreeStack;
-using LockFreeQueue;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Crypto_Trading
 {
@@ -723,7 +724,10 @@ namespace Crypto_Trading
                                     }
                                     id_list[ins].Add(ord.internal_order_id);
                                 }
-                                this.oManager.orders[ord.internal_order_id] = ord;
+                                using (var olock = this.oManager.order_lock.getlock())
+                                {
+                                    this.oManager.orders[ord.internal_order_id] = ord;
+                                }
                             }
                         }
                         
@@ -743,16 +747,14 @@ namespace Crypto_Trading
                         }
                     }
                     Thread.Sleep(1000);
-                    while (Interlocked.CompareExchange(ref this.oManager.order_lock, 1, 0) != 0)
+                    using (var olock = this.oManager.order_lock.getlock())
                     {
-
+                        this.oManager.live_orders.Clear();
+                        foreach (Instrument ins in this.instruments.Values)
+                        {
+                            ins.resetInusePosition();
+                        }
                     }
-                    this.oManager.live_orders.Clear();
-                    foreach(Instrument ins in this.instruments.Values)
-                    {
-                        ins.resetInusePosition();
-                    }
-                    Volatile.Write(ref this.oManager.order_lock, 0);
                 }
                 else
                 {
@@ -808,7 +810,10 @@ namespace Crypto_Trading
                                 }
                                 id_list[ins].Add(ord.internal_order_id);
                             }
-                            this.oManager.orders[ord.internal_order_id] = ord;
+                            using (var olock = this.oManager.order_lock.getlock())
+                            {
+                                this.oManager.orders[ord.internal_order_id] = ord;
+                            }
                         }
                     }
                     if (id_list.Count > 0)
@@ -826,31 +831,28 @@ namespace Crypto_Trading
                         addLog("Active order not found");
                     }
                     Thread.Sleep(1000);
-                    while (Interlocked.CompareExchange(ref this.oManager.order_lock, 1, 0) != 0)
+                    using (var olock = this.oManager.order_lock.getlock())
                     {
-
-                    }
-                    List<string> removing = new List<string>();
-                    foreach (var ord in this.oManager.live_orders)
-                    {
-                        if (ord.Value.market == market)
+                        List<string> removing = new List<string>();
+                        foreach (var ord in this.oManager.live_orders)
                         {
-                            removing.Add(ord.Key);
+                            if (ord.Value.market == market)
+                            {
+                                removing.Add(ord.Key);
+                            }
+                        }
+                        foreach (var id in removing)
+                        {
+                            this.oManager.live_orders.Remove(id);
+                        }
+                        foreach (Instrument ins in this.instruments.Values)
+                        {
+                            if (ins.market == market)
+                            {
+                                ins.resetInusePosition();
+                            }
                         }
                     }
-                    foreach (var id in removing)
-                    {
-                        this.oManager.live_orders.Remove(id);
-                    }
-
-                    foreach (Instrument ins in this.instruments.Values)
-                    {
-                        if(ins.market == market)
-                        {
-                            ins.resetInusePosition();
-                        }
-                    }
-                    Volatile.Write(ref this.oManager.order_lock, 0);
                 }
                 else
                 {
@@ -1064,7 +1066,6 @@ namespace Crypto_Trading
                 stg.taker.quotes_lock = 0;
                 stg.maker.quotes_lock = 0;
             }
-            this.oManager.order_lock = 0;
         }
         public async Task<bool> updateTrades(Action start, Action end, CancellationToken ct, int spinningMax)
         {
