@@ -661,11 +661,6 @@ namespace Crypto_Trading
 
         public void updateQuotesOnError()
         {
-            foreach(var ins in this.instruments.Values)
-            {
-                ins.quotes_lock = 0;
-            }
-            this.oManager.virtual_order_lock = 0;
         }
 
         public async Task refreshAndCancelAllorders(Enums.market market = market.NONE)
@@ -893,17 +888,15 @@ namespace Crypto_Trading
                             });
                             foreach(var stg_obj in this.strategies.Values)
                             {
-                                while (Interlocked.CompareExchange(ref stg_obj.updating, 1, 0) != 0)
+                                using (var ulock = stg_obj.updating.getlock())
                                 {
-
+                                    stg_obj.maker.resetInusePosition();
+                                    stg_obj.taker.resetInusePosition();
+                                    stg_obj.live_bidprice = 0;
+                                    stg_obj.live_buyorder_id = "";
+                                    stg_obj.live_askprice = 0;
+                                    stg_obj.live_sellorder_id = "";
                                 }
-                                stg_obj.maker.resetInusePosition();
-                                stg_obj.taker.resetInusePosition();
-                                stg_obj.live_bidprice = 0;
-                                stg_obj.live_buyorder_id = "";
-                                stg_obj.live_askprice = 0;
-                                stg_obj.live_sellorder_id = "";
-                                Volatile.Write(ref stg_obj.updating, 0);
                             }
                             t.Wait();
                             Thread.Sleep(1000);
@@ -937,17 +930,15 @@ namespace Crypto_Trading
                             });
                             foreach (var stg_obj in this.strategies.Values)
                             {
-                                while (Interlocked.CompareExchange(ref stg_obj.updating, 1, 0) != 0)
+                                using (var ulock = stg_obj.updating.getlock())
                                 {
-
+                                    stg_obj.maker.resetInusePosition();
+                                    stg_obj.taker.resetInusePosition();
+                                    stg_obj.live_bidprice = 0;
+                                    stg_obj.live_buyorder_id = "";
+                                    stg_obj.live_askprice = 0;
+                                    stg_obj.live_sellorder_id = "";
                                 }
-                                stg_obj.maker.resetInusePosition();
-                                stg_obj.taker.resetInusePosition();
-                                stg_obj.live_bidprice = 0;
-                                stg_obj.live_buyorder_id = "";
-                                stg_obj.live_askprice = 0;
-                                stg_obj.live_sellorder_id = "";
-                                Volatile.Write(ref stg_obj.updating, 0);
                             }
                             t.Wait();
                             Thread.Sleep(1000);
@@ -984,17 +975,15 @@ namespace Crypto_Trading
                             });
                             foreach (var stg_obj in this.strategies.Values)
                             {
-                                while (Interlocked.CompareExchange(ref stg_obj.updating, 1, 0) != 0)
+                                using (var ulock = stg_obj.updating.getlock())
                                 {
-
+                                    stg_obj.maker.resetInusePosition();
+                                    stg_obj.taker.resetInusePosition();
+                                    stg_obj.live_bidprice = 0;
+                                    stg_obj.live_buyorder_id = "";
+                                    stg_obj.live_askprice = 0;
+                                    stg_obj.live_sellorder_id = "";
                                 }
-                                stg_obj.maker.resetInusePosition();
-                                stg_obj.taker.resetInusePosition();
-                                stg_obj.live_bidprice = 0;
-                                stg_obj.live_buyorder_id = "";
-                                stg_obj.live_askprice = 0;
-                                stg_obj.live_sellorder_id = "";
-                                Volatile.Write(ref stg_obj.updating, 0);
                             }
                             t.Wait();
                             addLog("Resetting positions...");
@@ -1061,10 +1050,7 @@ namespace Crypto_Trading
         {
             foreach(var stg in this.strategies.Values)
             {
-                stg.updating = 0;
                 stg.queued = 0;
-                stg.taker.quotes_lock = 0;
-                stg.maker.quotes_lock = 0;
             }
         }
         public async Task<bool> updateTrades(Action start, Action end, CancellationToken ct, int spinningMax)
@@ -1193,7 +1179,6 @@ namespace Crypto_Trading
 
         public void updateTradeOnError()
         {
-            this.oManager.virtual_order_lock = 0;
         }
 
         public void addLog(string line,logType logtype = logType.INFO)

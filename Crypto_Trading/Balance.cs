@@ -21,7 +21,7 @@ namespace Crypto_Trading
         private decimal _total;
         private decimal _inuse;
 
-        public volatile int balance_lock;
+        public myLock balance_lock = new myLock();
 
         public Balance() 
         {
@@ -42,13 +42,11 @@ namespace Crypto_Trading
         }
         public void AddBalance(decimal total = 0,decimal inuse = 0)
         {
-            while (Interlocked.CompareExchange(ref this.balance_lock, 1, 0) != 0)
+            using (var block = this.balance_lock.getlock())
             {
-
+                this._total += total;
+                this._inuse += inuse;
             }
-            this._total += total;
-            this._inuse += inuse;
-            Volatile.Write(ref this.balance_lock, 0);
         }
 
         public decimal available
@@ -96,7 +94,7 @@ namespace Crypto_Trading
 
         public decimal maxLeverage;
 
-        public volatile int balance_lock;
+        public myLock balance_lock = new myLock();
 
         public BalanceMargin()
         {
@@ -148,50 +146,47 @@ namespace Crypto_Trading
         }
         public void AddBalance(decimal total = 0, decimal inuse = 0, decimal price = 0)
         {
-            while (Interlocked.CompareExchange(ref this.balance_lock, 1, 0) != 0)
+            using (var block = this.balance_lock.getlock())
             {
-
+                if (total > 0)
+                {
+                    this.avg_price = (this.avg_price * this._total + price * total) / (this._total + total);
+                }
+                this._total += total;
+                this._inuse += inuse;
             }
-            if(total > 0)
-            {
-                this.avg_price = (this.avg_price * this._total + price * total) / (this._total + total);
-            }
-            this._total += total;
-            this._inuse += inuse;
-            Volatile.Write(ref this.balance_lock, 0);
+                
         }
         public void addFill(DataFill fill)
         {
-            while (Interlocked.CompareExchange(ref this.balance_lock, 1, 0) != 0)
+            using (var block = this.balance_lock.getlock())
             {
-
+                switch (this.side)
+                {
+                    case positionSide.Long:
+                        if (fill.side == orderSide.Buy)
+                        {
+                            this.avg_price = (this.avg_price * this._total + fill.price * fill.quantity) / (this._total + fill.quantity);
+                            this._total += fill.quantity;
+                        }
+                        else if (fill.side == orderSide.Sell)
+                        {
+                            this._total -= fill.quantity;
+                        }
+                        break;
+                    case positionSide.Short:
+                        if (fill.side == orderSide.Sell)
+                        {
+                            this.avg_price = (this.avg_price * this._total + fill.price * fill.quantity) / (this._total + fill.quantity);
+                            this._total += fill.quantity;
+                        }
+                        else if (fill.side == orderSide.Buy)
+                        {
+                            this._total -= fill.quantity;
+                        }
+                        break;
+                }
             }
-            switch(this.side)
-            {
-                case positionSide.Long:
-                    if(fill.side == orderSide.Buy)
-                    {
-                        this.avg_price = (this.avg_price * this._total + fill.price * fill.quantity) / (this._total + fill.quantity);
-                        this._total += fill.quantity;
-                    }
-                    else if(fill.side == orderSide.Sell)
-                    {
-                        this._total -= fill.quantity;
-                    }
-                    break;
-                case positionSide.Short:
-                    if (fill.side == orderSide.Sell)
-                    {
-                        this.avg_price = (this.avg_price * this._total + fill.price * fill.quantity) / (this._total + fill.quantity);
-                        this._total += fill.quantity;
-                    }
-                    else if (fill.side == orderSide.Buy)
-                    {
-                        this._total -= fill.quantity;
-                    }
-                    break;
-            }
-            Volatile.Write(ref this.balance_lock, 0);
         }
 
         public void setUnrealizedPnL(decimal price)

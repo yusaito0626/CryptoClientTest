@@ -1986,41 +1986,40 @@ namespace Crypto_GUI
         private void updateQuotesView(DataGridView view, Instrument ins)
         {
             int i = 0;
-            while (Interlocked.CompareExchange(ref ins.quotes_lock, 1, 0) != 0)
+            using(var qlock = ins.quotes_lock.getlock())
             {
+                view.Rows[QuoteManager.NUM_OF_QUOTES].Cells[1].Value = ins.last_price.ToString("N" + ins.price_scale);
+                while (i < QuoteManager.NUM_OF_QUOTES)
+                {
+                    if (i < ins.asks.Count)
+                    {
+                        view.Rows[QuoteManager.NUM_OF_QUOTES - 1 - i].Cells[0].Value = ins.asks.ElementAt(i).Value.ToString("N" + ins.quantity_scale);
+                        view.Rows[QuoteManager.NUM_OF_QUOTES - 1 - i].Cells[1].Value = ins.asks.ElementAt(i).Key.ToString("N" + ins.price_scale);
+                    }
+                    else
+                    {
+                        view.Rows[QuoteManager.NUM_OF_QUOTES - 1 - i].Cells[0].Value = "";
+                        view.Rows[QuoteManager.NUM_OF_QUOTES - 1 - i].Cells[1].Value = "";
+                    }
 
+                    ++i;
+                }
+                i = 0;
+                foreach (var item in ins.bids.Reverse())
+                {
+                    if (i > QuoteManager.NUM_OF_QUOTES - 1)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        view.Rows[QuoteManager.NUM_OF_QUOTES + 1 + i].Cells[1].Value = item.Key.ToString("N" + ins.price_scale);
+                        view.Rows[QuoteManager.NUM_OF_QUOTES + 1 + i].Cells[2].Value = item.Value.ToString("N" + ins.quantity_scale);
+                    }
+                    ++i;
+                }
             }
-            view.Rows[QuoteManager.NUM_OF_QUOTES].Cells[1].Value = ins.last_price.ToString("N" + ins.price_scale);
-            while (i < QuoteManager.NUM_OF_QUOTES)
-            {
-                if (i < ins.asks.Count)
-                {
-                    view.Rows[QuoteManager.NUM_OF_QUOTES - 1 - i].Cells[0].Value = ins.asks.ElementAt(i).Value.ToString("N" + ins.quantity_scale);
-                    view.Rows[QuoteManager.NUM_OF_QUOTES - 1 - i].Cells[1].Value = ins.asks.ElementAt(i).Key.ToString("N" + ins.price_scale);
-                }
-                else
-                {
-                    view.Rows[QuoteManager.NUM_OF_QUOTES - 1 - i].Cells[0].Value = "";
-                    view.Rows[QuoteManager.NUM_OF_QUOTES - 1 - i].Cells[1].Value = "";
-                }
-
-                ++i;
-            }
-            i = 0;
-            foreach (var item in ins.bids.Reverse())
-            {
-                if (i > QuoteManager.NUM_OF_QUOTES - 1)
-                {
-                    break;
-                }
-                else
-                {
-                    view.Rows[QuoteManager.NUM_OF_QUOTES + 1 + i].Cells[1].Value = item.Key.ToString("N" + ins.price_scale);
-                    view.Rows[QuoteManager.NUM_OF_QUOTES + 1 + i].Cells[2].Value = item.Value.ToString("N" + ins.quantity_scale);
-                }
-                ++i;
-            }
-            Volatile.Write(ref ins.quotes_lock, 0);
+            
             while (i < QuoteManager.NUM_OF_QUOTES)
             {
                 view.Rows[QuoteManager.NUM_OF_QUOTES + 1 + i].Cells[1].Value = "";

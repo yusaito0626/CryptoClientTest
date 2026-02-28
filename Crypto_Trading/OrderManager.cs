@@ -47,7 +47,6 @@ namespace Crypto_Trading
 
         Crypto_Clients.Crypto_Clients ord_client = Crypto_Clients.Crypto_Clients.GetInstance();
 
-        //public volatile int order_lock;
         public myLock order_lock = new myLock();
         public Dictionary<string, DataSpotOrderUpdate> orders;
         public Dictionary<string, DataSpotOrderUpdate> live_orders;
@@ -63,7 +62,7 @@ namespace Crypto_Trading
         public myLock mapping_lock = new myLock();
         public Dictionary<string, string> ordIdMapping;
 
-        public volatile int virtual_order_lock;
+        public myLock virtual_order_lock = new myLock();
         public MIMOQueue<DataSpotOrderUpdate> virtual_order_queue;
         public Dictionary<string, DataSpotOrderUpdate> virtual_liveorders;
         public Dictionary<string, DataSpotOrderUpdate> disposed_orders;// The key is market + order_id, as the internal_order_id might not be exist.
@@ -121,7 +120,6 @@ namespace Crypto_Trading
             this.virtualMode = true;
             this.orders = new Dictionary<string, DataSpotOrderUpdate>();
             this.live_orders = new Dictionary<string, DataSpotOrderUpdate>();
-            this.virtual_order_lock = 0;
             this.virtual_order_queue = new MIMOQueue<DataSpotOrderUpdate>();
             this.virtual_liveorders = new Dictionary<string, DataSpotOrderUpdate>();
             this.disposed_orders = new Dictionary<string, DataSpotOrderUpdate>();
@@ -2914,9 +2912,16 @@ namespace Crypto_Trading
                         {
                             this.live_orders[ord.internal_order_id] = ord;
                         }
-                        if (this.Instruments.ContainsKey(ord.symbol_market) && this.Instruments[ord.symbol_market].live_orders.ContainsKey(ord.internal_order_id))
+
+                        if (this.Instruments.ContainsKey(ord.symbol_market))
                         {
-                            this.Instruments[ord.symbol_market].live_orders[ord.internal_order_id] = ord;
+                            using(var ilock = this.Instruments[ord.symbol_market].order_lock.getlock())
+                            {
+                                if(this.Instruments[ord.symbol_market].live_orders.ContainsKey(ord.internal_order_id))
+                                {
+                                    this.Instruments[ord.symbol_market].live_orders[ord.internal_order_id] = ord;
+                                }
+                            }
                         }
                         prevord.update_time = DateTime.UtcNow;
                         this.order_pool.Enqueue(prevord);
@@ -3007,18 +3012,10 @@ namespace Crypto_Trading
                 if (ins != null)
                 {
                     ins.updateOrders(ord);
-                    while (Interlocked.CompareExchange(ref ins.order_lock, 1, 0) != 0)
-                    {
-                    }
-                    if (ins.live_orders.ContainsKey(ord.internal_order_id))
+                    using(var olock = ins.order_lock.getlock())
                     {
                         ins.live_orders[ord.internal_order_id] = ord;
                     }
-                    else
-                    {
-                        ins.live_orders[ord.internal_order_id] = ord;
-                    }
-                    Volatile.Write(ref ins.order_lock, 0);
                     decimal filled_quantity;
                     if(prevord != null)
                     {
@@ -3092,28 +3089,26 @@ namespace Crypto_Trading
                         {
                             if (stg.maker.symbol_market == ord.symbol_market)
                             {
-                                while (Interlocked.CompareExchange(ref stg.updating, 1, 0) != 0)
+                                using(var ulock = stg.updating.getlock())
                                 {
-
+                                    switch (ord.side)
+                                    {
+                                        case orderSide.Buy:
+                                            stg.live_buyorder_id = "";
+                                            for (int i = 0; i < stg.live_buyorders.Count; ++i)
+                                            {
+                                                stg.live_buyorders[i] = "";
+                                            }
+                                            break;
+                                        case orderSide.Sell:
+                                            stg.live_sellorder_id = "";
+                                            for (int i = 0; i < stg.live_sellorders.Count; ++i)
+                                            {
+                                                stg.live_sellorders[i] = "";
+                                            }
+                                            break;
+                                    }
                                 }
-                                switch (ord.side)
-                                {
-                                    case orderSide.Buy:
-                                        stg.live_buyorder_id = "";
-                                        for(int i = 0;i<stg.live_buyorders.Count;++i)
-                                        {
-                                            stg.live_buyorders[i] = "";
-                                        }
-                                        break;
-                                    case orderSide.Sell:
-                                        stg.live_sellorder_id = "";
-                                        for (int i = 0; i < stg.live_sellorders.Count; ++i)
-                                        {
-                                            stg.live_sellorders[i] = "";
-                                        }
-                                        break;
-                                }
-                                Volatile.Write(ref stg.updating, 0);
                             }
                         }
                         this.ordLogQueue.Enqueue(ord.ToString());
@@ -3207,14 +3202,14 @@ namespace Crypto_Trading
                 {
                     ins.updateOrders(ord);
 
-                    while (Interlocked.CompareExchange(ref ins.order_lock, 1, 0) != 0)
+                    using(var olock = ins.order_lock.getlock())
                     {
+                        if (ins.live_orders.ContainsKey(ord.internal_order_id))
+                        {
+                            ins.live_orders.Remove(ord.internal_order_id);
+                        }
+
                     }
-                    if (ins.live_orders.ContainsKey(ord.internal_order_id))
-                    {
-                        ins.live_orders.Remove(ord.internal_order_id);
-                    }
-                    Volatile.Write(ref ins.order_lock, 0);
                     decimal filled_quantity;//cancelled quantity + unprocessed filled quantity
                     if (prevord != null)
                     {
@@ -3451,14 +3446,13 @@ namespace Crypto_Trading
                 {
 
                     ins.updateOrders(ord);
-                    while (Interlocked.CompareExchange(ref ins.order_lock, 1, 0) != 0)
+                    using(var olock = ins.order_lock.getlock())
                     {
+                        if (ins.live_orders.ContainsKey(ord.internal_order_id))
+                        {
+                            ins.live_orders.Remove(ord.internal_order_id);
+                        }
                     }
-                    if (ins.live_orders.ContainsKey(ord.internal_order_id))
-                    {
-                        ins.live_orders.Remove(ord.internal_order_id);
-                    }
-                    Volatile.Write(ref ins.order_lock, 0);
                     decimal filled_quantity;
                     if(prevord != null)
                     {
@@ -3596,11 +3590,7 @@ namespace Crypto_Trading
 
         public void updateOrdersOnError()
         {
-            //this.order_lock = 0;
-            foreach(var ins in this.Instruments.Values)
-            {
-                ins.order_lock = 0;
-            }   
+            
         }
 
         public void checkVirtualOrderQueue()
@@ -3716,44 +3706,42 @@ namespace Crypto_Trading
                                         update.Copy(output);
                                         update.status = orderStatus.Open;
                                         update.update_time = current;
-
-                                        if (this.virtual_liveorders.ContainsKey(update.internal_order_id))
+                                        using (var volock = this.virtual_order_lock.getlock())
                                         {
-                                            this.virtual_liveorders[update.internal_order_id] = update;
-                                        }
-                                        else
-                                        {
-                                            while (Interlocked.CompareExchange(ref this.virtual_order_lock, 1, 0) != 0)
+                                            if (this.virtual_liveorders.ContainsKey(update.internal_order_id))
                                             {
+                                                this.virtual_liveorders[update.internal_order_id] = update;
                                             }
-                                            this.virtual_liveorders[update.internal_order_id] = update;
-                                            Volatile.Write(ref this.virtual_order_lock, 0);
+                                            else
+                                            {
+
+                                                this.virtual_liveorders[update.internal_order_id] = update;
+                                            }
                                         }
+                                        
                                         this.ord_client.ordUpdateQueue.Enqueue(update);
                                     }
                                     break;
                                 case orderStatus.WaitCancel:
-                                    while (Interlocked.CompareExchange(ref this.virtual_order_lock, 1, 0) != 0)
+                                    using (var volock = this.virtual_order_lock.getlock())
                                     {
-
-                                    }
-                                    if (this.virtual_liveorders.ContainsKey(output.internal_order_id))
-                                    {
-                                        update = this.ord_client.ordUpdateStack.pop();
-                                        if (update == null)
+                                        if (this.virtual_liveorders.ContainsKey(output.internal_order_id))
                                         {
-                                            update = new DataSpotOrderUpdate();
+                                            update = this.ord_client.ordUpdateStack.pop();
+                                            if (update == null)
+                                            {
+                                                update = new DataSpotOrderUpdate();
+                                            }
+                                            update.Copy(output);
+                                            update.status = orderStatus.Canceled;
+                                            this.virtual_liveorders.Remove(output.internal_order_id);
+                                            this.ord_client.ordUpdateQueue.Enqueue(update);
                                         }
-                                        update.Copy(output);
-                                        update.status = orderStatus.Canceled;
-                                        this.virtual_liveorders.Remove(output.internal_order_id);
-                                        this.ord_client.ordUpdateQueue.Enqueue(update);
+                                        else
+                                        {
+                                            //Do nothing
+                                        }
                                     }
-                                    else
-                                    {
-                                        //Do nothing
-                                    }
-                                    Volatile.Write(ref this.virtual_order_lock, 0);
                                     break;
                             }
                         }
@@ -3776,153 +3764,149 @@ namespace Crypto_Trading
             if (this.virtualMode)
             {
                 this.checkVirtualOrderQueue();
-                while (Interlocked.CompareExchange(ref this.virtual_order_lock, 1, 0) != 0)
+                using (var volock = this.virtual_order_lock.getlock())
                 {
-
-                }
-                foreach (var item in this.virtual_liveorders)
-                {
-                    string key = item.Key;
-                    DataSpotOrderUpdate ord = item.Value;
-                    if (key != ord.internal_order_id)
+                    foreach (var item in this.virtual_liveorders)
                     {
-                        this.addLog("The key and the order id didn't match while checking virtual orders.", Enums.logType.WARNING);
-                        this.addLog($"The dictionary key:{key} The internal order id:{ord.internal_order_id}", Enums.logType.WARNING);
-                        this.addLog(ord.ToString(), Enums.logType.WARNING);
-                        using (var mlock = this.mapping_lock.getlock())
+                        string key = item.Key;
+                        DataSpotOrderUpdate ord = item.Value;
+                        if (key != ord.internal_order_id)
                         {
-                            foreach (var kv in this.ordIdMapping)
+                            this.addLog("The key and the order id didn't match while checking virtual orders.", Enums.logType.WARNING);
+                            this.addLog($"The dictionary key:{key} The internal order id:{ord.internal_order_id}", Enums.logType.WARNING);
+                            this.addLog(ord.ToString(), Enums.logType.WARNING);
+                            using (var mlock = this.mapping_lock.getlock())
                             {
-                                if (kv.Value == key)
+                                foreach (var kv in this.ordIdMapping)
                                 {
-                                    addLog(key + " is registered as " + kv.Key + " in the mapping");
-                                    //this.addLog(this.orders[key].ToString());
+                                    if (kv.Value == key)
+                                    {
+                                        addLog(key + " is registered as " + kv.Key + " in the mapping");
+                                        //this.addLog(this.orders[key].ToString());
+                                    }
+                                }
+                            }
+                        }
+                        if (ord.symbol_market == ins.symbol_market)
+                        {
+                            using (var qlock = ins.quotes_lock.getlock())
+                            {
+                                switch (ord.side)
+                                {
+                                    case orderSide.Buy:
+                                        if (ins.bestask.Item1 < ord.order_price || (last_trade != null && last_trade.symbol + "@" + last_trade.market.ToString() == ord.symbol_market && last_trade.price < ord.order_price))
+                                        {
+                                            DataSpotOrderUpdate output;
+
+                                            output = this.ord_client.ordUpdateStack.pop();
+                                            if (output == null)
+                                            {
+                                                output = new DataSpotOrderUpdate();
+                                            }
+                                            output.Copy(ord);
+                                            output.status = orderStatus.Filled;
+                                            output.filled_quantity = ord.order_quantity;
+                                            output.average_price = ord.order_price;
+                                            output.fee = ins.maker_fee * output.filled_quantity * output.average_price;
+                                            output.fee_asset = ins.quoteCcy;
+                                            output.update_time = DateTime.UtcNow;
+                                            DataFill fill;
+                                            fill = this.ord_client.fillStack.pop();
+                                            if (fill == null)
+                                            {
+                                                fill = new DataFill();
+                                            }
+                                            fill.order_id = ord.order_id;
+                                            fill.symbol = ins.symbol;
+                                            fill.market = ins.market;
+                                            fill.symbol_market = ins.symbol_market;
+                                            fill.internal_order_id = output.internal_order_id;
+                                            fill.side = ord.side;
+                                            fill.position_side = ord.position_side;
+                                            fill.quantity = output.filled_quantity;
+                                            fill.price = output.average_price;
+                                            fill.fee_quote = output.fee;
+                                            fill.fee_base = 0;
+                                            fill.fee_unknown = 0;
+                                            fill.timestamp = output.timestamp;
+                                            fill.filled_time = fill.timestamp;
+                                            fill.order_type = ord.order_type;
+                                            fill.msg += " Best Ask:" + ins.bestask.Item1.ToString();
+                                            if (last_trade != null)
+                                            {
+                                                fill.msg += " Last traded price:" + last_trade.price.ToString();
+                                            }
+                                            output.msg += " Best Ask:" + ins.bestask.Item1.ToString();
+                                            if (last_trade != null)
+                                            {
+                                                output.msg += " Last traded price:" + last_trade.price.ToString();
+                                            }
+                                            this.ord_client.ordUpdateQueue.Enqueue(output);
+                                            removing.Add(key);
+                                            this.ord_client.fillQueue.Enqueue(fill);
+                                        }
+                                        break;
+                                    case orderSide.Sell:
+                                        if (ins.bestbid.Item1 > ord.order_price || (last_trade != null && last_trade.symbol + "@" + last_trade.market.ToString() == ord.symbol_market && last_trade.price > ord.order_price))
+                                        {
+                                            DataSpotOrderUpdate output;
+                                            output = this.ord_client.ordUpdateStack.pop();
+                                            if (output == null)
+                                            {
+                                                output = new DataSpotOrderUpdate();
+                                            }
+                                            output.Copy(ord);
+                                            output.status = orderStatus.Filled;
+                                            output.filled_quantity = ord.order_quantity;
+                                            output.average_price = ord.order_price;
+                                            output.fee = ins.maker_fee * output.filled_quantity * output.average_price;
+                                            output.fee_asset = ins.quoteCcy;
+                                            output.update_time = DateTime.UtcNow;
+                                            DataFill fill;
+                                            fill = this.ord_client.fillStack.pop();
+                                            if (fill == null)
+                                            {
+                                                fill = new DataFill();
+                                            }
+                                            fill.order_id = ord.order_id;
+                                            fill.symbol = ins.symbol;
+                                            fill.market = ins.market;
+                                            fill.symbol_market = ins.symbol_market;
+                                            fill.internal_order_id = output.internal_order_id;
+                                            fill.side = ord.side;
+                                            fill.position_side = ord.position_side;
+                                            fill.quantity = output.filled_quantity;
+                                            fill.price = output.average_price;
+                                            fill.fee_quote = output.fee;
+                                            fill.fee_base = 0;
+                                            fill.fee_unknown = 0;
+                                            fill.timestamp = output.timestamp;
+                                            fill.filled_time = fill.timestamp;
+                                            fill.order_type = ord.order_type;
+                                            fill.msg += " Best Bid:" + ins.bestbid.Item1.ToString();
+                                            if (last_trade != null)
+                                            {
+                                                fill.msg += " Last traded price:" + last_trade.price.ToString();
+                                            }
+                                            output.msg += " Best Bid:" + ins.bestbid.Item1.ToString();
+                                            if (last_trade != null)
+                                            {
+                                                output.msg += " Last traded price:" + last_trade.price.ToString();
+                                            }
+                                            this.ord_client.ordUpdateQueue.Enqueue(output);
+                                            removing.Add(key);
+                                            this.ord_client.fillQueue.Enqueue(fill);
+                                        }
+                                        break;
                                 }
                             }
                         }
                     }
-                    if (ord.symbol_market == ins.symbol_market)
+                    foreach (string key in removing)
                     {
-                        while(Interlocked.CompareExchange(ref ins.quotes_lock, 1, 0) != 0)
-                        {
-
-                        }
-                        switch (ord.side)
-                        {
-                            case orderSide.Buy:
-                                if (ins.bestask.Item1 < ord.order_price || (last_trade != null && last_trade.symbol + "@" + last_trade.market.ToString() == ord.symbol_market && last_trade.price < ord.order_price))
-                                {
-                                    DataSpotOrderUpdate output;
-
-                                    output = this.ord_client.ordUpdateStack.pop();
-                                    if (output == null)
-                                    {
-                                        output = new DataSpotOrderUpdate();
-                                    }
-                                    output.Copy(ord);
-                                    output.status = orderStatus.Filled;
-                                    output.filled_quantity = ord.order_quantity;
-                                    output.average_price = ord.order_price;
-                                    output.fee = ins.maker_fee * output.filled_quantity * output.average_price;
-                                    output.fee_asset = ins.quoteCcy;
-                                    output.update_time = DateTime.UtcNow;
-                                    DataFill fill;
-                                    fill = this.ord_client.fillStack.pop();
-                                    if (fill == null)
-                                    {
-                                        fill = new DataFill();
-                                    }
-                                    fill.order_id = ord.order_id;
-                                    fill.symbol = ins.symbol;
-                                    fill.market = ins.market;
-                                    fill.symbol_market = ins.symbol_market;
-                                    fill.internal_order_id = output.internal_order_id;
-                                    fill.side = ord.side;
-                                    fill.position_side = ord.position_side;
-                                    fill.quantity = output.filled_quantity;
-                                    fill.price = output.average_price;
-                                    fill.fee_quote = output.fee;
-                                    fill.fee_base = 0;
-                                    fill.fee_unknown = 0;
-                                    fill.timestamp = output.timestamp;
-                                    fill.filled_time = fill.timestamp;
-                                    fill.order_type = ord.order_type;
-                                    fill.msg += " Best Ask:" + ins.bestask.Item1.ToString();
-                                    if(last_trade != null)
-                                    {
-                                        fill.msg += " Last traded price:" + last_trade.price.ToString();
-                                    }
-                                    output.msg += " Best Ask:" + ins.bestask.Item1.ToString();
-                                    if (last_trade != null)
-                                    {
-                                        output.msg += " Last traded price:" + last_trade.price.ToString();
-                                    }
-                                    this.ord_client.ordUpdateQueue.Enqueue(output);
-                                    removing.Add(key);
-                                    this.ord_client.fillQueue.Enqueue(fill);
-                                }
-                                break;
-                            case orderSide.Sell:
-                                if (ins.bestbid.Item1 > ord.order_price || (last_trade != null && last_trade.symbol + "@" + last_trade.market.ToString() == ord.symbol_market && last_trade.price > ord.order_price))
-                                {
-                                    DataSpotOrderUpdate output;
-                                    output = this.ord_client.ordUpdateStack.pop();
-                                    if (output == null)
-                                    {
-                                        output = new DataSpotOrderUpdate();
-                                    }
-                                    output.Copy(ord);
-                                    output.status = orderStatus.Filled;
-                                    output.filled_quantity = ord.order_quantity;
-                                    output.average_price = ord.order_price;
-                                    output.fee = ins.maker_fee * output.filled_quantity * output.average_price;
-                                    output.fee_asset = ins.quoteCcy;
-                                    output.update_time = DateTime.UtcNow;
-                                    DataFill fill;
-                                    fill = this.ord_client.fillStack.pop();
-                                    if (fill == null)
-                                    {
-                                        fill = new DataFill();
-                                    }
-                                    fill.order_id = ord.order_id;
-                                    fill.symbol = ins.symbol;
-                                    fill.market = ins.market;
-                                    fill.symbol_market = ins.symbol_market;
-                                    fill.internal_order_id = output.internal_order_id;
-                                    fill.side = ord.side;
-                                    fill.position_side = ord.position_side;
-                                    fill.quantity = output.filled_quantity;
-                                    fill.price = output.average_price;
-                                    fill.fee_quote = output.fee;
-                                    fill.fee_base = 0;
-                                    fill.fee_unknown = 0;
-                                    fill.timestamp = output.timestamp;
-                                    fill.filled_time = fill.timestamp;
-                                    fill.order_type = ord.order_type;
-                                    fill.msg += " Best Bid:" + ins.bestbid.Item1.ToString();
-                                    if (last_trade != null)
-                                    {
-                                        fill.msg += " Last traded price:" + last_trade.price.ToString();
-                                    }
-                                    output.msg += " Best Bid:" + ins.bestbid.Item1.ToString();
-                                    if (last_trade != null)
-                                    {
-                                        output.msg += " Last traded price:" + last_trade.price.ToString();
-                                    }
-                                    this.ord_client.ordUpdateQueue.Enqueue(output);
-                                    removing.Add(key);
-                                    this.ord_client.fillQueue.Enqueue(fill);
-                                }
-                                break;
-                        }
-                        Volatile.Write(ref ins.quotes_lock, 0);
+                        this.virtual_liveorders.Remove(key);
                     }
                 }
-                foreach (string key in removing)
-                {
-                    this.virtual_liveorders.Remove(key);
-                }
-                Volatile.Write(ref this.virtual_order_lock, 0);
             }
         }
 

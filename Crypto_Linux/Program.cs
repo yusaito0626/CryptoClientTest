@@ -471,7 +471,7 @@ namespace Crypto_Linux
                     {
                         string ord_id;
                         DataSpotOrderUpdate ord;
-                        using (funcContainer f = new funcContainer(stg.obtainUpdating))
+                        using (var ulock = stg.updating.getlock())
                         {
                             using (var olock = oManager.order_lock.getlock())
                             {

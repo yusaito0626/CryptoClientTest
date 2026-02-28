@@ -27,7 +27,7 @@ namespace Crypto_Trading
         public DateTime? last_quote_updated_time;
         public DateTime? last_traded_time;
 
-        public volatile int quotes_lock;
+        public myLock quotes_lock = new myLock();
         public long quoteSeqNo;
         public SortedDictionary<decimal, decimal> asks;
         public SortedDictionary<decimal, decimal> bids;
@@ -80,8 +80,8 @@ namespace Crypto_Trading
         public ValueTuple<decimal, decimal> adjusted_bestask;
         public ValueTuple<decimal, decimal> adjusted_bestbid;
 
-        public volatile int order_lock;
-        public Dictionary<string, DataSpotOrderUpdate> orders;
+        public myLock order_lock = new myLock();
+        //public Dictionary<string, DataSpotOrderUpdate> orders;
         public Dictionary<string, DataSpotOrderUpdate> live_orders;
 
         public decimal max_leverage = 2;
@@ -172,7 +172,6 @@ namespace Crypto_Trading
             this.master_symbol = "";
 
             this.last_quote_updated_time = null;
-            this.quotes_lock = 0;
             this.quoteSeqNo = 0;
             this.asks = new SortedDictionary<decimal, decimal>();
             this.bids = new SortedDictionary<decimal, decimal>();
@@ -188,7 +187,7 @@ namespace Crypto_Trading
             this.adjusted_bestask = new ValueTuple<decimal, decimal>(0,0);
             this.adjusted_bestbid = new ValueTuple<decimal, decimal>(0,0);
 
-            this.orders = new Dictionary<string, DataSpotOrderUpdate>();
+            //this.orders = new Dictionary<string, DataSpotOrderUpdate>();
             this.live_orders = new Dictionary<string, DataSpotOrderUpdate>();
 
             this.mid = -1;
@@ -464,65 +463,60 @@ namespace Crypto_Trading
             switch (update.updateType)
             {
                 case CryptoExchange.Net.Objects.SocketUpdateType.Snapshot:
-
-                    while(Interlocked.CompareExchange(ref this.quotes_lock,1,0) != 0)
+                    using(var qlock = this.quotes_lock.getlock())
                     {
-
-                    }
-                    this.quoteSeqNo = update.seqNo;
-                    this.asks.Clear();
-                    foreach(var item in update.asks)
-                    {
-                        this.asks[item.Key] = item.Value;
-                    }
-                    this.bids.Clear();
-                    foreach (var item in update.bids)
-                    {
-                        this.bids[item.Key] = item.Value;
+                        this.quoteSeqNo = update.seqNo;
+                        this.asks.Clear();
+                        foreach (var item in update.asks)
+                        {
+                            this.asks[item.Key] = item.Value;
+                        }
+                        this.bids.Clear();
+                        foreach (var item in update.bids)
+                        {
+                            this.bids[item.Key] = item.Value;
+                        }
                     }
 
                     this.updateBeskAskBid(this.ToBsize);
-                    Volatile.Write(ref this.quotes_lock, 0);
                     break;
                 case CryptoExchange.Net.Objects.SocketUpdateType.Update:
-                    while (Interlocked.CompareExchange(ref this.quotes_lock, 1, 0) != 0)
+                    using (var qlock = this.quotes_lock.getlock())
                     {
-
-                    }
-
-                    if (this.quoteSeqNo > 0 && update.seqNo <= this.quoteSeqNo)
-                    {
-                        
-                    }
-                    else
-                    {
-                        this.quoteSeqNo = update.seqNo;
-                        foreach (var item in update.asks)
+                        if (this.quoteSeqNo > 0 && update.seqNo <= this.quoteSeqNo)
                         {
-                            if (item.Value == 0)
+
+                        }
+                        else
+                        {
+                            this.quoteSeqNo = update.seqNo;
+                            foreach (var item in update.asks)
                             {
-                                this.asks.Remove(item.Key);
+                                if (item.Value == 0)
+                                {
+                                    this.asks.Remove(item.Key);
+                                }
+                                else
+                                {
+                                    this.asks[item.Key] = item.Value;
+                                }
                             }
-                            else
+                            foreach (var item in update.bids)
                             {
-                                this.asks[item.Key] = item.Value;
+                                if (item.Value == 0)
+                                {
+                                    this.bids.Remove(item.Key);
+                                }
+                                else
+                                {
+                                    this.bids[item.Key] = item.Value;
+                                }
                             }
                         }
-                        foreach (var item in update.bids)
-                        {
-                            if (item.Value == 0)
-                            {
-                                this.bids.Remove(item.Key);
-                            }
-                            else
-                            {
-                                this.bids[item.Key] = item.Value;
-                            }
-                        }
-                        this.updateBeskAskBid(this.ToBsize);
                     }
-                        
-                    Volatile.Write(ref this.quotes_lock, 0);
+
+                    this.updateBeskAskBid(this.ToBsize);
+
                     break;
             }
 
@@ -574,119 +568,125 @@ namespace Crypto_Trading
         private bool updateBeskAskBid(decimal quantity)
         {
             bool ret = true;
-            if(quantity > 0)
-            {
-                decimal cumQuantity = 0;
-                decimal weightedPrice = 0;
-                foreach(var item in this.asks)
-                {
-                    if(cumQuantity + item.Value < quantity)
-                    {
-                        cumQuantity += item.Value;
-                        weightedPrice += item.Value * item.Key;
-                    }
-                    else
-                    {
-                        weightedPrice += (quantity - cumQuantity) * item.Key;
-                        cumQuantity += (quantity - cumQuantity);
-                        break;
-                    }
-                }
-                if (cumQuantity > 0)
-                {
-                    weightedPrice /= cumQuantity;
-                    this.adjusted_bestask.Item1 = weightedPrice * (1 + this.taker_fee);
-                    this.adjusted_bestask.Item2 = cumQuantity;
-                }
-                else
-                {
-                    this.adjusted_bestask.Item1 = 0;
-                    this.adjusted_bestask.Item2 = 0;
-                }
-
-                cumQuantity = 0;
-                weightedPrice = 0;
-                foreach (var item in this.bids.Reverse())
-                {
-                    if (cumQuantity + item.Value < quantity)
-                    {
-                        cumQuantity += item.Value;
-                        weightedPrice += item.Value * item.Key;
-                    }
-                    else
-                    {
-                        weightedPrice += (quantity - cumQuantity) * item.Key;
-                        cumQuantity += (quantity - cumQuantity);
-                        break;
-                    }
-                }
-                if(cumQuantity > 0)
-                {
-                    weightedPrice /= cumQuantity;
-                    this.adjusted_bestbid.Item1 = weightedPrice * (1 - this.taker_fee);
-                    this.adjusted_bestbid.Item2 = cumQuantity;
-                }
-                else
-                {
-                    this.adjusted_bestbid.Item1 = 0;
-                    this.adjusted_bestbid.Item2 = 0;
-                }
-                
-            }
-            else
-            {
-                if(this.asks.Count > 0)
-                {
-                    this.adjusted_bestask.Item1 = this.asks.First().Key * (1 + this.taker_fee);
-                    this.adjusted_bestask.Item2 = this.asks.First().Value;
-                }
-                if(this.bids.Count > 0)
-                {
-                    this.adjusted_bestbid.Item1 = this.bids.Last().Key * (1 - this.taker_fee);
-                    this.adjusted_bestbid.Item2 = this.bids.Last().Value;
-                }
-            }
-            this.prev_bestask.Item1 = this.bestask.Item1;
-            this.prev_bestask.Item2 = this.bestask.Item2;
-            this.prev_bestbid.Item1 = this.bestbid.Item1;
-            this.prev_bestbid.Item2 = this.bestbid.Item2;
             DateTime current = DateTime.UtcNow;
-            if (this.asks.Count > 0)
-            {
-                this.bestask.Item1 = this.asks.First().Key;
-                this.bestask.Item2 = this.asks.First().Value;
-                if(this.bestask.Item1 != this.prev_bestask.Item1 || this.bestask.Item2 != this.prev_bestask.Item2)
-                {
-                    this.bestask_time = current;
-                }
-            }
-            if (this.bids.Count > 0)
-            {
-                this.bestbid.Item1 = this.bids.Last().Key;
-                this.bestbid.Item2 = this.bids.Last().Value;
 
-                if (this.bestbid.Item1 != this.prev_bestbid.Item1 || this.bestbid.Item2 != this.prev_bestbid.Item2)
-                {
-                    this.bestbid_time = current;
-                }
-            }
-            if(this.bestask.Item1 > 0 && this.bestbid.Item1 > 0 && this.bestbid.Item1 >= this.bestask.Item1)
+            using(var qlock = this.quotes_lock.getlock())
             {
-                ret = false;
-                if(this.bestask_time > this.bestbid_time)
+                if (quantity > 0)
                 {
-                    this.bids.Remove(this.bestbid.Item1);
-                }
-                else if(this.bestask_time < this.bestbid_time)
-                {
-                    this.asks.Remove(this.bestask.Item1);
+                    decimal cumQuantity = 0;
+                    decimal weightedPrice = 0;
+                    foreach (var item in this.asks)
+                    {
+                        if (cumQuantity + item.Value < quantity)
+                        {
+                            cumQuantity += item.Value;
+                            weightedPrice += item.Value * item.Key;
+                        }
+                        else
+                        {
+                            weightedPrice += (quantity - cumQuantity) * item.Key;
+                            cumQuantity += (quantity - cumQuantity);
+                            break;
+                        }
+                    }
+                    if (cumQuantity > 0)
+                    {
+                        weightedPrice /= cumQuantity;
+                        this.adjusted_bestask.Item1 = weightedPrice * (1 + this.taker_fee);
+                        this.adjusted_bestask.Item2 = cumQuantity;
+                    }
+                    else
+                    {
+                        this.adjusted_bestask.Item1 = 0;
+                        this.adjusted_bestask.Item2 = 0;
+                    }
+
+                    cumQuantity = 0;
+                    weightedPrice = 0;
+                    foreach (var item in this.bids.Reverse())
+                    {
+                        if (cumQuantity + item.Value < quantity)
+                        {
+                            cumQuantity += item.Value;
+                            weightedPrice += item.Value * item.Key;
+                        }
+                        else
+                        {
+                            weightedPrice += (quantity - cumQuantity) * item.Key;
+                            cumQuantity += (quantity - cumQuantity);
+                            break;
+                        }
+                    }
+                    if (cumQuantity > 0)
+                    {
+                        weightedPrice /= cumQuantity;
+                        this.adjusted_bestbid.Item1 = weightedPrice * (1 - this.taker_fee);
+                        this.adjusted_bestbid.Item2 = cumQuantity;
+                    }
+                    else
+                    {
+                        this.adjusted_bestbid.Item1 = 0;
+                        this.adjusted_bestbid.Item2 = 0;
+                    }
+
                 }
                 else
                 {
-                    this.asks.Remove(this.bestask.Item1);
-                    this.bids.Remove(this.bestbid.Item1);
+                    if (this.asks.Count > 0)
+                    {
+                        this.adjusted_bestask.Item1 = this.asks.First().Key * (1 + this.taker_fee);
+                        this.adjusted_bestask.Item2 = this.asks.First().Value;
+                    }
+                    if (this.bids.Count > 0)
+                    {
+                        this.adjusted_bestbid.Item1 = this.bids.Last().Key * (1 - this.taker_fee);
+                        this.adjusted_bestbid.Item2 = this.bids.Last().Value;
+                    }
+                }
+                this.prev_bestask.Item1 = this.bestask.Item1;
+                this.prev_bestask.Item2 = this.bestask.Item2;
+                this.prev_bestbid.Item1 = this.bestbid.Item1;
+                this.prev_bestbid.Item2 = this.bestbid.Item2;
+                if (this.asks.Count > 0)
+                {
+                    this.bestask.Item1 = this.asks.First().Key;
+                    this.bestask.Item2 = this.asks.First().Value;
+                    if (this.bestask.Item1 != this.prev_bestask.Item1 || this.bestask.Item2 != this.prev_bestask.Item2)
+                    {
+                        this.bestask_time = current;
+                    }
+                }
+                if (this.bids.Count > 0)
+                {
+                    this.bestbid.Item1 = this.bids.Last().Key;
+                    this.bestbid.Item2 = this.bids.Last().Value;
+
+                    if (this.bestbid.Item1 != this.prev_bestbid.Item1 || this.bestbid.Item2 != this.prev_bestbid.Item2)
+                    {
+                        this.bestbid_time = current;
+                    }
+                }
+                if (this.bestask.Item1 > 0 && this.bestbid.Item1 > 0 && this.bestbid.Item1 >= this.bestask.Item1)
+                {
+                    ret = false;
+                    if (this.bestask_time > this.bestbid_time)
+                    {
+                        this.bids.Remove(this.bestbid.Item1);
+                    }
+                    else if (this.bestask_time < this.bestbid_time)
+                    {
+                        this.asks.Remove(this.bestask.Item1);
+                    }
+                    else
+                    {
+                        this.asks.Remove(this.bestask.Item1);
+                        this.bids.Remove(this.bestbid.Item1);
+                    }
                 }
             }
+
+            
             if (this.adjusted_bestask.Item1 > 0 && this.adjusted_bestbid.Item1 > 0)
             {
                 this.adj_prev= this.adj_mid;
@@ -783,89 +783,87 @@ namespace Crypto_Trading
             decimal qtAtPrice = 0;
             decimal cumQuantity = 0;
             Dictionary<decimal,decimal> ordAtPrice = new Dictionary<decimal,decimal>();
-            while (Interlocked.CompareExchange(ref this.order_lock, 1, 0) != 0)
+            using(var olock = this.order_lock.getlock())
             {
-
-            }
-            foreach (var ord in this.live_orders.Values)
-            {
-                if(ordAtPrice.ContainsKey(ord.order_price))
+                foreach (var ord in this.live_orders.Values)
                 {
-                    switch (ord.side)
+                    if (ordAtPrice.ContainsKey(ord.order_price))
                     {
-                        case orderSide.Buy:
-                            ordAtPrice[ord.order_price] += ord.order_quantity - ord.filled_quantity;
-                            break;
-                        case orderSide.Sell:
-                            ordAtPrice[ord.order_price] -= ord.order_quantity - ord.filled_quantity;
-                            break;
+                        switch (ord.side)
+                        {
+                            case orderSide.Buy:
+                                ordAtPrice[ord.order_price] += ord.order_quantity - ord.filled_quantity;
+                                break;
+                            case orderSide.Sell:
+                                ordAtPrice[ord.order_price] -= ord.order_quantity - ord.filled_quantity;
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        switch (ord.side)
+                        {
+                            case orderSide.Buy:
+                                ordAtPrice[ord.order_price] = ord.order_quantity - ord.filled_quantity;
+                                break;
+                            case orderSide.Sell:
+                                ordAtPrice[ord.order_price] = -(ord.order_quantity - ord.filled_quantity);
+                                break;
+                        }
                     }
                 }
-                else
+            }
+            
+            using(var qlock = this.quotes_lock.getlock())
+            {
+                switch (side)
                 {
-                    switch (ord.side)
-                    {
-                        case orderSide.Buy:
-                            ordAtPrice[ord.order_price] = ord.order_quantity - ord.filled_quantity;
-                            break;
-                        case orderSide.Sell:
-                            ordAtPrice[ord.order_price] = - (ord.order_quantity - ord.filled_quantity);
-                            break;
-                    }
+                    case orderSide.Buy:
+                        foreach (var item in this.bids.Reverse())
+                        {
+                            qtAtPrice = item.Value;
+                            if (ordAtPrice.ContainsKey(item.Key) && ordAtPrice[item.Key] > 0)
+                            {
+                                qtAtPrice -= ordAtPrice[item.Key];
+                                if (qtAtPrice < 0)
+                                {
+                                    qtAtPrice = 0;
+                                }
+                            }
+                            cumQuantity += qtAtPrice;
+
+
+                            if (cumQuantity > quantity)
+                            {
+                                price = item.Key;
+                                break;
+                            }
+                        }
+                        break;
+                    case orderSide.Sell:
+                        foreach (var item in this.asks)
+                        {
+                            qtAtPrice = item.Value;
+                            if (ordAtPrice.ContainsKey(item.Key) && ordAtPrice[item.Key] < 0)
+                            {
+                                qtAtPrice += ordAtPrice[item.Key];
+                                if (qtAtPrice < 0)
+                                {
+                                    qtAtPrice = 0;
+                                }
+                            }
+                            cumQuantity += qtAtPrice;
+
+                            if (cumQuantity > quantity)
+                            {
+                                price = item.Key;
+                                break;
+                            }
+                        }
+                        break;
                 }
             }
-            Volatile.Write(ref this.order_lock, 0);
-            while (Interlocked.CompareExchange(ref this.quotes_lock,1,0) != 0)
-            {
-
-            }
-            switch (side)
-            {
-                case orderSide.Buy:
-                    foreach (var item in this.bids.Reverse())
-                    {
-                        qtAtPrice = item.Value;
-                        if(ordAtPrice.ContainsKey(item.Key) && ordAtPrice[item.Key] > 0)
-                        {
-                            qtAtPrice -= ordAtPrice[item.Key];
-                            if(qtAtPrice < 0)
-                            {
-                                qtAtPrice = 0;
-                            }
-                        }
-                        cumQuantity += qtAtPrice;
-
-
-                        if (cumQuantity > quantity)
-                        {
-                            price = item.Key;
-                            break;
-                        }
-                    }
-                    break;
-                case orderSide.Sell:
-                    foreach (var item in this.asks)
-                    {
-                        qtAtPrice = item.Value;
-                        if (ordAtPrice.ContainsKey(item.Key) && ordAtPrice[item.Key] < 0)
-                        {
-                            qtAtPrice += ordAtPrice[item.Key];
-                            if (qtAtPrice < 0)
-                            {
-                                qtAtPrice = 0;
-                            }
-                        }
-                        cumQuantity += qtAtPrice;
-
-                        if (cumQuantity > quantity)
-                        {
-                            price = item.Key;
-                            break;
-                        }
-                    }
-                    break;
-            }
-            Volatile.Write(ref this.quotes_lock, 0);
+            
             return price;
         }
         public bool getWeightedAvgPrice(orderSide side, List<decimal> quantities, List<decimal> prices)
@@ -883,146 +881,149 @@ namespace Crypto_Trading
             {
                 return ret;
             }
-            switch (side)
+            using(var qlock = this.quotes_lock.getlock())
             {
-                case orderSide.Buy:
-                    foreach (var item in this.bids.Reverse())
-                    {
-                        if (cumQuantity + item.Value < quantity)
+                switch (side)
+                {
+                    case orderSide.Buy:
+                        foreach (var item in this.bids.Reverse())
                         {
-                            cumQuantity += item.Value;
-                            weightedPrice += item.Value * item.Key;
-                            //Console.WriteLine($"layer {layer.ToString()} <= {item.Value.ToString()}@{item.Key.ToString()}");
-                        }
-                        else
-                        {
-                            //Console.WriteLine($"layer {layer.ToString()} <= {(quantity - cumQuantity).ToString()} from {item.Value.ToString()}@{item.Key.ToString()}");
-                            decimal residual = item.Value - (quantity - cumQuantity);
-                            weightedPrice += (quantity - cumQuantity) * item.Key;
-                            cumQuantity += (quantity - cumQuantity);
-                            if(prices.Count > layer)
+                            if (cumQuantity + item.Value < quantity)
                             {
-                                prices[layer] = cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0;
+                                cumQuantity += item.Value;
+                                weightedPrice += item.Value * item.Key;
+                                //Console.WriteLine($"layer {layer.ToString()} <= {item.Value.ToString()}@{item.Key.ToString()}");
                             }
                             else
                             {
-                                prices.Add(cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0);
-                            }
-                            cumQuantity = 0;
-                            weightedPrice = 0;
-                            while (residual > 0)
-                            {
-                                ++layer;
-                                if (quantities.Count > layer)
+                                //Console.WriteLine($"layer {layer.ToString()} <= {(quantity - cumQuantity).ToString()} from {item.Value.ToString()}@{item.Key.ToString()}");
+                                decimal residual = item.Value - (quantity - cumQuantity);
+                                weightedPrice += (quantity - cumQuantity) * item.Key;
+                                cumQuantity += (quantity - cumQuantity);
+                                if (prices.Count > layer)
                                 {
-                                    quantity = quantities[layer];
-                                    if (quantity > cumQuantity + residual)
-                                    {
-                                        cumQuantity += residual;
-                                        weightedPrice += residual * item.Key;
-                                        //Console.WriteLine($"layer {layer.ToString()} <= {residual.ToString()} from {item.Value.ToString()}@{item.Key.ToString()}");
-                                        break;
-                                    }
-                                    else
-                                    {
-                                        //Console.WriteLine($"layer {layer.ToString()} <= {(quantity - cumQuantity).ToString()} from {item.Value.ToString()}@{item.Key.ToString()}");
-                                        residual -= quantity - cumQuantity;
-                                        weightedPrice += (quantity - cumQuantity) * item.Key;
-                                        cumQuantity += quantity - cumQuantity;
-                                        if (prices.Count > layer)
-                                        {
-                                            prices[layer] = cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0;
-                                        }
-                                        else
-                                        {
-                                            prices.Add(cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0);
-                                        }
-                                        cumQuantity = 0;
-                                        weightedPrice = 0;
-                                    }
+                                    prices[layer] = cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0;
                                 }
                                 else
                                 {
+                                    prices.Add(cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0);
+                                }
+                                cumQuantity = 0;
+                                weightedPrice = 0;
+                                while (residual > 0)
+                                {
+                                    ++layer;
+                                    if (quantities.Count > layer)
+                                    {
+                                        quantity = quantities[layer];
+                                        if (quantity > cumQuantity + residual)
+                                        {
+                                            cumQuantity += residual;
+                                            weightedPrice += residual * item.Key;
+                                            //Console.WriteLine($"layer {layer.ToString()} <= {residual.ToString()} from {item.Value.ToString()}@{item.Key.ToString()}");
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            //Console.WriteLine($"layer {layer.ToString()} <= {(quantity - cumQuantity).ToString()} from {item.Value.ToString()}@{item.Key.ToString()}");
+                                            residual -= quantity - cumQuantity;
+                                            weightedPrice += (quantity - cumQuantity) * item.Key;
+                                            cumQuantity += quantity - cumQuantity;
+                                            if (prices.Count > layer)
+                                            {
+                                                prices[layer] = cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0;
+                                            }
+                                            else
+                                            {
+                                                prices.Add(cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0);
+                                            }
+                                            cumQuantity = 0;
+                                            weightedPrice = 0;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        break;
+                                    }
+                                }
+                                if (quantities.Count <= layer)
+                                {
+                                    ret = true;
                                     break;
                                 }
                             }
-                            if (quantities.Count <= layer)
-                            {
-                                ret = true;
-                                break;
-                            }
                         }
-                    }
-                    break;
-                case orderSide.Sell:
-                    foreach (var item in this.asks)
-                    {
-                        if (cumQuantity + item.Value < quantity)
+                        break;
+                    case orderSide.Sell:
+                        foreach (var item in this.asks)
                         {
-                            cumQuantity += item.Value;
-                            weightedPrice += item.Value * item.Key;
-                            //Console.WriteLine($"layer {layer.ToString()} <= {item.Value.ToString()}@{item.Key.ToString()}");
-                        }
-                        else
-                        {
-                            //Console.WriteLine($"layer {layer.ToString()} <= {(quantity - cumQuantity).ToString()} from {item.Value.ToString()}@{item.Key.ToString()}");
-                            decimal residual = item.Value - (quantity - cumQuantity);
-                            weightedPrice += (quantity - cumQuantity) * item.Key;
-                            cumQuantity += (quantity - cumQuantity);
-                            if (prices.Count > layer)
+                            if (cumQuantity + item.Value < quantity)
                             {
-                                prices[layer] = cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0;
+                                cumQuantity += item.Value;
+                                weightedPrice += item.Value * item.Key;
+                                //Console.WriteLine($"layer {layer.ToString()} <= {item.Value.ToString()}@{item.Key.ToString()}");
                             }
                             else
                             {
-                                prices.Add(cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0);
-                            }
-                            cumQuantity = 0;
-                            weightedPrice = 0;
-                            while (residual > 0)
-                            {
-                                ++layer;
-                                if (quantities.Count > layer)
+                                //Console.WriteLine($"layer {layer.ToString()} <= {(quantity - cumQuantity).ToString()} from {item.Value.ToString()}@{item.Key.ToString()}");
+                                decimal residual = item.Value - (quantity - cumQuantity);
+                                weightedPrice += (quantity - cumQuantity) * item.Key;
+                                cumQuantity += (quantity - cumQuantity);
+                                if (prices.Count > layer)
                                 {
-                                    quantity = quantities[layer];
-                                    if(quantity > cumQuantity + residual)
-                                    {
-                                        cumQuantity += residual;
-                                        weightedPrice += residual * item.Key;
-                                        //Console.WriteLine($"layer {layer.ToString()} <= {residual.ToString()} from {item.Value.ToString()}@{item.Key.ToString()}");
-                                        break;
-                                    }
-                                    else
-                                    {
-                                        //Console.WriteLine($"layer {layer.ToString()} <= {(quantity - cumQuantity).ToString()} from {item.Value.ToString()}@{item.Key.ToString()}");
-                                        residual -= quantity - cumQuantity;
-                                        weightedPrice += (quantity - cumQuantity) * item.Key;
-                                        cumQuantity += quantity - cumQuantity;
-                                        if (prices.Count > layer)
-                                        {
-                                            prices[layer] = cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0;
-                                        }
-                                        else
-                                        {
-                                            prices.Add(cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0);
-                                        }
-                                        cumQuantity = 0;
-                                        weightedPrice = 0;
-                                    }
+                                    prices[layer] = cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0;
                                 }
                                 else
                                 {
+                                    prices.Add(cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0);
+                                }
+                                cumQuantity = 0;
+                                weightedPrice = 0;
+                                while (residual > 0)
+                                {
+                                    ++layer;
+                                    if (quantities.Count > layer)
+                                    {
+                                        quantity = quantities[layer];
+                                        if (quantity > cumQuantity + residual)
+                                        {
+                                            cumQuantity += residual;
+                                            weightedPrice += residual * item.Key;
+                                            //Console.WriteLine($"layer {layer.ToString()} <= {residual.ToString()} from {item.Value.ToString()}@{item.Key.ToString()}");
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            //Console.WriteLine($"layer {layer.ToString()} <= {(quantity - cumQuantity).ToString()} from {item.Value.ToString()}@{item.Key.ToString()}");
+                                            residual -= quantity - cumQuantity;
+                                            weightedPrice += (quantity - cumQuantity) * item.Key;
+                                            cumQuantity += quantity - cumQuantity;
+                                            if (prices.Count > layer)
+                                            {
+                                                prices[layer] = cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0;
+                                            }
+                                            else
+                                            {
+                                                prices.Add(cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + this.marginDiscount) : 0);
+                                            }
+                                            cumQuantity = 0;
+                                            weightedPrice = 0;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        break;
+                                    }
+                                }
+                                if (quantities.Count <= layer)
+                                {
+                                    ret = true;
                                     break;
                                 }
                             }
-                            if (quantities.Count <= layer)
-                            {
-                                ret = true;
-                                break;
-                            }
                         }
-                    }
-                    break;
+                        break;
+                }
             }
             return ret;
         }
@@ -1137,7 +1138,7 @@ namespace Crypto_Trading
         public void updateOrders(DataSpotOrderUpdate ord)
         {
 
-            this.orders[ord.internal_order_id] = ord;
+            //this.orders[ord.internal_order_id] = ord;
 
             if (this.readyToTrade && ord.timestamp.HasValue && ord.update_time.HasValue)
             {
@@ -1288,54 +1289,52 @@ namespace Crypto_Trading
             {
                 int i = 4;
                 int priceStrLength = 0;
-                while (Interlocked.CompareExchange(ref this.quotes_lock, 1, 0) != 0)
+                using(var qlock = this.quotes_lock.getlock())
                 {
-
-                }
-                if (i >= this.asks.Count)
-                {
-                    i = this.asks.Count - 1;
-                }
-                while (i >= 0)
-                {
-                    string temp = "";
-                    temp += this.asks.ElementAt(i).Value.ToString("N5").PadLeft(10) + " | ";
-                    string strPrice = this.asks.ElementAt(i).Key.ToString("N2");
-                    if (i == 4)
+                    if (i >= this.asks.Count)
                     {
-                        priceStrLength = strPrice.Length;
-                        if(priceStrLength < 7)
+                        i = this.asks.Count - 1;
+                    }
+                    while (i >= 0)
+                    {
+                        string temp = "";
+                        temp += this.asks.ElementAt(i).Value.ToString("N5").PadLeft(10) + " | ";
+                        string strPrice = this.asks.ElementAt(i).Key.ToString("N2");
+                        if (i == 4)
                         {
-                            priceStrLength = 7;
+                            priceStrLength = strPrice.Length;
+                            if (priceStrLength < 7)
+                            {
+                                priceStrLength = 7;
+                            }
                         }
-                    }
-                    else
-                    {
-                        strPrice = strPrice.PadLeft(priceStrLength);
-                    }
-                    temp += strPrice + " | ";
-                    temp = temp.PadRight(temp.Length + 10);
-                    output += temp + "\n";
-                    --i;
-                }
-                i = 0;
-                foreach(var item in this.bids.Reverse())
-                {
-                    if(i > 4)
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        string temp = "".PadLeft(10) + " | ";
-                        string strPrice = item.Key.ToString("N2").PadLeft(priceStrLength);
+                        else
+                        {
+                            strPrice = strPrice.PadLeft(priceStrLength);
+                        }
                         temp += strPrice + " | ";
-                        temp += item.Value.ToString("N5").PadRight(10);
+                        temp = temp.PadRight(temp.Length + 10);
                         output += temp + "\n";
+                        --i;
                     }
+                    i = 0;
+                    foreach (var item in this.bids.Reverse())
+                    {
+                        if (i > 4)
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            string temp = "".PadLeft(10) + " | ";
+                            string strPrice = item.Key.ToString("N2").PadLeft(priceStrLength);
+                            temp += strPrice + " | ";
+                            temp += item.Value.ToString("N5").PadRight(10);
+                            output += temp + "\n";
+                        }
                         ++i;
+                    }
                 }
-                Volatile.Write(ref this.quotes_lock, 0);
             }
             return output;
         }
