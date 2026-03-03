@@ -154,6 +154,10 @@ namespace Crypto_Trading
                 }
                 this._total += total;
                 this._inuse += inuse;
+                if(this._total == 0)
+                {
+                    this.avg_price = 0;
+                }
             }
                 
         }

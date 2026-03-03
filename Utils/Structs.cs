@@ -2334,8 +2334,10 @@ namespace Utils
         public decimal quoteCcy_inuse { get; set; }
         public decimal long_total { get; set; }
         public decimal long_inuse { get; set; }
+        public decimal long_avg_price { get; set; }
         public decimal short_total { get; set; }
         public decimal short_inuse { get; set; }
+        public decimal short_avg_price { get; set; }
 
         //Execution
         public decimal my_quantity_buy { get; set; }

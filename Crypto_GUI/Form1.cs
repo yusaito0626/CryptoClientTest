@@ -192,7 +192,7 @@ namespace Crypto_GUI
             this.button_startTrading.Enabled = false;
             this.button_orderTest.Enabled = false;
 
-            this.str_endTime = "23:30:00";
+            //this.str_endTime = "23:30:00";
 
             this.msg_Interval = 30;
 
@@ -219,29 +219,16 @@ namespace Crypto_GUI
                 this.qManager.monitoring = true;
             }
 
-            //this.nextMsgTime = DateTime.UtcNow + TimeSpan.FromMinutes(this.msg_Interval);
-
-
-            //this.logFile = new StreamWriter(new FileStream(this.logPath, FileMode.Create));
-
             this.qManager._addLog = this.addLog;
             this.oManager._addLog = this.addLog;
             this.crypto_client.setAddLog(this.addLog);
             this.thManager._addLog = this.addLog;
 
-            //this.readAPIFiles(this.APIsPath);
             this.getAPIsFromEnv(this.live);
 
-            //this.qManager.initializeInstruments(this.masterFile);
             this.qManager.setQueues(this.crypto_client);
 
-            //this.oManager.setOrdLogPath(this.outputPath);
-            //this.oManager.setInstruments(this.qManager.instruments);
             this.oManager.filledOrderQueue = this.filledOrderQueue;
-
-            //this.setStrategies(this.strategyFile);
-            //this.qManager.strategies = this.strategies;
-            //this.oManager.strategies = this.strategies;
 
             i = 0;
             int numOfRow = QuoteManager.NUM_OF_QUOTES * 2 + 1;
@@ -272,7 +259,7 @@ namespace Crypto_GUI
                 this.timer_Monitoring.Start();
             }
 
-            this.addLog("Application closing time:" + this.str_endTime);
+            //this.addLog("Application closing time:" + this.str_endTime);
         }
 
         private void setupCharts()
@@ -365,8 +352,6 @@ namespace Crypto_GUI
                         {
                             notional[dt] = data.notionalVolume;
                         }
-                        //notional_xs.Add(data.OADatetime);
-                        //notional_ys.Add(data.notionalVolume);
                     }
 
                 }
@@ -388,8 +373,6 @@ namespace Crypto_GUI
             Volatile.Write(ref chartData_lock, 0);
             this.plot_pnl.Plot.Clear();
             var scatters = this.plot_pnl.Plot.Add.Scatter(pnl_xs.ToArray(), pnl_ys.ToArray());
-            //this.plot_pnl.Plot.Axes.SetLimitsX(this.startOfDay.ToOADate(), this.startOfDay.AddDays(1).AddSeconds(-1).ToOADate());
-            //this.plot_pnl.Plot.Axes.Left.Range.Reset();
             scatters.LineColor = ScottPlot.Color.FromColor(System.Drawing.Color.Green);
             scatters.LineWidth = 2;
             scatters.MarkerColor = ScottPlot.Color.FromColor(System.Drawing.Color.Green);
@@ -404,9 +387,7 @@ namespace Crypto_GUI
                 bar.Size = 1.0 / 24.0 / (60.0 / notionalBar_Period) / 1.5;
                 bar.FillColor = ScottPlot.Color.FromColor(System.Drawing.Color.Lime);
                 bar.LineColor = ScottPlot.Color.FromColor(System.Drawing.Color.Green);
-                //bar.LineWidth = 1 / 48;
             }
-            //this.plot_notional.Plot.Axes.SetLimitsX(this.startOfDay.ToOADate(), this.startOfDay.AddDays(1).AddSeconds(-1).ToOADate());
             this.plot_notional.Plot.Axes.AutoScaleExpandY();
 
             this.plot_notional.Refresh();
@@ -824,10 +805,6 @@ namespace Crypto_GUI
                     }
                     catch (WebSocketException wse)
                     {
-                        //if (trial == 0)
-                        //{
-                        //    this.addLog($"WebSocketException: {wse.Message}", Enums.logType.WARNING);
-                        //}
                         if(err_msg != wse.Message)
                         {
                             this.addLog($"WebSocketException: {wse.Message}", Enums.logType.WARNING);
@@ -840,10 +817,6 @@ namespace Crypto_GUI
                     }
                     catch (Exception ex)
                     {
-                        //if(trial == 0)
-                        //{
-                        //    this.addLog($"Connection failed: {ex.Message}", Enums.logType.WARNING);
-                        //}
                         if (err_msg != ex.Message)
                         {
                             this.addLog($"Connection failed: {ex.Message}", Enums.logType.WARNING);
@@ -1181,20 +1154,22 @@ namespace Crypto_GUI
                                                 ins.sell_quantity = i.Value.quantity_sell;
                                                 ins.realized_volatility_display = i.Value.realized_volatility;
                                                 ins.avg_RV_display = i.Value.avg_RV;
-                                                ins.baseBalance = new Balance();
+                                                //ins.baseBalance = new Balance();
                                                 ins.baseBalance.ccy = ins.baseCcy;
                                                 ins.baseBalance.total = i.Value.baseCcy_total;
                                                 ins.baseBalance.inuse = i.Value.baseCcy_inuse;
-                                                ins.quoteBalance = new Balance();
+                                                //ins.quoteBalance = new Balance();
                                                 ins.quoteBalance.ccy = ins.quoteCcy;
                                                 ins.quoteBalance.total = i.Value.quoteCcy_total;
                                                 ins.quoteBalance.inuse = i.Value.quoteCcy_inuse;
-                                                ins.longPosition = new BalanceMargin();
+                                                //ins.longPosition = new BalanceMargin();
                                                 ins.longPosition.total = i.Value.long_total;
                                                 ins.longPosition.inuse = i.Value.long_inuse;
-                                                ins.shortPosition = new BalanceMargin();
+                                                ins.longPosition.avg_price = i.Value.long_avg_price;
+                                                //ins.shortPosition = new BalanceMargin();
                                                 ins.shortPosition.total = i.Value.short_total;
                                                 ins.shortPosition.inuse = i.Value.short_inuse;
+                                                ins.shortPosition.avg_price = i.Value.short_avg_price;
                                                 ins.my_buy_quantity = i.Value.my_quantity_buy;
                                                 ins.my_buy_notional = i.Value.my_notional_buy;
                                                 ins.my_sell_quantity = i.Value.my_quantity_sell;
@@ -1717,8 +1692,10 @@ namespace Crypto_GUI
                 this.lbl_quoteCcyInuse.Text = this.selected_ins.quoteBalance.inuse.ToString("N2");
                 this.lbl_ShortTotal.Text = this.selected_ins.shortPosition.total.ToString("N" + this.selected_ins.quantity_scale);
                 this.lbl_ShortInuse.Text = this.selected_ins.shortPosition.inuse.ToString("N" + this.selected_ins.quantity_scale);
+                this.lbl_short_avg_pr.Text = this.selected_ins.shortPosition.avg_price.ToString("N" + this.selected_ins.price_scale);
                 this.lbl_LongTotal.Text = this.selected_ins.longPosition.total.ToString("N" + this.selected_ins.quantity_scale);
                 this.lbl_LongInuse.Text = this.selected_ins.longPosition.inuse.ToString("N" + this.selected_ins.quantity_scale);
+                this.lbl_long_avg_pr.Text = this.selected_ins.longPosition.avg_price.ToString("N" + this.selected_ins.price_scale);
                 this.lbl_sellQuantity.Text = this.selected_ins.my_sell_quantity.ToString("N" + this.selected_ins.quantity_scale);
                 this.lbl_buyQuantity.Text = this.selected_ins.my_buy_quantity.ToString("N" + this.selected_ins.quantity_scale);
                 this.lbl_sellNotional.Text = this.selected_ins.my_sell_notional.ToString("N2");

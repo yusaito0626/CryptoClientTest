@@ -3625,6 +3625,7 @@ namespace Crypto_Trading
                             {
                                 addLog("output_temp:" + output_temp.ToString());
                             }
+                            List<int> id_check = this.virtual_order_queue.checkQueueSequence();
                             addLog($"Peek Enqueue Count:{peek_EnqueueCount} Peek Dequeue Count:{peek_EnqueueCount} Dequeue Enqueue Count:{this.virtual_order_queue._Enqueues} Enqueue Dequeue Count:{this.virtual_order_queue._Dequeues}", logType.ERROR);
                         }
                         if (this.Instruments.ContainsKey(output.symbol_market))
@@ -3663,7 +3664,7 @@ namespace Crypto_Trading
                                         switch (output.side)
                                         {
                                             case orderSide.Buy:
-                                                ins.getWeightedAvgPrice(orderSide.Sell, [update.filled_quantity], pr);
+                                                ins.getWeightedAvgPrice(orderSide.Sell, [update.filled_quantity], pr,false);
                                                 update.average_price = pr[0];
                                                 update.fee = feetype * update.filled_quantity * update.average_price;
                                                 update.fee_asset = ins.quoteCcy;
@@ -3672,7 +3673,7 @@ namespace Crypto_Trading
                                                 fill.fee_unknown = 0;
                                                 break;
                                             case orderSide.Sell:
-                                                ins.getWeightedAvgPrice(orderSide.Buy, [update.filled_quantity], pr);
+                                                ins.getWeightedAvgPrice(orderSide.Buy, [update.filled_quantity], pr, false);
                                                 update.average_price = pr[0];
                                                 update.fee = feetype * update.filled_quantity * update.average_price;
                                                 update.fee_asset = ins.quoteCcy;

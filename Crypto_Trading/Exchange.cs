@@ -244,8 +244,10 @@ namespace Crypto_Trading
                         b.Value.current_price = ins_dict[b.Value.valuation_pair].mid;
                     }
                 }
-
-                res += $"{str_time},{this.market},SPOT,{b.Value.ccy},,{b.Value.total},{b.Value.total * b.Value.current_price}\n";
+                if(b.Value.total != 0)
+                {
+                    res += $"{str_time},{this.market},SPOT,{b.Value.ccy},,{b.Value.total},{b.Value.total * b.Value.current_price}\n";
+                }
                 //res += str_time + "," + this.market + ",SPOT," + b.Value.ccy + "," + b.Value.total.ToString() + ",0," + b.Value.current_price.ToString() + "," + b.Value.valuation_pair + ",0,0\n";
             }
             foreach (var b in this.marginShort.Values)

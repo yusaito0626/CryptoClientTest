@@ -128,11 +128,22 @@
             gridView_MI = new DataGridView();
             Quantity = new DataGridViewTextBoxColumn();
             gridView_InsFills = new DataGridView();
+            dataGridViewTextBoxColumn12 = new DataGridViewTextBoxColumn();
+            dataGridViewTextBoxColumn13 = new DataGridViewTextBoxColumn();
+            dataGridViewTextBoxColumn14 = new DataGridViewTextBoxColumn();
+            dataGridViewTextBoxColumn15 = new DataGridViewTextBoxColumn();
+            dataGridViewTextBoxColumn16 = new DataGridViewTextBoxColumn();
+            dataGridViewTextBoxColumn17 = new DataGridViewTextBoxColumn();
+            dataGridViewTextBoxColumn19 = new DataGridViewTextBoxColumn();
+            colIns_msg = new DataGridViewTextBoxColumn();
             lbl_avgRV = new Label();
             label49 = new Label();
             lbl_RV = new Label();
             label42 = new Label();
             groupBox3 = new GroupBox();
+            lbl_long_avg_pr = new Label();
+            lbl_short_avg_pr = new Label();
+            label48 = new Label();
             lbl_LongInuse = new Label();
             label58 = new Label();
             lbl_LongTotal = new Label();
@@ -253,14 +264,6 @@
             toolStripStatusLabel1 = new ToolStripStatusLabel();
             lbl_currentTime = new ToolStripStatusLabel();
             timer_Monitoring = new System.Windows.Forms.Timer(components);
-            dataGridViewTextBoxColumn12 = new DataGridViewTextBoxColumn();
-            dataGridViewTextBoxColumn13 = new DataGridViewTextBoxColumn();
-            dataGridViewTextBoxColumn14 = new DataGridViewTextBoxColumn();
-            dataGridViewTextBoxColumn15 = new DataGridViewTextBoxColumn();
-            dataGridViewTextBoxColumn16 = new DataGridViewTextBoxColumn();
-            dataGridViewTextBoxColumn17 = new DataGridViewTextBoxColumn();
-            dataGridViewTextBoxColumn19 = new DataGridViewTextBoxColumn();
-            colIns_msg = new DataGridViewTextBoxColumn();
             tabControl.SuspendLayout();
             tabPage1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridView_PnL).BeginInit();
@@ -1139,6 +1142,62 @@
             gridView_InsFills.Size = new Size(1023, 323);
             gridView_InsFills.TabIndex = 37;
             // 
+            // dataGridViewTextBoxColumn12
+            // 
+            dataGridViewTextBoxColumn12.HeaderText = "Time";
+            dataGridViewTextBoxColumn12.MinimumWidth = 10;
+            dataGridViewTextBoxColumn12.Name = "dataGridViewTextBoxColumn12";
+            dataGridViewTextBoxColumn12.Width = 150;
+            // 
+            // dataGridViewTextBoxColumn13
+            // 
+            dataGridViewTextBoxColumn13.HeaderText = "Market";
+            dataGridViewTextBoxColumn13.MinimumWidth = 10;
+            dataGridViewTextBoxColumn13.Name = "dataGridViewTextBoxColumn13";
+            dataGridViewTextBoxColumn13.Width = 125;
+            // 
+            // dataGridViewTextBoxColumn14
+            // 
+            dataGridViewTextBoxColumn14.HeaderText = "Symbol";
+            dataGridViewTextBoxColumn14.MinimumWidth = 10;
+            dataGridViewTextBoxColumn14.Name = "dataGridViewTextBoxColumn14";
+            dataGridViewTextBoxColumn14.Width = 125;
+            // 
+            // dataGridViewTextBoxColumn15
+            // 
+            dataGridViewTextBoxColumn15.HeaderText = "Side";
+            dataGridViewTextBoxColumn15.MinimumWidth = 10;
+            dataGridViewTextBoxColumn15.Name = "dataGridViewTextBoxColumn15";
+            dataGridViewTextBoxColumn15.Width = 125;
+            // 
+            // dataGridViewTextBoxColumn16
+            // 
+            dataGridViewTextBoxColumn16.HeaderText = "Fill Price";
+            dataGridViewTextBoxColumn16.MinimumWidth = 10;
+            dataGridViewTextBoxColumn16.Name = "dataGridViewTextBoxColumn16";
+            dataGridViewTextBoxColumn16.Width = 125;
+            // 
+            // dataGridViewTextBoxColumn17
+            // 
+            dataGridViewTextBoxColumn17.HeaderText = "Quantity";
+            dataGridViewTextBoxColumn17.MinimumWidth = 10;
+            dataGridViewTextBoxColumn17.Name = "dataGridViewTextBoxColumn17";
+            dataGridViewTextBoxColumn17.Width = 125;
+            // 
+            // dataGridViewTextBoxColumn19
+            // 
+            dataGridViewTextBoxColumn19.HeaderText = "Fee";
+            dataGridViewTextBoxColumn19.MinimumWidth = 10;
+            dataGridViewTextBoxColumn19.Name = "dataGridViewTextBoxColumn19";
+            dataGridViewTextBoxColumn19.Width = 120;
+            // 
+            // colIns_msg
+            // 
+            colIns_msg.HeaderText = "msg";
+            colIns_msg.MinimumWidth = 6;
+            colIns_msg.Name = "colIns_msg";
+            colIns_msg.Width = 125;
+            // 
             // lbl_avgRV
             // 
             lbl_avgRV.AutoSize = true;
@@ -1181,6 +1240,9 @@
             // 
             // groupBox3
             // 
+            groupBox3.Controls.Add(lbl_long_avg_pr);
+            groupBox3.Controls.Add(lbl_short_avg_pr);
+            groupBox3.Controls.Add(label48);
             groupBox3.Controls.Add(lbl_LongInuse);
             groupBox3.Controls.Add(label58);
             groupBox3.Controls.Add(lbl_LongTotal);
@@ -1202,15 +1264,46 @@
             groupBox3.TabStop = false;
             groupBox3.Text = "Balance";
             // 
+            // lbl_long_avg_pr
+            // 
+            lbl_long_avg_pr.Location = new Point(182, 138);
+            lbl_long_avg_pr.Margin = new Padding(2, 0, 2, 0);
+            lbl_long_avg_pr.Name = "lbl_long_avg_pr";
+            lbl_long_avg_pr.Size = new Size(94, 20);
+            lbl_long_avg_pr.TabIndex = 26;
+            lbl_long_avg_pr.Text = "value";
+            lbl_long_avg_pr.TextAlign = ContentAlignment.MiddleRight;
+            // 
+            // lbl_short_avg_pr
+            // 
+            lbl_short_avg_pr.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+            lbl_short_avg_pr.Location = new Point(182, 108);
+            lbl_short_avg_pr.Margin = new Padding(2, 0, 2, 0);
+            lbl_short_avg_pr.Name = "lbl_short_avg_pr";
+            lbl_short_avg_pr.Size = new Size(94, 20);
+            lbl_short_avg_pr.TabIndex = 25;
+            lbl_short_avg_pr.Text = "value";
+            lbl_short_avg_pr.TextAlign = ContentAlignment.MiddleRight;
+            // 
+            // label48
+            // 
+            label48.AutoSize = true;
+            label48.Location = new Point(176, 20);
+            label48.Margin = new Padding(2, 0, 2, 0);
+            label48.Name = "label48";
+            label48.Size = new Size(100, 20);
+            label48.TabIndex = 24;
+            label48.Text = "Average Price";
+            // 
             // lbl_LongInuse
             // 
-            lbl_LongInuse.AutoSize = true;
             lbl_LongInuse.Location = new Point(439, 138);
             lbl_LongInuse.Margin = new Padding(2, 0, 2, 0);
             lbl_LongInuse.Name = "lbl_LongInuse";
-            lbl_LongInuse.Size = new Size(44, 20);
+            lbl_LongInuse.Size = new Size(94, 20);
             lbl_LongInuse.TabIndex = 23;
             lbl_LongInuse.Text = "value";
+            lbl_LongInuse.TextAlign = ContentAlignment.MiddleRight;
             // 
             // label58
             // 
@@ -1224,23 +1317,23 @@
             // 
             // lbl_LongTotal
             // 
-            lbl_LongTotal.AutoSize = true;
-            lbl_LongTotal.Location = new Point(241, 138);
+            lbl_LongTotal.Location = new Point(319, 138);
             lbl_LongTotal.Margin = new Padding(2, 0, 2, 0);
             lbl_LongTotal.Name = "lbl_LongTotal";
-            lbl_LongTotal.Size = new Size(44, 20);
+            lbl_LongTotal.Size = new Size(94, 20);
             lbl_LongTotal.TabIndex = 22;
             lbl_LongTotal.Text = "value";
+            lbl_LongTotal.TextAlign = ContentAlignment.MiddleRight;
             // 
             // lbl_ShortInuse
             // 
-            lbl_ShortInuse.AutoSize = true;
             lbl_ShortInuse.Location = new Point(439, 108);
             lbl_ShortInuse.Margin = new Padding(2, 0, 2, 0);
             lbl_ShortInuse.Name = "lbl_ShortInuse";
-            lbl_ShortInuse.Size = new Size(44, 20);
+            lbl_ShortInuse.Size = new Size(94, 20);
             lbl_ShortInuse.TabIndex = 20;
             lbl_ShortInuse.Text = "value";
+            lbl_ShortInuse.TextAlign = ContentAlignment.MiddleRight;
             // 
             // label55
             // 
@@ -1254,33 +1347,33 @@
             // 
             // lbl_ShortTotal
             // 
-            lbl_ShortTotal.AutoSize = true;
-            lbl_ShortTotal.Location = new Point(241, 108);
+            lbl_ShortTotal.Location = new Point(319, 108);
             lbl_ShortTotal.Margin = new Padding(2, 0, 2, 0);
             lbl_ShortTotal.Name = "lbl_ShortTotal";
-            lbl_ShortTotal.Size = new Size(44, 20);
+            lbl_ShortTotal.Size = new Size(94, 20);
             lbl_ShortTotal.TabIndex = 19;
             lbl_ShortTotal.Text = "value";
+            lbl_ShortTotal.TextAlign = ContentAlignment.MiddleRight;
             // 
             // lbl_quoteCcyInuse
             // 
-            lbl_quoteCcyInuse.AutoSize = true;
             lbl_quoteCcyInuse.Location = new Point(439, 79);
             lbl_quoteCcyInuse.Margin = new Padding(2, 0, 2, 0);
             lbl_quoteCcyInuse.Name = "lbl_quoteCcyInuse";
-            lbl_quoteCcyInuse.Size = new Size(44, 20);
+            lbl_quoteCcyInuse.Size = new Size(94, 20);
             lbl_quoteCcyInuse.TabIndex = 17;
             lbl_quoteCcyInuse.Text = "value";
+            lbl_quoteCcyInuse.TextAlign = ContentAlignment.MiddleRight;
             // 
             // lbl_baseCcyInuse
             // 
-            lbl_baseCcyInuse.AutoSize = true;
             lbl_baseCcyInuse.Location = new Point(439, 49);
             lbl_baseCcyInuse.Margin = new Padding(2, 0, 2, 0);
             lbl_baseCcyInuse.Name = "lbl_baseCcyInuse";
-            lbl_baseCcyInuse.Size = new Size(44, 20);
+            lbl_baseCcyInuse.Size = new Size(94, 20);
             lbl_baseCcyInuse.TabIndex = 16;
             lbl_baseCcyInuse.Text = "value";
+            lbl_baseCcyInuse.TextAlign = ContentAlignment.MiddleRight;
             // 
             // label41
             // 
@@ -1295,7 +1388,7 @@
             // label26
             // 
             label26.AutoSize = true;
-            label26.Location = new Point(242, 21);
+            label26.Location = new Point(320, 21);
             label26.Margin = new Padding(2, 0, 2, 0);
             label26.Name = "label26";
             label26.Size = new Size(41, 20);
@@ -1326,23 +1419,23 @@
             // 
             // lbl_quoteCcyTotal
             // 
-            lbl_quoteCcyTotal.AutoSize = true;
-            lbl_quoteCcyTotal.Location = new Point(241, 79);
+            lbl_quoteCcyTotal.Location = new Point(319, 79);
             lbl_quoteCcyTotal.Margin = new Padding(2, 0, 2, 0);
             lbl_quoteCcyTotal.Name = "lbl_quoteCcyTotal";
-            lbl_quoteCcyTotal.Size = new Size(44, 20);
+            lbl_quoteCcyTotal.Size = new Size(94, 20);
             lbl_quoteCcyTotal.TabIndex = 13;
             lbl_quoteCcyTotal.Text = "value";
+            lbl_quoteCcyTotal.TextAlign = ContentAlignment.MiddleRight;
             // 
             // lbl_baseCcyTotal
             // 
-            lbl_baseCcyTotal.AutoSize = true;
-            lbl_baseCcyTotal.Location = new Point(241, 49);
+            lbl_baseCcyTotal.Location = new Point(319, 49);
             lbl_baseCcyTotal.Margin = new Padding(2, 0, 2, 0);
             lbl_baseCcyTotal.Name = "lbl_baseCcyTotal";
-            lbl_baseCcyTotal.Size = new Size(44, 20);
+            lbl_baseCcyTotal.Size = new Size(94, 20);
             lbl_baseCcyTotal.TabIndex = 12;
             lbl_baseCcyTotal.Text = "value";
+            lbl_baseCcyTotal.TextAlign = ContentAlignment.MiddleRight;
             // 
             // groupBox2
             // 
@@ -1371,25 +1464,27 @@
             // 
             // lbl_quoteFee
             // 
-            lbl_quoteFee.AutoSize = true;
+            lbl_quoteFee.Anchor = AnchorStyles.None;
             lbl_quoteFee.ImageAlign = ContentAlignment.MiddleRight;
-            lbl_quoteFee.Location = new Point(440, 207);
+            lbl_quoteFee.Location = new Point(400, 207);
             lbl_quoteFee.Margin = new Padding(2, 0, 2, 0);
             lbl_quoteFee.Name = "lbl_quoteFee";
-            lbl_quoteFee.Size = new Size(44, 20);
+            lbl_quoteFee.Size = new Size(84, 20);
             lbl_quoteFee.TabIndex = 30;
             lbl_quoteFee.Text = "value";
+            lbl_quoteFee.TextAlign = ContentAlignment.MiddleRight;
             // 
             // lbl_baseFee
             // 
-            lbl_baseFee.AutoSize = true;
+            lbl_baseFee.Anchor = AnchorStyles.None;
             lbl_baseFee.ImageAlign = ContentAlignment.MiddleRight;
-            lbl_baseFee.Location = new Point(224, 207);
+            lbl_baseFee.Location = new Point(184, 207);
             lbl_baseFee.Margin = new Padding(2, 0, 2, 0);
             lbl_baseFee.Name = "lbl_baseFee";
-            lbl_baseFee.Size = new Size(44, 20);
+            lbl_baseFee.Size = new Size(84, 20);
             lbl_baseFee.TabIndex = 29;
             lbl_baseFee.Text = "value";
+            lbl_baseFee.TextAlign = ContentAlignment.MiddleRight;
             // 
             // label31
             // 
@@ -1423,69 +1518,75 @@
             // 
             // lbl_buyAvgPrice
             // 
-            lbl_buyAvgPrice.AutoSize = true;
+            lbl_buyAvgPrice.Anchor = AnchorStyles.None;
             lbl_buyAvgPrice.ImageAlign = ContentAlignment.MiddleRight;
-            lbl_buyAvgPrice.Location = new Point(496, 116);
+            lbl_buyAvgPrice.Location = new Point(456, 116);
             lbl_buyAvgPrice.Margin = new Padding(2, 0, 2, 0);
             lbl_buyAvgPrice.Name = "lbl_buyAvgPrice";
-            lbl_buyAvgPrice.Size = new Size(44, 20);
+            lbl_buyAvgPrice.Size = new Size(84, 20);
             lbl_buyAvgPrice.TabIndex = 25;
             lbl_buyAvgPrice.Text = "value";
+            lbl_buyAvgPrice.TextAlign = ContentAlignment.MiddleRight;
             // 
             // lbl_sellAvgPrice
             // 
-            lbl_sellAvgPrice.AutoSize = true;
+            lbl_sellAvgPrice.Anchor = AnchorStyles.None;
             lbl_sellAvgPrice.ImageAlign = ContentAlignment.MiddleRight;
-            lbl_sellAvgPrice.Location = new Point(496, 76);
+            lbl_sellAvgPrice.Location = new Point(456, 76);
             lbl_sellAvgPrice.Margin = new Padding(2, 0, 2, 0);
             lbl_sellAvgPrice.Name = "lbl_sellAvgPrice";
-            lbl_sellAvgPrice.Size = new Size(44, 20);
+            lbl_sellAvgPrice.Size = new Size(84, 20);
             lbl_sellAvgPrice.TabIndex = 24;
             lbl_sellAvgPrice.Text = "value";
+            lbl_sellAvgPrice.TextAlign = ContentAlignment.MiddleRight;
             // 
             // lbl_buyNotional
             // 
-            lbl_buyNotional.AutoSize = true;
+            lbl_buyNotional.Anchor = AnchorStyles.None;
             lbl_buyNotional.ImageAlign = ContentAlignment.MiddleRight;
-            lbl_buyNotional.Location = new Point(323, 116);
+            lbl_buyNotional.Location = new Point(283, 116);
             lbl_buyNotional.Margin = new Padding(2, 0, 2, 0);
             lbl_buyNotional.Name = "lbl_buyNotional";
-            lbl_buyNotional.Size = new Size(44, 20);
+            lbl_buyNotional.Size = new Size(84, 20);
             lbl_buyNotional.TabIndex = 23;
             lbl_buyNotional.Text = "value";
+            lbl_buyNotional.TextAlign = ContentAlignment.MiddleRight;
             // 
             // lbl_sellNotional
             // 
-            lbl_sellNotional.AutoSize = true;
+            lbl_sellNotional.Anchor = AnchorStyles.None;
             lbl_sellNotional.ImageAlign = ContentAlignment.MiddleRight;
-            lbl_sellNotional.Location = new Point(323, 76);
+            lbl_sellNotional.Location = new Point(283, 76);
             lbl_sellNotional.Margin = new Padding(2, 0, 2, 0);
             lbl_sellNotional.Name = "lbl_sellNotional";
-            lbl_sellNotional.Size = new Size(44, 20);
+            lbl_sellNotional.Size = new Size(84, 20);
             lbl_sellNotional.TabIndex = 22;
             lbl_sellNotional.Text = "value";
+            lbl_sellNotional.TextAlign = ContentAlignment.MiddleRight;
             // 
             // lbl_buyQuantity
             // 
-            lbl_buyQuantity.AutoSize = true;
+            lbl_buyQuantity.Anchor = AnchorStyles.None;
             lbl_buyQuantity.ImageAlign = ContentAlignment.MiddleRight;
-            lbl_buyQuantity.Location = new Point(149, 116);
+            lbl_buyQuantity.Location = new Point(109, 116);
             lbl_buyQuantity.Margin = new Padding(2, 0, 2, 0);
             lbl_buyQuantity.Name = "lbl_buyQuantity";
-            lbl_buyQuantity.Size = new Size(44, 20);
+            lbl_buyQuantity.Size = new Size(84, 20);
             lbl_buyQuantity.TabIndex = 21;
             lbl_buyQuantity.Text = "value";
+            lbl_buyQuantity.TextAlign = ContentAlignment.MiddleRight;
             // 
             // lbl_sellQuantity
             // 
-            lbl_sellQuantity.AutoSize = true;
+            lbl_sellQuantity.Anchor = AnchorStyles.None;
             lbl_sellQuantity.ImageAlign = ContentAlignment.MiddleRight;
-            lbl_sellQuantity.Location = new Point(149, 76);
+            lbl_sellQuantity.Location = new Point(109, 76);
             lbl_sellQuantity.Margin = new Padding(2, 0, 2, 0);
             lbl_sellQuantity.Name = "lbl_sellQuantity";
-            lbl_sellQuantity.Size = new Size(44, 20);
+            lbl_sellQuantity.Size = new Size(84, 20);
             lbl_sellQuantity.TabIndex = 15;
             lbl_sellQuantity.Text = "value";
+            lbl_sellQuantity.TextAlign = ContentAlignment.MiddleRight;
             // 
             // label33
             // 
@@ -2526,62 +2627,6 @@
             timer_Monitoring.Interval = 1000;
             timer_Monitoring.Tick += timer_Monitoring_Tick;
             // 
-            // dataGridViewTextBoxColumn12
-            // 
-            dataGridViewTextBoxColumn12.HeaderText = "Time";
-            dataGridViewTextBoxColumn12.MinimumWidth = 10;
-            dataGridViewTextBoxColumn12.Name = "dataGridViewTextBoxColumn12";
-            dataGridViewTextBoxColumn12.Width = 150;
-            // 
-            // dataGridViewTextBoxColumn13
-            // 
-            dataGridViewTextBoxColumn13.HeaderText = "Market";
-            dataGridViewTextBoxColumn13.MinimumWidth = 10;
-            dataGridViewTextBoxColumn13.Name = "dataGridViewTextBoxColumn13";
-            dataGridViewTextBoxColumn13.Width = 125;
-            // 
-            // dataGridViewTextBoxColumn14
-            // 
-            dataGridViewTextBoxColumn14.HeaderText = "Symbol";
-            dataGridViewTextBoxColumn14.MinimumWidth = 10;
-            dataGridViewTextBoxColumn14.Name = "dataGridViewTextBoxColumn14";
-            dataGridViewTextBoxColumn14.Width = 125;
-            // 
-            // dataGridViewTextBoxColumn15
-            // 
-            dataGridViewTextBoxColumn15.HeaderText = "Side";
-            dataGridViewTextBoxColumn15.MinimumWidth = 10;
-            dataGridViewTextBoxColumn15.Name = "dataGridViewTextBoxColumn15";
-            dataGridViewTextBoxColumn15.Width = 125;
-            // 
-            // dataGridViewTextBoxColumn16
-            // 
-            dataGridViewTextBoxColumn16.HeaderText = "Fill Price";
-            dataGridViewTextBoxColumn16.MinimumWidth = 10;
-            dataGridViewTextBoxColumn16.Name = "dataGridViewTextBoxColumn16";
-            dataGridViewTextBoxColumn16.Width = 125;
-            // 
-            // dataGridViewTextBoxColumn17
-            // 
-            dataGridViewTextBoxColumn17.HeaderText = "Quantity";
-            dataGridViewTextBoxColumn17.MinimumWidth = 10;
-            dataGridViewTextBoxColumn17.Name = "dataGridViewTextBoxColumn17";
-            dataGridViewTextBoxColumn17.Width = 125;
-            // 
-            // dataGridViewTextBoxColumn19
-            // 
-            dataGridViewTextBoxColumn19.HeaderText = "Fee";
-            dataGridViewTextBoxColumn19.MinimumWidth = 10;
-            dataGridViewTextBoxColumn19.Name = "dataGridViewTextBoxColumn19";
-            dataGridViewTextBoxColumn19.Width = 120;
-            // 
-            // colIns_msg
-            // 
-            colIns_msg.HeaderText = "msg";
-            colIns_msg.MinimumWidth = 6;
-            colIns_msg.Name = "colIns_msg";
-            colIns_msg.Width = 125;
-            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
@@ -2839,5 +2884,8 @@
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn17;
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn19;
         private DataGridViewTextBoxColumn colIns_msg;
+        private Label lbl_long_avg_pr;
+        private Label lbl_short_avg_pr;
+        private Label label48;
     }
 }

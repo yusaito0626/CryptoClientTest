@@ -162,6 +162,7 @@ namespace Crypto_Linux
             if (!readConfig())
             {
                 addLog("Failed to read config.", Enums.logType.ERROR);
+                updateLog();
                 return;
             }
             Console.WriteLine("readConfig completed");
@@ -271,12 +272,14 @@ namespace Crypto_Linux
                 stgSettings[stg.Key] = setting;
             }
             await ws_server.setStrategySetting(stgSettings);
+            updateLog();
 
             if (!await MsgDeliverer.setDiscordToken(discordTokenFile))
             {
                 addLog("Message configuration not found", Enums.logType.WARNING);
             }
-            if(!await tradePreparation(live))
+            updateLog();
+            if (!await tradePreparation(live))
             {
                 Console.WriteLine("Failed to intialize the platform");
                 updateLog();
@@ -286,6 +289,7 @@ namespace Crypto_Linux
                 }
                 return;
             }
+            updateLog();
             marketImpactFile = new StreamWriter(new FileStream(outputPath + "/Market_Impact.csv", FileMode.Append, FileAccess.Write));
 
             ws_server.StartAsync(CancellationToken.None);
@@ -321,6 +325,7 @@ namespace Crypto_Linux
                             avgLatency[m.Key] = latency;
                         }
                     }
+                    updateLog();
                     ++i;
                 }
 
@@ -328,7 +333,8 @@ namespace Crypto_Linux
                 {
                     addLog("Average Latency of " + l.Key + ": " + (l.Value / trial).ToString("N3") + " ms");
                 }
-                Thread.Sleep(5000);
+                updateLog();
+                Thread.Sleep(1000);
             }
 
             if (!test)
@@ -354,37 +360,52 @@ namespace Crypto_Linux
             isRunning = true;
 
             i = 0;
-            while (isRunning)
+            try
             {
-                sendFills();
-                outputMI();
-                await statusCheck();
-                setInstrumentInfo();
-                setStrategyInfo();
-                broadcastInfos();
-                ThreadPool.GetAvailableThreads(out int worker, out int io);
-                ThreadPool.GetMaxThreads(out int maxWorker, out int maxIo);
-
-                if (maxWorker - worker > 20)
+                while (isRunning)
                 {
-                    addLog($"Worker Threads: {maxWorker - worker}/{maxWorker}");
-                }
+                    sendFills();
+                    outputMI();
+                    await statusCheck();
+                    setInstrumentInfo();
+                    setStrategyInfo();
+                    broadcastInfos();
+                    ThreadPool.GetAvailableThreads(out int worker, out int io);
+                    ThreadPool.GetMaxThreads(out int maxWorker, out int maxIo);
 
-                ++i;
-                if (i > 30)
-                {
-                    await messagePnL(false);
-                    //string msg = messagePnL();
-                    //Console.WriteLine(msg);
-                    await timer_PeriodicMsg_Tick();
-                    i = 0;
-                }
-                updateLog();
+                    if (maxWorker - worker > 20)
+                    {
+                        addLog($"Worker Threads: {maxWorker - worker}/{maxWorker}");
+                    }
 
-                Thread.Sleep(1000);
+                    ++i;
+                    if (i > 30)
+                    {
+                        await messagePnL(false);
+                        //string msg = messagePnL();
+                        //Console.WriteLine(msg);
+                        await timer_PeriodicMsg_Tick();
+                        i = 0;
+                    }
+                    updateLog();
+
+                    Thread.Sleep(1000);
+                }
             }
-            addLog("Exitting the main process...");
-            Thread.Sleep(2000);
+            catch(Exception ex)
+            {
+                addLog("Error occured during the logging process.  Message:" + ex.Message, logType.ERROR);
+            }
+            finally
+            {
+                if(isRunning)
+                {
+                    isRunning = false;
+                }
+            }
+            
+            addLog("Exit the main process...");
+            Thread.Sleep(1000);
         }
 
         static private async Task messagePnL(bool discord = false)
@@ -557,21 +578,80 @@ namespace Crypto_Linux
 
         static private async Task testFunc()
         {
-            Console.WriteLine("Lock Test");
-            using (var f = oManager.mapping_lock.getlock())
+            Console.WriteLine("Queue test");
+
+            MIMOQueue<UInt64> testQueue = new MIMOQueue<UInt64>();
+
+            Task task1 = Task.Run(async () =>
             {
-                Console.WriteLine("In lock");
-            }
-            Thread.Sleep(2000);
-            using (var f = oManager.mapping_lock.getlock())
-            {
-                Console.WriteLine("In lock");
-                using (var test = oManager.mapping_lock.getlock())
+                UInt64 i = 0;
+                while (true)
                 {
-                    Console.WriteLine("In nested lock");
+                    ++i;
+                    testQueue.Enqueue(i);
+                    Thread.Sleep(0);
+                    if(i > 18446744073709551000)
+                    {
+                        break;
+                    }
                 }
-            }
-            Console.WriteLine("Completed");
+            });
+            Task task3 = Task.Run(async () =>
+            {
+                UInt64 i = 0;
+                while (true)
+                {
+                    ++i;
+                    testQueue.Enqueue(i);
+                    Thread.Sleep(0);
+                    if (i > 18446744073709551000)
+                    {
+                        break;
+                    }
+                }
+            });
+            Task task2 = Task.Run(async () =>
+            {
+                UInt64 j = 0;
+                UInt64 p = 0;
+                while(true)
+                {
+                    if(testQueue.Count > 0)
+                    {
+                        p = testQueue.Peek();
+                        j = testQueue.Dequeue();
+                        if(p != j)
+                        {
+                            Console.WriteLine($"Peek:{p} Dequeue:{j}");
+                            List<int> ids = testQueue.checkQueueSequence();
+                            foreach(int i in ids)
+                            {
+                                Console.WriteLine(i);
+                            }
+                            break;
+                        }
+                        if(p == 18446744073709551000 || j == 18446744073709551000)
+                        {
+                            break;
+                        }
+                        if(j % 1_000_000 == 0)
+                        {
+                            Console.WriteLine(j);
+                            List<int> ids = testQueue.checkQueueSequence();
+                            string line = "";
+                            foreach (int i in ids)
+                            {
+                                line += i.ToString() + " ";
+                            }
+                            Console.WriteLine(line);
+                        }
+                    }
+                }
+            } );
+
+            task1.Wait();
+            task2.Wait();
+            task3.Wait();
 
             await EoDProcess();
             isRunning = false;
@@ -949,6 +1029,8 @@ namespace Crypto_Linux
                     connectionStates[mkt.Key.ToString()] = new connecitonStatus() { market = mkt.Key.ToString(), publicState = WebSocketState.None.ToString(), privateState = WebSocketState.None.ToString(), avgRTT = 0.0 };
                 }
 
+                updateLog();
+
                 foreach (var ins in qManager.instruments.Values)
                 {
                     market[] markets = [ins.market];
@@ -967,6 +1049,8 @@ namespace Crypto_Linux
                     await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
                     await crypto_client.subscribeTrades(markets, ins.baseCcy, ins.quoteCcy);
                 }
+
+                updateLog();
 
                 if (oManager.getVirtualMode())
                 {
@@ -1151,7 +1235,9 @@ namespace Crypto_Linux
                 }
                 qManager.ready = true;
 
-                if(live)
+                updateLog();
+
+                if (live)
                 {
                     if (File.Exists(intradayPnLFile))
                     {
@@ -1191,6 +1277,8 @@ namespace Crypto_Linux
                     await crypto_client.subscribeSpotOrderUpdates(qManager._markets.Keys);
                 }
 
+                updateLog();
+
                 oManager.ready = true;
 
                 thManager.addThread("updateQuotes", qManager.updateQuotes, qManager.updateQuotesOnClosing, qManager.updateQuotesOnError, 10000);
@@ -1203,7 +1291,6 @@ namespace Crypto_Linux
 
                 foreach(var th in thManager.threads)
                 {
-                    Console.WriteLine(th.Key);
                     threadStates[th.Key] = new threadStatus() { name = th.Key, isRunning = false };
                 }
                 queueInfos["updateQuotes"] = new queueInfo() { name = "updateQuotes", count = 0};
@@ -1211,6 +1298,8 @@ namespace Crypto_Linux
                 queueInfos["updateOrders"] = new queueInfo() { name = "updateOrders", count = 0 };
                 queueInfos["updateFills"] = new queueInfo() { name = "updateFills", count = 0 };
                 queueInfos["optimize"] = new queueInfo() { name = "optimize", count = 0 };
+
+                updateLog();
 
                 threadsStarted = true;
 
@@ -1250,6 +1339,8 @@ namespace Crypto_Linux
                         }
                     }
 
+                    updateLog();
+
                     addLog("Checking balance...");
                     
                     foreach (var stg in strategies.Values)
@@ -1279,6 +1370,8 @@ namespace Crypto_Linux
 
                     }
                 }
+
+                updateLog();
 
                 //Latency List
                 foreach (var l in oManager.Latency)
@@ -1313,7 +1406,6 @@ namespace Crypto_Linux
                 }
                 return false;
             }
-
 
             return true;
         }
@@ -2214,28 +2306,36 @@ namespace Crypto_Linux
             Dictionary<string, PnLBreakDown> summary = new Dictionary<string, PnLBreakDown>();
             if (File.Exists(filename))
             {
-                using (StreamReader tpt = new StreamReader(new FileStream(filename, FileMode.Create, FileAccess.Read)))
+                using (StreamReader tpt = new StreamReader(new FileStream(filename, FileMode.Open, FileAccess.Read)))
                 {
+                    int i = 0;
                     while (tpt.ReadLine() is string line)
                     {
-                        string[] data = line.Split(",");
-                        if (!summary.ContainsKey(data[1]))
+                        if(i == 0)
                         {
-                            PnLBreakDown newdata = new PnLBreakDown();
-                            newdata.strategy = data[1];
-                            newdata.symbol = data[4];
-                            newdata.addData(data);
-                            if(strategies.ContainsKey(newdata.strategy))
-                            {
-                                Strategy stg = strategies[newdata.strategy];
-                                newdata.SoDBalance = stg.maker.SoD_net_pos - stg.targetMakerPosition;
-                                newdata.EoDBalance = stg.maker.net_pos - stg.targetMakerPosition;
-                            }
-                            summary[data[1]] = newdata;
+                            ++i;
                         }
                         else
                         {
-                            summary[data[1]].addData(data);
+                            string[] data = line.Split(",");
+                            if (!summary.ContainsKey(data[1]))
+                            {
+                                PnLBreakDown newdata = new PnLBreakDown();
+                                newdata.strategy = data[1];
+                                newdata.symbol = data[4];
+                                newdata.addData(data);
+                                if (strategies.ContainsKey(newdata.strategy))
+                                {
+                                    Strategy stg = strategies[newdata.strategy];
+                                    newdata.SoDBalance = stg.maker.SoD_net_pos - stg.targetMakerPosition;
+                                    newdata.EoDBalance = stg.maker.net_pos - stg.targetMakerPosition;
+                                }
+                                summary[data[1]] = newdata;
+                            }
+                            else
+                            {
+                                summary[data[1]].addData(data);
+                            }
                         }
                     }
                 }
@@ -2667,8 +2767,10 @@ namespace Crypto_Linux
 
                 insinfo.long_total = ins.longPosition.total;
                 insinfo.long_inuse = ins.longPosition.inuse;
+                insinfo.long_avg_price = ins.longPosition.avg_price;
                 insinfo.short_total = ins.shortPosition.total;
                 insinfo.short_inuse = ins.shortPosition.inuse;
+                insinfo.short_avg_price = ins.shortPosition.avg_price;
 
                 insinfo.last_price = ins.last_price;
                 insinfo.notional_buy = ins.buy_notional;
@@ -2739,7 +2841,8 @@ namespace Crypto_Linux
         static async Task timer_PeriodicMsg_Tick()
         {
             string msg = "";
-            List<DataSpotOrderUpdate> ordList = new List<DataSpotOrderUpdate>();
+            List<market> ex_list = new List<market>();
+            List<DataSpotOrderUpdate> ordList;
             int count_diff = 0;
 
             //To keep http_client alive.
@@ -2750,58 +2853,62 @@ namespace Crypto_Linux
                     await crypto_client.getBalance(qManager._markets.Keys);
                     foreach (var stg in strategies.Values)
                     {
-                        ordList = await crypto_client.getActiveOrders(stg.maker.market);
-                        if (ordList != null)
+                        if(!ex_list.Contains(stg.maker.market))
                         {
-                            int live_orders_count;
-                            using (var olock = oManager.order_lock.getlock())
+                            ex_list.Add(stg.maker.market);
+                            ordList = await crypto_client.getActiveOrders(stg.maker.market);
+                            if (ordList != null)
                             {
-                                live_orders_count = oManager.live_orders.Count;
-                            }
-                            if (ordList.Count != live_orders_count)
-                            {
-                                if(count_diff == 0)
+                                int live_orders_count;
+                                using (var olock = oManager.order_lock.getlock())
                                 {
-                                    ++mismatch_count;
-                                    count_diff = ordList.Count - live_orders_count;
+                                    live_orders_count = oManager.live_orders.Count;
                                 }
-                                else if(count_diff == ordList.Count - live_orders_count)
+                                if (ordList.Count != live_orders_count)
                                 {
-                                    ++mismatch_count;
-                                    if (mismatch_count >= 3)
+                                    if (count_diff == 0)
                                     {
-                                        addLog("Order count didn't match " + stg.maker.market + ":" + ordList.Count.ToString() + " live_orders:" + live_orders_count.ToString(), logType.WARNING);
-                                        using (var olock = oManager.order_lock.getlock())
+                                        ++mismatch_count;
+                                        count_diff = ordList.Count - live_orders_count;
+                                    }
+                                    else if (count_diff == ordList.Count - live_orders_count)
+                                    {
+                                        ++mismatch_count;
+                                        if (mismatch_count >= 3)
                                         {
-                                            List<string> removing = new List<string>();
-                                            foreach (var o in oManager.live_orders)
+                                            addLog("Order count didn't match " + stg.maker.market + ":" + ordList.Count.ToString() + " live_orders:" + live_orders_count.ToString(), logType.WARNING);
+                                            using (var olock = oManager.order_lock.getlock())
                                             {
-                                                if ((o.Value.status != orderStatus.WaitOpen && o.Value.status != orderStatus.Open && o.Value.status != orderStatus.WaitCancel))
+                                                List<string> removing = new List<string>();
+                                                foreach (var o in oManager.live_orders)
                                                 {
-                                                    addLog(o.Value.ToString());
-                                                    removing.Add(o.Key);
+                                                    if ((o.Value.status != orderStatus.WaitOpen && o.Value.status != orderStatus.Open && o.Value.status != orderStatus.WaitCancel))
+                                                    {
+                                                        addLog(o.Value.ToString());
+                                                        removing.Add(o.Key);
+                                                    }
+                                                    else if (o.Value.side == orderSide.NONE)
+                                                    {
+                                                        addLog(o.Value.ToString());
+                                                    }
                                                 }
-                                                else if (o.Value.side == orderSide.NONE)
+                                                foreach (var r in removing)
                                                 {
-                                                    addLog(o.Value.ToString());
+                                                    oManager.live_orders.Remove(r);
                                                 }
-                                            }
-                                            foreach (var r in removing)
-                                            {
-                                                oManager.live_orders.Remove(r);
                                             }
                                         }
+                                    }
+                                    else
+                                    {
+                                        count_diff = 0;
+                                        mismatch_count = 0;
                                     }
                                 }
                                 else
                                 {
-                                    count_diff = 0;
                                     mismatch_count = 0;
                                 }
-                            }
-                            else
-                            {
-                                mismatch_count = 0;
                             }
                         }
                     }
@@ -2813,18 +2920,10 @@ namespace Crypto_Linux
                 addLog(e.Message, logType.WARNING);
             }
 
-            //if (crypto_client.gmocoin_client.GetSocketStatePublic() == WebSocketState.Open)
-            //{
-            //    crypto_client.gmocoin_client.sendPing(false);
-            //}
-
             DateTime currentTime = DateTime.UtcNow;
             DataSpotOrderUpdate ord;
             while (oManager.order_pool.Count > 0)
             {
-                //while (!oManager.SISO_order_pool.TryPeek(out ord))
-                //{
-                //}
                 ord = oManager.order_pool.Peek();
                 if(ord != null)
                 {
@@ -2832,9 +2931,6 @@ namespace Crypto_Linux
                     {
                         if (currentTime - ord.update_time.Value > TimeSpan.FromSeconds(oManager.orderLifeTime))
                         {
-                            //while (!oManager.SISO_order_pool.TryDequeue(out ord))
-                            //{
-                            //}
                             ord = oManager.order_pool.Dequeue();
                             ord.init();
                             crypto_client.ordUpdateStack.push(ord);
@@ -2850,9 +2946,6 @@ namespace Crypto_Linux
                     }
                     else
                     {
-                        //while (!oManager.SISO_order_pool.TryDequeue(out ord))
-                        //{
-                        //}
                         ord = oManager.order_pool.Dequeue();
                         ord.init();
                         crypto_client.ordUpdateStack.push(ord);
@@ -2874,8 +2967,6 @@ namespace Crypto_Linux
 
             if (DateTime.UtcNow > nextMsgTime)
             {
-                //msg = messagePnL();
-                //await MsgDeliverer.sendMessage(msg,msg_type);
                 await messagePnL(true);
                 nextMsgTime += TimeSpan.FromMinutes(msg_Interval);
 
@@ -2883,21 +2974,7 @@ namespace Crypto_Linux
                 {
                     await crypto_client.gmocoin_client.extendToken(crypto_client.gmocoin_client.token);
                 }
-                //foreach (var stg in strategies.Values)
-                //{
-                //    addLog("Internal Latency of onFill");
-                //    addLog("Part1:" + stg.onFill_latency1.ToString("N3") + "micro sec");
-                //    addLog("Part2:" + stg.onFill_latency2.ToString("N3") + "micro sec");
-                //    addLog("Part3:" + stg.onFill_latency3.ToString("N3") + "micro sec");
-                //    addLog("Placing Orders:" + stg.placingOrderLatencyOnFill.ToString("N3") + "micro sec");
-                //    addLog("Placing Orders[updateOrder]:" + stg.placingOrderLatencyUpdate.ToString("N3") + "micro sec");
-                //}
             }
-
-            //foreach(var l in oManager.Latency)
-            //{
-            //    addLog($"Process Time[{l.Key}]    average:{l.Value.avgLatency.ToString("N3")} count:{l.Value.count.ToString("N0")}");
-            //}
 
             if (DateTime.UtcNow > endTime)
             {
@@ -2997,15 +3074,6 @@ namespace Crypto_Linux
             }
 
             logEntry log;
-            //int i = 0;
-            //while(!logEntryStack.TryPop(out log))
-            //{
-            //    ++i;
-            //    if(i > 100000)
-            //    {
-            //        log = new logEntry();
-            //    }
-            //}
             log = logEntryStack.pop();
             if(log == null)
             {
@@ -3023,7 +3091,6 @@ namespace Crypto_Linux
         static private void updateLog()
         {
             string line;
-            //while (logQueue.TryDequeue(out line))
             while(true)
             {
                 line = logQueue.Dequeue();

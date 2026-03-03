@@ -248,26 +248,50 @@ namespace LockFreeQueue
 
         public void Enqueue(T val)
         {
+            bool check_ids = false;
             using(var func = new funcContainer(this.getEnqueueLock))
             {
                 Node<T> newNode;
                 newNode = _NodePool.pop();
                 if(newNode.lock_count > 0)
                 {
+                    check_ids = true;
                     Console.WriteLine("Node {0} is locked when enqueuing", newNode.node_id);
+                    Console.WriteLine(newNode.value.ToString());
+                    if (newNode.Back != null)
+                    {
+                        Console.WriteLine($"Back:{newNode.Back.node_id}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Back:null");
+                    }
+                    if (newNode.Next != null)
+                    {
+                        Console.WriteLine($"Next:{newNode.Next.node_id}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Next:null");
+                    }
                 }
                 Interlocked.Increment(ref newNode.lock_count);
                 newNode.value = val;
                 Node<T> OldHead = this._pHead;
                 newNode.Next = OldHead;
-                this._pHead = newNode;
                 OldHead.Back = newNode;
+                this._pHead = newNode;
 
-                //this._pHeadTemp.value = newNode.value;
-                //this._pHeadTemp.Next = newNode.Next;
-                //this._pHeadTemp.Back = newNode.Back;
                 ++(this._Enqueues);
             }
+            //if(check_ids)
+            //{
+            //    List<int> id_check = this.checkQueueSequence();
+            //    foreach (var id in id_check)
+            //    {
+            //        Console.WriteLine(id.ToString());
+            //    }
+            //}
         }
         public T Dequeue()
         {
@@ -295,15 +319,45 @@ namespace LockFreeQueue
         {
             using (var func = new funcContainer(this.getDequeueLock))
             {
-                if (this._pTail.Back == null)
+                Node<T> preTail = this._pTail;
+                if (preTail.Back == null)
                 {
                     return default!;
                 }
                 else
                 {
-                    return this._pTail.Back.value;
+                    return preTail.Back.value;
                 }
             }
+        }
+
+        public List<int> checkQueueSequence()
+        {
+            List<int> res = new List<int>();
+            using (var func = new funcContainer(this.getDequeueLock))
+            {
+                using (var func2 = new funcContainer(this.getEnqueueLock))
+                {
+                    Node<T> n = this._pTail;
+                    int i = 0;
+                    while (n != null)
+                    {
+                        if (res.Contains(n.node_id))
+                        {
+                            Console.WriteLine("The id already exists. node_id:" + n.node_id);
+                        }
+                        res.Add(n.node_id);
+                        n = n.Back;
+                        ++i;
+                        if(i > this.Count)
+                        {
+                            Console.WriteLine("Seems like it's looping.");
+                            break;
+                        }
+                    }
+                }
+            }
+            return res;
         }
         //public int Count() { return this._Enqueues - this._Dequeues; }
         public int Count => this._Enqueues - this._Dequeues;
@@ -653,6 +707,7 @@ namespace LockFreeQueue
         int _pushes = 0;
         int _pops = 0;
         Node<T>? _pHead;
+        int id = 0;
         public LockFreePool(int PreservingSize = 10000)
         {
             this._pHead = null;
@@ -663,7 +718,8 @@ namespace LockFreeQueue
             while (_pushes < PreservingSize)
             {
                 Node<T> NewNode = new Node<T>();
-                NewNode.node_id = this._pushes;
+                Interlocked.Increment(ref id);
+                NewNode.node_id = id;
                 if (_pushes == 0)
                 {
                     NewNode.Next = null;
@@ -707,6 +763,8 @@ namespace LockFreeQueue
             if (tempHead.Next == null)
             {
                 ReturningNode = new Node<T>();
+                Interlocked.Increment(ref id);
+                ReturningNode.node_id = id;
             }
             else
             {
