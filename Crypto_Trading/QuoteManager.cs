@@ -367,7 +367,7 @@ namespace Crypto_Trading
             string key;
             foreach(var exBalance in this.exchanges.Values)
             {
-                exBalance.marginAvailability = 0;
+                exBalance.marginTotal = 0;
             }
             foreach(var item in results)
             {
@@ -421,17 +421,17 @@ namespace Crypto_Trading
                     case market.bitbank:
                         if(item.asset.ToUpper() == "JPY")
                         {
-                            exBalance.marginAvailability += item.total;
+                            exBalance.marginTotal += item.total;
                         }
                         else
                         {
-                            exBalance.marginAvailability += item.total / 2;
+                            exBalance.marginTotal += item.total / 2;
                         }
                         break;
                     case market.gmocoin:
                         if(item.asset.ToUpper() == "JPY")
                         {
-                            exBalance.marginAvailability += item.total;
+                            exBalance.marginTotal += item.total;
                         }
                         break;
                 }

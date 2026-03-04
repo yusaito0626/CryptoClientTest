@@ -51,6 +51,10 @@ namespace Crypto_Trading
         public Dictionary<string, DataSpotOrderUpdate> orders;
         public Dictionary<string, DataSpotOrderUpdate> live_orders;
 
+        public Dictionary<market, Exchange> exchanges;
+        public Dictionary<market, Exchange> exchanges_SoD;
+        public Dictionary<string, Balance> balances;
+
         public SISOQueue<DataSpotOrderUpdate> order_pool;
         public int orderLifeTime = 60; 
 
@@ -2706,7 +2710,10 @@ namespace Crypto_Trading
                     }
                 }
             }
-            
+            if (this.exchanges.ContainsKey(fill.market))
+            {
+                this.exchanges[fill.market].updateBalance(fill);
+            }
             if (this.Instruments.ContainsKey(fill.symbol_market))
             {
                 Instrument ins;

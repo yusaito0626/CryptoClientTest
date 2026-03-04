@@ -92,7 +92,7 @@ namespace Crypto_Trading
         public decimal current_price;
         public decimal unrealized_pnl;
 
-        public decimal maxLeverage;
+        public decimal leverage;
 
         public myLock balance_lock = new myLock();
 
@@ -107,7 +107,7 @@ namespace Crypto_Trading
             this.unrealized_interest = 0;
             this.current_price = 0;
             this.unrealized_pnl = 0;
-            this.maxLeverage = 1;
+            this.leverage = 1;
         }
 
         public void setPosition(DataMarginPos position)
@@ -250,7 +250,7 @@ namespace Crypto_Trading
         }
         public string ToString()
         {
-            return $"{this.symbol},{this.market},{this.side.ToString()},{this.avg_price.ToString()},{this._total.ToString()},{this._inuse.ToString()},{this.current_price.ToString()},{this.unrealized_pnl.ToString()},{this.unrealized_fee.ToString()},{this.unrealized_interest.ToString()},{this.maxLeverage}";
+            return $"{this.symbol},{this.market},{this.side.ToString()},{this.avg_price.ToString()},{this._total.ToString()},{this._inuse.ToString()},{this.current_price.ToString()},{this.unrealized_pnl.ToString()},{this.unrealized_fee.ToString()},{this.unrealized_interest.ToString()},{this.leverage}";
         }
     }
 }

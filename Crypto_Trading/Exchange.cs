@@ -5,17 +5,22 @@ using System.Text;
 using System.Threading.Tasks;
 using Utils;
 using Enums;
+using CryptoExchange.Net.SharedApis;
 
 namespace Crypto_Trading
 {
     public class Exchange
     {
         public Enums.market market;
+        public Dictionary<string, Instrument> instruments;
         public Dictionary<string, Balance> balance;
         public Dictionary<string, BalanceMargin> marginLong;
         public Dictionary<string, BalanceMargin> marginShort;
 
-        public decimal marginAvailability;
+        private myLock margin_lock;
+        public decimal marginTotal;
+        public decimal marginLocked;//using with existing orders
+
         public decimal marginNotionalAmount;
         public decimal valueAtSoD;
 
@@ -39,15 +44,241 @@ namespace Crypto_Trading
         public Exchange()
         {
             this.market = market.NONE;
+            this.instruments = new Dictionary<string, Instrument>();
             this.balance = new Dictionary<string, Balance>();
             this.marginLong = new Dictionary<string, BalanceMargin>();
             this.marginShort = new Dictionary<string, BalanceMargin>();
 
             this.valueAtSoD = 0;
-            this.marginAvailability = 0;
+            this.marginTotal = 0;
             this.marginNotionalAmount = 0;
         }
 
+        public bool updateBalance(DataFill fill)
+        {
+            bool res = true;
+            Instrument ins;
+
+            Balance quoteBalance;
+            Balance baseBalance;
+            BalanceMargin longPosition;
+            BalanceMargin shortPosition;
+
+            decimal marginTotal_chg = 0;
+
+            if (this.instruments.ContainsKey(fill.symbol_market))
+            {
+                ins = this.instruments[fill.symbol_market];
+            }
+            else
+            {
+                return false;
+            }
+
+            decimal filled_fee;
+            if (fill.order_type == orderType.LimitMaker || fill.order_type == orderType.Limit)
+            {
+                filled_fee = fill.quantity * fill.price * ins.maker_fee;
+            }
+            else
+            {
+                filled_fee = fill.quantity * fill.price * ins.taker_fee;
+            }
+
+            //If the symbol is Spot, update marginTotal
+            //If the symbol is margin, update margninInuse
+            switch (fill.position_side)
+            {
+                case positionSide.NONE://Spot
+                    if (this.balance.ContainsKey(ins.baseCcy))
+                    {
+                        baseBalance = this.balance[ins.baseCcy];
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                    if (this.balance.ContainsKey(ins.quoteCcy))
+                    {
+                        quoteBalance = this.balance[ins.quoteCcy];
+                    }
+                    else
+                    {
+                        return false;
+                    }
+
+                    if (fill.side == orderSide.Buy)
+                    {
+                        if (baseBalance != null)
+                        {
+                            baseBalance.AddBalance(fill.quantity, 0);
+                            if (baseBalance.ccy == "JPY")
+                            {
+                                marginTotal_chg += fill.quantity;
+                            }
+                            else if(this.market == market.bitbank)
+                            {
+                                marginTotal_chg += fill.quantity / 2;
+                            }
+                        }
+                        if (quoteBalance != null)
+                        {
+                            quoteBalance.AddBalance(-fill.quantity * fill.price, 0);
+                            if (quoteBalance.ccy == "JPY")
+                            {
+                                marginTotal_chg -= fill.quantity * fill.price;
+                            }
+                            else if (this.market == market.bitbank)
+                            {
+                                marginTotal_chg -= fill.quantity * fill.price / 2;
+                            }
+                        }
+                    }
+                    else if (fill.side == orderSide.Sell)
+                    {
+                        if (baseBalance != null)
+                        {
+                            baseBalance.AddBalance(-fill.quantity, 0);
+                            if (baseBalance.ccy == "JPY")
+                            {
+                                marginTotal_chg -= fill.quantity;
+                            }
+                            else if (this.market == market.bitbank)
+                            {
+                                marginTotal_chg -= fill.quantity / 2;
+                            }
+                        }
+                        if (quoteBalance != null)
+                        {
+                            quoteBalance.AddBalance(fill.quantity * fill.price, 0);
+                            if (quoteBalance.ccy == "JPY")
+                            {
+                                marginTotal_chg += fill.quantity * fill.price;
+                            }
+                            else if (this.market == market.bitbank)
+                            {
+                                marginTotal_chg += fill.quantity * fill.price / 2;
+                            }
+                        }
+                    }
+                    if (quoteBalance != null)
+                    {
+                        quoteBalance.AddBalance(-fill.fee_quote, 0);
+                        if (quoteBalance.ccy == "JPY")
+                        {
+                            marginTotal_chg -= fill.fee_quote;
+                        }
+                        else if (this.market == market.bitbank)
+                        {
+                            marginTotal_chg -= fill.fee_quote;
+                        }
+                    }
+                    break;
+                case positionSide.Long:
+                    if(this.marginLong.ContainsKey(fill.symbol_market))
+                    {
+                        if (this.balance.ContainsKey(ins.quoteCcy))
+                        {
+                            quoteBalance = this.balance[ins.quoteCcy];
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                        longPosition = this.marginLong[fill.symbol_market];
+                        if (fill.side == orderSide.Buy)
+                        {
+                            longPosition.unrealized_fee += filled_fee;
+                            longPosition.AddBalance(fill.quantity, 0, fill.price);
+                        }
+                        else if (fill.side == orderSide.Sell)
+                        {
+                            //decimal realize_pnl = fill.profit_loss;// fill.quantity * (fill.price - this.longPosition.avg_price);
+                            //decimal realized_fee = fill.fee_quote;
+                            //decimal realized_interest = fill.interest;//this.longPosition.unrealized_interest * (fill.quantity / this.longPosition.total);
+                            //fill.msg += $" Realize PnL: {fill.profit_loss.ToString("N8")} avg_price: {this.longPosition.avg_price.ToString()}";
+                            longPosition.unrealized_fee -= fill.fee_quote - filled_fee;
+                            longPosition.unrealized_interest -= fill.interest;
+                            quoteBalance.total += fill.profit_loss - fill.fee_quote - fill.interest;
+                            longPosition.AddBalance(-fill.quantity, 0, fill.price);
+                        }
+                    }
+                    else
+                    {
+                        return false; 
+                    }
+                    break;
+                case positionSide.Short:
+                    if(this.marginShort.ContainsKey(fill.symbol_market))
+                    {
+                        shortPosition = this.marginShort[fill.symbol_market];
+                        if (this.balance.ContainsKey(ins.quoteCcy))
+                        {
+                            quoteBalance = this.balance[ins.quoteCcy];
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                        if (fill.side == orderSide.Sell)
+                        {
+                            shortPosition.unrealized_fee += filled_fee;
+                            shortPosition.AddBalance(fill.quantity, 0, fill.price);
+                        }
+                        else if (fill.side == orderSide.Buy)
+                        {
+                            //decimal realize_pnl = fill.profit_loss; //fill.quantity * (this.shortPosition.avg_price - fill.price);
+                            //decimal realized_fee = fill.fee_quote;
+                            //decimal realized_interest = fill.interest;//this.shortPosition.unrealized_interest * (fill.quantity / this.shortPosition.total);
+                            //fill.msg += $" Realize PnL: {fill.profit_loss.ToString("N8")} avg_price: {this.shortPosition.avg_price.ToString()}";
+                            shortPosition.unrealized_fee -= fill.fee_quote - filled_fee;
+                            shortPosition.unrealized_interest -= fill.interest;
+                            quoteBalance.total += fill.profit_loss - fill.fee_quote - fill.interest;
+                            shortPosition.AddBalance(-fill.quantity, 0, fill.price);
+                        }
+                    }
+                    else
+                    {
+                        return false; 
+                    }
+                        break;
+            }
+            
+            if(marginTotal_chg != 0)
+            {
+                using(var mlock = this.margin_lock.getlock())
+                {
+                    this.marginTotal += marginTotal_chg;
+                }
+            }
+
+            return res;
+        }
+        public void updateMarginLocked(decimal chg)
+        {
+            using(var mlock = this.margin_lock.getlock())
+            {
+                this.marginLocked += chg;
+            }
+        }
+        public decimal getMarginAvailability()
+        {
+            decimal availability = 0;
+            using (var mlock = this.margin_lock.getlock())
+            {
+                availability = this.marginTotal - this.marginLocked;
+                foreach(var b in this.marginLong.Values)
+                {
+                    availability -= b.total * b.current_price / b.leverage;
+                }
+                foreach (var b in this.marginShort.Values)
+                {
+                    availability -= b.total * b.current_price / b.leverage;
+                }
+                availability += this.getUnrealizedPnL();
+            }
+            return availability;
+        }
         public bool recordLatency(DataOrderBook update)
         {
             bool res = false;
@@ -147,9 +378,13 @@ namespace Crypto_Trading
             return res;
         }
 
-        public decimal getUnrealizedPnL(Dictionary<string, Instrument> ins_dict)
+        public decimal getUnrealizedPnL(Dictionary<string, Instrument> ins_dict = null)
         {
             decimal res = 0;
+            if(ins_dict == null)
+            {
+                ins_dict = this.instruments;
+            }
             foreach (BalanceMargin b in this.marginShort.Values)
             {
                 if (ins_dict.ContainsKey(b.symbol_market))
@@ -202,15 +437,24 @@ namespace Crypto_Trading
 
             foreach (var b in this.balance)
             {
-                res += str_time + "," + this.market + ",SPOT," + b.Value.ccy + ",," + b.Value.total.ToString() + ",0," + b.Value.current_price.ToString() + "," + b.Value.valuation_pair + ",0,0\n";
+                if(b.Value.total != 0)
+                {
+                    res += str_time + "," + this.market + ",SPOT," + b.Value.ccy + ",," + b.Value.total.ToString() + ",0," + b.Value.current_price.ToString() + "," + b.Value.valuation_pair + ",0,0\n";
+                }
             }
             foreach (var b in this.marginShort.Values)
             {
-                res += str_time + "," + this.market + ",MARGIN," + b.symbol + "," + b.side.ToString() + "," + b.total.ToString() + "," + b.avg_price.ToString() + "," + b.current_price.ToString() + "," + b.symbol + "," + b.unrealized_fee.ToString() + "," + b.unrealized_interest.ToString() + "\n";
+                if(b.total != 0)
+                {
+                    res += str_time + "," + this.market + ",MARGIN," + b.symbol + "," + b.side.ToString() + "," + b.total.ToString() + "," + b.avg_price.ToString() + "," + b.current_price.ToString() + "," + b.symbol + "," + b.unrealized_fee.ToString() + "," + b.unrealized_interest.ToString() + "\n";
+                }
             }
             foreach (var b in this.marginLong.Values)
             {
-                res += str_time + "," + this.market + ",MARGIN," + b.symbol + "," + b.side.ToString() + "," + b.total.ToString() + "," + b.avg_price.ToString() + "," + b.current_price.ToString() + "," + b.symbol + "," + b.unrealized_fee.ToString() + "," + b.unrealized_interest.ToString() + "\n";
+                if (b.total != 0)
+                {
+                    res += str_time + "," + this.market + ",MARGIN," + b.symbol + "," + b.side.ToString() + "," + b.total.ToString() + "," + b.avg_price.ToString() + "," + b.current_price.ToString() + "," + b.symbol + "," + b.unrealized_fee.ToString() + "," + b.unrealized_interest.ToString() + "\n";
+                }
             }
             return res;
         }
@@ -252,12 +496,18 @@ namespace Crypto_Trading
             }
             foreach (var b in this.marginShort.Values)
             {
-                res += $"{str_time},{this.market},MARGIN,{b.symbol},{b.side},{- b.total},{b.unrealized_pnl - b.unrealized_interest - b.unrealized_fee}\n";
+                if (b.total != 0)
+                {
+                    res += $"{str_time},{this.market},MARGIN,{b.symbol},{b.side},{-b.total},{b.unrealized_pnl - b.unrealized_interest - b.unrealized_fee}\n";
+                }
                 //res += str_time + "," + this.market + ",MARGIN," + b.symbol + "," + b.side.ToString() + "," + b.total.ToString() + "," + b.avg_price.ToString() + "," + b.current_price.ToString() + "," + b.symbol + "," + b.unrealized_fee.ToString() + "," + b.unrealized_interest.ToString() + "\n";
             }
             foreach (var b in this.marginLong.Values)
             {
-                res += $"{str_time},{this.market},MARGIN,{b.symbol},{b.side},{b.total},{b.unrealized_pnl - b.unrealized_interest - b.unrealized_fee}\n";
+                if (b.total != 0)
+                {
+                    res += $"{str_time},{this.market},MARGIN,{b.symbol},{b.side},{b.total},{b.unrealized_pnl - b.unrealized_interest - b.unrealized_fee}\n";
+                }
                 //res += str_time + "," + this.market + ",MARGIN," + b.symbol + "," + b.side.ToString() + "," + b.total.ToString() + "," + b.avg_price.ToString() + "," + b.current_price.ToString() + "," + b.symbol + "," + b.unrealized_fee.ToString() + "," + b.unrealized_interest.ToString() + "\n";
             }
             return res;

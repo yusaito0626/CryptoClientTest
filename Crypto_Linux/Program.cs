@@ -1233,6 +1233,11 @@ namespace Crypto_Linux
                         return false;
                     }
                 }
+
+                oManager.exchanges = qManager.exchanges;
+                oManager.exchanges_SoD = qManager.exchanges_SoD;
+                oManager.balances = qManager.balances;
+
                 qManager.ready = true;
 
                 updateLog();
@@ -1596,6 +1601,10 @@ namespace Crypto_Linux
                     if (qManager.exchanges.ContainsKey(ins.market))
                     {
                         exBalance = qManager.exchanges[ins.market];
+                        if(!exBalance.instruments.ContainsKey(ins.symbol_market))
+                        {
+                            exBalance.instruments[ins.symbol_market] = ins;
+                        }
                         if (exBalance.balance.ContainsKey(ins.baseCcy))
                         {
                             ins.baseBalance = exBalance.balance[ins.baseCcy];
@@ -1628,6 +1637,10 @@ namespace Crypto_Linux
                     if (qManager.exchanges_SoD.ContainsKey(ins.market))
                     {
                         exBalance = qManager.exchanges_SoD[ins.market];
+                        if (!exBalance.instruments.ContainsKey(ins.symbol_market))
+                        {
+                            exBalance.instruments[ins.symbol_market] = ins;
+                        }
                         if (exBalance.balance.ContainsKey(ins.baseCcy))
                         {
                             ins.SoD_baseBalance = exBalance.balance[ins.baseCcy];
@@ -1717,6 +1730,10 @@ namespace Crypto_Linux
                 foreach (var fill in histFill.Values)
                 {
                     string symbol_market = fill.symbol_market;
+                    if(qManager.exchanges.ContainsKey(fill.market))
+                    {
+                        qManager.exchanges[fill.market].updateBalance(fill);
+                    }
                     if (qManager.instruments.ContainsKey(symbol_market))
                     {
                         Instrument ins = qManager.instruments[symbol_market];
@@ -1858,6 +1875,10 @@ namespace Crypto_Linux
                 foreach (var fill in histFill.Values)
                 {
                     string symbol_market = fill.symbol_market;
+                    if (qManager.exchanges.ContainsKey(fill.market))
+                    {
+                        qManager.exchanges[fill.market].updateBalance(fill);
+                    }
                     if (qManager.instruments.ContainsKey(symbol_market))
                     {
                         Instrument ins = qManager.instruments[symbol_market];

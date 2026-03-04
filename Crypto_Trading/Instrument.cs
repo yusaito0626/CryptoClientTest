@@ -140,6 +140,8 @@ namespace Crypto_Trading
         public BalanceMargin SoD_shortPosition;
 
         public bool marginTrade;
+        public bool marginShort;
+        public bool marginLong;
 
         public decimal net_pos
         {
@@ -1032,113 +1034,113 @@ namespace Crypto_Trading
             }
             return ret;
         }
-        public void updateFills(DataSpotOrderUpdate prev_ord,DataSpotOrderUpdate new_ord)
-        {
-            decimal filledQuantity = 0;
-            decimal filledPrice = 0;
-            decimal fee = 0;
+        //public void updateFills(DataSpotOrderUpdate prev_ord,DataSpotOrderUpdate new_ord)
+        //{
+        //    decimal filledQuantity = 0;
+        //    decimal filledPrice = 0;
+        //    decimal fee = 0;
 
-            filledQuantity = new_ord.filled_quantity - prev_ord.filled_quantity;
+        //    filledQuantity = new_ord.filled_quantity - prev_ord.filled_quantity;
 
-            if (!new_ord.isVirtual)
-            {
-                if(new_ord.market == market.bitbank)
-                {
-                    filledQuantity = 0;
-                    fee = 0;
-                    filledPrice = 0;
-                }
-                else if(new_ord.market == market.bittrade)
-                {
-                    if (new_ord.current_traded_quantity > 0)
-                    {
-                        filledQuantity = new_ord.current_traded_quantity;
-                        filledPrice = new_ord.current_traded_price;
-                        fee = 0;
-                    }
-                    else if(new_ord.fee > 0)//Fee can be retrived from only trade.clearing object 
-                    {
-                        fee = new_ord.fee;
-                        filledPrice = 0;
-                        filledQuantity = 0;
-                    }
-                    else
-                    {
-                        filledQuantity = 0;
-                        fee = 0;
-                        filledPrice = 0;
+        //    if (!new_ord.isVirtual)
+        //    {
+        //        if(new_ord.market == market.bitbank)
+        //        {
+        //            filledQuantity = 0;
+        //            fee = 0;
+        //            filledPrice = 0;
+        //        }
+        //        else if(new_ord.market == market.bittrade)
+        //        {
+        //            if (new_ord.current_traded_quantity > 0)
+        //            {
+        //                filledQuantity = new_ord.current_traded_quantity;
+        //                filledPrice = new_ord.current_traded_price;
+        //                fee = 0;
+        //            }
+        //            else if(new_ord.fee > 0)//Fee can be retrived from only trade.clearing object 
+        //            {
+        //                fee = new_ord.fee;
+        //                filledPrice = 0;
+        //                filledQuantity = 0;
+        //            }
+        //            else
+        //            {
+        //                filledQuantity = 0;
+        //                fee = 0;
+        //                filledPrice = 0;
 
-                    }
-                }
-                else if (new_ord.market == market.coincheck)
-                {
-                    filledQuantity = 0;
-                    fee = 0;
-                    filledPrice = 0;
-                }
-                else
-                {
-                    if(new_ord == prev_ord)
-                    {
-                        filledQuantity = new_ord.filled_quantity;
-                        filledPrice = new_ord.average_price;
-                        fee = new_ord.fee;
-                    }
-                    else
-                    {
-                        filledPrice = (new_ord.filled_quantity * new_ord.average_price - prev_ord.filled_quantity * prev_ord.average_price) / filledQuantity;
-                        fee = new_ord.fee - prev_ord.fee;
-                    }
-                }
-            }
-            else
-            {
-                filledQuantity = 0;
-                fee = 0;
-                filledPrice = 0;
-                //if (new_ord == prev_ord)
-                //{
-                //    filledQuantity = new_ord.filled_quantity;
-                //    filledPrice = new_ord.average_price;
-                //    fee = new_ord.fee;
-                //}
-                //else
-                //{
-                //    filledPrice = (new_ord.filled_quantity * new_ord.average_price - prev_ord.filled_quantity * prev_ord.average_price) / filledQuantity;
-                //    fee = new_ord.fee - prev_ord.fee;
-                //}
-            }
+        //            }
+        //        }
+        //        else if (new_ord.market == market.coincheck)
+        //        {
+        //            filledQuantity = 0;
+        //            fee = 0;
+        //            filledPrice = 0;
+        //        }
+        //        else
+        //        {
+        //            if(new_ord == prev_ord)
+        //            {
+        //                filledQuantity = new_ord.filled_quantity;
+        //                filledPrice = new_ord.average_price;
+        //                fee = new_ord.fee;
+        //            }
+        //            else
+        //            {
+        //                filledPrice = (new_ord.filled_quantity * new_ord.average_price - prev_ord.filled_quantity * prev_ord.average_price) / filledQuantity;
+        //                fee = new_ord.fee - prev_ord.fee;
+        //            }
+        //        }
+        //    }
+        //    else
+        //    {
+        //        filledQuantity = 0;
+        //        fee = 0;
+        //        filledPrice = 0;
+        //        //if (new_ord == prev_ord)
+        //        //{
+        //        //    filledQuantity = new_ord.filled_quantity;
+        //        //    filledPrice = new_ord.average_price;
+        //        //    fee = new_ord.fee;
+        //        //}
+        //        //else
+        //        //{
+        //        //    filledPrice = (new_ord.filled_quantity * new_ord.average_price - prev_ord.filled_quantity * prev_ord.average_price) / filledQuantity;
+        //        //    fee = new_ord.fee - prev_ord.fee;
+        //        //}
+        //    }
 
 
-            if (new_ord.side == orderSide.Sell)
-            {
-                this.my_sell_quantity += filledQuantity;
-                this.my_sell_notional += filledQuantity * filledPrice;
-                filledQuantity *= -1;
-            }
-            else
-            {
-                this.my_buy_quantity += filledQuantity;
-                this.my_buy_notional += filledQuantity * filledPrice;
-            }
-            this.baseBalance.AddBalance(filledQuantity,0);
-            this.quoteBalance.AddBalance(-filledQuantity * filledPrice,0);
+        //    if (new_ord.side == orderSide.Sell)
+        //    {
+        //        this.my_sell_quantity += filledQuantity;
+        //        this.my_sell_notional += filledQuantity * filledPrice;
+        //        filledQuantity *= -1;
+        //    }
+        //    else
+        //    {
+        //        this.my_buy_quantity += filledQuantity;
+        //        this.my_buy_notional += filledQuantity * filledPrice;
+        //    }
+        //    this.baseBalance.AddBalance(filledQuantity,0);
+        //    this.quoteBalance.AddBalance(-filledQuantity * filledPrice,0);
 
-            if(new_ord.fee_asset.ToUpper() == this.baseCcy)
-            {
-                this.baseBalance.AddBalance(- fee, 0);
-                this.base_fee += fee;
-            }
-            else if(new_ord.fee_asset.ToUpper() == this.quoteCcy)
-            {
-                this.quoteBalance.AddBalance(- fee, 0);
-                this.quote_fee += fee;
-            }
-            else
-            {
-                this.unknown_fee += fee;
-            }
-        }
+        //    if(new_ord.fee_asset.ToUpper() == this.baseCcy)
+        //    {
+        //        this.baseBalance.AddBalance(- fee, 0);
+        //        this.base_fee += fee;
+        //    }
+        //    else if(new_ord.fee_asset.ToUpper() == this.quoteCcy)
+        //    {
+        //        this.quoteBalance.AddBalance(- fee, 0);
+        //        this.quote_fee += fee;
+        //    }
+        //    else
+        //    {
+        //        this.unknown_fee += fee;
+        //    }
+        //}
 
         public void updateOrders(DataSpotOrderUpdate ord)
         {
@@ -1176,8 +1178,8 @@ namespace Crypto_Trading
             {
                 if (fill.side == orderSide.Buy)
                 {
-                    this.longPosition.unrealized_fee += filled_fee;
-                    this.longPosition.AddBalance(fill.quantity, 0, fill.price);
+                    //this.longPosition.unrealized_fee += filled_fee;
+                    //this.longPosition.AddBalance(fill.quantity, 0, fill.price);
                 }
                 else if (fill.side == orderSide.Sell)
                 {
@@ -1185,20 +1187,20 @@ namespace Crypto_Trading
                     //decimal realized_fee = fill.fee_quote;
                     //decimal realized_interest = fill.interest;//this.longPosition.unrealized_interest * (fill.quantity / this.longPosition.total);
                     //fill.msg += $" Realize PnL: {fill.profit_loss.ToString("N8")} avg_price: {this.longPosition.avg_price.ToString()}";
-                    this.longPosition.unrealized_fee -= fill.fee_quote - filled_fee;
-                    this.longPosition.unrealized_interest -= fill.interest;
+                    //this.longPosition.unrealized_fee -= fill.fee_quote - filled_fee;
+                    //this.longPosition.unrealized_interest -= fill.interest;
                     this.realized_PnL += fill.profit_loss;
                     this.realized_Interest += fill.interest;
-                    this.quoteBalance.total += fill.profit_loss - fill.fee_quote - fill.interest;
-                    this.longPosition.AddBalance(-fill.quantity, 0, fill.price);
+                    //this.quoteBalance.total += fill.profit_loss - fill.fee_quote - fill.interest;
+                    //this.longPosition.AddBalance(-fill.quantity, 0, fill.price);
                 }
             }
             else if(fill.position_side == positionSide.Short)//Margin Short
             {
                 if(fill.side == orderSide.Sell)
                 {
-                    this.shortPosition.unrealized_fee += filled_fee;
-                    this.shortPosition.AddBalance(fill.quantity, 0, fill.price);
+                    //this.shortPosition.unrealized_fee += filled_fee;
+                    //this.shortPosition.AddBalance(fill.quantity, 0, fill.price);
                 }
                 else if(fill.side == orderSide.Buy)
                 {
@@ -1206,27 +1208,27 @@ namespace Crypto_Trading
                     //decimal realized_fee = fill.fee_quote;
                     //decimal realized_interest = fill.interest;//this.shortPosition.unrealized_interest * (fill.quantity / this.shortPosition.total);
                     //fill.msg += $" Realize PnL: {fill.profit_loss.ToString("N8")} avg_price: {this.shortPosition.avg_price.ToString()}";
-                    this.shortPosition.unrealized_fee -= fill.fee_quote - filled_fee;
-                    this.shortPosition.unrealized_interest -= fill.interest;
+                    //this.shortPosition.unrealized_fee -= fill.fee_quote - filled_fee;
+                    //this.shortPosition.unrealized_interest -= fill.interest;
                     this.realized_PnL += fill.profit_loss;
                     this.realized_Interest += fill.interest;
-                    this.quoteBalance.total += fill.profit_loss - fill.fee_quote - fill.interest;
-                    this.shortPosition.AddBalance(-fill.quantity, 0, fill.price);
+                    //this.quoteBalance.total += fill.profit_loss - fill.fee_quote - fill.interest;
+                    //this.shortPosition.AddBalance(-fill.quantity, 0, fill.price);
                 }
             }
             else//Spot Order
             {
-                if (fill.side == orderSide.Buy)
-                {
-                    this.baseBalance.AddBalance(fill.quantity, 0);
-                    this.quoteBalance.AddBalance(-fill.quantity * fill.price, 0);
-                }
-                else if (fill.side == orderSide.Sell)
-                {
-                    this.baseBalance.AddBalance(-fill.quantity, 0);
-                    this.quoteBalance.AddBalance(fill.quantity * fill.price, 0);
-                }
-                this.quoteBalance.AddBalance(-fill.fee_quote, 0);
+                //if (fill.side == orderSide.Buy)
+                //{
+                //    this.baseBalance.AddBalance(fill.quantity, 0);
+                //    this.quoteBalance.AddBalance(-fill.quantity * fill.price, 0);
+                //}
+                //else if (fill.side == orderSide.Sell)
+                //{
+                //    this.baseBalance.AddBalance(-fill.quantity, 0);
+                //    this.quoteBalance.AddBalance(fill.quantity * fill.price, 0);
+                //}
+                //this.quoteBalance.AddBalance(-fill.fee_quote, 0);
             }
             if (fill.side == orderSide.Buy)
             {
