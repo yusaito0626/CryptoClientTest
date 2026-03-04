@@ -54,6 +54,16 @@ namespace Crypto_Trading
             this.marginNotionalAmount = 0;
         }
 
+        public void setInstruments(Dictionary<string,Instrument> ins_dict)
+        {
+            foreach(var ins in ins_dict.Values)
+            {
+                if(ins.market == this.market)
+                {
+                    this.instruments[ins.symbol_market] = ins;
+                }
+            }
+        }
         public bool updateBalance(DataFill fill)
         {
             bool res = true;
@@ -72,6 +82,7 @@ namespace Crypto_Trading
             }
             else
             {
+                Console.WriteLine("Instrument not found");
                 return false;
             }
 
@@ -96,6 +107,7 @@ namespace Crypto_Trading
                     }
                     else
                     {
+                        Console.WriteLine("baseBalance not found");
                         return false;
                     }
                     if (this.balance.ContainsKey(ins.quoteCcy))
@@ -104,6 +116,7 @@ namespace Crypto_Trading
                     }
                     else
                     {
+                        Console.WriteLine("quoteBalance not found");
                         return false;
                     }
 
@@ -175,17 +188,18 @@ namespace Crypto_Trading
                     }
                     break;
                 case positionSide.Long:
-                    if(this.marginLong.ContainsKey(fill.symbol_market))
+                    if(this.marginLong.ContainsKey(fill.symbol))
                     {
+                        longPosition = this.marginLong[fill.symbol];
                         if (this.balance.ContainsKey(ins.quoteCcy))
                         {
                             quoteBalance = this.balance[ins.quoteCcy];
                         }
                         else
                         {
+                            Console.WriteLine("quoteBalance not found");
                             return false;
                         }
-                        longPosition = this.marginLong[fill.symbol_market];
                         if (fill.side == orderSide.Buy)
                         {
                             longPosition.unrealized_fee += filled_fee;
@@ -205,13 +219,14 @@ namespace Crypto_Trading
                     }
                     else
                     {
+                        Console.WriteLine("longPosition not found");
                         return false; 
                     }
                     break;
                 case positionSide.Short:
-                    if(this.marginShort.ContainsKey(fill.symbol_market))
+                    if(this.marginShort.ContainsKey(fill.symbol))
                     {
-                        shortPosition = this.marginShort[fill.symbol_market];
+                        shortPosition = this.marginShort[fill.symbol];
                         if (this.balance.ContainsKey(ins.quoteCcy))
                         {
                             quoteBalance = this.balance[ins.quoteCcy];
@@ -239,6 +254,7 @@ namespace Crypto_Trading
                     }
                     else
                     {
+                        Console.WriteLine("shortPosition not found");
                         return false; 
                     }
                         break;

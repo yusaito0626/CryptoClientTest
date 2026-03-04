@@ -1330,9 +1330,25 @@ namespace Crypto_Clients
             var json = JsonDocument.Parse(resString);
             return json;
         }
-        public async Task<JsonDocument> getTicker(string symbol)
+        public async Task<JsonDocument> getTicker(string symbol = "")
         {
-            var resString = await this.privateGetAsync("/api/ticker?pair=" + symbol);
+            string req_endpoint = "/v1/ticker";
+            if(symbol != "")
+            {
+                req_endpoint += "?symbol=" + symbol;
+            }
+            var resString = await this.publicGetAsync(req_endpoint);
+            var json = JsonDocument.Parse(resString);
+            return json;
+        }
+        public async Task<JsonDocument> getOrderBooks(string symbol)
+        {
+            string req_endpoint = "/v1/orderbooks";
+            if (symbol != "")
+            {
+                req_endpoint += "?symbol=" + symbol;
+            }
+            var resString = await this.publicGetAsync(req_endpoint);
             var json = JsonDocument.Parse(resString);
             return json;
         }
@@ -1543,6 +1559,7 @@ namespace Crypto_Clients
             var json = JsonDocument.Parse(resString);
             return json;
         }
+        
         
         public async Task<JsonDocument> placeNewOrder(string symbol, string side, decimal price = 0, decimal quantity = 0, string tif = "FOK")//If postonly set tif as "SOK"
         {

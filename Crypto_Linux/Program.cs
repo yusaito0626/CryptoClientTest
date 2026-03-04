@@ -18,6 +18,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Net;
 using System.Net.WebSockets;
 using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
@@ -578,80 +579,9 @@ namespace Crypto_Linux
 
         static private async Task testFunc()
         {
-            Console.WriteLine("Queue test");
+            Console.WriteLine("test GMO coin getTicker");
 
-            MIMOQueue<UInt64> testQueue = new MIMOQueue<UInt64>();
-
-            Task task1 = Task.Run(async () =>
-            {
-                UInt64 i = 0;
-                while (true)
-                {
-                    ++i;
-                    testQueue.Enqueue(i);
-                    Thread.Sleep(0);
-                    if(i > 18446744073709551000)
-                    {
-                        break;
-                    }
-                }
-            });
-            Task task3 = Task.Run(async () =>
-            {
-                UInt64 i = 0;
-                while (true)
-                {
-                    ++i;
-                    testQueue.Enqueue(i);
-                    Thread.Sleep(0);
-                    if (i > 18446744073709551000)
-                    {
-                        break;
-                    }
-                }
-            });
-            Task task2 = Task.Run(async () =>
-            {
-                UInt64 j = 0;
-                UInt64 p = 0;
-                while(true)
-                {
-                    if(testQueue.Count > 0)
-                    {
-                        p = testQueue.Peek();
-                        j = testQueue.Dequeue();
-                        if(p != j)
-                        {
-                            Console.WriteLine($"Peek:{p} Dequeue:{j}");
-                            List<int> ids = testQueue.checkQueueSequence();
-                            foreach(int i in ids)
-                            {
-                                Console.WriteLine(i);
-                            }
-                            break;
-                        }
-                        if(p == 18446744073709551000 || j == 18446744073709551000)
-                        {
-                            break;
-                        }
-                        if(j % 1_000_000 == 0)
-                        {
-                            Console.WriteLine(j);
-                            List<int> ids = testQueue.checkQueueSequence();
-                            string line = "";
-                            foreach (int i in ids)
-                            {
-                                line += i.ToString() + " ";
-                            }
-                            Console.WriteLine(line);
-                        }
-                    }
-                }
-            } );
-
-            task1.Wait();
-            task2.Wait();
-            task3.Wait();
+            await crypto_client.getCurrentMid(market.gmocoin, "");
 
             await EoDProcess();
             isRunning = false;
@@ -1205,6 +1135,7 @@ namespace Crypto_Linux
                         }
                         foreach (var ins in qManager.instruments.Values)
                         {
+
                             decimal mid = await crypto_client.getCurrentMid(ins.market, ins.symbol);
                             ins.SoD_baseBalance.total = ins.baseBalance.total;
                             ins.SoD_baseBalance.ccy = ins.baseBalance.ccy;
@@ -1232,6 +1163,15 @@ namespace Crypto_Linux
                         addLog("Failed to set real position", logType.WARNING);
                         return false;
                     }
+                }
+
+                foreach(var ex in qManager.exchanges.Values)
+                {
+                    ex.setInstruments(qManager.instruments);
+                }
+                foreach (var ex in qManager.exchanges_SoD.Values)
+                {
+                    ex.setInstruments(qManager.instruments);
                 }
 
                 oManager.exchanges = qManager.exchanges;
@@ -1601,10 +1541,6 @@ namespace Crypto_Linux
                     if (qManager.exchanges.ContainsKey(ins.market))
                     {
                         exBalance = qManager.exchanges[ins.market];
-                        if(!exBalance.instruments.ContainsKey(ins.symbol_market))
-                        {
-                            exBalance.instruments[ins.symbol_market] = ins;
-                        }
                         if (exBalance.balance.ContainsKey(ins.baseCcy))
                         {
                             ins.baseBalance = exBalance.balance[ins.baseCcy];
@@ -1637,10 +1573,6 @@ namespace Crypto_Linux
                     if (qManager.exchanges_SoD.ContainsKey(ins.market))
                     {
                         exBalance = qManager.exchanges_SoD[ins.market];
-                        if (!exBalance.instruments.ContainsKey(ins.symbol_market))
-                        {
-                            exBalance.instruments[ins.symbol_market] = ins;
-                        }
                         if (exBalance.balance.ContainsKey(ins.baseCcy))
                         {
                             ins.SoD_baseBalance = exBalance.balance[ins.baseCcy];
@@ -1732,7 +1664,8 @@ namespace Crypto_Linux
                     string symbol_market = fill.symbol_market;
                     if(qManager.exchanges.ContainsKey(fill.market))
                     {
-                        qManager.exchanges[fill.market].updateBalance(fill);
+                        Crypto_Trading.Exchange ex = qManager.exchanges[fill.market];
+                        ex.updateBalance(fill);
                     }
                     if (qManager.instruments.ContainsKey(symbol_market))
                     {
@@ -1877,7 +1810,8 @@ namespace Crypto_Linux
                     string symbol_market = fill.symbol_market;
                     if (qManager.exchanges.ContainsKey(fill.market))
                     {
-                        qManager.exchanges[fill.market].updateBalance(fill);
+                        Crypto_Trading.Exchange ex = qManager.exchanges[fill.market];
+                        ex.updateBalance(fill);
                     }
                     if (qManager.instruments.ContainsKey(symbol_market))
                     {

@@ -1142,6 +1142,53 @@ namespace Crypto_Clients
                         }
                     }
                     break;
+                case market.gmocoin:
+                    js = await this.gmocoin_client.getOrderBooks(symbol);
+                    if(js.RootElement.GetProperty("status").GetInt32() == 0)
+                    {
+                        JsonElement data;
+                        if(js.RootElement.TryGetProperty("data",out data))
+                        {
+                            JsonElement bids;
+                            JsonElement asks;
+                            decimal best_bid = -1;
+                            decimal best_ask = -1;
+
+                            if (data.TryGetProperty("bids",out bids))
+                            {
+                                foreach (var b in bids.EnumerateArray())
+                                {
+                                    best_bid = Decimal.Parse(b.GetProperty("price").GetString());
+                                    break;
+                                }
+                            }
+                            if (data.TryGetProperty("asks", out asks))
+                            {
+                                foreach (var a in asks.EnumerateArray())
+                                {
+                                    best_ask = Decimal.Parse(a.GetProperty("price").GetString());
+                                    break;
+                                }
+                            }
+                            if(best_bid > 0 && best_ask > 0)
+                            {
+                                mid = (best_ask + best_bid) / 2;
+                            }
+                            else if(best_ask > 0)
+                            {
+                                mid = best_ask;
+                            }
+                            else if(best_bid > 0)
+                            {
+                                mid = best_bid;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        addLog("Failed to get the ticker from gmocoin.", logType.WARNING);
+                    }
+                    break;
             }
             return mid;
         }

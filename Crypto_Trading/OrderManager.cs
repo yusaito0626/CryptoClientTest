@@ -2712,7 +2712,16 @@ namespace Crypto_Trading
             }
             if (this.exchanges.ContainsKey(fill.market))
             {
-                this.exchanges[fill.market].updateBalance(fill);
+                Exchange ex = this.exchanges[fill.market];
+                ex.updateBalance(fill);
+            }
+            else
+            {
+                addLog($"{fill.market} not found");
+                foreach (var ex in this.exchanges)
+                {
+                    addLog($"{ex.Key}");
+                }
             }
             if (this.Instruments.ContainsKey(fill.symbol_market))
             {
