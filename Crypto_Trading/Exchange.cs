@@ -17,7 +17,7 @@ namespace Crypto_Trading
         public Dictionary<string, BalanceMargin> marginLong;
         public Dictionary<string, BalanceMargin> marginShort;
 
-        private myLock margin_lock;
+        private myLock margin_lock = new myLock();
         public decimal marginTotal;
         public decimal marginLocked;//using with existing orders
 
@@ -282,7 +282,7 @@ namespace Crypto_Trading
             decimal availability = 0;
             using (var mlock = this.margin_lock.getlock())
             {
-                availability = this.marginTotal - this.marginLocked;
+                availability = this.marginTotal;
                 foreach(var b in this.marginLong.Values)
                 {
                     availability -= b.total * b.current_price / b.leverage;

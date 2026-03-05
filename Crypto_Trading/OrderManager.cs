@@ -524,10 +524,19 @@ namespace Crypto_Trading
             JsonDocument js;
             decimal quantity;
             DateTime current = DateTime.UtcNow;
+            Exchange ex;
+            if (this.exchanges.ContainsKey(sndOrd.ins.market))
+            { 
+                ex = this.exchanges[sndOrd.ins.market];
+            }
+            else
+            {
+                return null;
+            }
             //Order Check
 
             //Validity check
-            if(sndOrd.ins == null)
+            if (sndOrd.ins == null)
             {
                 addLog("[New Order]Instrument is not specified.", logType.WARNING);
                 output = this.ord_client.ordUpdateStack.pop();
@@ -797,12 +806,20 @@ namespace Crypto_Trading
                         {
                             sndOrd.ins.longPosition.AddBalance(0, output.order_quantity);
                         }
+                        else
+                        {
+                            ex.updateMarginLocked(output.order_quantity * output.order_price);
+                        }
                     }
                     else if (output.position_side == positionSide.Short)
                     {
                         if (output.side == orderSide.Buy)
                         {
                             sndOrd.ins.shortPosition.AddBalance(0, output.order_quantity);
+                        }
+                        else
+                        {
+                            ex.updateMarginLocked(output.order_quantity * output.order_price);
                         }
                     }
                     else
@@ -888,12 +905,20 @@ namespace Crypto_Trading
                         {
                             sndOrd.ins.longPosition.AddBalance(0, output.order_quantity);
                         }
+                        else
+                        {
+                            ex.updateMarginLocked(output.order_quantity * output.order_price);
+                        }
                     }
                     else if (output.position_side == positionSide.Short)
                     {
                         if (output.side == orderSide.Buy)
                         {
                             sndOrd.ins.shortPosition.AddBalance(0, output.order_quantity);
+                        }
+                        else
+                        {
+                            ex.updateMarginLocked(output.order_quantity * output.order_price);
                         }
                     }
                     else
@@ -1081,12 +1106,20 @@ namespace Crypto_Trading
                         {
                             sndOrd.ins.longPosition.AddBalance(0, output.order_quantity);
                         }
+                        else
+                        {
+                            ex.updateMarginLocked(output.order_quantity * output.order_price);
+                        }
                     }
                     else if (output.position_side == positionSide.Short)
                     {
                         if (output.side == orderSide.Buy)
                         {
                             sndOrd.ins.shortPosition.AddBalance(0, output.order_quantity);
+                        }
+                        else
+                        {
+                            ex.updateMarginLocked(output.order_quantity * output.order_price);
                         }
                     }
                     else
@@ -2963,8 +2996,13 @@ namespace Crypto_Trading
         {
             DataSpotOrderUpdate prevord = null;
             Instrument ins = null;
+            Exchange ex = null;
+            if (this.exchanges.ContainsKey(ord.market))
+            {
+                ex = this.exchanges[ord.market];
+            }
 
-            if(this.Instruments.ContainsKey(ord.symbol_market))
+            if (this.Instruments.ContainsKey(ord.symbol_market))
             {
                 ins = this.Instruments[ord.symbol_market];
             }
@@ -3049,12 +3087,20 @@ namespace Crypto_Trading
                             {
                                 ins.longPosition.AddBalance(0, -filled_quantity);
                             }
+                            else if(ex != null)
+                            {
+                                ex.updateMarginLocked(-filled_quantity * ord.order_price);
+                            }
                         }
                         else if(ord.position_side == positionSide.Short)
                         {
                             if (ord.side == orderSide.Buy)
                             {
                                 ins.shortPosition.AddBalance(0, -filled_quantity);
+                            }
+                            else if (ex != null)
+                            {
+                                ex.updateMarginLocked(-filled_quantity * ord.order_price);
                             }
                         }
                         else
@@ -3155,8 +3201,13 @@ namespace Crypto_Trading
         {
             DataSpotOrderUpdate prevord = null;
             Instrument ins = null;
-            modifingOrd mod = null;
-            if(this.Instruments.ContainsKey(ord.symbol_market))
+            modifingOrd mod = null; 
+            Exchange ex = null;
+            if (this.exchanges.ContainsKey(ord.market))
+            {
+                ex = this.exchanges[ord.market];
+            }
+            if (this.Instruments.ContainsKey(ord.symbol_market))
             {
                 ins = this.Instruments[ord.symbol_market];
             }
@@ -3243,12 +3294,20 @@ namespace Crypto_Trading
                             {
                                 ins.longPosition.AddBalance(0, -filled_quantity);
                             }
+                            else if (ex != null)
+                            {
+                                ex.updateMarginLocked(-filled_quantity * ord.order_price);
+                            }
                         }
                         else if (ord.position_side == positionSide.Short)
                         {
                             if (ord.side == orderSide.Buy)
                             {
                                 ins.shortPosition.AddBalance(0, -filled_quantity);
+                            }
+                            else if (ex != null)
+                            {
+                                ex.updateMarginLocked(-filled_quantity * ord.order_price);
                             }
                         }
                         else
@@ -3344,12 +3403,20 @@ namespace Crypto_Trading
                                 {
                                     ins.longPosition.AddBalance(0, -filled_quantity);
                                 }
+                                else if (ex != null)
+                                {
+                                    ex.updateMarginLocked(-filled_quantity * ord.order_price);
+                                }
                             }
                             else if (ord.position_side == positionSide.Short)
                             {
                                 if (ord.side == orderSide.Buy)
                                 {
                                     ins.shortPosition.AddBalance(0, -filled_quantity);
+                                }
+                                else if (ex != null)
+                                {
+                                    ex.updateMarginLocked(-filled_quantity * ord.order_price);
                                 }
                             }
                             else
@@ -3390,8 +3457,13 @@ namespace Crypto_Trading
         {
             DataSpotOrderUpdate prevord = null;
             Instrument ins = null;
+            Exchange ex = null;
+            if (this.exchanges.ContainsKey(ord.market))
+            {
+                ex = this.exchanges[ord.market];
+            }
 
-            if(this.Instruments.ContainsKey(ord.symbol_market))
+            if (this.Instruments.ContainsKey(ord.symbol_market))
             {
                 ins = this.Instruments[ord.symbol_market];
             }
@@ -3486,12 +3558,20 @@ namespace Crypto_Trading
                             {
                                 ins.longPosition.AddBalance(0, -filled_quantity);
                             }
+                            else if (ex != null)
+                            {
+                                ex.updateMarginLocked(-filled_quantity * ord.order_price);
+                            }
                         }
                         else if (ord.position_side == positionSide.Short)
                         {
                             if (ord.side == orderSide.Buy)
                             {
                                 ins.shortPosition.AddBalance(0, -filled_quantity);
+                            }
+                            else if (ex != null)
+                            {
+                                ex.updateMarginLocked(-filled_quantity * ord.order_price);
                             }
                         }
                         else
@@ -3554,12 +3634,20 @@ namespace Crypto_Trading
                                 {
                                     ins.longPosition.AddBalance(0, -filled_quantity);
                                 }
+                                else if (ex != null)
+                                {
+                                    ex.updateMarginLocked(-filled_quantity * ord.order_price);
+                                }
                             }
                             else if (ord.position_side == positionSide.Short)
                             {
                                 if (ord.side == orderSide.Buy)
                                 {
                                     ins.shortPosition.AddBalance(0, -filled_quantity);
+                                }
+                                else if (ex != null)
+                                {
+                                    ex.updateMarginLocked(-filled_quantity * ord.order_price);
                                 }
                             }
                             else

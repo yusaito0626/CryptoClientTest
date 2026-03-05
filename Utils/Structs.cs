@@ -2338,6 +2338,9 @@ namespace Utils
         public decimal short_total { get; set; }
         public decimal short_inuse { get; set; }
         public decimal short_avg_price { get; set; }
+        public decimal marginAvailable { get; set; }//Total assets - margin position + unrealized PnL
+        public decimal marginInuse { get; set; }//The amount locked as existing orders
+        public decimal leverage { get; set; }
 
         //Execution
         public decimal my_quantity_buy { get; set; }

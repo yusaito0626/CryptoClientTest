@@ -461,12 +461,14 @@ namespace Crypto_Trading
                     if(item.side == positionSide.Long)
                     {
                         ins.longPosition.setPosition(item);
+                        ins.longPosition.leverage = ins.leverage;
                         exBalance.marginLong[item.symbol] = ins.longPosition;
                         exBalance.marginNotionalAmount += ins.longPosition.avg_price * ins.longPosition.total;
                     }
                     else if(item.side == positionSide.Short)
                     {
                         ins.shortPosition.setPosition(item);
+                        ins.shortPosition.leverage = ins.leverage;
                         exBalance.marginShort[item.symbol] = ins.shortPosition;
                         exBalance.marginNotionalAmount += ins.shortPosition.avg_price * ins.shortPosition.total;
                     }

@@ -1170,6 +1170,9 @@ namespace Crypto_GUI
                                                 ins.shortPosition.total = i.Value.short_total;
                                                 ins.shortPosition.inuse = i.Value.short_inuse;
                                                 ins.shortPosition.avg_price = i.Value.short_avg_price;
+                                                ins.marginAvailable = i.Value.marginAvailable;
+                                                ins.marginInuse = i.Value.marginInuse;
+                                                ins.leverage = i.Value.leverage;
                                                 ins.my_buy_quantity = i.Value.my_quantity_buy;
                                                 ins.my_buy_notional = i.Value.my_notional_buy;
                                                 ins.my_sell_quantity = i.Value.my_quantity_sell;
@@ -1211,6 +1214,9 @@ namespace Crypto_GUI
                                                 ins.shortPosition = new BalanceMargin();
                                                 ins.shortPosition.total = i.Value.short_total;
                                                 ins.shortPosition.inuse = i.Value.short_inuse;
+                                                ins.marginAvailable = i.Value.marginAvailable;
+                                                ins.marginInuse = i.Value.marginInuse;
+                                                ins.leverage = i.Value.leverage;
                                                 ins.my_buy_quantity = i.Value.my_quantity_buy;
                                                 ins.my_buy_notional = i.Value.my_notional_buy;
                                                 ins.my_sell_quantity = i.Value.my_quantity_sell;
@@ -1684,12 +1690,15 @@ namespace Crypto_GUI
                 this.lbl_baseCcyName.Text = this.selected_ins.baseCcy;
                 this.lbl_quoteCcyName.Text = this.selected_ins.quoteCcy;
                 this.lbl_market.Text = this.selected_ins.market.ToString();
+                this.lbl_leverage.Text = this.selected_ins.leverage.ToString("N2") + "x";
                 this.lbl_lastprice.Text = this.selected_ins.last_price.ToString("N" + this.selected_ins.price_scale);
                 this.lbl_notional.Text = (this.selected_ins.buy_notional + this.selected_ins.sell_notional).ToString("N2");
                 this.lbl_baseCcyTotal.Text = this.selected_ins.baseBalance.total.ToString("N" + this.selected_ins.quantity_scale);
                 this.lbl_quoteCcyTotal.Text = this.selected_ins.quoteBalance.total.ToString("N2");
                 this.lbl_baseCcyInuse.Text = this.selected_ins.baseBalance.inuse.ToString("N" + this.selected_ins.quantity_scale);
                 this.lbl_quoteCcyInuse.Text = this.selected_ins.quoteBalance.inuse.ToString("N2");
+                this.lbl_marginTotal.Text = this.selected_ins.marginAvailable.ToString("N2");
+                this.lbl_marginInuse.Text = this.selected_ins.marginInuse.ToString("N2");
                 this.lbl_ShortTotal.Text = this.selected_ins.shortPosition.total.ToString("N" + this.selected_ins.quantity_scale);
                 this.lbl_ShortInuse.Text = this.selected_ins.shortPosition.inuse.ToString("N" + this.selected_ins.quantity_scale);
                 this.lbl_short_avg_pr.Text = this.selected_ins.shortPosition.avg_price.ToString("N" + this.selected_ins.price_scale);

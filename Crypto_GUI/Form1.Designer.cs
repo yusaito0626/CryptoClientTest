@@ -141,6 +141,9 @@
             lbl_RV = new Label();
             label42 = new Label();
             groupBox3 = new GroupBox();
+            lbl_marginInuse = new Label();
+            lbl_marginTotal = new Label();
+            label57 = new Label();
             lbl_long_avg_pr = new Label();
             lbl_short_avg_pr = new Label();
             label48 = new Label();
@@ -264,6 +267,8 @@
             toolStripStatusLabel1 = new ToolStripStatusLabel();
             lbl_currentTime = new ToolStripStatusLabel();
             timer_Monitoring = new System.Windows.Forms.Timer(components);
+            label59 = new Label();
+            lbl_leverage = new Label();
             tabControl.SuspendLayout();
             tabPage1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridView_PnL).BeginInit();
@@ -1059,6 +1064,8 @@
             // tabPage2
             // 
             tabPage2.BackColor = Color.WhiteSmoke;
+            tabPage2.Controls.Add(lbl_leverage);
+            tabPage2.Controls.Add(label59);
             tabPage2.Controls.Add(gridView_MI);
             tabPage2.Controls.Add(gridView_InsFills);
             tabPage2.Controls.Add(lbl_avgRV);
@@ -1240,6 +1247,9 @@
             // 
             // groupBox3
             // 
+            groupBox3.Controls.Add(lbl_marginInuse);
+            groupBox3.Controls.Add(lbl_marginTotal);
+            groupBox3.Controls.Add(label57);
             groupBox3.Controls.Add(lbl_long_avg_pr);
             groupBox3.Controls.Add(lbl_short_avg_pr);
             groupBox3.Controls.Add(label48);
@@ -1259,14 +1269,44 @@
             groupBox3.Controls.Add(lbl_baseCcyTotal);
             groupBox3.Location = new Point(23, 111);
             groupBox3.Name = "groupBox3";
-            groupBox3.Size = new Size(584, 177);
+            groupBox3.Size = new Size(584, 218);
             groupBox3.TabIndex = 15;
             groupBox3.TabStop = false;
             groupBox3.Text = "Balance";
             // 
+            // lbl_marginInuse
+            // 
+            lbl_marginInuse.Location = new Point(440, 120);
+            lbl_marginInuse.Margin = new Padding(2, 0, 2, 0);
+            lbl_marginInuse.Name = "lbl_marginInuse";
+            lbl_marginInuse.Size = new Size(94, 20);
+            lbl_marginInuse.TabIndex = 29;
+            lbl_marginInuse.Text = "value";
+            lbl_marginInuse.TextAlign = ContentAlignment.MiddleRight;
+            // 
+            // lbl_marginTotal
+            // 
+            lbl_marginTotal.Location = new Point(319, 120);
+            lbl_marginTotal.Margin = new Padding(2, 0, 2, 0);
+            lbl_marginTotal.Name = "lbl_marginTotal";
+            lbl_marginTotal.Size = new Size(94, 20);
+            lbl_marginTotal.TabIndex = 28;
+            lbl_marginTotal.Text = "value";
+            lbl_marginTotal.TextAlign = ContentAlignment.MiddleRight;
+            // 
+            // label57
+            // 
+            label57.AutoSize = true;
+            label57.Location = new Point(15, 120);
+            label57.Margin = new Padding(2, 0, 2, 0);
+            label57.Name = "label57";
+            label57.Size = new Size(137, 20);
+            label57.TabIndex = 27;
+            label57.Text = "Margin Availability:";
+            // 
             // lbl_long_avg_pr
             // 
-            lbl_long_avg_pr.Location = new Point(182, 138);
+            lbl_long_avg_pr.Location = new Point(182, 183);
             lbl_long_avg_pr.Margin = new Padding(2, 0, 2, 0);
             lbl_long_avg_pr.Name = "lbl_long_avg_pr";
             lbl_long_avg_pr.Size = new Size(94, 20);
@@ -1276,8 +1316,7 @@
             // 
             // lbl_short_avg_pr
             // 
-            lbl_short_avg_pr.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-            lbl_short_avg_pr.Location = new Point(182, 108);
+            lbl_short_avg_pr.Location = new Point(182, 153);
             lbl_short_avg_pr.Margin = new Padding(2, 0, 2, 0);
             lbl_short_avg_pr.Name = "lbl_short_avg_pr";
             lbl_short_avg_pr.Size = new Size(94, 20);
@@ -1297,7 +1336,7 @@
             // 
             // lbl_LongInuse
             // 
-            lbl_LongInuse.Location = new Point(439, 138);
+            lbl_LongInuse.Location = new Point(439, 183);
             lbl_LongInuse.Margin = new Padding(2, 0, 2, 0);
             lbl_LongInuse.Name = "lbl_LongInuse";
             lbl_LongInuse.Size = new Size(94, 20);
@@ -1308,7 +1347,7 @@
             // label58
             // 
             label58.AutoSize = true;
-            label58.Location = new Point(14, 138);
+            label58.Location = new Point(17, 183);
             label58.Margin = new Padding(2, 0, 2, 0);
             label58.Name = "label58";
             label58.Size = new Size(96, 20);
@@ -1317,7 +1356,7 @@
             // 
             // lbl_LongTotal
             // 
-            lbl_LongTotal.Location = new Point(319, 138);
+            lbl_LongTotal.Location = new Point(319, 183);
             lbl_LongTotal.Margin = new Padding(2, 0, 2, 0);
             lbl_LongTotal.Name = "lbl_LongTotal";
             lbl_LongTotal.Size = new Size(94, 20);
@@ -1327,7 +1366,7 @@
             // 
             // lbl_ShortInuse
             // 
-            lbl_ShortInuse.Location = new Point(439, 108);
+            lbl_ShortInuse.Location = new Point(439, 153);
             lbl_ShortInuse.Margin = new Padding(2, 0, 2, 0);
             lbl_ShortInuse.Name = "lbl_ShortInuse";
             lbl_ShortInuse.Size = new Size(94, 20);
@@ -1338,7 +1377,7 @@
             // label55
             // 
             label55.AutoSize = true;
-            label55.Location = new Point(14, 108);
+            label55.Location = new Point(15, 153);
             label55.Margin = new Padding(2, 0, 2, 0);
             label55.Name = "label55";
             label55.Size = new Size(98, 20);
@@ -1347,7 +1386,7 @@
             // 
             // lbl_ShortTotal
             // 
-            lbl_ShortTotal.Location = new Point(319, 108);
+            lbl_ShortTotal.Location = new Point(319, 153);
             lbl_ShortTotal.Margin = new Padding(2, 0, 2, 0);
             lbl_ShortTotal.Name = "lbl_ShortTotal";
             lbl_ShortTotal.Size = new Size(94, 20);
@@ -1455,18 +1494,18 @@
             groupBox2.Controls.Add(label30);
             groupBox2.Controls.Add(label29);
             groupBox2.Controls.Add(label27);
-            groupBox2.Location = new Point(23, 286);
+            groupBox2.Location = new Point(23, 335);
             groupBox2.Name = "groupBox2";
-            groupBox2.Size = new Size(584, 247);
+            groupBox2.Size = new Size(584, 198);
             groupBox2.TabIndex = 14;
             groupBox2.TabStop = false;
             groupBox2.Text = "Execution";
             // 
             // lbl_quoteFee
             // 
-            lbl_quoteFee.Anchor = AnchorStyles.None;
+            lbl_quoteFee.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             lbl_quoteFee.ImageAlign = ContentAlignment.MiddleRight;
-            lbl_quoteFee.Location = new Point(400, 207);
+            lbl_quoteFee.Location = new Point(400, 162);
             lbl_quoteFee.Margin = new Padding(2, 0, 2, 0);
             lbl_quoteFee.Name = "lbl_quoteFee";
             lbl_quoteFee.Size = new Size(84, 20);
@@ -1476,9 +1515,9 @@
             // 
             // lbl_baseFee
             // 
-            lbl_baseFee.Anchor = AnchorStyles.None;
+            lbl_baseFee.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             lbl_baseFee.ImageAlign = ContentAlignment.MiddleRight;
-            lbl_baseFee.Location = new Point(184, 207);
+            lbl_baseFee.Location = new Point(184, 162);
             lbl_baseFee.Margin = new Padding(2, 0, 2, 0);
             lbl_baseFee.Name = "lbl_baseFee";
             lbl_baseFee.Size = new Size(84, 20);
@@ -1488,8 +1527,9 @@
             // 
             // label31
             // 
+            label31.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             label31.AutoSize = true;
-            label31.Location = new Point(377, 170);
+            label31.Location = new Point(377, 129);
             label31.Margin = new Padding(2, 0, 2, 0);
             label31.Name = "label31";
             label31.Size = new Size(111, 20);
@@ -1498,8 +1538,9 @@
             // 
             // label6
             // 
+            label6.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             label6.AutoSize = true;
-            label6.Location = new Point(167, 170);
+            label6.Location = new Point(167, 129);
             label6.Margin = new Padding(2, 0, 2, 0);
             label6.Name = "label6";
             label6.Size = new Size(101, 20);
@@ -1508,8 +1549,9 @@
             // 
             // label5
             // 
+            label5.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             label5.AutoSize = true;
-            label5.Location = new Point(15, 207);
+            label5.Location = new Point(15, 166);
             label5.Margin = new Padding(2, 0, 2, 0);
             label5.Name = "label5";
             label5.Size = new Size(31, 20);
@@ -1518,9 +1560,9 @@
             // 
             // lbl_buyAvgPrice
             // 
-            lbl_buyAvgPrice.Anchor = AnchorStyles.None;
+            lbl_buyAvgPrice.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             lbl_buyAvgPrice.ImageAlign = ContentAlignment.MiddleRight;
-            lbl_buyAvgPrice.Location = new Point(456, 116);
+            lbl_buyAvgPrice.Location = new Point(456, 90);
             lbl_buyAvgPrice.Margin = new Padding(2, 0, 2, 0);
             lbl_buyAvgPrice.Name = "lbl_buyAvgPrice";
             lbl_buyAvgPrice.Size = new Size(84, 20);
@@ -1530,9 +1572,9 @@
             // 
             // lbl_sellAvgPrice
             // 
-            lbl_sellAvgPrice.Anchor = AnchorStyles.None;
+            lbl_sellAvgPrice.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             lbl_sellAvgPrice.ImageAlign = ContentAlignment.MiddleRight;
-            lbl_sellAvgPrice.Location = new Point(456, 76);
+            lbl_sellAvgPrice.Location = new Point(456, 56);
             lbl_sellAvgPrice.Margin = new Padding(2, 0, 2, 0);
             lbl_sellAvgPrice.Name = "lbl_sellAvgPrice";
             lbl_sellAvgPrice.Size = new Size(84, 20);
@@ -1542,9 +1584,9 @@
             // 
             // lbl_buyNotional
             // 
-            lbl_buyNotional.Anchor = AnchorStyles.None;
+            lbl_buyNotional.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             lbl_buyNotional.ImageAlign = ContentAlignment.MiddleRight;
-            lbl_buyNotional.Location = new Point(283, 116);
+            lbl_buyNotional.Location = new Point(283, 90);
             lbl_buyNotional.Margin = new Padding(2, 0, 2, 0);
             lbl_buyNotional.Name = "lbl_buyNotional";
             lbl_buyNotional.Size = new Size(84, 20);
@@ -1554,9 +1596,9 @@
             // 
             // lbl_sellNotional
             // 
-            lbl_sellNotional.Anchor = AnchorStyles.None;
+            lbl_sellNotional.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             lbl_sellNotional.ImageAlign = ContentAlignment.MiddleRight;
-            lbl_sellNotional.Location = new Point(283, 76);
+            lbl_sellNotional.Location = new Point(283, 56);
             lbl_sellNotional.Margin = new Padding(2, 0, 2, 0);
             lbl_sellNotional.Name = "lbl_sellNotional";
             lbl_sellNotional.Size = new Size(84, 20);
@@ -1566,9 +1608,9 @@
             // 
             // lbl_buyQuantity
             // 
-            lbl_buyQuantity.Anchor = AnchorStyles.None;
+            lbl_buyQuantity.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             lbl_buyQuantity.ImageAlign = ContentAlignment.MiddleRight;
-            lbl_buyQuantity.Location = new Point(109, 116);
+            lbl_buyQuantity.Location = new Point(109, 90);
             lbl_buyQuantity.Margin = new Padding(2, 0, 2, 0);
             lbl_buyQuantity.Name = "lbl_buyQuantity";
             lbl_buyQuantity.Size = new Size(84, 20);
@@ -1578,9 +1620,9 @@
             // 
             // lbl_sellQuantity
             // 
-            lbl_sellQuantity.Anchor = AnchorStyles.None;
+            lbl_sellQuantity.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             lbl_sellQuantity.ImageAlign = ContentAlignment.MiddleRight;
-            lbl_sellQuantity.Location = new Point(109, 76);
+            lbl_sellQuantity.Location = new Point(109, 56);
             lbl_sellQuantity.Margin = new Padding(2, 0, 2, 0);
             lbl_sellQuantity.Name = "lbl_sellQuantity";
             lbl_sellQuantity.Size = new Size(84, 20);
@@ -1590,8 +1632,9 @@
             // 
             // label33
             // 
+            label33.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             label33.AutoSize = true;
-            label33.Location = new Point(440, 38);
+            label33.Location = new Point(440, 22);
             label33.Margin = new Padding(2, 0, 2, 0);
             label33.Name = "label33";
             label33.Size = new Size(100, 20);
@@ -1600,8 +1643,9 @@
             // 
             // label32
             // 
+            label32.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             label32.AutoSize = true;
-            label32.Location = new Point(300, 38);
+            label32.Location = new Point(300, 22);
             label32.Margin = new Padding(2, 0, 2, 0);
             label32.Name = "label32";
             label32.Size = new Size(67, 20);
@@ -1610,8 +1654,9 @@
             // 
             // label30
             // 
+            label30.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             label30.AutoSize = true;
-            label30.Location = new Point(128, 38);
+            label30.Location = new Point(128, 22);
             label30.Margin = new Padding(2, 0, 2, 0);
             label30.Name = "label30";
             label30.Size = new Size(65, 20);
@@ -1620,8 +1665,9 @@
             // 
             // label29
             // 
+            label29.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             label29.AutoSize = true;
-            label29.Location = new Point(15, 76);
+            label29.Location = new Point(15, 60);
             label29.Margin = new Padding(2, 0, 2, 0);
             label29.Name = "label29";
             label29.Size = new Size(33, 20);
@@ -1630,8 +1676,9 @@
             // 
             // label27
             // 
+            label27.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             label27.AutoSize = true;
-            label27.Location = new Point(15, 116);
+            label27.Location = new Point(15, 94);
             label27.Margin = new Padding(2, 0, 2, 0);
             label27.Name = "label27";
             label27.Size = new Size(33, 20);
@@ -2627,6 +2674,26 @@
             timer_Monitoring.Interval = 1000;
             timer_Monitoring.Tick += timer_Monitoring_Tick;
             // 
+            // label59
+            // 
+            label59.AutoSize = true;
+            label59.Location = new Point(199, 24);
+            label59.Margin = new Padding(2, 0, 2, 0);
+            label59.Name = "label59";
+            label59.Size = new Size(72, 20);
+            label59.TabIndex = 39;
+            label59.Text = "Leverage:";
+            // 
+            // lbl_leverage
+            // 
+            lbl_leverage.AutoSize = true;
+            lbl_leverage.Location = new Point(293, 24);
+            lbl_leverage.Margin = new Padding(2, 0, 2, 0);
+            lbl_leverage.Name = "lbl_leverage";
+            lbl_leverage.Size = new Size(44, 20);
+            lbl_leverage.TabIndex = 40;
+            lbl_leverage.Text = "value";
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
@@ -2887,5 +2954,10 @@
         private Label lbl_long_avg_pr;
         private Label lbl_short_avg_pr;
         private Label label48;
+        private Label lbl_marginInuse;
+        private Label lbl_marginTotal;
+        private Label label57;
+        private Label lbl_leverage;
+        private Label label59;
     }
 }

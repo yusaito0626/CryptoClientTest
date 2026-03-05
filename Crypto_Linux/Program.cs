@@ -396,6 +396,10 @@ namespace Crypto_Linux
             catch(Exception ex)
             {
                 addLog("Error occured during the logging process.  Message:" + ex.Message, logType.ERROR);
+                if (ex.StackTrace != null)
+                {
+                    addLog(ex.StackTrace, Enums.logType.WARNING);
+                }
             }
             finally
             {
@@ -1017,6 +1021,7 @@ namespace Crypto_Linux
                                 jpy_balance.ccy = "JPY";
                                 jpy_balance.total = 100_000_000;
                                 takerExchange.balance["JPY"] = jpy_balance;
+                                takerExchange.marginTotal += jpy_balance.total;
                             }
                             else
                             {
@@ -1032,6 +1037,7 @@ namespace Crypto_Linux
                                 jpy_balance.ccy = "JPY";
                                 jpy_balance.total = 100_000_000;
                                 makerExchange.balance["JPY"] = jpy_balance;
+                                makerExchange.marginTotal += jpy_balance.total;
                             }
                             else
                             {
@@ -1075,6 +1081,12 @@ namespace Crypto_Linux
                                 {
                                     takerins.longPosition.total = - stg.Value.targetMakerPosition;
                                 }
+                                takerins.longPosition.symbol = takerins.symbol;
+                                takerins.longPosition.market = takerins.market;
+                                takerins.longPosition.leverage = takerins.leverage;
+                                takerins.shortPosition.symbol = takerins.symbol;
+                                takerins.shortPosition.market = takerins.market;
+                                takerins.shortPosition.leverage = takerins.leverage;
                             }
                             else
                             {
@@ -1118,6 +1130,12 @@ namespace Crypto_Linux
                                 {
                                     makerins.shortPosition.total = -stg.Value.targetMakerPosition;
                                 }
+                                makerins.longPosition.symbol = makerins.symbol;
+                                makerins.longPosition.market = makerins.market;
+                                makerins.longPosition.leverage = makerins.leverage;
+                                makerins.shortPosition.symbol = makerins.symbol;
+                                makerins.shortPosition.market = makerins.market;
+                                makerins.shortPosition.leverage = makerins.leverage;
                             }
                             else
                             {
@@ -1131,6 +1149,9 @@ namespace Crypto_Linux
                                 }
                                 makerins.baseBalance.total = stg.Value.targetMakerPosition;
                                 makerins.shortPosition.total = 2 * stg.Value.targetMakerPosition;
+                                makerins.shortPosition.symbol = makerins.symbol;
+                                makerins.shortPosition.market = makerins.market;
+                                makerins.shortPosition.leverage = makerins.leverage;
                             }
                         }
                         foreach (var ins in qManager.instruments.Values)
@@ -1143,8 +1164,14 @@ namespace Crypto_Linux
                             ins.SoD_quoteBalance.total = ins.quoteBalance.total;
                             ins.SoD_quoteBalance.ccy = ins.quoteBalance.ccy;
                             ins.SoD_quoteBalance.market = ins.quoteBalance.market;
-                            ins.shortPosition.avg_price = mid;
-                            ins.longPosition.avg_price = mid;
+                            if(ins.shortPosition.total > 0)
+                            {
+                                ins.shortPosition.avg_price = mid;
+                            }
+                            if(ins.longPosition.total > 0 )
+                            {
+                                ins.longPosition.avg_price = mid;
+                            }
                             ins.shortPosition.unrealized_fee = - ins.shortPosition.total * ins.shortPosition.avg_price * ins.maker_fee;
                             ins.longPosition.unrealized_fee = - ins.longPosition.total * ins.longPosition.avg_price * ins.maker_fee;
                             ins.shortPosition.unrealized_interest = 0;//test
@@ -1560,10 +1587,12 @@ namespace Crypto_Linux
                         if (exBalance.marginShort.ContainsKey(ins.symbol))
                         {
                             ins.shortPosition = exBalance.marginShort[ins.symbol];
+                            ins.shortPosition.leverage = ins.leverage;
                         }
                         if (exBalance.marginLong.ContainsKey(ins.symbol))
                         {
                             ins.longPosition = exBalance.marginLong[ins.symbol];
+                            ins.longPosition.leverage = ins.leverage;
                         }
                     }
                     else
@@ -1752,12 +1781,14 @@ namespace Crypto_Linux
                             ins.longPosition.avg_price = ins.SoD_longPosition.avg_price;
                             ins.longPosition.unrealized_fee = ins.SoD_longPosition.unrealized_fee;
                             ins.longPosition.unrealized_interest = ins.SoD_longPosition.unrealized_interest;
+                            ins.longPosition.leverage = ins.leverage;
                             ins.shortPosition.symbol = ins.symbol;
                             ins.shortPosition.market = ins.market;
                             ins.shortPosition.total = ins.SoD_shortPosition.total;
                             ins.shortPosition.avg_price = ins.SoD_shortPosition.avg_price;
                             ins.shortPosition.unrealized_fee = ins.SoD_shortPosition.unrealized_fee;
                             ins.shortPosition.unrealized_interest = ins.SoD_shortPosition.unrealized_interest;
+                            ins.shortPosition.leverage = ins.leverage;
                         }
                     }
                 }
@@ -2711,10 +2742,26 @@ namespace Crypto_Linux
         }
         static void setInstrumentInfo()
         {
-            foreach(var ins in qManager.instruments.Values)
+            Crypto_Trading.Exchange ex;
+            decimal marginAvailable = 0;
+            decimal marginUsed = 0;
+            decimal unrealized_pnl = 0;
+            foreach (var ins in qManager.instruments.Values)
             {
                 instrumentInfo insinfo = instrumentInfos[ins.symbol_market];
-
+                if(qManager.exchanges.ContainsKey(ins.market))
+                {
+                    ex = qManager.exchanges[ins.market];
+                    marginAvailable = ex.getMarginAvailability();
+                    unrealized_pnl = ex.getUnrealizedPnL();
+                    marginUsed = ex.marginLocked;
+                }
+                else
+                {
+                    addLog("Exchange not exist. " + ins.market.ToString());
+                    marginAvailable = 0;
+                    marginUsed = 0;
+                }
                 insinfo.baseCcy_total = ins.baseBalance.total;
                 insinfo.baseCcy_inuse = ins.baseBalance.inuse;
                 insinfo.quoteCcy_total = ins.quoteBalance.total;
@@ -2743,7 +2790,12 @@ namespace Crypto_Linux
                 insinfo.quoteFee_total = ins.quote_fee;
                 insinfo.baseFee_total = ins.base_fee;
                 insinfo.mi_volume = ins.mi_volume;
-                foreach(var mi in ins.market_impact_curve)
+
+                insinfo.marginAvailable = marginAvailable;
+                insinfo.marginInuse = marginUsed;
+                insinfo.leverage = ins.leverage;
+
+                foreach (var mi in ins.market_impact_curve)
                 {
                     insinfo.market_impact_curve[mi.Key] = mi.Value;
                 }

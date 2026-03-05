@@ -84,7 +84,7 @@ namespace Crypto_Trading
         //public Dictionary<string, DataSpotOrderUpdate> orders;
         public Dictionary<string, DataSpotOrderUpdate> live_orders;
 
-        public decimal max_leverage = 2;
+        public decimal leverage = 2;
 
         public decimal marginDiscount = 0;
 
@@ -142,6 +142,9 @@ namespace Crypto_Trading
         public bool marginTrade;
         public bool marginShort;
         public bool marginLong;
+
+        public decimal marginAvailable;
+        public decimal marginInuse;
 
         public decimal net_pos
         {
@@ -245,6 +248,11 @@ namespace Crypto_Trading
             this.SoD_shortPosition.side = positionSide.Short;
 
             this.marginTrade = false;
+            this.marginShort = false;
+            this.marginLong = false;
+
+            this.marginAvailable = 0;
+            this.marginInuse = 0;
 
 
             this.taker_fee = 0;
@@ -277,7 +285,7 @@ namespace Crypto_Trading
         public void initialize(string line)
         {
             string[] items = line.Split(",");
-
+            this.marginTrade = false;
             int i = 0;
             foreach (string item in items)
             {
@@ -291,8 +299,23 @@ namespace Crypto_Trading
                     case 5: this.maker_fee = decimal.Parse(item); break;
                     case 6: this.price_unit = decimal.Parse(item); break;
                     case 7: this.quantity_unit = decimal.Parse(item); break;
-                    case 8: this.marginTrade = bool.Parse(item); break;
+                    case 8: 
+                        this.marginShort = bool.Parse(item);
+                        if(this.marginShort)
+                        {
+                            this.marginTrade = true;
+                        }
+                        break;
                     case 9: 
+                        this.marginLong = bool.Parse(item);
+                        if(this.marginLong)
+                        {
+                            this.marginTrade = true;
+                        }
+                        break;
+                    case 10:
+                        this.leverage = decimal.Parse(item); break;
+                    case 11:
                         this.marginDiscount = decimal.Parse(item);
                         if(!this.marginTrade)
                         {
