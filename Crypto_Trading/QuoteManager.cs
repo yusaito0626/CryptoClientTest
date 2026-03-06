@@ -462,14 +462,14 @@ namespace Crypto_Trading
                     {
                         ins.longPosition.setPosition(item);
                         ins.longPosition.leverage = ins.leverage;
-                        exBalance.marginLong[item.symbol] = ins.longPosition;
+                        exBalance.marginLong[item.symbol_market] = ins.longPosition;
                         exBalance.marginNotionalAmount += ins.longPosition.avg_price * ins.longPosition.total;
                     }
                     else if(item.side == positionSide.Short)
                     {
                         ins.shortPosition.setPosition(item);
                         ins.shortPosition.leverage = ins.leverage;
-                        exBalance.marginShort[item.symbol] = ins.shortPosition;
+                        exBalance.marginShort[item.symbol_market] = ins.shortPosition;
                         exBalance.marginNotionalAmount += ins.shortPosition.avg_price * ins.shortPosition.total;
                     }
                 }
@@ -737,6 +737,18 @@ namespace Crypto_Trading
                                 await this.oManager.placeCancelSpotOrders(keyValue.Key, keyValue.Value, true, true);
                             }
                             this.addLog("Order cancelled.", Enums.logType.WARNING);
+                            Thread.Sleep(1000);
+                            this.addLog("Double check the orders...", Enums.logType.WARNING);
+                            ordList = await this.crypto_client.getActiveOrders(mkt);
+                            if (ordList.Count > 0)
+                            {
+                                addLog("Failed to cancel all the orders. Remaining active orders:" + ordList.Count.ToString("N0"), Enums.logType.WARNING);
+
+                            }
+                            else
+                            {
+                                addLog("All orders cancelled.", Enums.logType.WARNING);
+                            }
                         }
                         else
                         {

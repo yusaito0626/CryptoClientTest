@@ -76,6 +76,9 @@ namespace Crypto_Trading
         public Instrument? taker;
         public Instrument? maker;
 
+        public Exchange? taker_exchange;
+        public Exchange? maker_exchange;
+
         public SortedDictionary<int, Instrument> takers;
         public decimal taker_min_quote_unit;
         public SortedDictionary<decimal, decimal> agg_asks;
@@ -95,6 +98,7 @@ namespace Crypto_Trading
 
         public int layers;
         public List<decimal> order_size;
+        public decimal total_order_size;
         public List<decimal> markups;
         public List<string> live_sellorders;
         public List<string> live_buyorders;
@@ -401,6 +405,7 @@ namespace Crypto_Trading
                     ++i;
                 }
             }
+            this.total_order_size = this.order_size.Sum();
             if (root.TryGetProperty("markups", out item))
             {
                 foreach (var m in item.EnumerateArray())
@@ -1229,7 +1234,36 @@ namespace Crypto_Trading
                 decimal cumAskAmount = 0;
                 decimal cumBidAmount = 0;
 
-                for(i = 0;i < this.layers;++i)
+                //Open or close should be determined at beginning based on the total order size.
+                //Close only if the total order size is smaller than the availability.
+                //This is applied only for margin trade
+                bool closingBuy = false;
+                bool closingSell = false;
+                if (this.maker.marginTrade)
+                {
+                    if(this.maker.shortPosition.total - this.maker.shortPosition.inuse >= this.total_order_size)
+                    {
+                        closingBuy = true;
+                    }
+                    if(this.maker.marginLong)
+                    {
+                        if(this.maker.longPosition.total - this.maker.longPosition.inuse >= this.total_order_size)
+                        {
+                            closingSell = true;
+                        }
+                    }
+                    else
+                    {
+                        if(this.maker.baseBalance.total - this.maker.baseBalance.inuse >= this.total_order_size)
+                        {
+                            closingSell = true;
+                        }
+
+                    }
+                }
+
+
+                for (i = 0;i < this.layers;++i)
                 {
                     decimal bid_price = this.bids[i];
                     decimal ask_price = this.asks[i];
@@ -1329,19 +1363,102 @@ namespace Crypto_Trading
                     bid_price = Math.Floor(bid_price / this.maker.price_unit) * this.maker.price_unit;
                     ask_price = Math.Ceiling(ask_price / this.maker.price_unit) * this.maker.price_unit;
 
-                    if (this.taker.marginTrade == false && temp_ordersize_bid * (1 + this.taker.taker_fee) * 2 + cumBidSize > this.taker.baseBalance.available)
+
+                    //Availability check
+                    //Maker Side
+                    if(!this.maker.marginTrade)
                     {
-                        bid_price = 0;
+                        if(this.maker.baseBalance.total - this.maker.baseBalance.inuse < temp_ordersize_ask + cumAskSize)
+                        {
+                            ask_price = 0;
+                        }
+                        if(this.maker.quoteBalance.total - this.maker.quoteBalance.inuse < temp_ordersize_bid * bid_price + cumBidAmount)
+                        {
+                            bid_price = 0;
+                        }
                     }
-                    if (this.taker.marginTrade == false && this.asks[i] * temp_ordersize_ask * (1 + this.taker.taker_fee) * 2 + cumAskAmount > this.taker.quoteBalance.available)
+                    else
                     {
-                        ask_price = 0;
+                        decimal marginAvailability = this.maker_exchange.getMarginAvailability() - this.maker_exchange.marginLocked;
+                        if(this.maker.marginLong)//Both margin
+                        {
+                            if(!closingBuy && marginAvailability < (temp_ordersize_bid * bid_price + cumAskAmount) / this.maker.leverage)//Build new long but not enough availablity
+                            {
+                                bid_price = 0;
+                            }
+                            if (!closingSell && marginAvailability < (temp_ordersize_ask * ask_price + cumAskAmount) / this.maker.leverage)//Build new short but not enough availablity
+                            {
+                                ask_price = 0;
+                            }
+                        }
+                        else
+                        {
+                            if (!closingBuy && this.maker.quoteBalance.total - this.maker.quoteBalance.inuse < temp_ordersize_bid * bid_price + cumBidAmount)//Build new Spot long but not enough quoteBalance
+                            {
+                                bid_price = 0;
+                            }
+                            if(!closingSell && marginAvailability < (temp_ordersize_ask * ask_price + cumAskAmount) / this.maker.leverage)//Build short position
+                            {
+                                ask_price = 0;
+                            }
+                        }
+                    }
+                    //Taker side
+                    if(!this.taker.marginTrade)
+                    {
+                        if (temp_ordersize_bid + cumBidSize > this.taker.baseBalance.available)
+                        {
+                            bid_price = 0;
+                        }
+                        if (ask_price * temp_ordersize_ask + cumAskAmount > this.taker.quoteBalance.available)
+                        {
+                            ask_price = 0;
+                        }
+                    }
+                    else
+                    {
+                        decimal marginAvailability = this.taker_exchange.getMarginAvailability() - this.taker_exchange.marginLocked;
+                        if (this.taker.marginLong)//Both margin
+                        {
+                            //Buying on the LP side.
+                            if(this.taker.shortPosition.total - this.taker.shortPosition.inuse < total_order_size && marginAvailability < temp_ordersize_ask * ask_price + cumAskAmount)
+                            {
+                                ask_price = 0; 
+                            }
+                            //Selling on the LP
+                            if(this.taker.longPosition.total - this.taker.longPosition.inuse < total_order_size && marginAvailability < temp_ordersize_bid * bid_price + cumBidAmount)
+                            {
+                                bid_price = 0;
+                            }
+                        }
+                        else
+                        {
+                            //Buying on the LP side.
+                            if (this.taker.shortPosition.total - this.taker.shortPosition.inuse < total_order_size && marginAvailability < temp_ordersize_ask * ask_price + cumAskAmount)
+                            {
+                                ask_price = 0;
+                            }
+                            //Selling on the LP
+                            if (this.taker.longPosition.total - this.taker.longPosition.inuse < total_order_size && this.taker.baseBalance.total - this.taker.baseBalance.inuse < temp_ordersize_bid + cumBidSize)
+                            {
+                                bid_price = 0;
+                            }
+                        }
                     }
 
-                    if (this.maker.marginTrade && this.maker.shortPosition.total - this.maker.shortPosition.inuse < temp_ordersize_bid + cumBidSize)
-                    {
-                        bid_price = 0;
-                    }
+                    //if (this.taker.marginTrade == false && temp_ordersize_bid * (1 + this.taker.taker_fee) * 2 + cumBidSize > this.taker.baseBalance.available)
+                    //{
+                    //    bid_price = 0;
+                    //}
+                    //if (this.taker.marginTrade == false && this.asks[i] * temp_ordersize_ask * (1 + this.taker.taker_fee) * 2 + cumAskAmount > this.taker.quoteBalance.available)
+                    //{
+                    //    ask_price = 0;
+                    //}
+
+                    //if (this.maker.marginTrade && this.maker.shortPosition.total - this.maker.shortPosition.inuse < temp_ordersize_bid + cumBidSize)
+                    //{
+                    //    bid_price = 0;
+                    //}
                     //if (this.maker.shortPosition.total * ask_price + temp_ordersize_ask * ask_price + cumAskAmount > this.maker.quoteBalance.total * max_maker_levarage)
                     //{
                     //    ask_price = 0;

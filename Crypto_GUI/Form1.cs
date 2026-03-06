@@ -932,11 +932,11 @@ namespace Crypto_GUI
                                                     {
                                                         if(balanceMargin.side == positionSide.Long)
                                                         {
-                                                            qManager.exchanges_SoD[balanceMargin.market].marginLong[balanceMargin.symbol] = balanceMargin;
+                                                            qManager.exchanges_SoD[balanceMargin.market].marginLong[balanceMargin.symbol_market] = balanceMargin;
                                                         }
                                                         else if(balanceMargin.side == positionSide.Short)
                                                         {
-                                                            qManager.exchanges_SoD[balanceMargin.market].marginShort[balanceMargin.symbol] = balanceMargin;
+                                                            qManager.exchanges_SoD[balanceMargin.market].marginShort[balanceMargin.symbol_market] = balanceMargin;
                                                         }
                                                     }
                                                     else
@@ -946,11 +946,11 @@ namespace Crypto_GUI
                                                         qManager.exchanges_SoD[balanceMargin.market] = exBalance;
                                                         if (balanceMargin.side == positionSide.Long)
                                                         {
-                                                            qManager.exchanges_SoD[balanceMargin.market].marginLong[balanceMargin.symbol] = balanceMargin;
+                                                            qManager.exchanges_SoD[balanceMargin.market].marginLong[balanceMargin.symbol_market] = balanceMargin;
                                                         }
                                                         else if (balanceMargin.side == positionSide.Short)
                                                         {
-                                                            qManager.exchanges_SoD[balanceMargin.market].marginShort[balanceMargin.symbol] = balanceMargin;
+                                                            qManager.exchanges_SoD[balanceMargin.market].marginShort[balanceMargin.symbol_market] = balanceMargin;
                                                         }
                                                     }
                                                     balanceMargin = new BalanceMargin();
@@ -959,12 +959,12 @@ namespace Crypto_GUI
                                                     {
                                                         if (balanceMargin.side == positionSide.Long)
                                                         {
-                                                            qManager.exchanges[balanceMargin.market].marginLong[balanceMargin.symbol] = balanceMargin;
+                                                            qManager.exchanges[balanceMargin.market].marginLong[balanceMargin.symbol_market] = balanceMargin;
                                                             qManager.exchanges[balanceMargin.market].valueAtSoD += (balanceMargin.current_price - balanceMargin.avg_price) * balanceMargin.total;
                                                         }
                                                         else if (balanceMargin.side == positionSide.Short)
                                                         {
-                                                            qManager.exchanges[balanceMargin.market].marginShort[balanceMargin.symbol] = balanceMargin;
+                                                            qManager.exchanges[balanceMargin.market].marginShort[balanceMargin.symbol_market] = balanceMargin;
                                                             qManager.exchanges[balanceMargin.market].valueAtSoD += (balanceMargin.avg_price - balanceMargin.current_price) * balanceMargin.total;
                                                         }
                                                     }
@@ -975,12 +975,12 @@ namespace Crypto_GUI
                                                         qManager.exchanges[balanceMargin.market] = exBalance;
                                                         if (balanceMargin.side == positionSide.Long)
                                                         {
-                                                            qManager.exchanges[balanceMargin.market].marginLong[balanceMargin.symbol] = balanceMargin;
+                                                            qManager.exchanges[balanceMargin.market].marginLong[balanceMargin.symbol_market] = balanceMargin;
                                                             qManager.exchanges[balanceMargin.market].valueAtSoD += (balanceMargin.current_price - balanceMargin.avg_price) * balanceMargin.total;
                                                         }
                                                         else if (balanceMargin.side == positionSide.Short)
                                                         {
-                                                            qManager.exchanges[balanceMargin.market].marginShort[balanceMargin.symbol] = balanceMargin;
+                                                            qManager.exchanges[balanceMargin.market].marginShort[balanceMargin.symbol_market] = balanceMargin;
                                                             qManager.exchanges[balanceMargin.market].valueAtSoD += (balanceMargin.avg_price - balanceMargin.current_price) * balanceMargin.total;
                                                         }
                                                     }
@@ -1007,13 +1007,13 @@ namespace Crypto_GUI
                                                         {
                                                             ins.SoD_quoteBalance = exBalance.balance[ins.quoteCcy];
                                                         }
-                                                        if (exBalance.marginShort.ContainsKey(ins.symbol))
+                                                        if (exBalance.marginShort.ContainsKey(ins.symbol_market))
                                                         {
-                                                            ins.SoD_shortPosition = exBalance.marginShort[ins.symbol];
+                                                            ins.SoD_shortPosition = exBalance.marginShort[ins.symbol_market];
                                                         }
-                                                        if (exBalance.marginLong.ContainsKey(ins.symbol))
+                                                        if (exBalance.marginLong.ContainsKey(ins.symbol_market))
                                                         {
-                                                            ins.SoD_longPosition = exBalance.marginLong[ins.symbol];
+                                                            ins.SoD_longPosition = exBalance.marginLong[ins.symbol_market];
                                                         }
                                                         if (ins.shortPosition.current_price > 0)
                                                         {
@@ -1039,13 +1039,13 @@ namespace Crypto_GUI
                                                         {
                                                             ins.quoteBalance = exBalance.balance[ins.quoteCcy];
                                                         }
-                                                        if (exBalance.marginShort.ContainsKey(ins.symbol))
+                                                        if (exBalance.marginShort.ContainsKey(ins.symbol_market))
                                                         {
-                                                            ins.shortPosition = exBalance.marginShort[ins.symbol];
+                                                            ins.shortPosition = exBalance.marginShort[ins.symbol_market];
                                                         }
-                                                        if (exBalance.marginLong.ContainsKey(ins.symbol))
+                                                        if (exBalance.marginLong.ContainsKey(ins.symbol_market))
                                                         {
-                                                            ins.longPosition = exBalance.marginLong[ins.symbol];
+                                                            ins.longPosition = exBalance.marginLong[ins.symbol_market];
                                                         }
                                                     }
                                                 }

@@ -1063,13 +1063,13 @@ namespace Crypto_Linux
 
                             if (takerins.marginTrade)
                             {
-                                if(!takerExchange.marginLong.ContainsKey(takerins.symbol))
+                                if(!takerExchange.marginLong.ContainsKey(takerins.symbol_market))
                                 {
-                                    takerExchange.marginLong[takerins.symbol] = takerins.longPosition;
+                                    takerExchange.marginLong[takerins.symbol_market] = takerins.longPosition;
                                 }
-                                if (!takerExchange.marginShort.ContainsKey(takerins.symbol))
+                                if (!takerExchange.marginShort.ContainsKey(takerins.symbol_market))
                                 {
-                                    takerExchange.marginShort[takerins.symbol] = takerins.shortPosition;
+                                    takerExchange.marginShort[takerins.symbol_market] = takerins.shortPosition;
                                 }
 
                                 takerins.baseBalance.total = 0;// stg.Value.baseCcyQuantity / 2;
@@ -1114,11 +1114,11 @@ namespace Crypto_Linux
                             {
                                 if(!makerExchange.marginLong.ContainsKey(makerins.symbol))
                                 {
-                                    makerExchange.marginLong[makerins.symbol] = makerins.longPosition;
+                                    makerExchange.marginLong[makerins.symbol_market] = makerins.longPosition;
                                 }
                                 if (!makerExchange.marginShort.ContainsKey(makerins.symbol))
                                 {
-                                    makerExchange.marginShort[makerins.symbol] = makerins.shortPosition;
+                                    makerExchange.marginShort[makerins.symbol_market] = makerins.shortPosition;
                                 }
 
                                 makerins.baseBalance.total = 0;// stg.Value.baseCcyQuantity / 2;
@@ -1143,9 +1143,9 @@ namespace Crypto_Linux
                                 {
                                     makerExchange.balance[makerins.baseCcy] = makerins.baseBalance;
                                 }
-                                if(!makerExchange.marginShort.ContainsKey(makerins.symbol))
+                                if(!makerExchange.marginShort.ContainsKey(makerins.symbol_market))
                                 {
-                                    makerExchange.marginShort[makerins.symbol] = makerins.shortPosition;
+                                    makerExchange.marginShort[makerins.symbol_market] = makerins.shortPosition;
                                 }
                                 makerins.baseBalance.total = stg.Value.targetMakerPosition;
                                 makerins.shortPosition.total = 2 * stg.Value.targetMakerPosition;
@@ -1204,6 +1204,18 @@ namespace Crypto_Linux
                 oManager.exchanges = qManager.exchanges;
                 oManager.exchanges_SoD = qManager.exchanges_SoD;
                 oManager.balances = qManager.balances;
+
+                foreach(var stg in strategies.Values)
+                {
+                    if(qManager.exchanges.ContainsKey(stg.maker_market))
+                    {
+                        stg.maker_exchange = qManager.exchanges[stg.maker_market];
+                    }
+                    if (qManager.exchanges.ContainsKey(stg.taker_market))
+                    {
+                        stg.taker_exchange = qManager.exchanges[stg.taker_market];
+                    }
+                }
 
                 qManager.ready = true;
 
@@ -1489,11 +1501,11 @@ namespace Crypto_Linux
                                 }
                                 if (bm.side == positionSide.Long)
                                 {
-                                    exBalance.marginLong[bm.symbol] = bm;
+                                    exBalance.marginLong[bm.symbol_market] = bm;
                                 }
                                 else if (bm.side == positionSide.Short)
                                 {
-                                    exBalance.marginShort[bm.symbol] = bm;
+                                    exBalance.marginShort[bm.symbol_market] = bm;
                                 }
 
                                 bm = new BalanceMargin();
@@ -1529,11 +1541,11 @@ namespace Crypto_Linux
                                 }
                                 if (bm.side == positionSide.Long)
                                 {
-                                    exBalance.marginLong[bm.symbol] = bm;
+                                    exBalance.marginLong[bm.symbol_market] = bm;
                                 }
                                 else if (bm.side == positionSide.Short)
                                 {
-                                    exBalance.marginShort[bm.symbol] = bm;
+                                    exBalance.marginShort[bm.symbol_market] = bm;
                                 }
 
                                 balanceInfo bi = new balanceInfo();
@@ -1584,14 +1596,14 @@ namespace Crypto_Linux
                         {
                             addLog("Quote currency balance not found.  pair:" + ins.symbol_market + "  ccy:" + ins.quoteCcy, logType.WARNING);
                         }
-                        if (exBalance.marginShort.ContainsKey(ins.symbol))
+                        if (exBalance.marginShort.ContainsKey(ins.symbol_market))
                         {
-                            ins.shortPosition = exBalance.marginShort[ins.symbol];
+                            ins.shortPosition = exBalance.marginShort[ins.symbol_market];
                             ins.shortPosition.leverage = ins.leverage;
                         }
-                        if (exBalance.marginLong.ContainsKey(ins.symbol))
+                        if (exBalance.marginLong.ContainsKey(ins.symbol_market))
                         {
-                            ins.longPosition = exBalance.marginLong[ins.symbol];
+                            ins.longPosition = exBalance.marginLong[ins.symbol_market];
                             ins.longPosition.leverage = ins.leverage;
                         }
                     }
@@ -1618,13 +1630,13 @@ namespace Crypto_Linux
                         {
                             addLog("Quote currency balance not found.  pair:" + ins.symbol_market + "  ccy:" + ins.quoteCcy, logType.WARNING);
                         }
-                        if (exBalance.marginShort.ContainsKey(ins.symbol))
+                        if (exBalance.marginShort.ContainsKey(ins.symbol_market))
                         {
-                            ins.SoD_shortPosition = exBalance.marginShort[ins.symbol];
+                            ins.SoD_shortPosition = exBalance.marginShort[ins.symbol_market];
                         }
-                        if (exBalance.marginLong.ContainsKey(ins.symbol))
+                        if (exBalance.marginLong.ContainsKey(ins.symbol_market))
                         {
-                            ins.SoD_longPosition = exBalance.marginLong[ins.symbol];
+                            ins.SoD_longPosition = exBalance.marginLong[ins.symbol_market];
                         }
                         if (ins.SoD_shortPosition.current_price > 0)
                         {

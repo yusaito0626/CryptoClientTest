@@ -17,7 +17,7 @@ namespace Crypto_Trading
         public Dictionary<string, BalanceMargin> marginLong;
         public Dictionary<string, BalanceMargin> marginShort;
 
-        private myLock margin_lock = new myLock();
+        public myLock margin_lock = new myLock();
         public decimal marginTotal;
         public decimal marginLocked;//using with existing orders
 
@@ -188,9 +188,9 @@ namespace Crypto_Trading
                     }
                     break;
                 case positionSide.Long:
-                    if(this.marginLong.ContainsKey(fill.symbol))
+                    if(this.marginLong.ContainsKey(fill.symbol_market))
                     {
-                        longPosition = this.marginLong[fill.symbol];
+                        longPosition = this.marginLong[fill.symbol_market];
                         if (this.balance.ContainsKey(ins.quoteCcy))
                         {
                             quoteBalance = this.balance[ins.quoteCcy];
@@ -224,9 +224,9 @@ namespace Crypto_Trading
                     }
                     break;
                 case positionSide.Short:
-                    if(this.marginShort.ContainsKey(fill.symbol))
+                    if(this.marginShort.ContainsKey(fill.symbol_market))
                     {
-                        shortPosition = this.marginShort[fill.symbol];
+                        shortPosition = this.marginShort[fill.symbol_market];
                         if (this.balance.ContainsKey(ins.quoteCcy))
                         {
                             quoteBalance = this.balance[ins.quoteCcy];
