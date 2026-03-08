@@ -10,8 +10,8 @@ namespace Utils
     public class GlobalVariables
     {
         public const string ver_major = "2";
-        public const string ver_minor = "2";
-        public const string ver_patch = "11";
+        public const string ver_minor = "3";
+        public const string ver_patch = "0";
 
         public static string tmMsecFormat = "yyyy-MM-dd HH:mm:ss.fff";
 

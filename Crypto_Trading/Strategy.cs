@@ -1134,6 +1134,13 @@ namespace Crypto_Trading
                 
                 decimal cumAskSize = 0;
                 decimal cumBidSize = 0;
+
+                decimal totalSize_Ask = 0;
+                decimal totalSize_Bid = 0;
+
+                positionSide buyOrdersSide = positionSide.NONE;
+                positionSide sellOrdersSide = positionSide.NONE;
+
                 if (this.skew_point == 0)
                 {
                     for (i = 0;i < this.layers;++i)
@@ -1155,6 +1162,8 @@ namespace Crypto_Trading
                         this.ordersize_bid[i] = temp_ordersize_bid;
                         cumAskSize += temp_ordersize_ask;
                         cumBidSize += temp_ordersize_bid;
+                        totalSize_Ask += temp_ordersize_ask;
+                        totalSize_Bid += temp_ordersize_bid;
                     }
                 }
                 else
@@ -1163,6 +1172,8 @@ namespace Crypto_Trading
                     {
                         this.ordersize_ask[i] = this.order_size[i];
                         this.ordersize_bid[i] = this.order_size[i];
+                        totalSize_Ask += this.order_size[i];
+                        totalSize_Bid += this.order_size[i];
                     }
                 }
 
@@ -1241,22 +1252,56 @@ namespace Crypto_Trading
                 bool closingSell = false;
                 if (this.maker.marginTrade)
                 {
-                    if(this.maker.shortPosition.total - this.maker.shortPosition.inuse >= this.total_order_size)
+                    if(this.maker.shortPosition.available >= totalSize_Bid)
                     {
+                        if(totalSize_Bid == 0)
+                        {
+                            addLog("totalSize_bid = 0");
+                        }
                         closingBuy = true;
+                    }
+                    else
+                    {
+                        //if (this.maker.shortPosition.total > 0)
+                        //{
+                        //    addLog($"Going two legs Total Short:{this.maker.shortPosition.total} Inuse:{this.maker.shortPosition.inuse}");
+                        //}
                     }
                     if(this.maker.marginLong)
                     {
-                        if(this.maker.longPosition.total - this.maker.longPosition.inuse >= this.total_order_size)
+                        if(this.maker.longPosition.available >= totalSize_Ask)
                         {
+                            if (totalSize_Ask == 0)
+                            {
+                                addLog("totalSize_bid = 0");
+                            }
                             closingSell = true;
+                        }
+                        else
+                        {
+                            //if (this.maker.longPosition.total > 0)
+                            //{
+                            //    addLog($"Going two legs Total Long:{this.maker.longPosition.total} Inuse:{this.maker.longPosition.inuse}");
+                            //}
                         }
                     }
                     else
                     {
-                        if(this.maker.baseBalance.total - this.maker.baseBalance.inuse >= this.total_order_size)
+                        if(this.maker.baseBalance.available >= totalSize_Ask)
                         {
+                            if (totalSize_Ask == 0)
+                            {
+                                addLog("totalSize_bid = 0");
+                            }
                             closingSell = true;
+                        }
+                        else
+                        {
+
+                            //if (this.maker.baseBalance.total > 0)
+                            //{
+                            //    addLog($"Going two legs Total BaseBalance:{this.maker.baseBalance.total} Inuse:{this.maker.baseBalance.inuse}");
+                            //}
                         }
 
                     }
@@ -1382,24 +1427,58 @@ namespace Crypto_Trading
                         decimal marginAvailability = this.maker_exchange.getMarginAvailability() - this.maker_exchange.marginLocked;
                         if(this.maker.marginLong)//Both margin
                         {
-                            if(!closingBuy && marginAvailability < (temp_ordersize_bid * bid_price + cumAskAmount) / this.maker.leverage)//Build new long but not enough availablity
+                            if (!closingBuy)//Build new long but not enough availablity
                             {
-                                bid_price = 0;
+                                if (marginAvailability < (temp_ordersize_bid * bid_price + cumAskAmount) / this.maker.leverage)//Build new long but not enough availablity
+                                {
+                                    bid_price = 0;
+                                }
+                                buyOrdersSide = positionSide.Long;
                             }
-                            if (!closingSell && marginAvailability < (temp_ordersize_ask * ask_price + cumAskAmount) / this.maker.leverage)//Build new short but not enough availablity
+                            else
                             {
-                                ask_price = 0;
+                                buyOrdersSide = positionSide.Short;
                             }
+                            if (!closingSell)//Build new short but not enough availablity
+                            {
+                                if (marginAvailability < (temp_ordersize_ask * ask_price + cumAskAmount) / this.maker.leverage)//Build new short but not enough availablity
+                                {
+                                    ask_price = 0;
+                                }
+                                sellOrdersSide = positionSide.Short;
+                            }
+                            else
+                            {
+                                sellOrdersSide = positionSide.Long;
+                            }
+
                         }
                         else
                         {
-                            if (!closingBuy && this.maker.quoteBalance.total - this.maker.quoteBalance.inuse < temp_ordersize_bid * bid_price + cumBidAmount)//Build new Spot long but not enough quoteBalance
+                            if (!closingBuy)//Build new long but not enough availablity
                             {
-                                bid_price = 0;
+
+                                if (!closingBuy && this.maker.quoteBalance.available < temp_ordersize_bid * bid_price + cumBidAmount)//Build new Spot long but not enough quoteBalance
+                                {
+                                    bid_price = 0;
+                                }
+                                buyOrdersSide = positionSide.NONE;
                             }
-                            if(!closingSell && marginAvailability < (temp_ordersize_ask * ask_price + cumAskAmount) / this.maker.leverage)//Build short position
+                            else
                             {
-                                ask_price = 0;
+                                buyOrdersSide = positionSide.Short;
+                            }
+                            if (!closingSell)//Build new short but not enough availablity
+                            {
+                                if (marginAvailability < (temp_ordersize_ask * ask_price + cumAskAmount) / this.maker.leverage)//Build new short but not enough availablity
+                                {
+                                    ask_price = 0;
+                                }
+                                sellOrdersSide = positionSide.Short;
+                            }
+                            else
+                            {
+                                sellOrdersSide = positionSide.NONE;
                             }
                         }
                     }
@@ -1421,12 +1500,12 @@ namespace Crypto_Trading
                         if (this.taker.marginLong)//Both margin
                         {
                             //Buying on the LP side.
-                            if(this.taker.shortPosition.total - this.taker.shortPosition.inuse < total_order_size && marginAvailability < temp_ordersize_ask * ask_price + cumAskAmount)
+                            if(this.taker.shortPosition.total - this.taker.shortPosition.inuse < totalSize_Ask && marginAvailability < (temp_ordersize_ask * ask_price + cumAskAmount) / this.taker.leverage)
                             {
                                 ask_price = 0; 
                             }
                             //Selling on the LP
-                            if(this.taker.longPosition.total - this.taker.longPosition.inuse < total_order_size && marginAvailability < temp_ordersize_bid * bid_price + cumBidAmount)
+                            if(this.taker.longPosition.total - this.taker.longPosition.inuse < totalSize_Bid && marginAvailability < (temp_ordersize_bid * bid_price + cumBidAmount) / this.taker.leverage)
                             {
                                 bid_price = 0;
                             }
@@ -1434,12 +1513,12 @@ namespace Crypto_Trading
                         else
                         {
                             //Buying on the LP side.
-                            if (this.taker.shortPosition.total - this.taker.shortPosition.inuse < total_order_size && marginAvailability < temp_ordersize_ask * ask_price + cumAskAmount)
+                            if (this.taker.shortPosition.total - this.taker.shortPosition.inuse < totalSize_Ask && this.taker.quoteBalance.available < temp_ordersize_ask * ask_price + cumAskAmount)
                             {
                                 ask_price = 0;
                             }
                             //Selling on the LP
-                            if (this.taker.longPosition.total - this.taker.longPosition.inuse < total_order_size && this.taker.baseBalance.total - this.taker.baseBalance.inuse < temp_ordersize_bid + cumBidSize)
+                            if (this.taker.baseBalance.total - this.taker.baseBalance.inuse < totalSize_Bid && marginAvailability < (temp_ordersize_bid * bid_price + cumBidAmount) / this.taker.leverage)
                             {
                                 bid_price = 0;
                             }
@@ -1726,38 +1805,59 @@ namespace Crypto_Trading
                             {
                                 if(this.maker.marginTrade)
                                 {
-                                    if(this.maker.shortPosition.available >= this.ordersize_bid[i])
+                                    this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], buyOrdersSide, null, true, false, vr_markup.ToString("F2"));
+                                    using (var tslock = this.tradeSummary_lock.getlock())
                                     {
-                                        this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.Short, null, true, false, vr_markup.ToString("F2"));
-                                        using(var tslock = this.tradeSummary_lock.getlock())
+                                        tradeSummary ts = this.oManager.TS_stack.pop();
+                                        if (ts == null)
                                         {
-                                            tradeSummary ts = this.oManager.TS_stack.pop();
-                                            if (ts == null)
-                                            {
-                                                ts = new tradeSummary();
-                                            }
-                                            ts.id = this.live_buyorders[i];
-                                            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
-                                            //ts.maker_orderid = this.live_buyorders[i];
-                                            this.tempTradeSummaries[ts.id] = ts;
+                                            ts = new tradeSummary();
                                         }
+                                        ts.id = this.live_buyorders[i];
+                                        ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                        //ts.maker_orderid = this.live_buyorders[i];
+                                        this.tempTradeSummaries[ts.id] = ts;
                                     }
-                                    else
-                                    {
-                                        this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.Long, null, true, false, vr_markup.ToString("F2"));
-                                        using (var tslock = this.tradeSummary_lock.getlock())
-                                        {
-                                            tradeSummary ts = this.oManager.TS_stack.pop();
-                                            if (ts == null)
-                                            {
-                                                ts = new tradeSummary();
-                                            }
-                                            ts.id = this.live_buyorders[i];
-                                            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
-                                            //ts.maker_orderid = this.live_buyorders[i];
-                                            this.tempTradeSummaries[ts.id] = ts;
-                                        }
-                                    }
+                                    //if (this.maker.marginLong)
+                                    //{
+                                    //    if (buyOrdersSide != positionSide.NONE)
+                                    //    {
+                                    //        //Expect the position side be configured correctly for both spot and margin
+                                    //        this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], buyOrdersSide, null, true, false, vr_markup.ToString("F2"));
+                                    //        using (var tslock = this.tradeSummary_lock.getlock())
+                                    //        {
+                                    //            tradeSummary ts = this.oManager.TS_stack.pop();
+                                    //            if (ts == null)
+                                    //            {
+                                    //                ts = new tradeSummary();
+                                    //            }
+                                    //            ts.id = this.live_buyorders[i];
+                                    //            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    //            //ts.maker_orderid = this.live_buyorders[i];
+                                    //            this.tempTradeSummaries[ts.id] = ts;
+                                    //        }
+                                    //    }
+                                    //    else
+                                    //    {
+                                    //        addLog("Invalid position side", logType.WARNING);
+                                    //    }
+                                    //}
+                                    //else
+                                    //{
+                                    //    this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], buyOrdersSide, null, true, false, vr_markup.ToString("F2"));
+                                    //    using (var tslock = this.tradeSummary_lock.getlock())
+                                    //    {
+                                    //        tradeSummary ts = this.oManager.TS_stack.pop();
+                                    //        if (ts == null)
+                                    //        {
+                                    //            ts = new tradeSummary();
+                                    //        }
+                                    //        ts.id = this.live_buyorders[i];
+                                    //        ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    //        //ts.maker_orderid = this.live_buyorders[i];
+                                    //        this.tempTradeSummaries[ts.id] = ts;
+                                    //    }
+                                    //}
                                 }
                                 else
                                 {
@@ -1775,6 +1875,58 @@ namespace Crypto_Trading
                                         this.tempTradeSummaries[ts.id] = ts;
                                     }
                                 }
+                                
+                                //if(this.maker.marginTrade)
+                                //{
+                                //    if(this.maker.shortPosition.available >= this.ordersize_bid[i])
+                                //    {
+                                //        this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.Short, null, true, false, vr_markup.ToString("F2"));
+                                //        using(var tslock = this.tradeSummary_lock.getlock())
+                                //        {
+                                //            tradeSummary ts = this.oManager.TS_stack.pop();
+                                //            if (ts == null)
+                                //            {
+                                //                ts = new tradeSummary();
+                                //            }
+                                //            ts.id = this.live_buyorders[i];
+                                //            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                //            //ts.maker_orderid = this.live_buyorders[i];
+                                //            this.tempTradeSummaries[ts.id] = ts;
+                                //        }
+                                //    }
+                                //    else
+                                //    {
+                                //        this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.Long, null, true, false, vr_markup.ToString("F2"));
+                                //        using (var tslock = this.tradeSummary_lock.getlock())
+                                //        {
+                                //            tradeSummary ts = this.oManager.TS_stack.pop();
+                                //            if (ts == null)
+                                //            {
+                                //                ts = new tradeSummary();
+                                //            }
+                                //            ts.id = this.live_buyorders[i];
+                                //            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                //            //ts.maker_orderid = this.live_buyorders[i];
+                                //            this.tempTradeSummaries[ts.id] = ts;
+                                //        }
+                                //    }
+                                //}
+                                //else
+                                //{
+                                //    this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.NONE, null, true, false, vr_markup.ToString("F2"));
+                                //    using (var tslock = this.tradeSummary_lock.getlock())
+                                //    {
+                                //        tradeSummary ts = this.oManager.TS_stack.pop();
+                                //        if (ts == null)
+                                //        {
+                                //            ts = new tradeSummary();
+                                //        }
+                                //        ts.id = this.live_buyorders[i];
+                                //        ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                //        //ts.maker_orderid = this.live_buyorders[i];
+                                //        this.tempTradeSummaries[ts.id] = ts;
+                                //    }
+                                //}
 
                                 this.current_bids[i] = this.bids[i];
                                 this.stg_orders.Add(this.live_buyorders[i]);
@@ -1785,38 +1937,70 @@ namespace Crypto_Trading
                             {
                                 if (this.maker.marginTrade)
                                 {
-                                    if (this.maker.longPosition.available >= this.ordersize_ask[i])
+                                    this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], sellOrdersSide, null, true, false, vr_markup.ToString("F2"));
+                                    using (var tslock = this.tradeSummary_lock.getlock())
                                     {
-                                        this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.Long, null, true, false, vr_markup.ToString("F2"));
-                                        using (var tslock = this.tradeSummary_lock.getlock())
+                                        tradeSummary ts = this.oManager.TS_stack.pop();
+                                        if (ts == null)
                                         {
-                                            tradeSummary ts = this.oManager.TS_stack.pop();
-                                            if (ts == null)
-                                            {
-                                                ts = new tradeSummary();
-                                            }
-                                            ts.id = this.live_sellorders[i];
-                                            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
-                                            //ts.maker_orderid = this.live_sellorders[i];
-                                            this.tempTradeSummaries[ts.id] = ts;
+                                            ts = new tradeSummary();
                                         }
+                                        ts.id = this.live_sellorders[i];
+                                        ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                        //ts.maker_orderid = this.live_sellorders[i];
+                                        this.tempTradeSummaries[ts.id] = ts;
                                     }
-                                    else
-                                    {
-                                        this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.Short, null, true, false, vr_markup.ToString("F2"));
-                                        using (var tslock = this.tradeSummary_lock.getlock())
-                                        {
-                                            tradeSummary ts = this.oManager.TS_stack.pop();
-                                            if (ts == null)
-                                            {
-                                                ts = new tradeSummary();
-                                            }
-                                            ts.id = this.live_sellorders[i];
-                                            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
-                                            //ts.maker_orderid = this.live_sellorders[i];
-                                            this.tempTradeSummaries[ts.id] = ts;
-                                        }
-                                    }
+                                    //if (this.maker.marginLong)
+                                    //{
+                                    //    this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], sellOrdersSide, null, true, false, vr_markup.ToString("F2"));
+                                    //    using (var tslock = this.tradeSummary_lock.getlock())
+                                    //    {
+                                    //        tradeSummary ts = this.oManager.TS_stack.pop();
+                                    //        if (ts == null)
+                                    //        {
+                                    //            ts = new tradeSummary();
+                                    //        }
+                                    //        ts.id = this.live_sellorders[i];
+                                    //        ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    //        //ts.maker_orderid = this.live_sellorders[i];
+                                    //        this.tempTradeSummaries[ts.id] = ts;
+                                    //    }
+                                    //}
+                                    //else
+                                    //{
+                                    //    if (this.maker.baseBalance.available >= this.ordersize_ask[i])
+                                    //    {
+                                    //        this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], sellOrdersSide, null, true, false, vr_markup.ToString("F2"));
+                                    //        using (var tslock = this.tradeSummary_lock.getlock())
+                                    //        {
+                                    //            tradeSummary ts = this.oManager.TS_stack.pop();
+                                    //            if (ts == null)
+                                    //            {
+                                    //                ts = new tradeSummary();
+                                    //            }
+                                    //            ts.id = this.live_sellorders[i];
+                                    //            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    //            //ts.maker_orderid = this.live_sellorders[i];
+                                    //            this.tempTradeSummaries[ts.id] = ts;
+                                    //        }
+                                    //    }
+                                    //    else
+                                    //    {
+                                    //        this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], sellOrdersSide, null, true, false, vr_markup.ToString("F2"));
+                                    //        using (var tslock = this.tradeSummary_lock.getlock())
+                                    //        {
+                                    //            tradeSummary ts = this.oManager.TS_stack.pop();
+                                    //            if (ts == null)
+                                    //            {
+                                    //                ts = new tradeSummary();
+                                    //            }
+                                    //            ts.id = this.live_sellorders[i];
+                                    //            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    //            //ts.maker_orderid = this.live_sellorders[i];
+                                    //            this.tempTradeSummaries[ts.id] = ts;
+                                    //        }
+                                    //    }
+                                    //}
                                 }
                                 else
                                 {
@@ -1834,6 +2018,57 @@ namespace Crypto_Trading
                                         this.tempTradeSummaries[ts.id] = ts;
                                     }
                                 }
+                                //if (this.maker.marginTrade)
+                                //{
+                                //    if (this.maker.longPosition.available >= this.ordersize_ask[i])
+                                //    {
+                                //        this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.Long, null, true, false, vr_markup.ToString("F2"));
+                                //        using (var tslock = this.tradeSummary_lock.getlock())
+                                //        {
+                                //            tradeSummary ts = this.oManager.TS_stack.pop();
+                                //            if (ts == null)
+                                //            {
+                                //                ts = new tradeSummary();
+                                //            }
+                                //            ts.id = this.live_sellorders[i];
+                                //            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                //            //ts.maker_orderid = this.live_sellorders[i];
+                                //            this.tempTradeSummaries[ts.id] = ts;
+                                //        }
+                                //    }
+                                //    else
+                                //    {
+                                //        this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.Short, null, true, false, vr_markup.ToString("F2"));
+                                //        using (var tslock = this.tradeSummary_lock.getlock())
+                                //        {
+                                //            tradeSummary ts = this.oManager.TS_stack.pop();
+                                //            if (ts == null)
+                                //            {
+                                //                ts = new tradeSummary();
+                                //            }
+                                //            ts.id = this.live_sellorders[i];
+                                //            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                //            //ts.maker_orderid = this.live_sellorders[i];
+                                //            this.tempTradeSummaries[ts.id] = ts;
+                                //        }
+                                //    }
+                                //}
+                                //else
+                                //{
+                                //    this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.NONE, null, true, false, vr_markup.ToString("F2"));
+                                //    using (var tslock = this.tradeSummary_lock.getlock())
+                                //    {
+                                //        tradeSummary ts = this.oManager.TS_stack.pop();
+                                //        if (ts == null)
+                                //        {
+                                //            ts = new tradeSummary();
+                                //        }
+                                //        ts.id = this.live_sellorders[i];
+                                //        ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                //        //ts.maker_orderid = this.live_sellorders[i];
+                                //        this.tempTradeSummaries[ts.id] = ts;
+                                //    }
+                                //}
 
                                 this.current_asks[i] = this.asks[i];
                                 this.stg_orders.Add(this.live_sellorders[i]);
@@ -1850,38 +2085,70 @@ namespace Crypto_Trading
                             {
                                 if (this.maker.marginTrade)
                                 {
-                                    if (this.maker.longPosition.available >= this.ordersize_ask[i])
+                                    this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], sellOrdersSide, null, true, false, vr_markup.ToString("F2"));
+                                    using (var tslock = this.tradeSummary_lock.getlock())
                                     {
-                                        this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.Long, null, true, false, vr_markup.ToString("F2"));
-                                        using (var tslock = this.tradeSummary_lock.getlock())
+                                        tradeSummary ts = this.oManager.TS_stack.pop();
+                                        if (ts == null)
                                         {
-                                            tradeSummary ts = this.oManager.TS_stack.pop();
-                                            if (ts == null)
-                                            {
-                                                ts = new tradeSummary();
-                                            }
-                                            ts.id = this.live_sellorders[i];
-                                            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
-                                            //ts.maker_orderid = this.live_sellorders[i];
-                                            this.tempTradeSummaries[ts.id] = ts;
+                                            ts = new tradeSummary();
                                         }
+                                        ts.id = this.live_sellorders[i];
+                                        ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                        //ts.maker_orderid = this.live_sellorders[i];
+                                        this.tempTradeSummaries[ts.id] = ts;
                                     }
-                                    else
-                                    {
-                                        this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.Short, null, true, false, vr_markup.ToString("F2"));
-                                        using (var tslock = this.tradeSummary_lock.getlock())
-                                        {
-                                            tradeSummary ts = this.oManager.TS_stack.pop();
-                                            if (ts == null)
-                                            {
-                                                ts = new tradeSummary();
-                                            }
-                                            ts.id = this.live_sellorders[i];
-                                            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
-                                            //ts.maker_orderid = this.live_sellorders[i];
-                                            this.tempTradeSummaries[ts.id] = ts;
-                                        }
-                                    }
+                                    //if (this.maker.marginLong)
+                                    //{
+                                    //    this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], sellOrdersSide, null, true, false, vr_markup.ToString("F2"));
+                                    //    using (var tslock = this.tradeSummary_lock.getlock())
+                                    //    {
+                                    //        tradeSummary ts = this.oManager.TS_stack.pop();
+                                    //        if (ts == null)
+                                    //        {
+                                    //            ts = new tradeSummary();
+                                    //        }
+                                    //        ts.id = this.live_sellorders[i];
+                                    //        ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    //        //ts.maker_orderid = this.live_sellorders[i];
+                                    //        this.tempTradeSummaries[ts.id] = ts;
+                                    //    }
+                                    //}
+                                    //else
+                                    //{
+                                    //    if (this.maker.baseBalance.available >= this.ordersize_ask[i])
+                                    //    {
+                                    //        this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], sellOrdersSide, null, true, false, vr_markup.ToString("F2"));
+                                    //        using (var tslock = this.tradeSummary_lock.getlock())
+                                    //        {
+                                    //            tradeSummary ts = this.oManager.TS_stack.pop();
+                                    //            if (ts == null)
+                                    //            {
+                                    //                ts = new tradeSummary();
+                                    //            }
+                                    //            ts.id = this.live_sellorders[i];
+                                    //            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    //            //ts.maker_orderid = this.live_sellorders[i];
+                                    //            this.tempTradeSummaries[ts.id] = ts;
+                                    //        }
+                                    //    }
+                                    //    else
+                                    //    {
+                                    //        this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], sellOrdersSide, null, true, false, vr_markup.ToString("F2"));
+                                    //        using (var tslock = this.tradeSummary_lock.getlock())
+                                    //        {
+                                    //            tradeSummary ts = this.oManager.TS_stack.pop();
+                                    //            if (ts == null)
+                                    //            {
+                                    //                ts = new tradeSummary();
+                                    //            }
+                                    //            ts.id = this.live_sellorders[i];
+                                    //            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    //            //ts.maker_orderid = this.live_sellorders[i];
+                                    //            this.tempTradeSummaries[ts.id] = ts;
+                                    //        }
+                                    //    }
+                                    //}
                                 }
                                 else
                                 {
@@ -1899,6 +2166,57 @@ namespace Crypto_Trading
                                         this.tempTradeSummaries[ts.id] = ts;
                                     }
                                 }
+                                //if (this.maker.marginTrade)
+                                //{
+                                //    if (this.maker.longPosition.available >= this.ordersize_ask[i])
+                                //    {
+                                //        this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.Long, null, true, false, vr_markup.ToString("F2"));
+                                //        using (var tslock = this.tradeSummary_lock.getlock())
+                                //        {
+                                //            tradeSummary ts = this.oManager.TS_stack.pop();
+                                //            if (ts == null)
+                                //            {
+                                //                ts = new tradeSummary();
+                                //            }
+                                //            ts.id = this.live_sellorders[i];
+                                //            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                //            //ts.maker_orderid = this.live_sellorders[i];
+                                //            this.tempTradeSummaries[ts.id] = ts;
+                                //        }
+                                //    }
+                                //    else
+                                //    {
+                                //        this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.Short, null, true, false, vr_markup.ToString("F2"));
+                                //        using (var tslock = this.tradeSummary_lock.getlock())
+                                //        {
+                                //            tradeSummary ts = this.oManager.TS_stack.pop();
+                                //            if (ts == null)
+                                //            {
+                                //                ts = new tradeSummary();
+                                //            }
+                                //            ts.id = this.live_sellorders[i];
+                                //            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                //            //ts.maker_orderid = this.live_sellorders[i];
+                                //            this.tempTradeSummaries[ts.id] = ts;
+                                //        }
+                                //    }
+                                //}
+                                //else
+                                //{
+                                //    this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ordersize_ask[i], this.asks[i], positionSide.NONE, null, true, false, vr_markup.ToString("F2"));
+                                //    using (var tslock = this.tradeSummary_lock.getlock())
+                                //    {
+                                //        tradeSummary ts = this.oManager.TS_stack.pop();
+                                //        if (ts == null)
+                                //        {
+                                //            ts = new tradeSummary();
+                                //        }
+                                //        ts.id = this.live_sellorders[i];
+                                //        ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                //        //ts.maker_orderid = this.live_sellorders[i];
+                                //        this.tempTradeSummaries[ts.id] = ts;
+                                //    }
+                                //}
                                 this.current_asks[i] = this.asks[i];
                                 this.stg_orders.Add(this.live_sellorders[i]);
                                 this.stg_orders_dict[this.live_sellorders[i]] = this.ordersize_ask[i];
@@ -1908,39 +2226,59 @@ namespace Crypto_Trading
                             {
                                 if (this.maker.marginTrade)
                                 {
-                                    if (this.maker.shortPosition.available >= this.ordersize_bid[i])
+                                    this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], buyOrdersSide, null, true, false, vr_markup.ToString("F2"));
+                                    using (var tslock = this.tradeSummary_lock.getlock())
                                     {
-                                        this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.Short, null, true, false, vr_markup.ToString("F2"));
-                                        using (var tslock = this.tradeSummary_lock.getlock())
+                                        tradeSummary ts = this.oManager.TS_stack.pop();
+                                        if (ts == null)
                                         {
-                                            tradeSummary ts = this.oManager.TS_stack.pop();
-                                            if (ts == null)
-                                            {
-                                                ts = new tradeSummary();
-                                            }
-                                            ts.id = this.live_buyorders[i];
-                                            ++this.tradeid_num;
-                                            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
-                                            //ts.maker_orderid = this.live_buyorders[i];
-                                            this.tempTradeSummaries[ts.id] = ts;
+                                            ts = new tradeSummary();
                                         }
+                                        ts.id = this.live_buyorders[i];
+                                        ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                        //ts.maker_orderid = this.live_buyorders[i];
+                                        this.tempTradeSummaries[ts.id] = ts;
                                     }
-                                    else
-                                    {
-                                        this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.Long, null, true, false, vr_markup.ToString("F2"));
-                                        using (var tslock = this.tradeSummary_lock.getlock())
-                                        {
-                                            tradeSummary ts = this.oManager.TS_stack.pop();
-                                            if (ts == null)
-                                            {
-                                                ts = new tradeSummary();
-                                            }
-                                            ts.id = this.live_buyorders[i];
-                                            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
-                                            //ts.maker_orderid = this.live_buyorders[i];
-                                            this.tempTradeSummaries[ts.id] = ts;
-                                        }
-                                    }
+                                    //if (this.maker.marginLong)
+                                    //{
+                                    //    if (buyOrdersSide != positionSide.NONE)
+                                    //    {
+                                    //        //Expect the position side be configured correctly for both spot and margin
+                                    //        this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], buyOrdersSide, null, true, false, vr_markup.ToString("F2"));
+                                    //        using (var tslock = this.tradeSummary_lock.getlock())
+                                    //        {
+                                    //            tradeSummary ts = this.oManager.TS_stack.pop();
+                                    //            if (ts == null)
+                                    //            {
+                                    //                ts = new tradeSummary();
+                                    //            }
+                                    //            ts.id = this.live_buyorders[i];
+                                    //            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    //            //ts.maker_orderid = this.live_buyorders[i];
+                                    //            this.tempTradeSummaries[ts.id] = ts;
+                                    //        }
+                                    //    }
+                                    //    else
+                                    //    {
+                                    //        addLog("Invalid position side", logType.WARNING);
+                                    //    }
+                                    //}
+                                    //else
+                                    //{
+                                    //    this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], buyOrdersSide, null, true, false, vr_markup.ToString("F2"));
+                                    //    using (var tslock = this.tradeSummary_lock.getlock())
+                                    //    {
+                                    //        tradeSummary ts = this.oManager.TS_stack.pop();
+                                    //        if (ts == null)
+                                    //        {
+                                    //            ts = new tradeSummary();
+                                    //        }
+                                    //        ts.id = this.live_buyorders[i];
+                                    //        ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    //        //ts.maker_orderid = this.live_buyorders[i];
+                                    //        this.tempTradeSummaries[ts.id] = ts;
+                                    //    }
+                                    //}
                                 }
                                 else
                                 {
@@ -1958,6 +2296,58 @@ namespace Crypto_Trading
                                         this.tempTradeSummaries[ts.id] = ts;
                                     }
                                 }
+                                //if (this.maker.marginTrade)
+                                //{
+                                //    if (this.maker.shortPosition.available >= this.ordersize_bid[i])
+                                //    {
+                                //        this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.Short, null, true, false, vr_markup.ToString("F2"));
+                                //        using (var tslock = this.tradeSummary_lock.getlock())
+                                //        {
+                                //            tradeSummary ts = this.oManager.TS_stack.pop();
+                                //            if (ts == null)
+                                //            {
+                                //                ts = new tradeSummary();
+                                //            }
+                                //            ts.id = this.live_buyorders[i];
+                                //            ++this.tradeid_num;
+                                //            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                //            //ts.maker_orderid = this.live_buyorders[i];
+                                //            this.tempTradeSummaries[ts.id] = ts;
+                                //        }
+                                //    }
+                                //    else
+                                //    {
+                                //        this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.Long, null, true, false, vr_markup.ToString("F2"));
+                                //        using (var tslock = this.tradeSummary_lock.getlock())
+                                //        {
+                                //            tradeSummary ts = this.oManager.TS_stack.pop();
+                                //            if (ts == null)
+                                //            {
+                                //                ts = new tradeSummary();
+                                //            }
+                                //            ts.id = this.live_buyorders[i];
+                                //            ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                //            //ts.maker_orderid = this.live_buyorders[i];
+                                //            this.tempTradeSummaries[ts.id] = ts;
+                                //        }
+                                //    }
+                                //}
+                                //else
+                                //{
+                                //    this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.ordersize_bid[i], this.bids[i], positionSide.NONE, null, true, false, vr_markup.ToString("F2"));
+                                //    using (var tslock = this.tradeSummary_lock.getlock())
+                                //    {
+                                //        tradeSummary ts = this.oManager.TS_stack.pop();
+                                //        if (ts == null)
+                                //        {
+                                //            ts = new tradeSummary();
+                                //        }
+                                //        ts.id = this.live_buyorders[i];
+                                //        ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                //        //ts.maker_orderid = this.live_buyorders[i];
+                                //        this.tempTradeSummaries[ts.id] = ts;
+                                //    }
+                                //}
                                 this.current_bids[i] = this.bids[i];
                                 this.stg_orders.Add(this.live_buyorders[i]);
                                 this.stg_orders_dict[this.live_buyorders[i]] = this.ordersize_bid[i];
@@ -2425,13 +2815,27 @@ namespace Crypto_Trading
                                                 {
                                                     if (this.taker.marginTrade)
                                                     {
-                                                        if (this.taker.shortPosition.available >= filled_quantity)
+                                                        if(this.taker.marginLong)
                                                         {
-                                                            this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, true, ord.internal_order_id);
+                                                            if (this.taker.shortPosition.available >= filled_quantity)
+                                                            {
+                                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, true, ord.internal_order_id);
+                                                            }
+                                                            else
+                                                            {
+                                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Long, null, true, true, ord.internal_order_id);
+                                                            }
                                                         }
                                                         else
                                                         {
-                                                            this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Long, null, true, true, ord.internal_order_id);
+                                                            if (this.taker.shortPosition.available >= filled_quantity)
+                                                            {
+                                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, true, ord.internal_order_id);
+                                                            }
+                                                            else
+                                                            {
+                                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, true, ord.internal_order_id);
+                                                            }
                                                         }
                                                     }
                                                     else
@@ -2497,13 +2901,27 @@ namespace Crypto_Trading
                                                 {
                                                     if (this.taker.marginTrade)
                                                     {
-                                                        if (this.taker.longPosition.available >= filled_quantity)
+                                                        if(this.taker.marginLong)
                                                         {
-                                                            this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Long, null, true, true, ord.internal_order_id);
+                                                            if (this.taker.longPosition.available >= filled_quantity)
+                                                            {
+                                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Long, null, true, true, ord.internal_order_id);
+                                                            }
+                                                            else
+                                                            {
+                                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, true, ord.internal_order_id);
+                                                            }
                                                         }
                                                         else
                                                         {
-                                                            this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, true, ord.internal_order_id);
+                                                            if (this.taker.baseBalance.available >= filled_quantity)
+                                                            {
+                                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, true, ord.internal_order_id);
+                                                            }
+                                                            else
+                                                            {
+                                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, true, ord.internal_order_id);
+                                                            }
                                                         }
                                                     }
                                                     else
@@ -2757,13 +3175,27 @@ namespace Crypto_Trading
                                         {
                                             if (this.taker.marginTrade)
                                             {
-                                                if (this.taker.shortPosition.available >= filled_quantity)
+                                                if(this.taker.marginLong)
                                                 {
-                                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true);
+                                                    if (this.taker.shortPosition.available >= filled_quantity)
+                                                    {
+                                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true);
+                                                    }
+                                                    else
+                                                    {
+                                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Long, null, true);
+                                                    }
                                                 }
                                                 else
                                                 {
-                                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Long, null, true);
+                                                    if (this.taker.shortPosition.available >= filled_quantity)
+                                                    {
+                                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true);
+                                                    }
+                                                    else
+                                                    {
+                                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                                    }
                                                 }
                                             }
                                             else
@@ -2825,13 +3257,27 @@ namespace Crypto_Trading
                                         {
                                             if (this.taker.marginTrade)
                                             {
-                                                if (this.taker.longPosition.available >= filled_quantity)
+                                                if(this.taker.marginLong)
                                                 {
-                                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Long, null, true);
+                                                    if (this.taker.longPosition.available >= filled_quantity)
+                                                    {
+                                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Long, null, true);
+                                                    }
+                                                    else
+                                                    {
+                                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true);
+                                                    }
                                                 }
                                                 else
                                                 {
-                                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true);
+                                                    if (this.taker.baseBalance.available >= filled_quantity)
+                                                    {
+                                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
+                                                    }
+                                                    else
+                                                    {
+                                                        this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true);
+                                                    }
                                                 }
                                             }
                                             else
@@ -2945,19 +3391,42 @@ namespace Crypto_Trading
                                     {
                                         if (this.taker.marginTrade)
                                         {
-                                            if (this.taker.longPosition.available >= filled_quantity)
+                                            if(this.taker.marginLong)
                                             {
-                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Long, null, true, false, ord.internal_order_id);
+                                                if (this.taker.longPosition.available >= filled_quantity)
+                                                {
+                                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Long, null, true, false, ord.internal_order_id);
+                                                }
+                                                else
+                                                {
+                                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, false, ord.internal_order_id);
+                                                }
                                             }
                                             else
                                             {
-                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, false, ord.internal_order_id);
+                                                if (this.taker.baseBalance.available >= filled_quantity)
+                                                {
+                                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, false, ord.internal_order_id);
+                                                }
+                                                else
+                                                {
+                                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, false, ord.internal_order_id);
+                                                }
                                             }
                                         }
                                         else
                                         {
                                             this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, false, ord.internal_order_id);
                                         }
+                                    }
+                                    else
+                                    {
+                                        addLog("Filled quantity is 0.");
+                                        addLog(ord.ToString());
+                                        addLog(prev.ToString());
+                                        addLog((ord.filled_quantity - prev.filled_quantity).ToString());
+                                        addLog("diff amount:" + (diff_amount).ToString());
+                                        addLog(this.taker.quantity_unit.ToString());
                                     }
                                     this.last_filled_time_buy = DateTime.UtcNow;
                                     this.last_filled_time = this.last_filled_time_buy;
@@ -2968,19 +3437,41 @@ namespace Crypto_Trading
                                     {
                                         if (this.taker.marginTrade)
                                         {
-                                            if (this.taker.shortPosition.available >= filled_quantity)
+                                            if(this.taker.marginLong)
                                             {
-                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, false, ord.internal_order_id);
+                                                if (this.taker.shortPosition.available >= filled_quantity)
+                                                {
+                                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, false, ord.internal_order_id);
+                                                }
+                                                else
+                                                {
+                                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Long, null, true, false, ord.internal_order_id);
+                                                }
                                             }
                                             else
                                             {
-                                                this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Long, null, true, false, ord.internal_order_id);
+                                                if (this.taker.shortPosition.available >= filled_quantity)
+                                                {
+                                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, false, ord.internal_order_id);
+                                                }
+                                                else
+                                                {
+                                                    this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, false, ord.internal_order_id);
+                                                }
                                             }
                                         }
                                         else
                                         {
                                             this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, false, ord.internal_order_id);
                                         }
+                                    }
+                                    else
+                                    {
+                                        addLog("Filled quantity is 0.");
+                                        addLog(ord.ToString());
+                                        addLog(prev.ToString());
+                                        addLog((ord.filled_quantity - prev.filled_quantity).ToString());
+                                        addLog(this.taker.quantity_unit.ToString());
                                     }
                                     this.last_filled_time_sell = DateTime.UtcNow;
                                     this.last_filled_time = this.last_filled_time_sell;
@@ -3089,13 +3580,27 @@ namespace Crypto_Trading
                                     case orderSide.Buy:
                                         if (this.taker.marginTrade)
                                         {
-                                            if (this.taker.longPosition.available >= filled_quantity)
+                                            if(this.taker.marginLong)
                                             {
-                                                await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Long, null, true, false, fill.internal_order_id);
+                                                if (this.taker.longPosition.available >= filled_quantity)
+                                                {
+                                                    await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Long, null, true, false, fill.internal_order_id);
+                                                }
+                                                else
+                                                {
+                                                    await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, false, fill.internal_order_id);
+                                                }
                                             }
                                             else
                                             {
-                                                await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, false, fill.internal_order_id);
+                                                if (this.taker.baseBalance.available >= filled_quantity)
+                                                {
+                                                    await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, false, fill.internal_order_id);
+                                                }
+                                                else
+                                                {
+                                                    await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, false, fill.internal_order_id);
+                                                }
                                             }
                                         }
                                         else
@@ -3129,14 +3634,29 @@ namespace Crypto_Trading
                                     case orderSide.Sell:
                                         if (this.taker.marginTrade)
                                         {
-                                            if (this.taker.shortPosition.available >= filled_quantity)
+                                            if(this.taker.marginLong)
                                             {
-                                                await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, false, fill.internal_order_id);
+                                                if (this.taker.shortPosition.available >= filled_quantity)
+                                                {
+                                                    await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, false, fill.internal_order_id);
+                                                }
+                                                else
+                                                {
+                                                    await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Long, null, true, false, fill.internal_order_id);
+                                                }
                                             }
                                             else
                                             {
-                                                await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Long, null, true, false, fill.internal_order_id);
+                                                if (this.taker.shortPosition.available >= filled_quantity)
+                                                {
+                                                    await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, false, fill.internal_order_id);
+                                                }
+                                                else
+                                                {
+                                                    await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, false, fill.internal_order_id);
+                                                }
                                             }
+                                            
                                         }
                                         else
                                         {

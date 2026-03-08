@@ -556,7 +556,7 @@ namespace Crypto_Linux
                 latency_msg += "Live Order Count:" + oManager.live_orders.Count.ToString() + "\n";
                 foreach (var o in oManager.live_orders.Values)
                 {
-                    latency_msg += o.internal_order_id + " " + o.side.ToString() + " " + o.order_quantity.ToString() + "@" + o.order_price.ToString() + "\n";
+                    latency_msg += o.internal_order_id + " " + o.position_side.ToString() + " " + o.side.ToString() + " " + o.order_quantity.ToString() + "@" + o.order_price.ToString() + "\n";
                 }
             }
             
@@ -1061,6 +1061,11 @@ namespace Crypto_Linux
                                 makerins.baseBalance = makerExchange.balance["JPY"];
                             }
 
+                            if (!takerExchange.balance.ContainsKey(takerins.baseCcy))
+                            {
+                                takerExchange.balance[takerins.baseCcy] = takerins.baseBalance;
+                            }
+
                             if (takerins.marginTrade)
                             {
                                 if(!takerExchange.marginLong.ContainsKey(takerins.symbol_market))
@@ -1090,10 +1095,6 @@ namespace Crypto_Linux
                             }
                             else
                             {
-                                if(!takerExchange.balance.ContainsKey(takerins.baseCcy))
-                                {
-                                    takerExchange.balance[takerins.baseCcy] = takerins.baseBalance;
-                                }
                                 if (stg.Value.targetMakerPosition > 0)
                                 {
                                     if(makerins.marginTrade == false)
@@ -1110,7 +1111,13 @@ namespace Crypto_Linux
                                     takerins.baseBalance.total = - stg.Value.targetMakerPosition;
                                 }
                             }
-                            if(makerins.marginTrade)
+
+                            if (!makerExchange.balance.ContainsKey(makerins.baseCcy))
+                            {
+                                makerExchange.balance[makerins.baseCcy] = makerins.baseBalance;
+                            }
+
+                            if (makerins.marginTrade)
                             {
                                 if(!makerExchange.marginLong.ContainsKey(makerins.symbol))
                                 {
@@ -1139,10 +1146,6 @@ namespace Crypto_Linux
                             }
                             else
                             {
-                                if (!makerExchange.balance.ContainsKey(makerins.baseCcy))
-                                {
-                                    makerExchange.balance[makerins.baseCcy] = makerins.baseBalance;
-                                }
                                 if(!makerExchange.marginShort.ContainsKey(makerins.symbol_market))
                                 {
                                     makerExchange.marginShort[makerins.symbol_market] = makerins.shortPosition;
@@ -1179,6 +1182,15 @@ namespace Crypto_Linux
                             ins.SoD_shortPosition.copy(ins.shortPosition);
                             ins.open_mid = mid;
                         }
+
+                        foreach (var ex in qManager.exchanges.Values)
+                        {
+                            ex.setInstruments(qManager.instruments);
+                        }
+                        foreach (var ex in qManager.exchanges_SoD.Values)
+                        {
+                            ex.setInstruments(qManager.instruments);
+                        }
                     }
                 }
                 else
@@ -1190,15 +1202,6 @@ namespace Crypto_Linux
                         addLog("Failed to set real position", logType.WARNING);
                         return false;
                     }
-                }
-
-                foreach(var ex in qManager.exchanges.Values)
-                {
-                    ex.setInstruments(qManager.instruments);
-                }
-                foreach (var ex in qManager.exchanges_SoD.Values)
-                {
-                    ex.setInstruments(qManager.instruments);
                 }
 
                 oManager.exchanges = qManager.exchanges;
@@ -1575,6 +1578,15 @@ namespace Crypto_Linux
                 }
 
 
+                foreach (var ex in qManager.exchanges.Values)
+                {
+                    ex.setInstruments(qManager.instruments);
+                }
+                foreach (var ex in qManager.exchanges_SoD.Values)
+                {
+                    ex.setInstruments(qManager.instruments);
+                }
+
                 foreach (Instrument ins in qManager.instruments.Values)
                 {
                     if (qManager.exchanges.ContainsKey(ins.market))
@@ -1587,6 +1599,7 @@ namespace Crypto_Linux
                         else
                         {
                             addLog("Base currency balance not found.  pair:" + ins.symbol_market + "  ccy:" + ins.baseCcy, logType.WARNING);
+                            exBalance.balance[ins.baseCcy] = ins.baseBalance;
                         }
                         if (exBalance.balance.ContainsKey(ins.quoteCcy))
                         {
@@ -1595,16 +1608,27 @@ namespace Crypto_Linux
                         else
                         {
                             addLog("Quote currency balance not found.  pair:" + ins.symbol_market + "  ccy:" + ins.quoteCcy, logType.WARNING);
+                            exBalance.balance[ins.quoteCcy] = ins.quoteBalance;
                         }
                         if (exBalance.marginShort.ContainsKey(ins.symbol_market))
                         {
                             ins.shortPosition = exBalance.marginShort[ins.symbol_market];
                             ins.shortPosition.leverage = ins.leverage;
                         }
+                        else
+                        {
+                            addLog("Short position not found.  pair:" + ins.symbol_market, logType.WARNING);
+                            exBalance.marginShort[ins.symbol_market] = ins.shortPosition;
+                        }
                         if (exBalance.marginLong.ContainsKey(ins.symbol_market))
                         {
                             ins.longPosition = exBalance.marginLong[ins.symbol_market];
                             ins.longPosition.leverage = ins.leverage;
+                        }
+                        else
+                        {
+                            addLog("Long position not found.  pair:" + ins.symbol_market, logType.WARNING);
+                            exBalance.marginShort[ins.symbol_market] = ins.longPosition;
                         }
                     }
                     else
@@ -1621,6 +1645,7 @@ namespace Crypto_Linux
                         else
                         {
                             addLog("Base currency balance not found.  pair:" + ins.symbol_market + "  ccy:" + ins.baseCcy, logType.WARNING);
+                            exBalance.balance[ins.baseCcy] = ins.SoD_baseBalance;
                         }
                         if (exBalance.balance.ContainsKey(ins.quoteCcy))
                         {
@@ -1629,14 +1654,25 @@ namespace Crypto_Linux
                         else
                         {
                             addLog("Quote currency balance not found.  pair:" + ins.symbol_market + "  ccy:" + ins.quoteCcy, logType.WARNING);
+                            exBalance.balance[ins.quoteCcy] = ins.SoD_quoteBalance;
                         }
                         if (exBalance.marginShort.ContainsKey(ins.symbol_market))
                         {
                             ins.SoD_shortPosition = exBalance.marginShort[ins.symbol_market];
                         }
+                        else
+                        {
+                            addLog("Short position not found.  pair:" + ins.symbol_market, logType.WARNING);
+                            exBalance.marginShort[ins.symbol_market] = ins.SoD_shortPosition;
+                        }
                         if (exBalance.marginLong.ContainsKey(ins.symbol_market))
                         {
                             ins.SoD_longPosition = exBalance.marginLong[ins.symbol_market];
+                        }
+                        else
+                        {
+                            addLog("Long position not found.  pair:" + ins.symbol_market, logType.WARNING);
+                            exBalance.marginLong[ins.symbol_market] = ins.SoD_longPosition;
                         }
                         if (ins.SoD_shortPosition.current_price > 0)
                         {
@@ -1803,6 +1839,15 @@ namespace Crypto_Linux
                             ins.shortPosition.leverage = ins.leverage;
                         }
                     }
+                }
+
+                foreach (var ex in qManager.exchanges.Values)
+                {
+                    ex.setInstruments(qManager.instruments);
+                }
+                foreach (var ex in qManager.exchanges_SoD.Values)
+                {
+                    ex.setInstruments(qManager.instruments);
                 }
                 SortedDictionary<DateTime, DataFill> histFill = new SortedDictionary<DateTime, DataFill>();
                 DateTime currentTime = DateTime.UtcNow;

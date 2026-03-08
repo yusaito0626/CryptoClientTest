@@ -82,7 +82,7 @@ namespace Crypto_Trading
             }
             else
             {
-                Console.WriteLine("Instrument not found");
+                Console.WriteLine("Instrument not found " + fill.symbol_market);
                 return false;
             }
 
@@ -213,7 +213,9 @@ namespace Crypto_Trading
                             //fill.msg += $" Realize PnL: {fill.profit_loss.ToString("N8")} avg_price: {this.longPosition.avg_price.ToString()}";
                             longPosition.unrealized_fee -= fill.fee_quote - filled_fee;
                             longPosition.unrealized_interest -= fill.interest;
-                            quoteBalance.total += fill.profit_loss - fill.fee_quote - fill.interest;
+                            marginTotal_chg += fill.profit_loss - fill.fee_quote - fill.interest;
+                            quoteBalance.AddBalance(fill.profit_loss - fill.fee_quote - fill.interest, 0);
+                            //quoteBalance.total += fill.profit_loss - fill.fee_quote - fill.interest;
                             longPosition.AddBalance(-fill.quantity, 0, fill.price);
                         }
                     }
@@ -248,7 +250,9 @@ namespace Crypto_Trading
                             //fill.msg += $" Realize PnL: {fill.profit_loss.ToString("N8")} avg_price: {this.shortPosition.avg_price.ToString()}";
                             shortPosition.unrealized_fee -= fill.fee_quote - filled_fee;
                             shortPosition.unrealized_interest -= fill.interest;
-                            quoteBalance.total += fill.profit_loss - fill.fee_quote - fill.interest;
+                            //quoteBalance.total += fill.profit_loss - fill.fee_quote - fill.interest;
+                            marginTotal_chg += fill.profit_loss - fill.fee_quote - fill.interest;
+                            quoteBalance.AddBalance(fill.profit_loss - fill.fee_quote - fill.interest, 0);
                             shortPosition.AddBalance(-fill.quantity, 0, fill.price);
                         }
                     }

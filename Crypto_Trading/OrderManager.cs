@@ -371,6 +371,10 @@ namespace Crypto_Trading
             if(this.ready)
             {
                 ord = this.sendingOrdersStack.pop();
+                if(ord == null)
+                {
+                    ord = new sendingOrder();
+                }
                 ordid = this.getInternalOrdId(ins.market.ToString());
                 ord.internalOrdId = ordid;
                 ord.action = orderAction.New;
@@ -447,6 +451,10 @@ namespace Crypto_Trading
             if(this.ready)
             {
                 ord = this.sendingOrdersStack.pop();
+                if(ord == null)
+                {
+                    ord = new sendingOrder();
+                }
                 ord.action = orderAction.Can;
                 ord.ins = ins;
 
@@ -533,6 +541,10 @@ namespace Crypto_Trading
             }
             else
             {
+                addLog("[New Order]The market not found.  " + sndOrd.ins.market.ToString(),logType.WARNING);
+
+                sndOrd.init();
+                this.sendingOrdersStack.push(sndOrd);
                 return null;
             }
             //Order Check
@@ -565,6 +577,8 @@ namespace Crypto_Trading
                 output.err_code = (int)ordError.INVALID_INSTRUMENT;
                 addLog(output.ToString(), logType.WARNING);
                 this.ord_client.ordUpdateQueue.Enqueue(output);
+                sndOrd.init();
+                this.sendingOrdersStack.push(sndOrd);
                 return output;
             }
             if(sndOrd.price < 0)
@@ -594,6 +608,8 @@ namespace Crypto_Trading
                 output.err_code = (int)ordError.INVALID_PRICE;
                 addLog(output.ToString(), logType.WARNING);
                 this.ord_client.ordUpdateQueue.Enqueue(output);
+                sndOrd.init();
+                this.sendingOrdersStack.push(sndOrd);
                 return output;
             }
             if(sndOrd.quantity <= 0)
@@ -623,6 +639,8 @@ namespace Crypto_Trading
                 output.err_code = (int)ordError.INVALID_QUANTITY;
                 addLog(output.ToString(),logType.WARNING);
                 this.ord_client.ordUpdateQueue.Enqueue(output);
+                sndOrd.init();
+                this.sendingOrdersStack.push(sndOrd);
                 return output;
             }
             if(sndOrd.side == orderSide.NONE)
@@ -652,6 +670,8 @@ namespace Crypto_Trading
                 output.err_code = (int)ordError.INVALID_SIDE;
                 addLog(output.ToString(), logType.WARNING);
                 this.ord_client.ordUpdateQueue.Enqueue(output);
+                sndOrd.init();
+                this.sendingOrdersStack.push(sndOrd);
                 return output;
             }
 
@@ -709,7 +729,8 @@ namespace Crypto_Trading
                         {
                             if (sndOrd.ins.quoteBalance.available <= orderprice * sndOrd.quantity)
                             {
-                                addLog("[New Order]Insuficient availability.", logType.WARNING);
+                                addLog("[New Order]Insuficient quote balance availability.", logType.WARNING);
+                                addLog($"Availability:{sndOrd.ins.quoteBalance.available} marketPrice:{orderprice} Quantity:{quantity}", logType.WARNING);
                                 output = this.ord_client.ordUpdateStack.pop();
                                 if (output == null)
                                 {
@@ -734,6 +755,8 @@ namespace Crypto_Trading
                                 output.err_code = (int)ordError.INSUFFICIENT_AMOUNT;
                                 addLog(output.ToString(), logType.WARNING);
                                 this.ord_client.ordUpdateQueue.Enqueue(output);
+                                sndOrd.init();
+                                this.sendingOrdersStack.push(sndOrd);
                                 return output;
                             }
                         }
@@ -755,7 +778,8 @@ namespace Crypto_Trading
                         {
                             if (sndOrd.ins.baseBalance.available < sndOrd.quantity)
                             {
-                                addLog("[New Order]Insuficient availability.", logType.WARNING);
+                                addLog("[New Order]Insuficient base balance availability.", logType.WARNING);
+                                addLog($"Availability:{sndOrd.ins.baseBalance.available} marketPrice:{orderprice} Quantity:{quantity}", logType.WARNING);
                                 output = this.ord_client.ordUpdateStack.pop();
                                 if (output == null)
                                 {
@@ -780,6 +804,8 @@ namespace Crypto_Trading
                                 output.err_code = (int)ordError.INSUFFICIENT_AMOUNT;
                                 addLog(output.ToString(), logType.WARNING);
                                 this.ord_client.ordUpdateQueue.Enqueue(output);
+                                sndOrd.init();
+                                this.sendingOrdersStack.push(sndOrd);
                                 return output;
                             }
                         }
@@ -791,10 +817,9 @@ namespace Crypto_Trading
             {
                 if ((sndOrd.side == orderSide.Buy && sndOrd.pos_side == positionSide.Long) || (sndOrd.side == orderSide.Sell && sndOrd.pos_side == positionSide.Short))
                 {
-
+                    decimal marginAvailability = ex.getMarginAvailability() - ex.marginLocked;
                     using (var ex_mlock = ex.margin_lock.getlock())
                     {
-                        decimal marginAvailability = ex.getMarginAvailability() - ex.marginLocked;
                         decimal marketPrice;
                         if (sndOrd.order_type == orderType.Market)
                         {
@@ -829,7 +854,8 @@ namespace Crypto_Trading
                         }
                         if (marginAvailability < marketPrice * sndOrd.quantity)
                         {
-                            addLog("[New Order]Insuficient availability.", logType.WARNING);
+                            addLog("[New Order]Insuficient margin availability.", logType.WARNING);
+                            addLog($"Availability:{marginAvailability} marketPrice:{marketPrice} Quantity:{quantity}", logType.WARNING);
                             output = this.ord_client.ordUpdateStack.pop();
                             if (output == null)
                             {
@@ -854,6 +880,8 @@ namespace Crypto_Trading
                             output.err_code = (int)ordError.INSUFFICIENT_AMOUNT;
                             addLog(output.ToString(), logType.WARNING);
                             this.ord_client.ordUpdateQueue.Enqueue(output);
+                            sndOrd.init();
+                            this.sendingOrdersStack.push(sndOrd);
                             return output;
                         }
                     }
@@ -871,7 +899,8 @@ namespace Crypto_Trading
                                 {
                                     if (marginLong.available < sndOrd.quantity)
                                     {
-                                        addLog("[New Order]Insuficient availability.", logType.WARNING);
+                                        addLog("[New Order]Insuficient marginLong availability.", logType.WARNING);
+                                        addLog($"Order side:{sndOrd.side} Availability:{marginLong.total} - {marginLong.inuse} Quantity:{sndOrd.quantity}", logType.WARNING);
                                         output = this.ord_client.ordUpdateStack.pop();
                                         if (output == null)
                                         {
@@ -896,6 +925,8 @@ namespace Crypto_Trading
                                         output.err_code = (int)ordError.INSUFFICIENT_AMOUNT;
                                         addLog(output.ToString(), logType.WARNING);
                                         this.ord_client.ordUpdateQueue.Enqueue(output);
+                                        sndOrd.init();
+                                        this.sendingOrdersStack.push(sndOrd);
                                         return output;
                                     }
                                 }
@@ -910,7 +941,8 @@ namespace Crypto_Trading
                                 {
                                     if (marginShort.available < sndOrd.quantity)
                                     {
-                                        addLog("[New Order]Insuficient availability.", logType.WARNING);
+                                        addLog("[New Order]Insuficient marginShort availability.", logType.WARNING);
+                                        addLog($"Order side:{sndOrd.side} Availability:{marginShort.total} - {marginShort.inuse} Quantity:{sndOrd.quantity}", logType.WARNING);
                                         output = this.ord_client.ordUpdateStack.pop();
                                         if (output == null)
                                         {
@@ -935,6 +967,8 @@ namespace Crypto_Trading
                                         output.err_code = (int)ordError.INSUFFICIENT_AMOUNT;
                                         addLog(output.ToString(), logType.WARNING);
                                         this.ord_client.ordUpdateQueue.Enqueue(output);
+                                        sndOrd.init();
+                                        this.sendingOrdersStack.push(sndOrd);
                                         return output;
                                     }
                                 }
@@ -1503,6 +1537,8 @@ namespace Crypto_Trading
                         output.last_trade = "";
                         output.msg = sndOrd.msg;
                         this.ord_client.ordUpdateQueue.Enqueue(output);
+                        sndOrd.init();
+                        this.sendingOrdersStack.push(sndOrd);
                         return output;
                     }
                     js = await this.ord_client.coincheck_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, "post_only");
@@ -1553,6 +1589,8 @@ namespace Crypto_Trading
                             output.last_trade = "";
                             output.msg = sndOrd.msg;
                             this.ord_client.ordUpdateQueue.Enqueue(output);
+                            sndOrd.init();
+                            this.sendingOrdersStack.push(sndOrd);
                             return output;
                         }
                         js = await this.ord_client.coincheck_client.placeMarketNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), 0, quantity);
@@ -1595,6 +1633,8 @@ namespace Crypto_Trading
                             output.last_trade = "";
                             output.msg = sndOrd.msg;
                             this.ord_client.ordUpdateQueue.Enqueue(output);
+                            sndOrd.init();
+                            this.sendingOrdersStack.push(sndOrd);
                             return output;
                         }
                         js = await this.ord_client.coincheck_client.placeMarketNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), 0, quantity);
@@ -3380,7 +3420,6 @@ namespace Crypto_Trading
                         }
                         else
                         {
-                            addLog("handleOpen  " + ord.ToString());
                             switch (ord.side)
                             {
                                 case orderSide.Buy:
@@ -3587,7 +3626,6 @@ namespace Crypto_Trading
                         }
                         else
                         {
-                            addLog("handleCancel  " + ord.ToString());
                             switch (ord.side)
                             {
                                 case orderSide.Buy:
@@ -3696,7 +3734,6 @@ namespace Crypto_Trading
                             }
                             else
                             {
-                                addLog("handleCancel2  " + ord.ToString());
                                 switch (ord.side)
                                 {
                                     case orderSide.Buy:
@@ -3851,7 +3888,6 @@ namespace Crypto_Trading
                         }
                         else
                         {
-                            addLog("handleFilled  " + ord.ToString());
                             switch (ord.side)
                             {
                                 case orderSide.Buy:
@@ -3927,7 +3963,6 @@ namespace Crypto_Trading
                             }
                             else
                             {
-                                addLog("handleFilled2  " + ord.ToString());
                                 switch (ord.side)
                                 {
                                     case orderSide.Buy:
