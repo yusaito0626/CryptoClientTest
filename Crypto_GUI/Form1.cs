@@ -266,7 +266,14 @@ namespace Crypto_GUI
         {
             combo_pnlStrategy.Items.Add("Total");
             combo_pnlStrategy.SelectedItem = "Total";
-            this.startOfDay = DateTime.UtcNow.Date;
+            this.startOfDay = DateTime.UtcNow;
+
+            if(this.startOfDay.Hour >= 23 && this.startOfDay.Minute >= 30)
+            {
+                this.startOfDay = this.startOfDay.AddDays(1);
+            }
+
+            this.startOfDay = this.startOfDay.Date;
 
             this.plot_pnl.Plot.Axes.DateTimeTicksBottom();
 

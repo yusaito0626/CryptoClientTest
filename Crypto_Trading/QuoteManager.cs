@@ -365,9 +365,10 @@ namespace Crypto_Trading
         {
             bool output = true;
             string key;
-            foreach(var exBalance in this.exchanges.Values)
+            if(results.Length == 0)
             {
-                exBalance.marginTotal = 0;
+                addLog("Failed to set balance", logType.WARNING);
+                return false;
             }
             foreach(var item in results)
             {
@@ -416,24 +417,51 @@ namespace Crypto_Trading
                     this.exchanges[item.market] = exBalance;
                 }
                 exBalance.balance[item.asset.ToUpper()] = this.balances[key];
-                switch(item.market)
+                //switch(item.market)
+                //{
+                //    case market.bitbank:
+                //        if(item.asset.ToUpper() == "JPY")
+                //        {
+                //            exBalance.marginTotal += item.total;
+                //        }
+                //        else
+                //        {
+                //            exBalance.marginTotal += item.total / 2;
+                //        }
+                //        break;
+                //    case market.gmocoin:
+                //        if(item.asset.ToUpper() == "JPY")
+                //        {
+                //            exBalance.marginTotal += item.total;
+                //        }
+                //        break;
+                //}
+            }
+
+            foreach (var exBalance in this.exchanges.Values)
+            {
+                exBalance.marginTotal = 0;
+                foreach(var b in exBalance.balance.Values)
                 {
-                    case market.bitbank:
-                        if(item.asset.ToUpper() == "JPY")
-                        {
-                            exBalance.marginTotal += item.total;
-                        }
-                        else
-                        {
-                            exBalance.marginTotal += item.total / 2;
-                        }
-                        break;
-                    case market.gmocoin:
-                        if(item.asset.ToUpper() == "JPY")
-                        {
-                            exBalance.marginTotal += item.total;
-                        }
-                        break;
+                    switch (b.market)
+                    {
+                        case market.bitbank:
+                            if (b.ccy.ToUpper() == "JPY")
+                            {
+                                exBalance.marginTotal += b.total;
+                            }
+                            else
+                            {
+                                exBalance.marginTotal += b.total / 2;
+                            }
+                            break;
+                        case market.gmocoin:
+                            if (b.ccy.ToUpper() == "JPY")
+                            {
+                                exBalance.marginTotal += b.total;
+                            }
+                            break;
+                    }
                 }
             }
             return output;
@@ -441,6 +469,11 @@ namespace Crypto_Trading
         public bool setMarginPosition(DataMarginPos[] mar_pos)
         {
             bool output = true;
+            if (mar_pos.Length == 0)
+            {
+                addLog("Failed to set margin position", logType.WARNING);
+                return false;
+            }
             foreach (var item in mar_pos)
             {
                 if (this.instruments.ContainsKey(item.symbol_market))
@@ -918,6 +951,7 @@ namespace Crypto_Trading
                             foreach (var m in _markets)
                             {
                                 setBalance(await crypto_client.getBalance([m.Key]));
+                                setMarginPosition(await crypto_client.getMarginPos([m.Key]));
                             }
                             foreach (var stg_obj in this.strategies.Values)
                             {

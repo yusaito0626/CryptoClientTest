@@ -331,10 +331,28 @@ namespace Crypto_Trading
             this.quantity_scale = Instrument.GetDecimalScale(this.quantity_unit).ToString();
 
             this.master_symbol = this.baseCcy + this.quoteCcy;
+
             this.baseBalance.market = this.market;
             this.baseBalance.ccy = this.baseCcy;
             this.quoteBalance.market = this.market;
             this.quoteBalance.ccy = this.quoteCcy;
+            this.longPosition.market = this.market;
+            this.longPosition.symbol = this.symbol;
+            this.longPosition.leverage = this.leverage;
+            this.shortPosition.market = this.market;
+            this.shortPosition.symbol = this.symbol;
+            this.shortPosition.leverage = this.leverage;
+
+            this.SoD_baseBalance.market = this.market;
+            this.SoD_baseBalance.ccy = this.baseCcy;
+            this.SoD_quoteBalance.market = this.market;
+            this.SoD_quoteBalance.ccy = this.quoteCcy;
+            this.SoD_longPosition.market = this.market;
+            this.SoD_longPosition.symbol = this.symbol;
+            this.SoD_longPosition.leverage = this.leverage;
+            this.SoD_shortPosition.market = this.market;
+            this.SoD_shortPosition.symbol = this.symbol;
+            this.SoD_shortPosition.leverage = this.leverage;
         }
         public void initialize(masterInfo msinfo)
         {

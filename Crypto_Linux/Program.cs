@@ -16,6 +16,7 @@ using System;
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
+using System.Diagnostics.SymbolStore;
 using System.Drawing;
 using System.Linq;
 using System.Net;
@@ -1019,7 +1020,7 @@ namespace Crypto_Linux
                                 Balance jpy_balance = new Balance();
                                 jpy_balance.market = takerExchange.market;
                                 jpy_balance.ccy = "JPY";
-                                jpy_balance.total = 100_000_000;
+                                jpy_balance.total = 3_000_000;
                                 takerExchange.balance["JPY"] = jpy_balance;
                                 takerExchange.marginTotal += jpy_balance.total;
                             }
@@ -1035,7 +1036,7 @@ namespace Crypto_Linux
                                 Balance jpy_balance = new Balance();
                                 jpy_balance.market = makerExchange.market;
                                 jpy_balance.ccy = "JPY";
-                                jpy_balance.total = 100_000_000;
+                                jpy_balance.total = 3_000_000;
                                 makerExchange.balance["JPY"] = jpy_balance;
                                 makerExchange.marginTotal += jpy_balance.total;
                             }
@@ -1084,7 +1085,15 @@ namespace Crypto_Linux
                                 }
                                 else if (stg.Value.targetMakerPosition < 0)
                                 {
-                                    takerins.longPosition.total = - stg.Value.targetMakerPosition;
+                                    if (takerins.marginLong)
+                                    {
+                                        takerins.longPosition.total = - stg.Value.targetMakerPosition;
+
+                                    }
+                                    else
+                                    {
+                                        takerins.baseBalance.total = - stg.Value.targetMakerPosition;
+                                    }
                                 }
                                 takerins.longPosition.symbol = takerins.symbol;
                                 takerins.longPosition.market = takerins.market;
@@ -1095,21 +1104,15 @@ namespace Crypto_Linux
                             }
                             else
                             {
-                                if (stg.Value.targetMakerPosition > 0)
-                                {
-                                    if(makerins.marginTrade == false)
-                                    {
-                                        takerins.baseBalance.total = stg.Value.targetMakerPosition;
-                                    }
-                                    else
-                                    {
-                                        addLog("The maker target position must be negative value when the taker instrument is spot.", logType.ERROR);
-                                    }
-                                }
-                                else if (stg.Value.targetMakerPosition < 0)
+                                if(stg.Value.targetMakerPosition < 0)
                                 {
                                     takerins.baseBalance.total = - stg.Value.targetMakerPosition;
                                 }
+                                else
+                                {
+                                    takerins.baseBalance.total = stg.Value.targetMakerPosition;
+                                }
+
                             }
 
                             if (!makerExchange.balance.ContainsKey(makerins.baseCcy))
@@ -1131,11 +1134,18 @@ namespace Crypto_Linux
                                 makerins.baseBalance.total = 0;// stg.Value.baseCcyQuantity / 2;
                                 if(stg.Value.targetMakerPosition > 0)
                                 {
-                                    makerins.longPosition.total = stg.Value.targetMakerPosition;
+                                    if (makerins.marginLong)
+                                    {
+                                        makerins.longPosition.total = stg.Value.targetMakerPosition;
+                                    }
+                                    else
+                                    {
+                                        makerins.baseBalance.total = stg.Value.targetMakerPosition;
+                                    }
                                 }
                                 else if(stg.Value.targetMakerPosition < 0)
                                 {
-                                    makerins.shortPosition.total = -stg.Value.targetMakerPosition;
+                                    makerins.shortPosition.total = - stg.Value.targetMakerPosition;
                                 }
                                 makerins.longPosition.symbol = makerins.symbol;
                                 makerins.longPosition.market = makerins.market;
@@ -1628,7 +1638,7 @@ namespace Crypto_Linux
                         else
                         {
                             addLog("Long position not found.  pair:" + ins.symbol_market, logType.WARNING);
-                            exBalance.marginShort[ins.symbol_market] = ins.longPosition;
+                            exBalance.marginLong[ins.symbol_market] = ins.longPosition;
                         }
                     }
                     else
@@ -1762,22 +1772,6 @@ namespace Crypto_Linux
                     addLog("Failed to set margion position", logType.WARNING);
                     return false;
                 }
-                //foreach(var ex in qManager.exchange_balances.Values)
-                //{
-                //    addLog($"Exchange:{ex.market} Balance:{ex.balance.Count} Long:{ex.marginLong.Count} Short:{ex.marginShort.Count}");
-                //    foreach(var b in ex.balance)
-                //    {
-                //        addLog($"Key:{b.Key}  Value:{b.Value.ToString()}");
-                //    }
-                //    foreach(var m in ex.marginLong)
-                //    {
-                //        addLog($"Key:{m.Key} Value:{m.Value.ToString()}");
-                //    }
-                //    foreach (var m in ex.marginShort)
-                //    {
-                //        addLog($"Key:{m.Key} Value:{m.Value.ToString()}");
-                //    }
-                //}
             }
             else if (File.Exists(SoDPosFile))
             {
@@ -2606,6 +2600,38 @@ namespace Crypto_Linux
                             t.Wait();
                             if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys)))
                             {
+                                int i = 0;
+                                while (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys)))
+                                {
+                                    ++i;
+                                    if(i > 5)
+                                    {
+                                        addLog("Failed to get balance.", logType.ERROR);
+                                    }
+                                    else
+                                    {
+                                        addLog($"Trial {i}",logType.WARNING);
+                                    }
+                                    Thread.Sleep(i * 1000);
+                                }
+
+                            }
+                            if (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys)))
+                            {
+                                int i = 0;
+                                while (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys)))
+                                {
+                                    ++i;
+                                    if (i > 5)
+                                    {
+                                        addLog("Failed to get balance", logType.ERROR);
+                                    }
+                                    else
+                                    {
+                                        addLog($"Trial {i}", logType.WARNING);
+                                    }
+                                    Thread.Sleep(i * 1000);
+                                }
 
                             }
                             foreach (var stg_obj in qManager.strategies.Values)
@@ -2812,6 +2838,21 @@ namespace Crypto_Linux
                     marginAvailable = ex.getMarginAvailability();
                     unrealized_pnl = ex.getUnrealizedPnL();
                     marginUsed = ex.marginLocked;
+
+                    if (marginAvailable < 0)
+                    {
+                        addLog("Invalid Margin Availability Exchange:" + ex.market);
+                        decimal used = 0;
+                        foreach (var b in ex.marginLong.Values)
+                        {
+                            used += b.total * b.current_price / b.leverage;
+                        }
+                        foreach (var b in ex.marginShort.Values)
+                        {
+                            used += b.total * b.current_price / b.leverage;
+                        }
+                        addLog($"Total:{ex.marginTotal}   Used:{used}   UnrealizedPnL:{unrealized_pnl}");
+                    }
                 }
                 else
                 {
