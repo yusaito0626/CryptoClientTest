@@ -2527,6 +2527,7 @@ namespace Crypto_Linux
             {
                 return;
             }
+            DateTime current = DateTime.UtcNow;
             connecitonStatus status;
             qManager.checkConnections();
             oManager.checkConnections();
@@ -2662,6 +2663,14 @@ namespace Crypto_Linux
                                 stg_obj.live_buyorder_id = "";
                                 stg_obj.live_askprice = 0;
                                 stg_obj.live_sellorder_id = "";
+                                for (int i = 0; i < stg_obj.live_buyorders.Count; ++i)
+                                {
+                                    stg_obj.live_buyorders[i] = "";
+                                }
+                                for (int i = 0; i < stg_obj.live_sellorders.Count; ++i)
+                                {
+                                    stg_obj.live_sellorders[i] = "";
+                                }
                             }
                             t.Wait();
                             if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys)))
@@ -2747,10 +2756,50 @@ namespace Crypto_Linux
                                 stg_obj.live_buyorder_id = "";
                                 stg_obj.live_askprice = 0;
                                 stg_obj.live_sellorder_id = "";
+                                for (int i = 0; i < stg_obj.live_buyorders.Count; ++i)
+                                {
+                                    stg_obj.live_buyorders[i] = "";
+                                }
+                                for (int i = 0; i < stg_obj.live_sellorders.Count; ++i)
+                                {
+                                    stg_obj.live_sellorders[i] = "";
+                                }
                             }
                             t.Wait();
                             if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys)))
                             {
+                                int i = 0;
+                                while (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys)))
+                                {
+                                    ++i;
+                                    if (i > 5)
+                                    {
+                                        addLog("Failed to get balance.", logType.ERROR);
+                                    }
+                                    else
+                                    {
+                                        addLog($"Trial {i}", logType.WARNING);
+                                    }
+                                    Thread.Sleep(i * 1000);
+                                }
+
+                            }
+                            if (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys)))
+                            {
+                                int i = 0;
+                                while (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys)))
+                                {
+                                    ++i;
+                                    if (i > 5)
+                                    {
+                                        addLog("Failed to get balance", logType.ERROR);
+                                    }
+                                    else
+                                    {
+                                        addLog($"Trial {i}", logType.WARNING);
+                                    }
+                                    Thread.Sleep(i * 1000);
+                                }
 
                             }
                             foreach (var stg_obj in qManager.strategies.Values)
@@ -2764,6 +2813,93 @@ namespace Crypto_Linux
                     {
                         addLog("Updating thread stopped. Stopping all the process", Enums.logType.ERROR);
                     }
+                }
+                if (currentTradingState)
+                {
+                    startTrading();
+                }
+            }
+
+            bool order_refresh = false;
+
+            using (var olock = oManager.order_lock.getlock())
+            {
+                foreach(var ord in oManager.live_orders.Values)
+                {
+                    if((ord.status == orderStatus.WaitCancel || ord.status == orderStatus.WaitOpen || ord.status == orderStatus.WaitMod) && ord.update_time.HasValue && current - ord.timestamp > TimeSpan.FromSeconds(10))
+                    {
+                        order_refresh = true;
+                        break;
+                    }
+                }
+            }
+
+            if(order_refresh)
+            {
+                bool currentTradingState = enabled;
+                addLog("There are some orders pending more than 10 sec",logType.WARNING);
+                stopStrategies();
+                Task t = Task.Run(async () =>
+                {
+                    await qManager.refreshAndCancelAllorders();
+                });
+                foreach (var stg_obj in qManager.strategies.Values)
+                {
+                    stg_obj.maker.resetInusePosition();
+                    stg_obj.taker.resetInusePosition();
+                    stg_obj.live_bidprice = 0;
+                    stg_obj.live_buyorder_id = "";
+                    stg_obj.live_askprice = 0;
+                    stg_obj.live_sellorder_id = "";
+                    for (int i = 0; i < stg_obj.live_buyorders.Count; ++i)
+                    {
+                        stg_obj.live_buyorders[i] = "";
+                    }
+                    for (int i = 0; i < stg_obj.live_sellorders.Count; ++i)
+                    {
+                        stg_obj.live_sellorders[i] = "";
+                    }
+                }
+                t.Wait();
+                if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys)))
+                {
+                    int i = 0;
+                    while (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys)))
+                    {
+                        ++i;
+                        if (i > 5)
+                        {
+                            addLog("Failed to get balance.", logType.ERROR);
+                        }
+                        else
+                        {
+                            addLog($"Trial {i}", logType.WARNING);
+                        }
+                        Thread.Sleep(i * 1000);
+                    }
+
+                }
+                if (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys)))
+                {
+                    int i = 0;
+                    while (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys)))
+                    {
+                        ++i;
+                        if (i > 5)
+                        {
+                            addLog("Failed to get balance", logType.ERROR);
+                        }
+                        else
+                        {
+                            addLog($"Trial {i}", logType.WARNING);
+                        }
+                        Thread.Sleep(i * 1000);
+                    }
+
+                }
+                foreach (var stg_obj in qManager.strategies.Values)
+                {
+                    stg_obj.adjustPosition();
                 }
                 if (currentTradingState)
                 {

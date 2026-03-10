@@ -943,6 +943,14 @@ namespace Crypto_Trading
                                     stg_obj.live_buyorder_id = "";
                                     stg_obj.live_askprice = 0;
                                     stg_obj.live_sellorder_id = "";
+                                    for (int j = 0; j < stg_obj.live_buyorders.Count; ++j)
+                                    {
+                                        stg_obj.live_buyorders[j] = "";
+                                    }
+                                    for (int j = 0; j < stg_obj.live_sellorders.Count; ++j)
+                                    {
+                                        stg_obj.live_sellorders[j] = "";
+                                    }
                                 }
                             }
                             t.Wait();
@@ -986,6 +994,14 @@ namespace Crypto_Trading
                                     stg_obj.live_buyorder_id = "";
                                     stg_obj.live_askprice = 0;
                                     stg_obj.live_sellorder_id = "";
+                                    for (int j = 0; j < stg_obj.live_buyorders.Count; ++j)
+                                    {
+                                        stg_obj.live_buyorders[j] = "";
+                                    }
+                                    for (int j = 0; j < stg_obj.live_sellorders.Count; ++j)
+                                    {
+                                        stg_obj.live_sellorders[j] = "";
+                                    }
                                 }
                             }
                             t.Wait();
@@ -1031,6 +1047,14 @@ namespace Crypto_Trading
                                     stg_obj.live_buyorder_id = "";
                                     stg_obj.live_askprice = 0;
                                     stg_obj.live_sellorder_id = "";
+                                    for (int i = 0; i < stg_obj.live_buyorders.Count; ++i)
+                                    {
+                                        stg_obj.live_buyorders[i] = "";
+                                    }
+                                    for (int i = 0; i < stg_obj.live_sellorders.Count; ++i)
+                                    {
+                                        stg_obj.live_sellorders[i] = "";
+                                    }
                                 }
                             }
                             t.Wait();

@@ -1041,18 +1041,60 @@ namespace Crypto_GUI
                                                         if (exBalance.balance.ContainsKey(ins.baseCcy))
                                                         {
                                                             ins.baseBalance = exBalance.balance[ins.baseCcy];
+                                                            if(ins.quoteCcy == "JPY")
+                                                            {
+                                                                ins.baseBalance.valuation_pair = ins.symbol_market;
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            exBalance.balance[ins.baseCcy] = ins.baseBalance;
+                                                            if(ins.quoteCcy == "JPY")
+                                                            {
+                                                                ins.baseBalance.valuation_pair = ins.symbol_market;
+                                                            }
+                                                            ins.baseBalance.ccy = ins.baseCcy;
+                                                            ins.baseBalance.market = ins.market;
                                                         }
                                                         if (exBalance.balance.ContainsKey(ins.quoteCcy))
                                                         {
                                                             ins.quoteBalance = exBalance.balance[ins.quoteCcy];
+                                                            if(ins.baseCcy == "JPY")
+                                                            {
+                                                                ins.quoteBalance.valuation_pair = ins.symbol_market;
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            exBalance.balance[ins.quoteCcy] = ins.quoteBalance;
+                                                            if (ins.baseCcy == "JPY")
+                                                            {
+                                                                ins.quoteBalance.valuation_pair = ins.symbol_market;
+                                                            }
+                                                            ins.quoteBalance.ccy = ins.quoteCcy;
+                                                            ins.quoteBalance.market = ins.market;
                                                         }
                                                         if (exBalance.marginShort.ContainsKey(ins.symbol_market))
                                                         {
                                                             ins.shortPosition = exBalance.marginShort[ins.symbol_market];
                                                         }
+                                                        else
+                                                        {
+                                                            ins.shortPosition.symbol = ins.symbol;
+                                                            ins.shortPosition.market = ins.market;
+                                                            ins.shortPosition.leverage = ins.leverage;
+                                                            exBalance.marginShort[ins.symbol_market] = ins.shortPosition;
+                                                        }
                                                         if (exBalance.marginLong.ContainsKey(ins.symbol_market))
                                                         {
                                                             ins.longPosition = exBalance.marginLong[ins.symbol_market];
+                                                        }
+                                                        else
+                                                        {
+                                                            ins.longPosition.symbol = ins.symbol;
+                                                            ins.longPosition.market = ins.market;
+                                                            ins.longPosition.leverage = ins.leverage;
+                                                            exBalance.marginLong[ins.symbol_market] = ins.longPosition;
                                                         }
                                                     }
                                                 }
@@ -1808,6 +1850,18 @@ namespace Crypto_GUI
                             {
                                 row.Cells["col_" + b.ccy].Value = b.total.ToString("N5");
                             }
+                            if(qManager.instruments.ContainsKey(b.valuation_pair))
+                            {
+                                Instrument ins = qManager.instruments[b.valuation_pair];
+                                if(ins.quoteCcy == "JPY")
+                                {
+                                    b.current_price = qManager.instruments[b.valuation_pair].mid;
+                                }
+                                else if(ins.baseCcy == "JPY")
+                                {
+                                    b.current_price = 1 / qManager.instruments[b.valuation_pair].mid;
+                                }
+                            }
                             currentValue += b.total * b.current_price;
                         }
                         if(this.gridView_balance.Columns.Contains("col_unrealized"))
@@ -1815,10 +1869,26 @@ namespace Crypto_GUI
                             decimal unrealizePnL = 0;
                             foreach (var mb in exBalance.marginLong.Values)
                             {
+                                if (qManager.instruments.ContainsKey(mb.symbol_market) && qManager.instruments[mb.symbol_market].mid > 0)
+                                {
+                                    mb.current_price = qManager.instruments[mb.symbol_market].mid;
+                                }
+                                else
+                                {
+                                    mb.current_price = mb.avg_price;
+                                }
                                 unrealizePnL += (mb.current_price - mb.avg_price) * mb.total;
                             }
                             foreach (var mb in exBalance.marginShort.Values)
                             {
+                                if (qManager.instruments.ContainsKey(mb.symbol_market) && qManager.instruments[mb.symbol_market].mid > 0)
+                                {
+                                    mb.current_price = qManager.instruments[mb.symbol_market].mid;
+                                }
+                                else
+                                {
+                                    mb.current_price = mb.avg_price;
+                                }
                                 unrealizePnL += (mb.avg_price - mb.current_price) * mb.total;
                             }
                             currentValue += unrealizePnL;
@@ -1843,6 +1913,10 @@ namespace Crypto_GUI
                         {
                             this.gridView_balance.Rows[0].Cells["col_" + b.ccy].Value = b.total.ToString("N5");
                         }
+                        if (qManager.instruments.ContainsKey(b.valuation_pair) && qManager.instruments[b.valuation_pair].mid > 0)
+                        {
+                            b.current_price = qManager.instruments[b.valuation_pair].mid;
+                        }
                         currentValue += b.total * b.current_price;
                     }
                     if (this.gridView_balance.Columns.Contains("col_unrealized"))
@@ -1850,10 +1924,26 @@ namespace Crypto_GUI
                         decimal unrealizePnL = 0;
                         foreach (var mb in exBalance.marginLong.Values)
                         {
+                            if (qManager.instruments.ContainsKey(mb.symbol_market) && qManager.instruments[mb.symbol_market].mid > 0)
+                            {
+                                mb.current_price = qManager.instruments[mb.symbol_market].mid;
+                            }
+                            else
+                            {
+                                mb.current_price = mb.avg_price;
+                            }
                             unrealizePnL += (mb.current_price - mb.avg_price) * mb.total;
                         }
                         foreach (var mb in exBalance.marginShort.Values)
                         {
+                            if (qManager.instruments.ContainsKey(mb.symbol_market) && qManager.instruments[mb.symbol_market].mid > 0)
+                            {
+                                mb.current_price = qManager.instruments[mb.symbol_market].mid;
+                            }
+                            else
+                            {
+                                mb.current_price = mb.avg_price;
+                            }
                             unrealizePnL += (mb.avg_price - mb.current_price) * mb.total;
                         }
                         currentValue += unrealizePnL;
