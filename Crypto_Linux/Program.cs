@@ -1582,10 +1582,6 @@ namespace Crypto_Linux
                         ++i;
                     }
                 }
-                if(binfos.Count > 0)
-                {
-                    await ws_server.processBalance(binfos);
-                }
 
 
                 foreach (var ex in qManager.exchanges.Values)
@@ -1605,20 +1601,53 @@ namespace Crypto_Linux
                         if (exBalance.balance.ContainsKey(ins.baseCcy))
                         {
                             ins.baseBalance = exBalance.balance[ins.baseCcy];
+                            ins.baseBalance.valuation_pair = ins.symbol_market;
                         }
                         else
                         {
                             addLog("Base currency balance not found.  pair:" + ins.symbol_market + "  ccy:" + ins.baseCcy, logType.WARNING);
                             exBalance.balance[ins.baseCcy] = ins.baseBalance;
+                            ins.baseBalance.valuation_pair = ins.symbol_market;
+
+                            balanceInfo bi = new balanceInfo();
+                            bi.market = ins.market.ToString();
+                            bi.posType = "SPOT";
+                            bi.symbol = ins.baseCcy;
+                            bi.side = "";
+                            bi.total = ins.baseBalance.total;
+                            bi.avg_price = 0;
+                            bi.current_price = 0;
+                            bi.valuation_pair = ins.symbol;
+                            bi.unrealized_fee = 0;
+                            bi.unrealized_interest = 0;
+                            bi.isSoD = true;
+                            binfos.Add(bi);
+
                         }
                         if (exBalance.balance.ContainsKey(ins.quoteCcy))
                         {
                             ins.quoteBalance = exBalance.balance[ins.quoteCcy];
+                            ins.quoteBalance.valuation_pair = ins.symbol_market;
                         }
                         else
                         {
                             addLog("Quote currency balance not found.  pair:" + ins.symbol_market + "  ccy:" + ins.quoteCcy, logType.WARNING);
                             exBalance.balance[ins.quoteCcy] = ins.quoteBalance;
+                            ins.quoteBalance.valuation_pair = ins.symbol_market;
+
+                            balanceInfo bi = new balanceInfo();
+                            bi.market = ins.market.ToString();
+                            bi.posType = "SPOT";
+                            bi.symbol = ins.quoteCcy;
+                            bi.side = "";
+                            bi.total = ins.quoteBalance.total;
+                            bi.avg_price = 0;
+                            bi.current_price = 0;
+                            bi.valuation_pair = ins.symbol;
+                            bi.unrealized_fee = 0;
+                            bi.unrealized_interest = 0;
+                            bi.isSoD = true;
+                            binfos.Add(bi);
                         }
                         if (exBalance.marginShort.ContainsKey(ins.symbol_market))
                         {
@@ -1629,6 +1658,20 @@ namespace Crypto_Linux
                         {
                             addLog("Short position not found.  pair:" + ins.symbol_market, logType.WARNING);
                             exBalance.marginShort[ins.symbol_market] = ins.shortPosition;
+
+                            balanceInfo bi = new balanceInfo();
+                            bi.market = ins.market.ToString();
+                            bi.posType = "MARGIN";
+                            bi.symbol = ins.symbol;
+                            bi.side = ins.shortPosition.side.ToString();
+                            bi.total = ins.shortPosition.total;
+                            bi.avg_price = ins.shortPosition.avg_price;
+                            bi.current_price = ins.shortPosition.current_price;
+                            bi.valuation_pair = ins.symbol;
+                            bi.unrealized_fee = ins.shortPosition.unrealized_fee;
+                            bi.unrealized_interest = ins.shortPosition.unrealized_interest;
+                            bi.isSoD = true;
+                            binfos.Add(bi);
                         }
                         if (exBalance.marginLong.ContainsKey(ins.symbol_market))
                         {
@@ -1639,6 +1682,20 @@ namespace Crypto_Linux
                         {
                             addLog("Long position not found.  pair:" + ins.symbol_market, logType.WARNING);
                             exBalance.marginLong[ins.symbol_market] = ins.longPosition;
+
+                            balanceInfo bi = new balanceInfo();
+                            bi.market = ins.market.ToString();
+                            bi.posType = "MARGIN";
+                            bi.symbol = ins.symbol;
+                            bi.side = ins.longPosition.side.ToString();
+                            bi.total = ins.longPosition.total;
+                            bi.avg_price = ins.longPosition.avg_price;
+                            bi.current_price = ins.longPosition.current_price;
+                            bi.valuation_pair = ins.symbol;
+                            bi.unrealized_fee = ins.longPosition.unrealized_fee;
+                            bi.unrealized_interest = ins.longPosition.unrealized_interest;
+                            bi.isSoD = true;
+                            binfos.Add(bi);
                         }
                     }
                     else
@@ -1651,20 +1708,24 @@ namespace Crypto_Linux
                         if (exBalance.balance.ContainsKey(ins.baseCcy))
                         {
                             ins.SoD_baseBalance = exBalance.balance[ins.baseCcy];
+                            ins.SoD_baseBalance.valuation_pair = ins.symbol_market;
                         }
                         else
                         {
                             addLog("Base currency balance not found.  pair:" + ins.symbol_market + "  ccy:" + ins.baseCcy, logType.WARNING);
                             exBalance.balance[ins.baseCcy] = ins.SoD_baseBalance;
+                            ins.SoD_baseBalance.valuation_pair = ins.symbol_market;
                         }
                         if (exBalance.balance.ContainsKey(ins.quoteCcy))
                         {
                             ins.SoD_quoteBalance = exBalance.balance[ins.quoteCcy];
+                            ins.SoD_quoteBalance.valuation_pair = ins.symbol_market;
                         }
                         else
                         {
                             addLog("Quote currency balance not found.  pair:" + ins.symbol_market + "  ccy:" + ins.quoteCcy, logType.WARNING);
                             exBalance.balance[ins.quoteCcy] = ins.SoD_quoteBalance;
+                            ins.SoD_quoteBalance.valuation_pair = ins.symbol_market;
                         }
                         if (exBalance.marginShort.ContainsKey(ins.symbol_market))
                         {
@@ -1701,6 +1762,11 @@ namespace Crypto_Linux
                     {
                         addLog("[SetRealPosition]Exchange not found. Exchange:" + ins.market);
                     }
+                }
+
+                if (binfos.Count > 0)
+                {
+                    await ws_server.processBalance(binfos);
                 }
                 SortedDictionary<DateTime, DataFill> histFill = new SortedDictionary<DateTime, DataFill>();
                 DateTime currentTime = DateTime.UtcNow;

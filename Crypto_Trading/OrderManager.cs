@@ -889,10 +889,39 @@ namespace Crypto_Trading
                 }
                 else//Close
                 {
-                    switch(sndOrd.pos_side)
+                    if(sndOrd.order_type == orderType.Market)
+                    {
+                        decimal marketPrice;
+                        marketPrice = (sndOrd.side == orderSide.Buy) ? sndOrd.ins.bestask.Item1 : sndOrd.ins.bestbid.Item1;
+                        if (sndOrd.side == orderSide.Buy)
+                        {
+                            if (sndOrd.ins.getWeightedAvgPrice(orderSide.Sell, [sndOrd.quantity], pr, false))
+                            {
+                                marketPrice = pr[0];
+                            }
+                            else
+                            {
+                                marketPrice = sndOrd.ins.bestask.Item1;
+                            }
+                        }
+                        else if (sndOrd.side == orderSide.Sell)
+                        {
+                            if (sndOrd.ins.getWeightedAvgPrice(orderSide.Buy, [sndOrd.quantity], pr, false))
+                            {
+                                marketPrice = pr[0];
+                            }
+                            else
+                            {
+                                marketPrice = sndOrd.ins.bestbid.Item1;
+                            }
+                        }
+                        sndOrd.price = marketPrice;
+                    }
+                    
+                    switch (sndOrd.pos_side)
                     {
                         case positionSide.Long:
-                            if(ex.marginLong.ContainsKey(sndOrd.ins.symbol_market))
+                            if (ex.marginLong.ContainsKey(sndOrd.ins.symbol_market))
                             {
                                 BalanceMargin marginLong = ex.marginLong[sndOrd.ins.symbol_market];
                                 using(var loslock = marginLong.balance_lock.getlock())
@@ -3341,6 +3370,10 @@ namespace Crypto_Trading
                     {
                         prevord = this.orders[ord.internal_order_id];
                         ord.msg = prevord.msg;
+                        if(ord.order_price == 0 && prevord.order_price > 0)
+                        {
+                            ord.order_price = prevord.order_price;
+                        }
                         if ((ord.status < prevord.status || ord.filled_quantity < prevord.filled_quantity) && !(prevord.status == orderStatus.WaitCancel && ord.status == orderStatus.Open))
                         {
                             ord.update_time = DateTime.UtcNow;
@@ -3801,6 +3834,10 @@ namespace Crypto_Trading
                     {
                         prevord = this.orders[ord.internal_order_id];
                         ord.msg = prevord.msg;
+                        if(ord.order_price == 0 && prevord.order_price > 0)
+                        {
+                            ord.order_price = prevord.order_price;
+                        }
 
                         if ((ord.status < prevord.status || ord.filled_quantity < prevord.filled_quantity) && !(prevord.status == orderStatus.WaitCancel && ord.status == orderStatus.Open))
                         {
