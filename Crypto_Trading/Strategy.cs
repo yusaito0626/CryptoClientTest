@@ -992,10 +992,10 @@ namespace Crypto_Trading
                             }
                         }
 
-                        if (bid_price > min_markup_bid)
-                        {
-                            bid_price = min_markup_bid;
-                        }
+                        //if (bid_price > min_markup_bid)
+                        //{
+                        //    bid_price = min_markup_bid;
+                        //}
                     }
 
                     if (ask_price > 0)
@@ -1017,10 +1017,10 @@ namespace Crypto_Trading
                             }
                         }
 
-                        if (ask_price < min_markup_ask)
-                        {
-                            ask_price = min_markup_ask;
-                        }
+                        //if (ask_price < min_markup_ask)
+                        //{
+                        //    ask_price = min_markup_ask;
+                        //}
                     }
 
 
