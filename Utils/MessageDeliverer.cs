@@ -63,61 +63,70 @@ namespace Utils
             }
         }
 
-        public async Task sendMessage(string body,msgType msg_type = msgType.NOTIFICATION)
+        public async Task<string> sendMessage(string body,msgType msg_type = msgType.NOTIFICATION)
         {
-            if(this.discord_client != null)
+            string res = "";
+            try
             {
-                switch (msg_type)
+                if (this.discord_client != null)
                 {
-                    case msgType.NOTIFICATION:
-                        if(this.discord_channel > 0)
-                        {
-                            var channel = this.discord_client.GetChannel(this.discord_channel) as IMessageChannel;
-                            if (channel != null)
+                    switch (msg_type)
+                    {
+                        case msgType.NOTIFICATION:
+                            if (this.discord_channel > 0)
                             {
-                                await channel.SendMessageAsync(body);
+                                var channel = this.discord_client.GetChannel(this.discord_channel) as IMessageChannel;
+                                if (channel != null)
+                                {
+                                    await channel.SendMessageAsync(body);
+                                }
                             }
-                        }
-                        break;
-                    case msgType.ERROR:
-                        if (this.discord_channel_error > 0)
-                        {
-                            var channel = this.discord_client.GetChannel(this.discord_channel_error) as IMessageChannel;
-                            if (channel != null)
+                            break;
+                        case msgType.ERROR:
+                            if (this.discord_channel_error > 0)
                             {
-                                await channel.SendMessageAsync(body);
+                                var channel = this.discord_client.GetChannel(this.discord_channel_error) as IMessageChannel;
+                                if (channel != null)
+                                {
+                                    await channel.SendMessageAsync(body);
+                                }
                             }
-                        }
-                        else if(this.discord_channel > 0)
-                        {
-                            var channel = this.discord_client.GetChannel(this.discord_channel) as IMessageChannel;
-                            if (channel != null)
+                            else if (this.discord_channel > 0)
                             {
-                                await channel.SendMessageAsync(body);
+                                var channel = this.discord_client.GetChannel(this.discord_channel) as IMessageChannel;
+                                if (channel != null)
+                                {
+                                    await channel.SendMessageAsync(body);
+                                }
                             }
-                        }
-                        break;
-                    case msgType.TEST:
-                        if (this.discord_channel_test > 0)
-                        {
-                            var channel = this.discord_client.GetChannel(this.discord_channel_test) as IMessageChannel;
-                            if (channel != null)
+                            break;
+                        case msgType.TEST:
+                            if (this.discord_channel_test > 0)
                             {
-                                await channel.SendMessageAsync(body);
+                                var channel = this.discord_client.GetChannel(this.discord_channel_test) as IMessageChannel;
+                                if (channel != null)
+                                {
+                                    await channel.SendMessageAsync(body);
+                                }
                             }
-                        }
-                        else if (this.discord_channel > 0)
-                        {
-                            var channel = this.discord_client.GetChannel(this.discord_channel) as IMessageChannel;
-                            if (channel != null)
+                            else if (this.discord_channel > 0)
                             {
-                                await channel.SendMessageAsync(body);
+                                var channel = this.discord_client.GetChannel(this.discord_channel) as IMessageChannel;
+                                if (channel != null)
+                                {
+                                    await channel.SendMessageAsync(body);
+                                }
                             }
-                        }
-                        break;
+                            break;
+                    }
                 }
             }
-            
+            catch (Exception ex) 
+            {
+                res = "[WARNING] Failed to send a message to Discord. Error:" + ex.Message;
+            }
+
+            return res;
             //if(this.discord_client != null && this.discord_channel > 0)
             //{
             //    var channel = this.discord_client.GetChannel(this.discord_channel) as IMessageChannel;

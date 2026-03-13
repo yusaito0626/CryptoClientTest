@@ -4,6 +4,7 @@ using DeepCoin.Net.Objects.Models;
 using Discord;
 using Discord.Audio.Streams;
 using Enums;
+using System.Diagnostics;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
@@ -908,6 +909,172 @@ namespace Crypto_Trading
             }
             
             return price;
+        }
+        public bool getWeightedAvgPrice(orderSide side,List<orderCondition> cond, bool priceAjustment = true)
+        {
+            bool ret = false;
+            int layer = 0;
+            decimal quantity;
+            decimal cumQuantity = 0;
+            decimal weightedPrice = 0;
+            int pr_adjust = 1;
+            if (!priceAjustment)
+            {
+                pr_adjust = 0;
+            }
+            if (cond.Count > layer)
+            {
+                quantity = cond[layer].quantity;
+            }
+            else
+            {
+                return ret;
+            }
+            using (var qlock = this.quotes_lock.getlock())
+            {
+                switch (side)
+                {
+                    case orderSide.Buy:
+                        foreach (var item in this.bids.Reverse())
+                        {
+                            if (cumQuantity + item.Value < quantity)
+                            {
+                                cumQuantity += item.Value;
+                                weightedPrice += item.Value * item.Key;
+                                //Console.WriteLine($"layer {layer.ToString()} <= {item.Value.ToString()}@{item.Key.ToString()}");
+                            }
+                            else
+                            {
+                                //Console.WriteLine($"layer {layer.ToString()} <= {(quantity - cumQuantity).ToString()} from {item.Value.ToString()}@{item.Key.ToString()}");
+                                decimal residual = item.Value - (quantity - cumQuantity);
+                                weightedPrice += (quantity - cumQuantity) * item.Key;
+                                cumQuantity += (quantity - cumQuantity);
+                                if (cond.Count > layer)
+                                {
+                                    cond[layer].price = cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + pr_adjust * this.marginDiscount) : 0;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                                cumQuantity = 0;
+                                weightedPrice = 0;
+                                while (residual > 0)
+                                {
+                                    ++layer;
+                                    if (cond.Count > layer)
+                                    {
+                                        quantity = cond[layer].quantity;
+                                        if (quantity > cumQuantity + residual)
+                                        {
+                                            cumQuantity += residual;
+                                            weightedPrice += residual * item.Key;
+                                            //Console.WriteLine($"layer {layer.ToString()} <= {residual.ToString()} from {item.Value.ToString()}@{item.Key.ToString()}");
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            //Console.WriteLine($"layer {layer.ToString()} <= {(quantity - cumQuantity).ToString()} from {item.Value.ToString()}@{item.Key.ToString()}");
+                                            residual -= quantity - cumQuantity;
+                                            weightedPrice += (quantity - cumQuantity) * item.Key;
+                                            cumQuantity += quantity - cumQuantity;
+                                            if (cond.Count > layer)
+                                            {
+                                                cond[layer].price = cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + pr_adjust * this.marginDiscount) : 0;
+                                            }
+                                            else
+                                            {
+                                                return false;
+                                            }
+                                            cumQuantity = 0;
+                                            weightedPrice = 0;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        break;
+                                    }
+                                }
+                                if (cond.Count <= layer)
+                                {
+                                    ret = true;
+                                    break;
+                                }
+                            }
+                        }
+                        break;
+                    case orderSide.Sell:
+                        foreach (var item in this.asks)
+                        {
+                            if (cumQuantity + item.Value < quantity)
+                            {
+                                cumQuantity += item.Value;
+                                weightedPrice += item.Value * item.Key;
+                                //Console.WriteLine($"layer {layer.ToString()} <= {item.Value.ToString()}@{item.Key.ToString()}");
+                            }
+                            else
+                            {
+                                //Console.WriteLine($"layer {layer.ToString()} <= {(quantity - cumQuantity).ToString()} from {item.Value.ToString()}@{item.Key.ToString()}");
+                                decimal residual = item.Value - (quantity - cumQuantity);
+                                weightedPrice += (quantity - cumQuantity) * item.Key;
+                                cumQuantity += (quantity - cumQuantity);
+                                if (cond.Count > layer)
+                                {
+                                    cond[layer].price = cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + pr_adjust * this.marginDiscount) : 0;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                                cumQuantity = 0;
+                                weightedPrice = 0;
+                                while (residual > 0)
+                                {
+                                    ++layer;
+                                    if (cond.Count > layer)
+                                    {
+                                        quantity = cond[layer].quantity;
+                                        if (quantity > cumQuantity + residual)
+                                        {
+                                            cumQuantity += residual;
+                                            weightedPrice += residual * item.Key;
+                                            //Console.WriteLine($"layer {layer.ToString()} <= {residual.ToString()} from {item.Value.ToString()}@{item.Key.ToString()}");
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            //Console.WriteLine($"layer {layer.ToString()} <= {(quantity - cumQuantity).ToString()} from {item.Value.ToString()}@{item.Key.ToString()}");
+                                            residual -= quantity - cumQuantity;
+                                            weightedPrice += (quantity - cumQuantity) * item.Key;
+                                            cumQuantity += quantity - cumQuantity;
+                                            if (cond.Count > layer)
+                                            {
+                                                cond[layer].price = cumQuantity > 0 ? weightedPrice / cumQuantity * (1 + this.taker_fee) / (1 + pr_adjust * this.marginDiscount) : 0;
+                                            }
+                                            else
+                                            {
+                                                return false;
+                                            }
+                                            cumQuantity = 0;
+                                            weightedPrice = 0;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        break;
+                                    }
+                                }
+                                if (cond.Count <= layer)
+                                {
+                                    ret = true;
+                                    break;
+                                }
+                            }
+                        }
+                        break;
+                }
+            }
+            return ret;
         }
         public bool getWeightedAvgPrice(orderSide side, List<decimal> quantities, List<decimal> prices, bool priceAjustment = true)
         {

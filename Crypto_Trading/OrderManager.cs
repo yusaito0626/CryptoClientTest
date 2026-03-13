@@ -583,7 +583,7 @@ namespace Crypto_Trading
             }
             if(sndOrd.price < 0)
             {
-                addLog("[New Order]Invalid price",logType.WARNING);
+                addLog("[New Order]Invalid price  price:" + sndOrd.price.ToString(),logType.WARNING);
                 output = this.ord_client.ordUpdateStack.pop();
                 if (output == null)
                 {
@@ -614,7 +614,7 @@ namespace Crypto_Trading
             }
             if(sndOrd.quantity <= 0)
             {
-                addLog("[New Order]Invalid quantity", logType.WARNING);
+                addLog("[New Order]Invalid quantity    quantity:" + sndOrd.quantity.ToString(), logType.WARNING);
                 output = this.ord_client.ordUpdateStack.pop();
                 if (output == null)
                 {
@@ -645,7 +645,7 @@ namespace Crypto_Trading
             }
             if(sndOrd.side == orderSide.NONE)
             {
-                addLog("[New Order]Invalid order side", logType.WARNING);
+                addLog("[New Order]Invalid order side  order_side:" + sndOrd.side.ToString(), logType.WARNING);
                 output = this.ord_client.ordUpdateStack.pop();
                 if (output == null)
                 {
@@ -1482,6 +1482,10 @@ namespace Crypto_Trading
                     output.err_code = code;
                     switch (code)
                     {
+                        case -1:
+                            this.addLog("[bitbank]New order failed. Unexpected error   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                            break;
+
                         case 10000:
                             this.addLog("[bitbank]New order failed. The URL doesn't exist. Error code: 10000   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
                             break;
@@ -4048,6 +4052,7 @@ namespace Crypto_Trading
         {
             if(this.virtualMode)
             {
+                using var volock = this.virtual_order_lock.getlock();
                 decimal peek_DequeueCount;
                 decimal peek_EnqueueCount;
                 DateTime current = DateTime.UtcNow;
@@ -4158,41 +4163,35 @@ namespace Crypto_Trading
                                         update.Copy(output);
                                         update.status = orderStatus.Open;
                                         update.update_time = current;
-                                        using (var volock = this.virtual_order_lock.getlock())
-                                        {
-                                            if (this.virtual_liveorders.ContainsKey(update.internal_order_id))
-                                            {
-                                                this.virtual_liveorders[update.internal_order_id] = update;
-                                            }
-                                            else
-                                            {
-
-                                                this.virtual_liveorders[update.internal_order_id] = update;
-                                            }
-                                        }
                                         
+                                        if (this.virtual_liveorders.ContainsKey(update.internal_order_id))
+                                        {
+                                            this.virtual_liveorders[update.internal_order_id] = update;
+                                        }
+                                        else
+                                        {
+
+                                            this.virtual_liveorders[update.internal_order_id] = update;
+                                        }
                                         this.ord_client.ordUpdateQueue.Enqueue(update);
                                     }
                                     break;
                                 case orderStatus.WaitCancel:
-                                    using (var volock = this.virtual_order_lock.getlock())
+                                    if (this.virtual_liveorders.ContainsKey(output.internal_order_id))
                                     {
-                                        if (this.virtual_liveorders.ContainsKey(output.internal_order_id))
+                                        update = this.ord_client.ordUpdateStack.pop();
+                                        if (update == null)
                                         {
-                                            update = this.ord_client.ordUpdateStack.pop();
-                                            if (update == null)
-                                            {
-                                                update = new DataSpotOrderUpdate();
-                                            }
-                                            update.Copy(output);
-                                            update.status = orderStatus.Canceled;
-                                            this.virtual_liveorders.Remove(output.internal_order_id);
-                                            this.ord_client.ordUpdateQueue.Enqueue(update);
+                                            update = new DataSpotOrderUpdate();
                                         }
-                                        else
-                                        {
-                                            //Do nothing
-                                        }
+                                        update.Copy(output);
+                                        update.status = orderStatus.Canceled;
+                                        this.virtual_liveorders.Remove(output.internal_order_id);
+                                        this.ord_client.ordUpdateQueue.Enqueue(update);
+                                    }
+                                    else
+                                    {
+                                        //Do nothing
                                     }
                                     break;
                             }

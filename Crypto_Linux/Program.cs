@@ -541,7 +541,12 @@ namespace Crypto_Linux
                     Console.WriteLine(msg);
                     if(discord)
                     {
-                        await MsgDeliverer.sendMessage(msg, msg_type);
+                        string err = "";
+                        err = await MsgDeliverer.sendMessage(msg, msg_type);
+                        if(err != "")
+                        {
+                            addLog(err, logType.WARNING);
+                        }
                     }
                 }
             }
@@ -577,7 +582,12 @@ namespace Crypto_Linux
             Console.WriteLine(msg);
             if(discord)
             {
-                await MsgDeliverer.sendMessage(msg, msg_type);
+                string err = "";
+                err = await MsgDeliverer.sendMessage(msg, msg_type);
+                if (err != "")
+                {
+                    addLog(err, logType.WARNING);
+                }
             }
             //return msg;
         }
@@ -2150,9 +2160,13 @@ namespace Crypto_Linux
                     Thread.Sleep(1000);
 
                     string msg = "EoD PnL\n";
-                    await MsgDeliverer.sendMessage(msg, msg_type);
+                    string err = "";
+                    err = await MsgDeliverer.sendMessage(msg, msg_type);
+                    if (err != "")
+                    {
+                        addLog(err, logType.WARNING);
+                    }
                     Console.WriteLine(msg);
-
                     await messagePnL(true);
 
                     if (ws_server.intradayPnLList.Count > 0)
@@ -3366,7 +3380,6 @@ namespace Crypto_Linux
         static private void addLog(string body, Enums.logType logtype = Enums.logType.INFO)
         {
             string messageline = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   [" + logtype.ToString() + "]" + body + "\n";
-
             logQueue.Enqueue(messageline);
             switch (logtype)
             {

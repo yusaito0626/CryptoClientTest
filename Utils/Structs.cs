@@ -551,7 +551,7 @@ namespace Utils
             JsonElement js_interest;
             if (js.TryGetProperty("interest", out js_interest) && js_interest.GetString() != null)
             {
-                this.interest = decimal.Parse(js_interest.GetString());
+                this.interest = decimal.Parse(js_interest.GetString(),NumberStyles.Float,CultureInfo.InvariantCulture);
             }
             //this.profit_loss = decimal.Parse(js.GetProperty("profit_loss").GetString());
             //this.interest = decimal.Parse(js.GetProperty("interest").GetString());
@@ -2523,6 +2523,27 @@ namespace Utils
         public string ToString()
         {
             return $"{this.strategy},{this.symbol},{this.SoDBalance},{this.EoDBalance},{this.count},{this.totalAmount},{this.notionalVolume},{this.markupPnL},{this.skewPnL},{this.priceAdjPnL},{this.residualPnL},{this.totalFee},{this.totalPnL},{this.avg_Latency}";
+        }
+    }
+    public class orderCondition
+    {
+        public string order_id;
+        public orderSide side;
+        public positionSide pos_side;
+        public decimal price;
+        public decimal quantity;
+
+        public orderCondition()
+        {
+            this.init();
+        }
+        public void init()
+        {
+            this.order_id = "";
+            this.side = orderSide.NONE;
+            this.pos_side = positionSide.NONE;
+            this.price = 0;
+            this.quantity = 0;
         }
     }
 }
