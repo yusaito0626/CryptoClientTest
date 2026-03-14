@@ -1,5 +1,6 @@
 ﻿using Binance.Net.Enums;
 using Binance.Net.Objects.Models.Spot.Loans;
+using BitMart.Net.Enums;
 using Crypto_Clients;
 using CryptoExchange.Net;
 using Discord;
@@ -962,7 +963,7 @@ namespace Crypto_Trading
                         this.temp_markup_bid = markup_bid;
                     }
 
-                    if (this.base_markup > this.max_baseMarkup || this.base_markup < 0)
+                    if (this.base_markup > this.max_baseMarkup)
                     {
                         bid_price = 0;
                         ask_price = 0;
@@ -1430,9 +1431,10 @@ namespace Crypto_Trading
                     {
                         for(i = 0;i < this.layers;++i)
                         {
+                            string msg = vr_markup.ToString("F2");
                             if (this.bid_orders[i].price > 0 && this.bid_orders[i].quantity > 0 && (newBuyOrder & (1 << i)) > 0)
                             {
-                                this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.bid_orders[i].quantity, this.bid_orders[i].price, this.bid_orders[i].pos_side, null, true, false, vr_markup.ToString("F2"));
+                                this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.bid_orders[i].quantity, this.bid_orders[i].price, this.bid_orders[i].pos_side, null, true, false, msg);
                                 using (var tslock = this.tradeSummary_lock.getlock())
                                 {
                                     tradeSummary ts = this.oManager.TS_stack.pop();
@@ -1441,7 +1443,7 @@ namespace Crypto_Trading
                                         ts = new tradeSummary();
                                     }
                                     ts.id = this.live_buyorders[i];
-                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market,i + 1, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
                                     //ts.maker_orderid = this.live_buyorders[i];
                                     this.tempTradeSummaries[ts.id] = ts;
                                 }
@@ -1577,7 +1579,7 @@ namespace Crypto_Trading
                             }
                             if (this.ask_orders[i].price > 0 && this.ask_orders[i].quantity > 0 && (newSellOrder & (1 << i)) > 0)
                             {
-                                this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ask_orders[i].quantity, this.ask_orders[i].price, this.ask_orders[i].pos_side, null, true, false, vr_markup.ToString("F2"));
+                                this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ask_orders[i].quantity, this.ask_orders[i].price, this.ask_orders[i].pos_side, null, true, false, msg);
                                 using (var tslock = this.tradeSummary_lock.getlock())
                                 {
                                     tradeSummary ts = this.oManager.TS_stack.pop();
@@ -1586,7 +1588,7 @@ namespace Crypto_Trading
                                         ts = new tradeSummary();
                                     }
                                     ts.id = this.live_sellorders[i];
-                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
                                     //ts.maker_orderid = this.live_sellorders[i];
                                     this.tempTradeSummaries[ts.id] = ts;
                                 }
@@ -1736,9 +1738,10 @@ namespace Crypto_Trading
                     {
                         for (i = 0; i < this.layers; ++i)
                         {
+                            string msg = vr_markup.ToString("F2");
                             if (this.ask_orders[i].price > 0 && this.ask_orders[i].quantity > 0 && (newSellOrder & (1 << i)) > 0)
                             {
-                                this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ask_orders[i].quantity, this.ask_orders[i].price, this.ask_orders[i].pos_side, null, true, false, vr_markup.ToString("F2"));
+                                this.live_sellorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Sell, orderType.Limit, this.ask_orders[i].quantity, this.ask_orders[i].price, this.ask_orders[i].pos_side, null, true, false, msg);
                                 using (var tslock = this.tradeSummary_lock.getlock())
                                 {
                                     tradeSummary ts = this.oManager.TS_stack.pop();
@@ -1747,7 +1750,7 @@ namespace Crypto_Trading
                                         ts = new tradeSummary();
                                     }
                                     ts.id = this.live_sellorders[i];
-                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
                                     //ts.maker_orderid = this.live_sellorders[i];
                                     this.tempTradeSummaries[ts.id] = ts;
                                 }
@@ -1892,7 +1895,7 @@ namespace Crypto_Trading
                             }
                             if (this.bid_orders[i].price > 0 && this.bid_orders[i].quantity > 0 && (newBuyOrder & (1 << i)) > 0)
                             {
-                                this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.bid_orders[i].quantity, this.bid_orders[i].price, this.bid_orders[i].pos_side, null, true, false, vr_markup.ToString("F2"));
+                                this.live_buyorders[i] = await this.oManager.placeNewSpotOrder(this.maker, orderSide.Buy, orderType.Limit, this.bid_orders[i].quantity, this.bid_orders[i].price, this.bid_orders[i].pos_side, null, true, false, msg);
                                 using (var tslock = this.tradeSummary_lock.getlock())
                                 {
                                     tradeSummary ts = this.oManager.TS_stack.pop();
@@ -1901,7 +1904,7 @@ namespace Crypto_Trading
                                         ts = new tradeSummary();
                                     }
                                     ts.id = this.live_buyorders[i];
-                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
                                     //ts.maker_orderid = this.live_buyorders[i];
                                     this.tempTradeSummaries[ts.id] = ts;
                                 }

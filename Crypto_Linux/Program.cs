@@ -2476,7 +2476,7 @@ namespace Crypto_Linux
             {
                 using (StreamWriter tpt = new StreamWriter(new FileStream(filename, FileMode.Create, FileAccess.Write)))
                 {
-                    tpt.WriteLine("timestamp,strategy,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,maker_side,maker_avgprice,maker_quantity,maker_avgExecutedTime,taker_side,taker_avgprice,taker_quantity,taker_avgExecutedTime,realized_volatility,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency");
+                    tpt.WriteLine("timestamp,strategy,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,layer,maker_side,maker_avgprice,maker_quantity,maker_avgExecutedTime,taker_side,taker_avgprice,taker_quantity,taker_avgExecutedTime,realized_volatility,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency");
                     foreach (var stg in strategies.Values)
                     {
                         foreach (var ts in stg.tradeSummaries.Values)

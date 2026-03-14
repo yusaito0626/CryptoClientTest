@@ -4282,16 +4282,16 @@ namespace Crypto_Trading
                                             fill.timestamp = output.timestamp;
                                             fill.filled_time = fill.timestamp;
                                             fill.order_type = ord.order_type;
-                                            fill.msg += " Best Ask:" + ins.bestask.Item1.ToString();
-                                            if (last_trade != null)
-                                            {
-                                                fill.msg += " Last traded price:" + last_trade.price.ToString();
-                                            }
-                                            output.msg += " Best Ask:" + ins.bestask.Item1.ToString();
-                                            if (last_trade != null)
-                                            {
-                                                output.msg += " Last traded price:" + last_trade.price.ToString();
-                                            }
+                                            //fill.msg += " Best Ask:" + ins.bestask.Item1.ToString();
+                                            //if (last_trade != null)
+                                            //{
+                                            //    fill.msg += " Last traded price:" + last_trade.price.ToString();
+                                            //}
+                                            //output.msg += " Best Ask:" + ins.bestask.Item1.ToString();
+                                            //if (last_trade != null)
+                                            //{
+                                            //    output.msg += " Last traded price:" + last_trade.price.ToString();
+                                            //}
                                             this.ord_client.ordUpdateQueue.Enqueue(output);
                                             removing.Add(key);
                                             this.ord_client.fillQueue.Enqueue(fill);
@@ -4334,16 +4334,16 @@ namespace Crypto_Trading
                                             fill.timestamp = output.timestamp;
                                             fill.filled_time = fill.timestamp;
                                             fill.order_type = ord.order_type;
-                                            fill.msg += " Best Bid:" + ins.bestbid.Item1.ToString();
-                                            if (last_trade != null)
-                                            {
-                                                fill.msg += " Last traded price:" + last_trade.price.ToString();
-                                            }
-                                            output.msg += " Best Bid:" + ins.bestbid.Item1.ToString();
-                                            if (last_trade != null)
-                                            {
-                                                output.msg += " Last traded price:" + last_trade.price.ToString();
-                                            }
+                                            //fill.msg += " Best Bid:" + ins.bestbid.Item1.ToString();
+                                            //if (last_trade != null)
+                                            //{
+                                            //    fill.msg += " Last traded price:" + last_trade.price.ToString();
+                                            //}
+                                            //output.msg += " Best Bid:" + ins.bestbid.Item1.ToString();
+                                            //if (last_trade != null)
+                                            //{
+                                            //    output.msg += " Last traded price:" + last_trade.price.ToString();
+                                            //}
                                             this.ord_client.ordUpdateQueue.Enqueue(output);
                                             removing.Add(key);
                                             this.ord_client.fillQueue.Enqueue(fill);
