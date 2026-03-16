@@ -125,6 +125,8 @@
             col_price = new DataGridViewTextBoxColumn();
             col_Bid = new DataGridViewTextBoxColumn();
             tabPage2 = new TabPage();
+            lbl_leverage = new Label();
+            label59 = new Label();
             gridView_MI = new DataGridView();
             Quantity = new DataGridViewTextBoxColumn();
             gridView_InsFills = new DataGridView();
@@ -267,8 +269,8 @@
             toolStripStatusLabel1 = new ToolStripStatusLabel();
             lbl_currentTime = new ToolStripStatusLabel();
             timer_Monitoring = new System.Windows.Forms.Timer(components);
-            label59 = new Label();
-            lbl_leverage = new Label();
+            lbl_constSkew = new Label();
+            label61 = new Label();
             tabControl.SuspendLayout();
             tabPage1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridView_PnL).BeginInit();
@@ -1091,6 +1093,26 @@
             tabPage2.Size = new Size(1040, 984);
             tabPage2.TabIndex = 1;
             tabPage2.Text = "Instrument";
+            // 
+            // lbl_leverage
+            // 
+            lbl_leverage.AutoSize = true;
+            lbl_leverage.Location = new Point(293, 24);
+            lbl_leverage.Margin = new Padding(2, 0, 2, 0);
+            lbl_leverage.Name = "lbl_leverage";
+            lbl_leverage.Size = new Size(44, 20);
+            lbl_leverage.TabIndex = 40;
+            lbl_leverage.Text = "value";
+            // 
+            // label59
+            // 
+            label59.AutoSize = true;
+            label59.Location = new Point(199, 24);
+            label59.Margin = new Padding(2, 0, 2, 0);
+            label59.Name = "label59";
+            label59.Size = new Size(72, 20);
+            label59.TabIndex = 39;
+            label59.Text = "Leverage:";
             // 
             // gridView_MI
             // 
@@ -1970,6 +1992,8 @@
             // 
             // groupBox1
             // 
+            groupBox1.Controls.Add(lbl_constSkew);
+            groupBox1.Controls.Add(label61);
             groupBox1.Controls.Add(lbl_targetpos);
             groupBox1.Controls.Add(label56);
             groupBox1.Controls.Add(lbl_maxBaseMarkup);
@@ -2042,7 +2066,7 @@
             // lbl_maxBaseMarkup
             // 
             lbl_maxBaseMarkup.AutoSize = true;
-            lbl_maxBaseMarkup.Location = new Point(212, 395);
+            lbl_maxBaseMarkup.Location = new Point(583, 106);
             lbl_maxBaseMarkup.Margin = new Padding(2, 0, 2, 0);
             lbl_maxBaseMarkup.Name = "lbl_maxBaseMarkup";
             lbl_maxBaseMarkup.Size = new Size(44, 20);
@@ -2052,7 +2076,7 @@
             // label54
             // 
             label54.AutoSize = true;
-            label54.Location = new Point(18, 395);
+            label54.Location = new Point(389, 106);
             label54.Margin = new Padding(2, 0, 2, 0);
             label54.Name = "label54";
             label54.Size = new Size(129, 20);
@@ -2062,7 +2086,7 @@
             // lbl_rvParam
             // 
             lbl_rvParam.AutoSize = true;
-            lbl_rvParam.Location = new Point(212, 362);
+            lbl_rvParam.Location = new Point(215, 395);
             lbl_rvParam.Margin = new Padding(2, 0, 2, 0);
             lbl_rvParam.Name = "lbl_rvParam";
             lbl_rvParam.Size = new Size(44, 20);
@@ -2072,7 +2096,7 @@
             // label53
             // 
             label53.AutoSize = true;
-            label53.Location = new Point(16, 362);
+            label53.Location = new Point(19, 395);
             label53.Margin = new Padding(2, 0, 2, 0);
             label53.Name = "label53";
             label53.Size = new Size(65, 20);
@@ -2082,7 +2106,7 @@
             // lbl_ordthrottle
             // 
             lbl_ordthrottle.AutoSize = true;
-            lbl_ordthrottle.Location = new Point(520, 330);
+            lbl_ordthrottle.Location = new Point(583, 362);
             lbl_ordthrottle.Margin = new Padding(2, 0, 2, 0);
             lbl_ordthrottle.Name = "lbl_ordthrottle";
             lbl_ordthrottle.Size = new Size(44, 20);
@@ -2092,7 +2116,7 @@
             // label51
             // 
             label51.AutoSize = true;
-            label51.Location = new Point(356, 330);
+            label51.Location = new Point(389, 362);
             label51.Margin = new Padding(2, 0, 2, 0);
             label51.Name = "label51";
             label51.Size = new Size(101, 20);
@@ -2102,7 +2126,7 @@
             // lbl_RVMulti
             // 
             lbl_RVMulti.AutoSize = true;
-            lbl_RVMulti.Location = new Point(212, 329);
+            lbl_RVMulti.Location = new Point(215, 362);
             lbl_RVMulti.Margin = new Padding(2, 0, 2, 0);
             lbl_RVMulti.Name = "lbl_RVMulti";
             lbl_RVMulti.Size = new Size(44, 20);
@@ -2112,7 +2136,7 @@
             // label50
             // 
             label50.AutoSize = true;
-            label50.Location = new Point(16, 329);
+            label50.Location = new Point(19, 362);
             label50.Margin = new Padding(2, 0, 2, 0);
             label50.Name = "label50";
             label50.Size = new Size(150, 20);
@@ -2122,7 +2146,7 @@
             // lbl_tobmulti
             // 
             lbl_tobmulti.AutoSize = true;
-            lbl_tobmulti.Location = new Point(520, 106);
+            lbl_tobmulti.Location = new Point(583, 138);
             lbl_tobmulti.Margin = new Padding(2, 0, 2, 0);
             lbl_tobmulti.Name = "lbl_tobmulti";
             lbl_tobmulti.Size = new Size(44, 20);
@@ -2132,7 +2156,7 @@
             // label47
             // 
             label47.AutoSize = true;
-            label47.Location = new Point(356, 106);
+            label47.Location = new Point(389, 138);
             label47.Margin = new Padding(2, 0, 2, 0);
             label47.Name = "label47";
             label47.Size = new Size(104, 20);
@@ -2142,7 +2166,7 @@
             // lbl_decayingtime
             // 
             lbl_decayingtime.AutoSize = true;
-            lbl_decayingtime.Location = new Point(520, 363);
+            lbl_decayingtime.Location = new Point(583, 395);
             lbl_decayingtime.Margin = new Padding(2, 0, 2, 0);
             lbl_decayingtime.Name = "lbl_decayingtime";
             lbl_decayingtime.Size = new Size(44, 20);
@@ -2152,7 +2176,7 @@
             // label46
             // 
             label46.AutoSize = true;
-            label46.Location = new Point(356, 363);
+            label46.Location = new Point(389, 395);
             label46.Margin = new Padding(2, 0, 2, 0);
             label46.Name = "label46";
             label46.Size = new Size(111, 20);
@@ -2162,7 +2186,7 @@
             // lbl_skewstep
             // 
             lbl_skewstep.AutoSize = true;
-            lbl_skewstep.Location = new Point(520, 297);
+            lbl_skewstep.Location = new Point(583, 329);
             lbl_skewstep.Margin = new Padding(2, 0, 2, 0);
             lbl_skewstep.Name = "lbl_skewstep";
             lbl_skewstep.Size = new Size(44, 20);
@@ -2172,7 +2196,7 @@
             // label45
             // 
             label45.AutoSize = true;
-            label45.Location = new Point(356, 297);
+            label45.Location = new Point(389, 329);
             label45.Margin = new Padding(2, 0, 2, 0);
             label45.Name = "label45";
             label45.Size = new Size(80, 20);
@@ -2182,7 +2206,7 @@
             // lbl_skewtype
             // 
             lbl_skewtype.AutoSize = true;
-            lbl_skewtype.Location = new Point(520, 266);
+            lbl_skewtype.Location = new Point(583, 298);
             lbl_skewtype.Margin = new Padding(2, 0, 2, 0);
             lbl_skewtype.Name = "lbl_skewtype";
             lbl_skewtype.Size = new Size(44, 20);
@@ -2192,7 +2216,7 @@
             // label44
             // 
             label44.AutoSize = true;
-            label44.Location = new Point(356, 266);
+            label44.Location = new Point(389, 298);
             label44.Margin = new Padding(2, 0, 2, 0);
             label44.Name = "label44";
             label44.Size = new Size(81, 20);
@@ -2283,7 +2307,7 @@
             // lbl_ordUpdateTh
             // 
             lbl_ordUpdateTh.AutoSize = true;
-            lbl_ordUpdateTh.Location = new Point(520, 235);
+            lbl_ordUpdateTh.Location = new Point(583, 267);
             lbl_ordUpdateTh.Margin = new Padding(2, 0, 2, 0);
             lbl_ordUpdateTh.Name = "lbl_ordUpdateTh";
             lbl_ordUpdateTh.Size = new Size(44, 20);
@@ -2293,7 +2317,7 @@
             // lbl_fillInterval
             // 
             lbl_fillInterval.AutoSize = true;
-            lbl_fillInterval.Location = new Point(520, 202);
+            lbl_fillInterval.Location = new Point(583, 234);
             lbl_fillInterval.Margin = new Padding(2, 0, 2, 0);
             lbl_fillInterval.Name = "lbl_fillInterval";
             lbl_fillInterval.Size = new Size(44, 20);
@@ -2303,7 +2327,7 @@
             // lbl_oneside
             // 
             lbl_oneside.AutoSize = true;
-            lbl_oneside.Location = new Point(520, 171);
+            lbl_oneside.Location = new Point(583, 203);
             lbl_oneside.Margin = new Padding(2, 0, 2, 0);
             lbl_oneside.Name = "lbl_oneside";
             lbl_oneside.Size = new Size(44, 20);
@@ -2313,7 +2337,7 @@
             // lbl_skew
             // 
             lbl_skew.AutoSize = true;
-            lbl_skew.Location = new Point(520, 138);
+            lbl_skew.Location = new Point(583, 170);
             lbl_skew.Margin = new Padding(2, 0, 2, 0);
             lbl_skew.Name = "lbl_skew";
             lbl_skew.Size = new Size(44, 20);
@@ -2353,7 +2377,7 @@
             // label17
             // 
             label17.AutoSize = true;
-            label17.Location = new Point(356, 235);
+            label17.Location = new Point(389, 267);
             label17.Margin = new Padding(2, 0, 2, 0);
             label17.Name = "label17";
             label17.Size = new Size(130, 20);
@@ -2363,7 +2387,7 @@
             // label16
             // 
             label16.AutoSize = true;
-            label16.Location = new Point(356, 202);
+            label16.Location = new Point(389, 234);
             label16.Margin = new Padding(2, 0, 2, 0);
             label16.Name = "label16";
             label16.Size = new Size(121, 20);
@@ -2373,7 +2397,7 @@
             // label15
             // 
             label15.AutoSize = true;
-            label15.Location = new Point(356, 171);
+            label15.Location = new Point(389, 203);
             label15.Margin = new Padding(2, 0, 2, 0);
             label15.Name = "label15";
             label15.Size = new Size(117, 20);
@@ -2383,7 +2407,7 @@
             // label14
             // 
             label14.AutoSize = true;
-            label14.Location = new Point(356, 138);
+            label14.Location = new Point(389, 170);
             label14.Margin = new Padding(2, 0, 2, 0);
             label14.Name = "label14";
             label14.Size = new Size(84, 20);
@@ -2674,25 +2698,25 @@
             timer_Monitoring.Interval = 1000;
             timer_Monitoring.Tick += timer_Monitoring_Tick;
             // 
-            // label59
+            // lbl_constSkew
             // 
-            label59.AutoSize = true;
-            label59.Location = new Point(199, 24);
-            label59.Margin = new Padding(2, 0, 2, 0);
-            label59.Name = "label59";
-            label59.Size = new Size(72, 20);
-            label59.TabIndex = 39;
-            label59.Text = "Leverage:";
+            lbl_constSkew.AutoSize = true;
+            lbl_constSkew.Location = new Point(216, 329);
+            lbl_constSkew.Margin = new Padding(2, 0, 2, 0);
+            lbl_constSkew.Name = "lbl_constSkew";
+            lbl_constSkew.Size = new Size(44, 20);
+            lbl_constSkew.TabIndex = 48;
+            lbl_constSkew.Text = "value";
             // 
-            // lbl_leverage
+            // label61
             // 
-            lbl_leverage.AutoSize = true;
-            lbl_leverage.Location = new Point(293, 24);
-            lbl_leverage.Margin = new Padding(2, 0, 2, 0);
-            lbl_leverage.Name = "lbl_leverage";
-            lbl_leverage.Size = new Size(44, 20);
-            lbl_leverage.TabIndex = 40;
-            lbl_leverage.Text = "value";
+            label61.AutoSize = true;
+            label61.Location = new Point(19, 329);
+            label61.Margin = new Padding(2, 0, 2, 0);
+            label61.Name = "label61";
+            label61.Size = new Size(155, 20);
+            label61.TabIndex = 47;
+            label61.Text = "Const Skew Widening:";
             // 
             // Form1
             // 
@@ -2959,5 +2983,7 @@
         private Label label57;
         private Label lbl_leverage;
         private Label label59;
+        private Label lbl_constSkew;
+        private Label label61;
     }
 }

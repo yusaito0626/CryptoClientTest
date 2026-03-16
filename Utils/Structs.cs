@@ -2043,6 +2043,7 @@ namespace Utils
         public decimal taker_markup;
         public decimal skew;
         public decimal skew_widening;
+        public decimal const_skew_widening;
         public decimal maker_priceAdjustment;
         public decimal taker_priceAdjustment;
 
@@ -2118,7 +2119,7 @@ namespace Utils
             }
             return true;
         }
-        public void setPricingInfo(string strategy_name,string m_symbolmarket,string t_symbolmarket, int layer = 0,decimal makerMarkup = 0,decimal takerMarkup = 0,double rv = 0,decimal skew = 0,decimal skew_widening = 0,decimal makerPrAdj = 0,decimal takerPrAdj = 0)
+        public void setPricingInfo(string strategy_name,string m_symbolmarket,string t_symbolmarket, int layer = 0,decimal makerMarkup = 0,decimal takerMarkup = 0,double rv = 0,decimal skew = 0,decimal skew_widening = 0,decimal const_skew = 0,decimal makerPrAdj = 0,decimal takerPrAdj = 0)
         {
             this.strategy = strategy_name;
             this.layer = layer;
@@ -2129,6 +2130,7 @@ namespace Utils
             this.taker_markup = takerMarkup;
             this.skew = skew;
             this.skew_widening = skew_widening;
+            this.const_skew_widening = const_skew;
             this.maker_priceAdjustment = makerPrAdj;
             this.taker_priceAdjustment = takerPrAdj;
         }
@@ -2137,9 +2139,11 @@ namespace Utils
             decimal quantity = Math.Min(this.taker_quantity,this.maker_quantity);
             int sign = 1;
             decimal extra_skew = this.skew_widening;
+            decimal const_skew = this.const_skew_widening;
             if(this.skew < 0)
             {
                 extra_skew = 0;
+                const_skew = 0;
             }
             if(this.maker_side == orderSide.Buy)
             {
@@ -2147,6 +2151,7 @@ namespace Utils
                 if (this.skew > 0)
                 {
                     extra_skew = 0;
+                    const_skew = 0;
                 }
             }
             this.totalPnL = quantity * sign * (this.maker_avgprice - this.taker_avgprice) - this.totalFee;
@@ -2158,7 +2163,7 @@ namespace Utils
             {
                 this.markupPnL = quantity * (this.maker_avgprice * (1_000_000 / (1_000_000 - this.maker_markup) - 1) + this.taker_avgprice * (1 - 1_000_000 / (1_000_000 + this.taker_markup)));
             }
-            this.skewPnL = quantity * sign * ((1 + extra_skew) * this.skew / 1_000_000 * this.taker_avgprice);
+            this.skewPnL = quantity * sign * ((const_skew + (1 + extra_skew) * this.skew) / 1_000_000 * this.taker_avgprice);
             this.priceAdjPnL = quantity * sign * (this.maker_avgprice * this.maker_priceAdjustment + this.taker_avgprice * - this.taker_priceAdjustment);
             this.residualPnL = this.totalPnL + this.totalFee - this.markupPnL - this.skewPnL - this.priceAdjPnL;
             this.avg_latency = (this.taker_avgExecutedTime - this.maker_avgExecutedTime) / 10000.0;
@@ -2186,6 +2191,8 @@ namespace Utils
             this.maker_avgExecutedTime = 0;
             this.taker_avgExecutedTime = 0;
             this.skew = 0;
+            this.skew_widening = 0;
+            this.const_skew_widening = 0;
             this.maker_priceAdjustment = 0;
             this.taker_priceAdjustment = 0;
             this.totalPnL = 0;
@@ -2242,6 +2249,7 @@ namespace Utils
         public decimal min_markup { get; set; }
         public decimal max_skew { get; set; }
         public decimal skew_widening { get; set; }
+        public decimal skew_widening_const { get; set; }
         public decimal maxMakerPosition { get; set; }
         public decimal targetMakerPosition { get; set; }
         public decimal ToBsize { get; set; }
@@ -2493,20 +2501,20 @@ namespace Utils
         }
         public void addData(string[] str_data)
         {
-            //"0timestamp,1strategy,1id,2BBook,3maker_symbolmarket,4taker_symbolmarket,5maker_orderid,6taker_orderid,7maker_side,8maker_avgprice,9maker_quantity,
-            //10maker_avgExecutedTime,11taker_side,12taker_avgprice,13taker_quantity,14taker_avgExecutedTime,15realized_volatility,16maker_markup,17taker_markup,18skew,19maker_priceAdj,
-            //20taker_priceAdj,21markupPnL,22skewPnL,23priceAdjPnL,24residualPnL,25totalFee,26totalPnL,27avg_Latency"
+            //"0timestamp,1strategy,2id,3BBook,4maker_symbolmarket,5taker_symbolmarket,6maker_orderid,7taker_orderid,8layer,9maker_side,10maker_avgprice,11maker_quantity,
+            //12maker_avgExecutedTime,13taker_side,14taker_avgprice,15taker_quantity,16taker_avgExecutedTime,17realized_volatility,18maker_markup,19taker_markup,20skew,21maker_priceAdj,
+            //22taker_priceAdj,23markupPnL,24skewPnL,25priceAdjPnL,26residualPnL,27totalFee,28totalPnL,29avg_Latency"
             ++this.count;
-            this.markupPnL += Decimal.Parse(str_data[22]);
-            this.skewPnL += Decimal.Parse(str_data[23]);
-            this.priceAdjPnL += Decimal.Parse(str_data[24]);
-            this.residualPnL += Decimal.Parse(str_data[25]);
-            this.totalFee += Decimal.Parse(str_data[26]);
-            this.totalPnL += Decimal.Parse(str_data[27]);
-            decimal min_quantity = Math.Min(Decimal.Parse(str_data[10]), Decimal.Parse(str_data[14]));
-            this.avg_Latency = (this.avg_Latency * (double)this.totalAmount + Double.Parse(str_data[28]) * (double)min_quantity) / (double)(this.totalAmount + min_quantity);
+            this.markupPnL += Decimal.Parse(str_data[23]);
+            this.skewPnL += Decimal.Parse(str_data[24]);
+            this.priceAdjPnL += Decimal.Parse(str_data[25]);
+            this.residualPnL += Decimal.Parse(str_data[26]);
+            this.totalFee += Decimal.Parse(str_data[27]);
+            this.totalPnL += Decimal.Parse(str_data[28]);
+            decimal min_quantity = Math.Min(Decimal.Parse(str_data[11]), Decimal.Parse(str_data[15]));
+            this.avg_Latency = (this.avg_Latency * (double)this.totalAmount + Double.Parse(str_data[29]) * (double)min_quantity) / (double)(this.totalAmount + min_quantity);
             this.totalAmount += min_quantity;
-            this.notionalVolume += Decimal.Parse(str_data[10]) * Decimal.Parse(str_data[9]);
+            this.notionalVolume += Decimal.Parse(str_data[11]) * Decimal.Parse(str_data[10]);
         }
         public void addData(tradeSummary tpt_data)
         {

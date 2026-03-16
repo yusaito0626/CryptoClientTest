@@ -51,6 +51,7 @@ namespace Crypto_Trading
         public decimal skewThreshold;
         public decimal oneSideThreshold;
         public decimal skewWidening;
+        public decimal skewWidening_const;
         public decimal max_baseMarkup = 2000;
 
         public bool maker_margin_trade = true;
@@ -181,6 +182,7 @@ namespace Crypto_Trading
             this.skewThreshold = 0;
             this.oneSideThreshold = 0;
             this.skewWidening = 0;
+            this.skewWidening_const = 0;
             this.rv_base_param = 100;
             this.abook = true;
 
@@ -494,6 +496,15 @@ namespace Crypto_Trading
                 addLog("Skew widening is not configurated. Default value will be set. value:0", logType.WARNING);
                 this.skewWidening = 0;
             }
+            if (root.TryGetProperty("skewWidening_const", out item))
+            {
+                this.skewWidening_const = item.GetDecimal();
+            }
+            else
+            {
+                addLog("Const skew widening is not configurated. Default value will be set. value:0", logType.WARNING);
+                this.skewWidening_const = 0;
+            }
             if (root.TryGetProperty("intervalAfterFill", out item))
             {
                 this.intervalAfterFill = item.GetDecimal();
@@ -596,6 +607,7 @@ namespace Crypto_Trading
             this.maxMakerPosition = setting.maxMakerPosition;
             this.targetMakerPosition = setting.targetMakerPosition;
             this.skewWidening = setting.skew_widening;
+            this.skewWidening_const = setting.skew_widening_const;
             this.ToBsize = setting.ToBsize;
             this.ToBsizeMultiplier = setting.ToBsizeMultiplier;
             this.intervalAfterFill = setting.intervalAfterFill;
@@ -949,12 +961,18 @@ namespace Crypto_Trading
                     if (this.skew_point > 0)
                     {
                         markup_ask += (decimal)(1 + this.skewWidening) * this.skew_point;
-                        markup_bid += -this.skew_point;
+                        markup_ask += this.skewWidening_const;
+                        markup_bid += - this.skew_point;
+                        //addLog("Const widening applied to ask   " + this.skewWidening_const.ToString());
+                        //addLog($"markup_ask:{markup_ask} markup_bid:{markup_bid}");
                     }
                     else if (this.skew_point < 0)
                     {
                         markup_bid += -(decimal)(1 + this.skewWidening) * this.skew_point;
+                        markup_bid += this.skewWidening_const;
                         markup_ask += this.skew_point;
+                        //addLog("Const widening applied to bid   " + this.skewWidening_const.ToString());
+                        //addLog($"markup_ask:{markup_ask} markup_bid:{markup_bid}");
                     }
 
                     if (i == 0)
@@ -1443,7 +1461,7 @@ namespace Crypto_Trading
                                         ts = new tradeSummary();
                                     }
                                     ts.id = this.live_buyorders[i];
-                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market,i + 1, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market,i + 1, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening,this.skewWidening_const, this.maker.marginDiscount, this.taker.marginDiscount);
                                     //ts.maker_orderid = this.live_buyorders[i];
                                     this.tempTradeSummaries[ts.id] = ts;
                                 }
@@ -1588,7 +1606,7 @@ namespace Crypto_Trading
                                         ts = new tradeSummary();
                                     }
                                     ts.id = this.live_sellorders[i];
-                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.skewWidening_const, this.maker.marginDiscount, this.taker.marginDiscount);
                                     //ts.maker_orderid = this.live_sellorders[i];
                                     this.tempTradeSummaries[ts.id] = ts;
                                 }
@@ -1750,7 +1768,7 @@ namespace Crypto_Trading
                                         ts = new tradeSummary();
                                     }
                                     ts.id = this.live_sellorders[i];
-                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.skewWidening_const, this.maker.marginDiscount, this.taker.marginDiscount);
                                     //ts.maker_orderid = this.live_sellorders[i];
                                     this.tempTradeSummaries[ts.id] = ts;
                                 }
@@ -1904,7 +1922,7 @@ namespace Crypto_Trading
                                         ts = new tradeSummary();
                                     }
                                     ts.id = this.live_buyorders[i];
-                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.skewWidening_const, this.maker.marginDiscount, this.taker.marginDiscount);
                                     //ts.maker_orderid = this.live_buyorders[i];
                                     this.tempTradeSummaries[ts.id] = ts;
                                 }

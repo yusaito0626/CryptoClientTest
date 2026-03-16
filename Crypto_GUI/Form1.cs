@@ -133,6 +133,7 @@ namespace Crypto_GUI
             comboStgVariables.Items.Add("Max Position");
             comboStgVariables.Items.Add("Skew Level");
             comboStgVariables.Items.Add("Skew Widening");
+            comboStgVariables.Items.Add("Const Skew Widening");
             comboStgVariables.Items.Add("One Side Quote");
             comboStgVariables.Items.Add("Interval After Fill");
             comboStgVariables.Items.Add("Update Threshold");
@@ -1318,6 +1319,12 @@ namespace Crypto_GUI
                                                         if (decimal.TryParse(update.value, out newvalue))
                                                         {
                                                             stg.skewWidening = newvalue;
+                                                        }
+                                                        break;
+                                                    case "skewwidenngconst":
+                                                        if (decimal.TryParse(update.value, out newvalue))
+                                                        {
+                                                            stg.skewWidening_const = newvalue;
                                                         }
                                                         break;
                                                     case "maxposition":
@@ -2788,6 +2795,7 @@ namespace Crypto_GUI
                 this.lbl_maxpos.Text = this.selected_stg.maxMakerPosition.ToString("N5");
                 this.lbl_targetpos.Text = this.selected_stg.targetMakerPosition.ToString("N5");
                 this.lbl_skewWidening.Text = this.selected_stg.skewWidening.ToString("N2");
+                this.lbl_constSkew.Text = this.selected_stg.skewWidening_const.ToString("N2");
                 this.lbl_skew.Text = this.selected_stg.skewThreshold.ToString("N0");
                 this.lbl_oneside.Text = this.selected_stg.oneSideThreshold.ToString("N0");
                 this.lbl_decayingtime.Text = this.selected_stg.markup_decay_basetime.ToString("N0");
@@ -3241,6 +3249,55 @@ namespace Crypto_GUI
                                 variableUpdate upd = new variableUpdate();
                                 upd.stg_name = this.selected_stg.name;
                                 upd.type = "skewwidenng";
+                                upd.value = this.txtBox_newValue.Text;
+                                string body = JsonSerializer.Serialize(upd);
+                                dict = new Dictionary<string, string>();
+                                dict["data_type"] = data_type;
+                                dict["data"] = body;
+                                string msg = JsonSerializer.Serialize(dict);
+                                var bytes = Encoding.UTF8.GetBytes(msg);
+                                if (this.info_receiver.State == WebSocketState.Open)
+                                {
+                                    await this.info_receiver.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                                }
+                            }
+                        }
+                    }
+                    break;
+                case "Const Skew Widening":
+                    if (!decimal.TryParse(this.txtBox_newValue.Text, out value))
+                    {
+                        DialogResult result = MessageBox.Show(
+                            "The value must be a number",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                    }
+                    else
+                    {
+                        if (this.selected_stg == null)
+                        {
+                            DialogResult result = MessageBox.Show(
+                            "Select a strategy",
+                            "",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        );
+                        }
+                        else
+                        {
+                            DialogResult result = MessageBox.Show(
+                                "You're changing the const skew widening value of " + this.selected_stg.name + " from " + this.selected_stg.skewWidening_const.ToString("N2") + " to " + this.txtBox_newValue.Text + ".",
+                                "Updating a variable",
+                                MessageBoxButtons.OKCancel,
+                                MessageBoxIcon.Question
+                                );
+                            if (result == DialogResult.OK)
+                            {
+                                variableUpdate upd = new variableUpdate();
+                                upd.stg_name = this.selected_stg.name;
+                                upd.type = "skewwidenngconst";
                                 upd.value = this.txtBox_newValue.Text;
                                 string body = JsonSerializer.Serialize(upd);
                                 dict = new Dictionary<string, string>();

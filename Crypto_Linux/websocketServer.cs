@@ -150,6 +150,7 @@ namespace Crypto_Linux
                 setting.min_markup = stg.Value.min_markup;
                 setting.max_skew = stg.Value.maxSkew;
                 setting.skew_widening = stg.Value.skewWidening;
+                setting.skew_widening_const = stg.Value.skewWidening_const;
                 setting.maxMakerPosition = stg.Value.maxMakerPosition;
                 setting.ToBsize = stg.Value.ToBsize;
                 setting.ToBsizeMultiplier = stg.Value.ToBsizeMultiplier;
@@ -342,6 +343,14 @@ namespace Crypto_Linux
                                                 {
                                                     addLog("The skew widening of " + stg.name + " has been changed from " + stg.skewWidening.ToString("N0") + " to " + newVar.value);
                                                     stg.skewWidening = newvalue;
+                                                    await BroadcastAsync(message);
+                                                }
+                                                break;
+                                            case "skewwidenngconst":
+                                                if (decimal.TryParse(newVar.value, out newvalue))
+                                                {
+                                                    addLog("The const skew widening of " + stg.name + " has been changed from " + stg.skewWidening_const.ToString("N0") + " to " + newVar.value);
+                                                    stg.skewWidening_const = newvalue;
                                                     await BroadcastAsync(message);
                                                 }
                                                 break;

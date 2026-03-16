@@ -256,6 +256,7 @@ namespace Crypto_Linux
                 setting.min_markup = stg.Value.min_markup;
                 setting.max_skew = stg.Value.maxSkew;
                 setting.skew_widening = stg.Value.skewWidening;
+                setting.skew_widening_const = stg.Value.skewWidening_const;
                 setting.maxMakerPosition = stg.Value.maxMakerPosition;
                 setting.targetMakerPosition = stg.Value.targetMakerPosition;
                 setting.ToBsize = stg.Value.ToBsize;
