@@ -1491,6 +1491,7 @@ namespace Crypto_GUI
                         }
                         this.ws_memory.SetLength(0);
                         this.ws_memory.Position = 0;
+                        Thread.Sleep(1);
                         break;
                     case WebSocketState.None:
                     case WebSocketState.Connecting:

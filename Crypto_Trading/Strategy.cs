@@ -54,6 +54,8 @@ namespace Crypto_Trading
         public decimal skewWidening_const;
         public decimal max_baseMarkup = 2000;
 
+        public double latencyTh = 1000;
+
         public bool maker_margin_trade = true;
         //public bool taker_margin_trade = false;
         public decimal max_maker_levarage = 2;
@@ -514,15 +516,6 @@ namespace Crypto_Trading
                 addLog("Interval after fill is not configurated. Default value will be set. value:1", logType.WARNING);
                 this.intervalAfterFill = 1;
             }
-            //if (root.TryGetProperty("fillPrediction", out item))
-            //{
-            //    this.predictFill = item.GetBoolean();
-            //}
-            //else
-            //{
-            //    addLog("Fill prediction is not configurated. Default value will be set. value:false", logType.WARNING);
-            //    this.predictFill = false;
-            //}
             if (root.TryGetProperty("ToBsizeMultiplier", out item))
             {
                 this.ToBsizeMultiplier = item.GetDecimal();
@@ -594,6 +587,14 @@ namespace Crypto_Trading
             else
             {
                 this.markup_decay_basetime = 999999;
+            }
+            if (root.TryGetProperty("latencyThreshold", out item))
+            {
+                this.latencyTh = item.GetDouble();
+            }
+            else
+            {
+                this.latencyTh = 1000.0;
             }
         }
         public void setStrategy(strategySetting setting)
@@ -1317,8 +1318,31 @@ namespace Crypto_Trading
 
                     List<string> cancelling_ord = new List<string>();
 
+                    if (!this.checkLatency(this.taker, this.latencyTh))
+                    {
+                        for (i = 0; i < this.layers; ++i)
+                        {
+                            if (this.live_buyorders[i] != "")
+                            {
+                                cancelling_ord.Add(this.live_buyorders[i]);
+                                this.live_buyorders[i] = "";
+                                this.current_bids[i] = 0;
+                                this.bid_orders[i].price = 0;
+                            }
+                            if (this.live_sellorders[i] != "")
+                            {
+                                cancelling_ord.Add(this.live_sellorders[i]);
+                                this.live_sellorders[i] = "";
+                                this.current_asks[i] = 0;
+                                this.ask_orders[i].price = 0;
+                            }
+                        }
+                        this.oManager.placeCancelSpotOrders(this.maker, cancelling_ord);
+                        return ret;
+                    }
 
-                    for(i = 0;i <this.layers;++i)
+
+                    for (i = 0;i <this.layers;++i)
                     {
                         decimal bid_price = this.bid_orders[i].price;
                         decimal ask_price = this.ask_orders[i].price;
@@ -1420,10 +1444,6 @@ namespace Crypto_Trading
                     if ((current - this.live_buyorder_time).TotalMilliseconds < this.order_throttle || (current - this.live_sellorder_time).TotalMilliseconds < this.order_throttle)
                     {
                         //Only do cancelling orders to avoid excessive orders
-                        return ret;
-                    }
-                    if (!this.checkLatency(this.taker, 1000))
-                    {
                         return ret;
                     }
                     if (newBuyOrder > 0 && newSellOrder > 0)//Both orders exist
@@ -2062,8 +2082,12 @@ namespace Crypto_Trading
             return ret;
         }
 
-        public bool checkLatency(Instrument ins,double threshold = 1000)
+        public bool checkLatency(Instrument ins,double threshold = -1)
         {
+            if(threshold < 0)
+            {
+                threshold = this.latencyTh;
+            }
             double theoLatency;
             double currentLatency;
 
@@ -3100,6 +3124,11 @@ namespace Crypto_Trading
                             this.tempTradeSummaries.Remove(fill.msg);
                             ts.setTakerFill(fill, this.taker.getAdjustedTimeStamp(fill.filled_time.Value));
                             ts.calcPnL();
+                            if((ts.maker_quantity > 0 && ts.maker_avgprice >0) && (ts.residualPnL / (ts.maker_avgprice * ts.maker_quantity) * 1_000_000 < - 500 || ts.avg_latency > 500))
+                            {
+                                addLog("Extraordinary PnL or Latency",logType.WARNING);
+                                addLog($"PnL[dpm]:{(ts.maker_avgprice * ts.maker_quantity) * 1_000_000}   Latency:{ts.avg_latency}", logType.WARNING);
+                            }
                             this.tradeSummaries[ts.id] = ts;
                         }
                         else if (this.tradeSummaries.ContainsKey(fill.msg))
@@ -3107,6 +3136,11 @@ namespace Crypto_Trading
                             tradeSummary ts = this.tradeSummaries[fill.msg];
                             ts.setTakerFill(fill, this.taker.getAdjustedTimeStamp(fill.filled_time.Value));
                             ts.calcPnL();
+                            if ((ts.maker_quantity > 0 && ts.maker_avgprice > 0) && (ts.residualPnL / (ts.maker_avgprice * ts.maker_quantity) * 1_000_000 < -500 || ts.avg_latency > 500))
+                            {
+                                addLog("Extraordinary PnL or Latency", logType.WARNING);
+                                addLog($"PnL[dpm]:{(ts.maker_avgprice * ts.maker_quantity) * 1_000_000}   Latency:{ts.avg_latency}", logType.WARNING);
+                            }
                             this.tradeSummaries[ts.id] = ts;
                         }
                     }
@@ -3293,9 +3327,9 @@ namespace Crypto_Trading
             Instrument ins = null;
             foreach(var qt in quantities)
             {
-                if(oManager.Instruments.ContainsKey(qt.Key))
+                if(oManager.instruments.ContainsKey(qt.Key))
                 {
-                    ins = oManager.Instruments[qt.Key];
+                    ins = oManager.instruments[qt.Key];
                     this.oManager.placeNewSpotOrder(ins, side, orderType.Market, qt.Value, 0, positionSide.NONE, null, true);
                 }
                 else

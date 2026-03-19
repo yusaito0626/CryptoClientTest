@@ -45,7 +45,7 @@ namespace Crypto_Trading
     public class OrderManager
     {
 
-        Crypto_Clients.Crypto_Clients ord_client = Crypto_Clients.Crypto_Clients.GetInstance();
+        Crypto_Clients.Crypto_Clients crypto_client = Crypto_Clients.Crypto_Clients.GetInstance();
 
         public myLock order_lock = new myLock();
         public Dictionary<string, DataSpotOrderUpdate> orders;
@@ -90,7 +90,7 @@ namespace Crypto_Trading
 
         const int MOD_STACK_SIZE = 100;
 
-        public Dictionary<string, Instrument> Instruments;
+        public Dictionary<string, Instrument> instruments;
 
         private bool virtualMode;
         public volatile int id_number;
@@ -207,13 +207,13 @@ namespace Crypto_Trading
                 switch (market)
                 {
                     case market.bitbank:
-                        this.ord_client.bitbank_client.refreshHttpClient();
+                        this.crypto_client.bitbank_client.refreshHttpClient();
                         break;
                     case market.gmocoin:
-                        this.ord_client.gmocoin_client.refreshHttpClient();
+                        this.crypto_client.gmocoin_client.refreshHttpClient();
                         break;
                     case market.coincheck:
-                        this.ord_client.coincheck_client.refreshHttpClient();
+                        this.crypto_client.coincheck_client.refreshHttpClient();
                         break;
                     default:
                         addLog("Httpclient refresh is not configured for " + market, logType.ERROR);
@@ -241,12 +241,12 @@ namespace Crypto_Trading
             switch (market)
             {
                 case market.bitbank:
-                    await this.ord_client.bitbank_client.connectPrivateAsync();//This call includes creation of pubnub
-                    this.connections[market] = this.ord_client.bitbank_client.GetSocketStatePrivate();
+                    await this.crypto_client.bitbank_client.connectPrivateAsync();//This call includes creation of pubnub
+                    this.connections[market] = this.crypto_client.bitbank_client.GetSocketStatePrivate();
                     ret = true;
                     break;
                 case market.coincheck:
-                    ret = await this.ord_client.coincheck_client.connectPrivateAsync();
+                    ret = await this.crypto_client.coincheck_client.connectPrivateAsync();
                     while(!ret)
                     {
                         ++trials;
@@ -254,7 +254,7 @@ namespace Crypto_Trading
                         {
                             Thread.Sleep(trials * 3000);
                             this.addLog("Coincheck private connection failed. Trying again. trial:" + trials.ToString(), logType.WARNING);
-                            ret = await this.ord_client.coincheck_client.connectPrivateAsync();
+                            ret = await this.crypto_client.coincheck_client.connectPrivateAsync();
                         }
                         else
                         {
@@ -266,16 +266,16 @@ namespace Crypto_Trading
                     {
                         return false;
                     }
-                    this.ord_client.coincheck_client.onPrivateMessage = this.ord_client.onConcheckPrivateMessage;
+                    this.crypto_client.coincheck_client.onPrivateMessage = this.crypto_client.onConcheckPrivateMessage;
                     onClosing = async () =>
                     {
-                        await this.ord_client.coincheck_client.onClosingPrivate(this.ord_client.onConcheckPrivateMessage);
+                        await this.crypto_client.coincheck_client.onClosingPrivate(this.crypto_client.onConcheckPrivateMessage);
                     };
-                    thManager.addThread(market + "Private", this.ord_client.coincheck_client.ListeningPrivate,onClosing,this.ord_client.coincheck_client.onListenPrivateOnError);
-                    this.connections[market] = this.ord_client.coincheck_client.GetSocketStatePrivate();
+                    thManager.addThread(market + "Private", this.crypto_client.coincheck_client.ListeningPrivate,onClosing,this.crypto_client.coincheck_client.onListenPrivateOnError);
+                    this.connections[market] = this.crypto_client.coincheck_client.GetSocketStatePrivate();
                     break;
                 case market.bittrade:
-                    ret = await this.ord_client.bittrade_client.connectPrivateAsync();
+                    ret = await this.crypto_client.bittrade_client.connectPrivateAsync();
                     while (!ret)
                     {
                         ++trials;
@@ -283,7 +283,7 @@ namespace Crypto_Trading
                         {
                             Thread.Sleep(trials * 3000);
                             this.addLog("Bittrade private connection failed. Trying again. trial:" + trials.ToString(), logType.WARNING);
-                            ret = await this.ord_client.bittrade_client.connectPrivateAsync();
+                            ret = await this.crypto_client.bittrade_client.connectPrivateAsync();
                         }
                         else
                         {
@@ -295,16 +295,16 @@ namespace Crypto_Trading
                     {
                         return false;
                     }
-                    this.ord_client.bittrade_client.onPrivateMessage = this.ord_client.onBitTradePrivateMessage;
+                    this.crypto_client.bittrade_client.onPrivateMessage = this.crypto_client.onBitTradePrivateMessage;
                     onClosing = async () =>
                     {
-                        await this.ord_client.bittrade_client.onClosingPrivate(this.ord_client.onBitTradePrivateMessage);
+                        await this.crypto_client.bittrade_client.onClosingPrivate(this.crypto_client.onBitTradePrivateMessage);
                     };
-                    thManager.addThread(market + "Private", this.ord_client.bittrade_client.ListeningPrivate,onClosing,this.ord_client.bittrade_client.onListenPrivateOnError);
-                    this.connections[market] = this.ord_client.bittrade_client.GetSocketStatePrivate();
+                    thManager.addThread(market + "Private", this.crypto_client.bittrade_client.ListeningPrivate,onClosing,this.crypto_client.bittrade_client.onListenPrivateOnError);
+                    this.connections[market] = this.crypto_client.bittrade_client.GetSocketStatePrivate();
                     break;
                 case market.gmocoin:
-                    ret = await this.ord_client.gmocoin_client.connectPrivateAsync();
+                    ret = await this.crypto_client.gmocoin_client.connectPrivateAsync();
                     while (!ret)
                     {
                         ++trials;
@@ -312,7 +312,7 @@ namespace Crypto_Trading
                         {
                             Thread.Sleep(trials * 3000);
                             this.addLog("GMOCoin private connection failed. Trying again. trial:" + trials.ToString(), logType.WARNING);
-                            ret = await this.ord_client.gmocoin_client.connectPrivateAsync();
+                            ret = await this.crypto_client.gmocoin_client.connectPrivateAsync();
                         }
                         else
                         {
@@ -324,13 +324,13 @@ namespace Crypto_Trading
                     {
                         return false;
                     }
-                    this.ord_client.gmocoin_client.onPrivateMessage = this.ord_client.onGMOCoinPrivateMessage;
+                    this.crypto_client.gmocoin_client.onPrivateMessage = this.crypto_client.onGMOCoinPrivateMessage;
                     onClosing = async () =>
                     {
-                        await this.ord_client.gmocoin_client.onClosingPrivate(this.ord_client.onBitTradePrivateMessage);
+                        await this.crypto_client.gmocoin_client.onClosingPrivate(this.crypto_client.onBitTradePrivateMessage);
                     };
-                    thManager.addThread(market + "Private", this.ord_client.gmocoin_client.ListeningPrivate, onClosing, this.ord_client.gmocoin_client.onListenPrivateOnError);
-                    this.connections[market] = this.ord_client.gmocoin_client.GetSocketStatePrivate();
+                    thManager.addThread(market + "Private", this.crypto_client.gmocoin_client.ListeningPrivate, onClosing, this.crypto_client.gmocoin_client.onListenPrivateOnError);
+                    this.connections[market] = this.crypto_client.gmocoin_client.GetSocketStatePrivate();
                     break;
             }
             return ret;
@@ -343,16 +343,16 @@ namespace Crypto_Trading
                 switch (market.Key)
                 {
                     case Enums.market.bitbank:
-                        this.connections[market.Key] = this.ord_client.bitbank_client.GetSocketStatePrivate();
+                        this.connections[market.Key] = this.crypto_client.bitbank_client.GetSocketStatePrivate();
                         break;
                     case Enums.market.coincheck:
-                        this.connections[market.Key] = this.ord_client.coincheck_client.GetSocketStatePrivate();
+                        this.connections[market.Key] = this.crypto_client.coincheck_client.GetSocketStatePrivate();
                         break;
                     case Enums.market.bittrade:
-                        this.connections[market.Key] = this.ord_client.bittrade_client.GetSocketStatePrivate();
+                        this.connections[market.Key] = this.crypto_client.bittrade_client.GetSocketStatePrivate();
                         break;
                     case Enums.market.gmocoin:
-                        this.connections[market.Key] = this.ord_client.gmocoin_client.GetSocketStatePrivate();
+                        this.connections[market.Key] = this.crypto_client.gmocoin_client.GetSocketStatePrivate();
                         break;
                     default:
                         break;
@@ -361,7 +361,7 @@ namespace Crypto_Trading
         }
         public void setInstruments(Dictionary<string, Instrument> dic)
         {
-            this.Instruments = dic;
+            this.instruments = dic;
         }
 
         public async Task<string> placeNewSpotOrder(Instrument ins, orderSide side, orderType ordtype, decimal quantity, decimal price,positionSide pos_side = positionSide.NONE, timeInForce? timeinforce = null, bool sendNow = true,bool wait = true,string msg = "")
@@ -553,7 +553,7 @@ namespace Crypto_Trading
             if (sndOrd.ins == null)
             {
                 addLog("[New Order]Instrument is not specified.", logType.WARNING);
-                output = this.ord_client.ordUpdateStack.pop();
+                output = this.crypto_client.ordUpdateStack.pop();
                 if (output == null)
                 {
                     output = new DataSpotOrderUpdate();
@@ -576,7 +576,7 @@ namespace Crypto_Trading
                 output.msg = sndOrd.msg;
                 output.err_code = (int)ordError.INVALID_INSTRUMENT;
                 addLog(output.ToString(), logType.WARNING);
-                this.ord_client.ordUpdateQueue.Enqueue(output);
+                this.crypto_client.ordUpdateQueue.Enqueue(output);
                 sndOrd.init();
                 this.sendingOrdersStack.push(sndOrd);
                 return output;
@@ -584,7 +584,7 @@ namespace Crypto_Trading
             if(sndOrd.price < 0)
             {
                 addLog("[New Order]Invalid price  price:" + sndOrd.price.ToString(),logType.WARNING);
-                output = this.ord_client.ordUpdateStack.pop();
+                output = this.crypto_client.ordUpdateStack.pop();
                 if (output == null)
                 {
                     output = new DataSpotOrderUpdate();
@@ -607,7 +607,7 @@ namespace Crypto_Trading
                 output.msg = sndOrd.msg;
                 output.err_code = (int)ordError.INVALID_PRICE;
                 addLog(output.ToString(), logType.WARNING);
-                this.ord_client.ordUpdateQueue.Enqueue(output);
+                this.crypto_client.ordUpdateQueue.Enqueue(output);
                 sndOrd.init();
                 this.sendingOrdersStack.push(sndOrd);
                 return output;
@@ -615,7 +615,7 @@ namespace Crypto_Trading
             if(sndOrd.quantity <= 0)
             {
                 addLog("[New Order]Invalid quantity    quantity:" + sndOrd.quantity.ToString(), logType.WARNING);
-                output = this.ord_client.ordUpdateStack.pop();
+                output = this.crypto_client.ordUpdateStack.pop();
                 if (output == null)
                 {
                     output = new DataSpotOrderUpdate();
@@ -638,7 +638,7 @@ namespace Crypto_Trading
                 output.msg = sndOrd.msg;
                 output.err_code = (int)ordError.INVALID_QUANTITY;
                 addLog(output.ToString(),logType.WARNING);
-                this.ord_client.ordUpdateQueue.Enqueue(output);
+                this.crypto_client.ordUpdateQueue.Enqueue(output);
                 sndOrd.init();
                 this.sendingOrdersStack.push(sndOrd);
                 return output;
@@ -646,7 +646,7 @@ namespace Crypto_Trading
             if(sndOrd.side == orderSide.NONE)
             {
                 addLog("[New Order]Invalid order side  order_side:" + sndOrd.side.ToString(), logType.WARNING);
-                output = this.ord_client.ordUpdateStack.pop();
+                output = this.crypto_client.ordUpdateStack.pop();
                 if (output == null)
                 {
                     output = new DataSpotOrderUpdate();
@@ -669,7 +669,7 @@ namespace Crypto_Trading
                 output.msg = sndOrd.msg;
                 output.err_code = (int)ordError.INVALID_SIDE;
                 addLog(output.ToString(), logType.WARNING);
-                this.ord_client.ordUpdateQueue.Enqueue(output);
+                this.crypto_client.ordUpdateQueue.Enqueue(output);
                 sndOrd.init();
                 this.sendingOrdersStack.push(sndOrd);
                 return output;
@@ -731,7 +731,7 @@ namespace Crypto_Trading
                             {
                                 addLog("[New Order]Insuficient quote balance availability.", logType.WARNING);
                                 addLog($"Availability:{sndOrd.ins.quoteBalance.available} marketPrice:{orderprice} Quantity:{quantity}", logType.WARNING);
-                                output = this.ord_client.ordUpdateStack.pop();
+                                output = this.crypto_client.ordUpdateStack.pop();
                                 if (output == null)
                                 {
                                     output = new DataSpotOrderUpdate();
@@ -754,7 +754,7 @@ namespace Crypto_Trading
                                 output.msg = sndOrd.msg;
                                 output.err_code = (int)ordError.INSUFFICIENT_AMOUNT;
                                 addLog(output.ToString(), logType.WARNING);
-                                this.ord_client.ordUpdateQueue.Enqueue(output);
+                                this.crypto_client.ordUpdateQueue.Enqueue(output);
                                 sndOrd.init();
                                 this.sendingOrdersStack.push(sndOrd);
                                 return output;
@@ -780,7 +780,7 @@ namespace Crypto_Trading
                             {
                                 addLog("[New Order]Insuficient base balance availability.", logType.WARNING);
                                 addLog($"Availability:{sndOrd.ins.baseBalance.available} marketPrice:{orderprice} Quantity:{quantity}", logType.WARNING);
-                                output = this.ord_client.ordUpdateStack.pop();
+                                output = this.crypto_client.ordUpdateStack.pop();
                                 if (output == null)
                                 {
                                     output = new DataSpotOrderUpdate();
@@ -803,7 +803,7 @@ namespace Crypto_Trading
                                 output.msg = sndOrd.msg;
                                 output.err_code = (int)ordError.INSUFFICIENT_AMOUNT;
                                 addLog(output.ToString(), logType.WARNING);
-                                this.ord_client.ordUpdateQueue.Enqueue(output);
+                                this.crypto_client.ordUpdateQueue.Enqueue(output);
                                 sndOrd.init();
                                 this.sendingOrdersStack.push(sndOrd);
                                 return output;
@@ -856,7 +856,7 @@ namespace Crypto_Trading
                         {
                             addLog("[New Order]Insuficient margin availability.", logType.WARNING);
                             addLog($"Availability:{marginAvailability} marketPrice:{marketPrice} Quantity:{quantity}", logType.WARNING);
-                            output = this.ord_client.ordUpdateStack.pop();
+                            output = this.crypto_client.ordUpdateStack.pop();
                             if (output == null)
                             {
                                 output = new DataSpotOrderUpdate();
@@ -879,7 +879,7 @@ namespace Crypto_Trading
                             output.msg = sndOrd.msg;
                             output.err_code = (int)ordError.INSUFFICIENT_AMOUNT;
                             addLog(output.ToString(), logType.WARNING);
-                            this.ord_client.ordUpdateQueue.Enqueue(output);
+                            this.crypto_client.ordUpdateQueue.Enqueue(output);
                             sndOrd.init();
                             this.sendingOrdersStack.push(sndOrd);
                             return output;
@@ -930,7 +930,7 @@ namespace Crypto_Trading
                                     {
                                         addLog("[New Order]Insuficient marginLong availability.", logType.WARNING);
                                         addLog($"Order side:{sndOrd.side} Availability:{marginLong.total} - {marginLong.inuse} Quantity:{sndOrd.quantity}", logType.WARNING);
-                                        output = this.ord_client.ordUpdateStack.pop();
+                                        output = this.crypto_client.ordUpdateStack.pop();
                                         if (output == null)
                                         {
                                             output = new DataSpotOrderUpdate();
@@ -953,7 +953,7 @@ namespace Crypto_Trading
                                         output.msg = sndOrd.msg;
                                         output.err_code = (int)ordError.INSUFFICIENT_AMOUNT;
                                         addLog(output.ToString(), logType.WARNING);
-                                        this.ord_client.ordUpdateQueue.Enqueue(output);
+                                        this.crypto_client.ordUpdateQueue.Enqueue(output);
                                         sndOrd.init();
                                         this.sendingOrdersStack.push(sndOrd);
                                         return output;
@@ -972,7 +972,7 @@ namespace Crypto_Trading
                                     {
                                         addLog("[New Order]Insuficient marginShort availability.", logType.WARNING);
                                         addLog($"Order side:{sndOrd.side} Availability:{marginShort.total} - {marginShort.inuse} Quantity:{sndOrd.quantity}", logType.WARNING);
-                                        output = this.ord_client.ordUpdateStack.pop();
+                                        output = this.crypto_client.ordUpdateStack.pop();
                                         if (output == null)
                                         {
                                             output = new DataSpotOrderUpdate();
@@ -995,7 +995,7 @@ namespace Crypto_Trading
                                         output.msg = sndOrd.msg;
                                         output.err_code = (int)ordError.INSUFFICIENT_AMOUNT;
                                         addLog(output.ToString(), logType.WARNING);
-                                        this.ord_client.ordUpdateQueue.Enqueue(output);
+                                        this.crypto_client.ordUpdateQueue.Enqueue(output);
                                         sndOrd.init();
                                         this.sendingOrdersStack.push(sndOrd);
                                         return output;
@@ -1011,7 +1011,7 @@ namespace Crypto_Trading
             if (this.virtualMode)
             {
                 //quantity = Math.Round(sndOrd.quantity / sndOrd.ins.quantity_unit) * sndOrd.ins.quantity_unit;
-                output = this.ord_client.ordUpdateStack.pop();
+                output = this.crypto_client.ordUpdateStack.pop();
                 if (output == null)
                 {
                     output = new DataSpotOrderUpdate();
@@ -1085,7 +1085,7 @@ namespace Crypto_Trading
                 //    }
                 //}
                 this.virtual_order_queue.Enqueue(output);
-                this.ord_client.ordUpdateQueue.Enqueue(output);
+                this.crypto_client.ordUpdateQueue.Enqueue(output);
             }
             else if(sndOrd.ins.market == market.gmocoin)
             {
@@ -1096,20 +1096,20 @@ namespace Crypto_Trading
                 {
                     if (sndOrd.order_type == orderType.Market)
                     {
-                        js = await this.ord_client.gmocoin_client.placeCloseMarketOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToUpper(), 0, quantity);
+                        js = await this.crypto_client.gmocoin_client.placeCloseMarketOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToUpper(), 0, quantity);
                     }
                     else
                     {
-                        js = await this.ord_client.gmocoin_client.placeCloseOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToUpper(), sndOrd.price, quantity, "SOK");
+                        js = await this.crypto_client.gmocoin_client.placeCloseOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToUpper(), sndOrd.price, quantity, "SOK");
                     }
                 }
                 else if(sndOrd.order_type == orderType.Market)
                 {
-                    js = await this.ord_client.gmocoin_client.placeMarketNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToUpper(), 0, quantity);
+                    js = await this.crypto_client.gmocoin_client.placeMarketNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToUpper(), 0, quantity);
                 }
                 else
                 {
-                    js = await this.ord_client.gmocoin_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToUpper(), sndOrd.price, quantity, "SOK");
+                    js = await this.crypto_client.gmocoin_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToUpper(), sndOrd.price, quantity, "SOK");
                 }
                 JsonElement result;
                 if(js.RootElement.TryGetProperty("status",out result) && result.GetInt32() == 0)
@@ -1117,7 +1117,7 @@ namespace Crypto_Trading
                     string ord_id = js.RootElement.GetProperty("data").GetString();
                     DateTime resTime = (DateTime)Functions.convertToDateTime(js.RootElement.GetProperty("responsetime").GetString(), sndOrd.ins.market);
                     //DateTime resTime = DateTime.ParseExact(js.RootElement.GetProperty("responsetime").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
-                    output = this.ord_client.ordUpdateStack.pop();
+                    output = this.crypto_client.ordUpdateStack.pop();
                     if (output == null)
                     {
                         output = new DataSpotOrderUpdate();
@@ -1182,7 +1182,7 @@ namespace Crypto_Trading
                     //            break;
                     //    }
                     //}
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
+                    this.crypto_client.ordUpdateQueue.Enqueue(output);
                 }
                 else
                 {
@@ -1232,7 +1232,7 @@ namespace Crypto_Trading
                     {
                         resTime = DateTime.UtcNow;
                     }
-                    output = this.ord_client.ordUpdateStack.pop();
+                    output = this.crypto_client.ordUpdateStack.pop();
                     if (output == null)
                     {
                         output = new DataSpotOrderUpdate();
@@ -1289,7 +1289,7 @@ namespace Crypto_Trading
                         }
                     }
 
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
+                    this.crypto_client.ordUpdateQueue.Enqueue(output);
                 }
             }
             else if (sndOrd.ins.market == market.bitbank)
@@ -1298,17 +1298,17 @@ namespace Crypto_Trading
                 DateTime sendTime = DateTime.UtcNow;
                 if (sndOrd.order_type == orderType.Limit)
                 {
-                    js = await this.ord_client.bitbank_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.order_type.ToString().ToLower(), sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, sndOrd.pos_side.ToString().ToLower(), true);
+                    js = await this.crypto_client.bitbank_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.order_type.ToString().ToLower(), sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, sndOrd.pos_side.ToString().ToLower(), true);
                 }
                 else
                 {
-                    js = await this.ord_client.bitbank_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.order_type.ToString().ToLower(), sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, sndOrd.pos_side.ToString().ToLower(), false);
+                    js = await this.crypto_client.bitbank_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.order_type.ToString().ToLower(), sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, sndOrd.pos_side.ToString().ToLower(), false);
                 }
 
                 if (js.RootElement.GetProperty("success").GetUInt16() == 1)
                 {
                     var ord_obj = js.RootElement.GetProperty("data");
-                    output = this.ord_client.ordUpdateStack.pop();
+                    output = this.crypto_client.ordUpdateStack.pop();
                     if (output == null)
                     {
                         output = new DataSpotOrderUpdate();
@@ -1417,7 +1417,7 @@ namespace Crypto_Trading
                     //            break;
                     //    }
                     //}
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
+                    this.crypto_client.ordUpdateQueue.Enqueue(output);
                 }
                 else
                 {
@@ -1457,7 +1457,7 @@ namespace Crypto_Trading
                     }
                     int code = js.RootElement.GetProperty("data").GetProperty("code").GetInt32();
 
-                    output = this.ord_client.ordUpdateStack.pop();
+                    output = this.crypto_client.ordUpdateStack.pop();
                     if (output == null)
                     {
                         output = new DataSpotOrderUpdate();
@@ -1485,7 +1485,6 @@ namespace Crypto_Trading
                         case -1:
                             this.addLog("[bitbank]New order failed. Unexpected error   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                             break;
-
                         case 10000:
                             this.addLog("[bitbank]New order failed. The URL doesn't exist. Error code: 10000   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
                             break;
@@ -1510,6 +1509,10 @@ namespace Crypto_Trading
                         case 10009:
                             this.addLog("[bitbank]New order failed. Too many request. Error code:10009   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
                             break;
+                        case 20035:
+                            this.addLog("[bitbank]New order failed. Order has not been sent within the time window. Error code:20035   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                            this.refreshHttpClient(market.bitbank);
+                            break;
                         case 70010:
                         case 70011:
                         case 70012:
@@ -1520,12 +1523,10 @@ namespace Crypto_Trading
                             break;
                         case 80001:
                             this.addLog("[bitbank]New order failed. Operation timed out. code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
-                            output.err_code = code;
                             this.refreshHttpClient(market.bitbank);
                             break;
                         case 80002:
                             this.addLog("[bitbank]New order failed. The http client is not ready. code:" + code.ToString() + "   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
-                            output.err_code = code;
                             break;
                         default:
                             this.addLog("[bitbank]New Order Failed   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
@@ -1533,7 +1534,7 @@ namespace Crypto_Trading
                             break;
                     }
 
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
+                    this.crypto_client.ordUpdateQueue.Enqueue(output);
                 }
             }
             else if (sndOrd.ins.market == market.coincheck)
@@ -1548,7 +1549,7 @@ namespace Crypto_Trading
                     if (quantity * sndOrd.price <= 500)
                     {
                         addLog("[coincheck]The order size is too small.", logType.WARNING);
-                        output = this.ord_client.ordUpdateStack.pop();
+                        output = this.crypto_client.ordUpdateStack.pop();
                         if (output == null)
                         {
                             output = new DataSpotOrderUpdate();
@@ -1569,12 +1570,12 @@ namespace Crypto_Trading
                         output.is_trigger_order = true;
                         output.last_trade = "";
                         output.msg = sndOrd.msg;
-                        this.ord_client.ordUpdateQueue.Enqueue(output);
+                        this.crypto_client.ordUpdateQueue.Enqueue(output);
                         sndOrd.init();
                         this.sendingOrdersStack.push(sndOrd);
                         return output;
                     }
-                    js = await this.ord_client.coincheck_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, "post_only");
+                    js = await this.crypto_client.coincheck_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, "post_only");
                 }
                 else
                 {
@@ -1600,7 +1601,7 @@ namespace Crypto_Trading
                         if (quantity <= 500)
                         {
                             addLog("[coincheck]The order size is too small.", logType.WARNING);
-                            output = this.ord_client.ordUpdateStack.pop();
+                            output = this.crypto_client.ordUpdateStack.pop();
                             if (output == null)
                             {
                                 output = new DataSpotOrderUpdate();
@@ -1621,12 +1622,12 @@ namespace Crypto_Trading
                             output.is_trigger_order = true;
                             output.last_trade = "";
                             output.msg = sndOrd.msg;
-                            this.ord_client.ordUpdateQueue.Enqueue(output);
+                            this.crypto_client.ordUpdateQueue.Enqueue(output);
                             sndOrd.init();
                             this.sendingOrdersStack.push(sndOrd);
                             return output;
                         }
-                        js = await this.ord_client.coincheck_client.placeMarketNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), 0, quantity);
+                        js = await this.crypto_client.coincheck_client.placeMarketNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), 0, quantity);
                     }
                     else
                     {
@@ -1644,7 +1645,7 @@ namespace Crypto_Trading
                         if (amount <= 500)
                         {
                             addLog("[coincheck]The order size is too small.", logType.WARNING);
-                            output = this.ord_client.ordUpdateStack.pop();
+                            output = this.crypto_client.ordUpdateStack.pop();
                             if (output == null)
                             {
                                 output = new DataSpotOrderUpdate();
@@ -1665,19 +1666,19 @@ namespace Crypto_Trading
                             output.is_trigger_order = true;
                             output.last_trade = "";
                             output.msg = sndOrd.msg;
-                            this.ord_client.ordUpdateQueue.Enqueue(output);
+                            this.crypto_client.ordUpdateQueue.Enqueue(output);
                             sndOrd.init();
                             this.sendingOrdersStack.push(sndOrd);
                             return output;
                         }
-                        js = await this.ord_client.coincheck_client.placeMarketNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), 0, quantity);
+                        js = await this.crypto_client.coincheck_client.placeMarketNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), 0, quantity);
                     }
                 }
                 if (js.RootElement.GetProperty("success").GetBoolean())
                 {
                     JsonElement ord_obj = js.RootElement;
                     string line = JsonSerializer.Serialize(ord_obj);
-                    output = this.ord_client.ordUpdateStack.pop();
+                    output = this.crypto_client.ordUpdateStack.pop();
                     if (output == null)
                     {
                         output = new DataSpotOrderUpdate();
@@ -1733,8 +1734,8 @@ namespace Crypto_Trading
                     output.is_trigger_order = true;
                     output.last_trade = "";
                     output.msg = sndOrd.msg;
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
-                    output = this.ord_client.ordUpdateStack.pop();
+                    this.crypto_client.ordUpdateQueue.Enqueue(output);
+                    output = this.crypto_client.ordUpdateStack.pop();
                     if (output == null)
                     {
                         output = new DataSpotOrderUpdate();
@@ -1790,7 +1791,7 @@ namespace Crypto_Trading
                     //}
                     output.msg = sndOrd.msg;
 
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
+                    this.crypto_client.ordUpdateQueue.Enqueue(output);
                 }
                 else
                 {
@@ -1803,7 +1804,7 @@ namespace Crypto_Trading
                             sndOrd.ins.baseBalance.AddBalance(0, - sndOrd.quantity);
                             break;
                     }
-                    output = this.ord_client.ordUpdateStack.pop();
+                    output = this.crypto_client.ordUpdateStack.pop();
                     if (output == null)
                     {
                         output = new DataSpotOrderUpdate();
@@ -1851,7 +1852,7 @@ namespace Crypto_Trading
                         this.addLog("[coincheck] New order failed. " + msg, Enums.logType.ERROR);
                     }
 
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
+                    this.crypto_client.ordUpdateQueue.Enqueue(output);
                 }
             }
             else if (sndOrd.ins.market == market.bittrade)
@@ -1861,7 +1862,7 @@ namespace Crypto_Trading
                 DateTime sendTime = DateTime.UtcNow;
                 if (sndOrd.order_type == orderType.Limit)
                 {
-                    js = await this.ord_client.bittrade_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, true);
+                    js = await this.crypto_client.bittrade_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), sndOrd.price, quantity, true);
                 }
                 else
                 {
@@ -1873,12 +1874,12 @@ namespace Crypto_Trading
                     {
                         order_price = Math.Round(sndOrd.ins.bestbid.Item1 * (decimal)0.95 / sndOrd.ins.price_unit) * sndOrd.ins.price_unit;
                     }
-                    js = await this.ord_client.bittrade_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), order_price, quantity, false);
+                    js = await this.crypto_client.bittrade_client.placeNewOrder(sndOrd.ins.symbol, sndOrd.side.ToString().ToLower(), order_price, quantity, false);
                 }
 
                 if (js.RootElement.GetProperty("status").GetString() == "ok")
                 {
-                    output = this.ord_client.ordUpdateStack.pop();
+                    output = this.crypto_client.ordUpdateStack.pop();
                     if (output == null)
                     {
                         output = new DataSpotOrderUpdate();
@@ -1917,7 +1918,7 @@ namespace Crypto_Trading
                     //        break;
                     //}
                     output.msg = sndOrd.msg;
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
+                    this.crypto_client.ordUpdateQueue.Enqueue(output);
                 }
                 else
                 {
@@ -1932,7 +1933,7 @@ namespace Crypto_Trading
                     }
                     string msg = JsonSerializer.Serialize(js);
                     this.addLog(msg, Enums.logType.ERROR);
-                    output = this.ord_client.ordUpdateStack.pop();
+                    output = this.crypto_client.ordUpdateStack.pop();
                     if (output == null)
                     {
                         output = new DataSpotOrderUpdate();
@@ -1953,14 +1954,14 @@ namespace Crypto_Trading
                     output.is_trigger_order = true;
                     output.last_trade = "";
                     output.msg = sndOrd.msg;
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
+                    this.crypto_client.ordUpdateQueue.Enqueue(output);
                 }
             }
             else
             {
                 quantity = Math.Round(sndOrd.quantity / sndOrd.ins.quantity_unit) * sndOrd.ins.quantity_unit;
                 DateTime sendTime = DateTime.UtcNow;
-                output = await this.ord_client.placeNewSpotOrder(sndOrd.ins.market, sndOrd.ins.baseCcy, sndOrd.ins.quoteCcy, sndOrd.side, sndOrd.order_type, quantity, sndOrd.price, sndOrd.time_in_force);
+                output = await this.crypto_client.placeNewSpotOrder(sndOrd.ins.market, sndOrd.ins.baseCcy, sndOrd.ins.quoteCcy, sndOrd.side, sndOrd.order_type, quantity, sndOrd.price, sndOrd.time_in_force);
                 if (output != null)
                 {
                     using (var mlock = this.mapping_lock.getlock())
@@ -1971,11 +1972,11 @@ namespace Crypto_Trading
                     output.symbol_market = sndOrd.ins.symbol_market;
                     output.internal_order_id = sndOrd.internalOrdId;
                     output.msg = sndOrd.msg;
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
+                    this.crypto_client.ordUpdateQueue.Enqueue(output);
                 }
                 else
                 {
-                    output = this.ord_client.ordUpdateStack.pop();
+                    output = this.crypto_client.ordUpdateStack.pop();
                     if (output == null)
                     {
                         output = new DataSpotOrderUpdate();
@@ -1996,7 +1997,7 @@ namespace Crypto_Trading
                     output.is_trigger_order = true;
                     output.last_trade = "";
                     output.msg = sndOrd.msg;
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
+                    this.crypto_client.ordUpdateQueue.Enqueue(output);
                 }
             }
             sndOrd.init();
@@ -2086,7 +2087,7 @@ namespace Crypto_Trading
             JsonDocument js;
             if (this.virtualMode)
             {
-                output = this.ord_client.ordUpdateStack.pop();
+                output = this.crypto_client.ordUpdateStack.pop();
                 if (output == null)
                 {
                     output = new DataSpotOrderUpdate();
@@ -2117,18 +2118,18 @@ namespace Crypto_Trading
                 output.update_time = DateTime.UtcNow;
 
                 this.virtual_order_queue.Enqueue(output);
-                this.ord_client.ordUpdateQueue.Enqueue(output);
+                this.crypto_client.ordUpdateQueue.Enqueue(output);
             }
             else if(sndOrd.ins.market == market.gmocoin)
             {
                 DateTime sendTime = DateTime.UtcNow;
-                js = await this.ord_client.gmocoin_client.placeCanOrder(prev.order_id);
+                js = await this.crypto_client.gmocoin_client.placeCanOrder(prev.order_id);
                 JsonElement res;
                 if (js.RootElement.TryGetProperty("status", out res) && res.GetInt32() == 0)
                 {
                     DateTime resTime = (DateTime)Functions.convertToDateTime(js.RootElement.GetProperty("responsetime").GetString(), sndOrd.ins.market);
                     //DateTime resTime = DateTime.ParseExact(js.RootElement.GetProperty("responsetime").GetString(), "yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
-                    output = this.ord_client.ordUpdateStack.pop();
+                    output = this.crypto_client.ordUpdateStack.pop();
                     if (output == null)
                     {
                         output = new DataSpotOrderUpdate();
@@ -2143,7 +2144,7 @@ namespace Crypto_Trading
                     output.internal_order_id = sndOrd.ref_IntOrdId;
                     output.filled_quantity = 0;
                     output.status = orderStatus.WaitCancel;
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
+                    this.crypto_client.ordUpdateQueue.Enqueue(output);
                 }
                 else
                 {
@@ -2183,11 +2184,11 @@ namespace Crypto_Trading
             else if (sndOrd.ins.market == market.bitbank)
             {
                 DateTime sendTime = DateTime.UtcNow;
-                js = await this.ord_client.bitbank_client.placeCanOrder(sndOrd.ins.symbol, prev.order_id);
+                js = await this.crypto_client.bitbank_client.placeCanOrder(sndOrd.ins.symbol, prev.order_id);
                 if (js.RootElement.GetProperty("success").GetUInt16() == 1)
                 {
                     var ord_obj = js.RootElement.GetProperty("data");
-                    output = this.ord_client.ordUpdateStack.pop();
+                    output = this.crypto_client.ordUpdateStack.pop();
                     if (output == null)
                     {
                         output = new DataSpotOrderUpdate();
@@ -2201,13 +2202,16 @@ namespace Crypto_Trading
                     output.internal_order_id = sndOrd.ref_IntOrdId;
                     output.filled_quantity = 0;
                     output.status = orderStatus.WaitCancel;
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
+                    this.crypto_client.ordUpdateQueue.Enqueue(output);
                 }
                 else
                 {
                     int code = js.RootElement.GetProperty("data").GetProperty("code").GetInt32();
                     switch (code)
                     {
+                        case -1:
+                            this.addLog("[bitbank]Cancel order failed. Unexpected error   ord_id:" + sndOrd.internalOrdId, Enums.logType.WARNING);
+                            break;
                         case 10000:
                             this.addLog("Cancel order failed. The URL doesn't exist. Error code: 10000   ord_id:" + sndOrd.internalOrdId, Enums.logType.ERROR);
                             break;
@@ -2262,11 +2266,11 @@ namespace Crypto_Trading
             else if (sndOrd.ins.market == market.coincheck)
             {
                 DateTime sendTime = DateTime.UtcNow;
-                js = await this.ord_client.coincheck_client.placeCanOrder(prev.order_id);
+                js = await this.crypto_client.coincheck_client.placeCanOrder(prev.order_id);
                 if (js.RootElement.GetProperty("success").GetBoolean())
                 {
                     var ord_obj = js.RootElement;
-                    output = this.ord_client.ordUpdateStack.pop();
+                    output = this.crypto_client.ordUpdateStack.pop();
                     if (output == null)
                     {
                         output = new DataSpotOrderUpdate();
@@ -2280,7 +2284,7 @@ namespace Crypto_Trading
                     output.internal_order_id = sndOrd.ref_IntOrdId;
                     output.filled_quantity = 0;
                     output.status = orderStatus.WaitCancel;
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
+                    this.crypto_client.ordUpdateQueue.Enqueue(output);
                 }
                 else
                 {
@@ -2314,10 +2318,10 @@ namespace Crypto_Trading
             else if (sndOrd.ins.market == market.bittrade)
             {
                 DateTime sendTime = DateTime.UtcNow;
-                js = await this.ord_client.bittrade_client.placeCanOrder(prev.order_id);
+                js = await this.crypto_client.bittrade_client.placeCanOrder(prev.order_id);
                 if (js.RootElement.GetProperty("status").GetString() == "ok")
                 {
-                    output = this.ord_client.ordUpdateStack.pop();
+                    output = this.crypto_client.ordUpdateStack.pop();
                     if (output == null)
                     {
                         output = new DataSpotOrderUpdate();
@@ -2331,17 +2335,17 @@ namespace Crypto_Trading
                     output.internal_order_id = sndOrd.ref_IntOrdId;
                     output.filled_quantity = 0;
                     output.status = orderStatus.WaitCancel;
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
+                    this.crypto_client.ordUpdateQueue.Enqueue(output);
                 }
             }
             else
             {
-                output = await this.ord_client.placeCancelSpotOrder(sndOrd.ins.market, sndOrd.ins.baseCcy, sndOrd.ins.quoteCcy, prev.order_id);
+                output = await this.crypto_client.placeCancelSpotOrder(sndOrd.ins.market, sndOrd.ins.baseCcy, sndOrd.ins.quoteCcy, prev.order_id);
                 if (output != null)
                 {
                     output.symbol_market = sndOrd.ins.symbol_market;
                     output.internal_order_id = sndOrd.ref_IntOrdId;
-                    this.ord_client.ordUpdateQueue.Enqueue(output);
+                    this.crypto_client.ordUpdateQueue.Enqueue(output);
                 }
             }
             sndOrd.init();
@@ -2360,7 +2364,7 @@ namespace Crypto_Trading
             {
                 foreach (var ordid in sndOrd.order_ids)
                 {
-                    ordObj = this.ord_client.ordUpdateStack.pop();
+                    ordObj = this.crypto_client.ordUpdateStack.pop();
                     if (ordObj == null)
                     {
                         ordObj = new DataSpotOrderUpdate();
@@ -2404,7 +2408,7 @@ namespace Crypto_Trading
                     ordObj.update_time = DateTime.UtcNow;
 
                     this.virtual_order_queue.Enqueue(ordObj);
-                    this.ord_client.ordUpdateQueue.Enqueue(ordObj);
+                    this.crypto_client.ordUpdateQueue.Enqueue(ordObj);
                 }
             }
             else if (sndOrd.ins.market == market.gmocoin)
@@ -2422,7 +2426,7 @@ namespace Crypto_Trading
                     }
                 }
                 
-                js = await this.ord_client.gmocoin_client.placeCanOrders(ord_ids);
+                js = await this.crypto_client.gmocoin_client.placeCanOrders(ord_ids);
                 JsonElement res;
                 if (js.RootElement.TryGetProperty("status", out res) && res.GetInt32() == 0)
                 {
@@ -2435,7 +2439,7 @@ namespace Crypto_Trading
                         {
                             foreach (var elem in successes.EnumerateArray())
                             {
-                                ordObj = this.ord_client.ordUpdateStack.pop();
+                                ordObj = this.crypto_client.ordUpdateStack.pop();
                                 if (ordObj == null)
                                 {
                                     ordObj = new DataSpotOrderUpdate();
@@ -2453,7 +2457,7 @@ namespace Crypto_Trading
                                 }
                                 ordObj.filled_quantity = 0;
                                 ordObj.status = orderStatus.WaitCancel;
-                                this.ord_client.ordUpdateQueue.Enqueue(ordObj);
+                                this.crypto_client.ordUpdateQueue.Enqueue(ordObj);
                                 output.Add(ordObj);
                             }
                         }
@@ -2526,7 +2530,7 @@ namespace Crypto_Trading
                         {
                             foreach (var elem in successes.EnumerateArray())
                             {
-                                ordObj = this.ord_client.ordUpdateStack.pop();
+                                ordObj = this.crypto_client.ordUpdateStack.pop();
                                 if (ordObj == null)
                                 {
                                     ordObj = new DataSpotOrderUpdate();
@@ -2544,7 +2548,7 @@ namespace Crypto_Trading
                                 }
                                 ordObj.filled_quantity = 0;
                                 ordObj.status = orderStatus.WaitCancel;
-                                this.ord_client.ordUpdateQueue.Enqueue(ordObj);
+                                this.crypto_client.ordUpdateQueue.Enqueue(ordObj);
                                 output.Add(ordObj);
                             }
                         }
@@ -2596,7 +2600,7 @@ namespace Crypto_Trading
                     }
                 }
                     
-                js_list = await this.ord_client.bitbank_client.placeCanOrders(sndOrd.ins.symbol, ord_ids);
+                js_list = await this.crypto_client.bitbank_client.placeCanOrders(sndOrd.ins.symbol, ord_ids);
                 foreach (var elem in js_list)
                 {
                     if (elem.RootElement.GetProperty("success").GetUInt16() == 1)
@@ -2604,7 +2608,7 @@ namespace Crypto_Trading
                         var ord_objs = elem.RootElement.GetProperty("data").GetProperty("orders").EnumerateArray();
                         foreach(var ord_obj in ord_objs)
                         {
-                            ordObj = this.ord_client.ordUpdateStack.pop();
+                            ordObj = this.crypto_client.ordUpdateStack.pop();
                             if (ordObj == null)
                             {
                                 ordObj = new DataSpotOrderUpdate();
@@ -2622,7 +2626,7 @@ namespace Crypto_Trading
                             }
                             ordObj.filled_quantity = 0;
                             ordObj.status = orderStatus.WaitCancel;
-                            this.ord_client.ordUpdateQueue.Enqueue(ordObj);
+                            this.crypto_client.ordUpdateQueue.Enqueue(ordObj);
                             output.Add(ordObj);
                         }
                         
@@ -2632,6 +2636,31 @@ namespace Crypto_Trading
                         int code = elem.RootElement.GetProperty("data").GetProperty("code").GetInt32();
                         switch (code)
                         {
+                            case -1:
+                                this.addLog("[bitbank]Cancel order failed. Unexpected error", Enums.logType.WARNING);
+                                ordObj = this.crypto_client.ordUpdateStack.pop();
+                                if (ordObj == null)
+                                {
+                                    ordObj = new DataSpotOrderUpdate();
+                                }
+                                ordObj.status = orderStatus.CancelFailed;
+                                ordObj.timestamp = sendTime;
+                                ordObj.internal_order_id = "";
+                                ordObj.side = sndOrd.side;
+                                ordObj.symbol = sndOrd.ins.symbol;
+                                ordObj.market = sndOrd.ins.market;
+                                ordObj.symbol_market = sndOrd.ins.symbol_market;
+                                ordObj.order_quantity = sndOrd.quantity;
+                                ordObj.order_price = sndOrd.price;
+                                ordObj.filled_quantity = 0;
+                                ordObj.average_price = 0;
+                                ordObj.fee = 0;
+                                ordObj.fee_asset = "";
+                                ordObj.is_trigger_order = true;
+                                ordObj.last_trade = "";
+                                ordObj.msg = sndOrd.msg;
+                                this.crypto_client.ordUpdateQueue.Enqueue(ordObj);
+                                break;
                             case 10000:
                                 this.addLog("[bitbank]Cancel order failed. The URL doesn't exist. Error code: 10000   orderCount:" + ord_ids.Count.ToString(), Enums.logType.ERROR);
                                 break;
@@ -2655,6 +2684,31 @@ namespace Crypto_Trading
                                 break;
                             case 10009:
                                 this.addLog("[bitbank]Cancel order failed. Too many request. Error code:10009   orderCount:" + ord_ids.Count.ToString(), Enums.logType.WARNING);
+                                break;
+                            case 20035:
+                                this.addLog("[bitbank]Cancel order failed. Order has not been sent within the time window.", Enums.logType.WARNING);
+                                ordObj = this.crypto_client.ordUpdateStack.pop();
+                                if (ordObj == null)
+                                {
+                                    ordObj = new DataSpotOrderUpdate();
+                                }
+                                ordObj.status = orderStatus.CancelFailed;
+                                ordObj.timestamp = sendTime;
+                                ordObj.internal_order_id = "";
+                                ordObj.side = sndOrd.side;
+                                ordObj.symbol = sndOrd.ins.symbol;
+                                ordObj.market = sndOrd.ins.market;
+                                ordObj.symbol_market = sndOrd.ins.symbol_market;
+                                ordObj.order_quantity = sndOrd.quantity;
+                                ordObj.order_price = sndOrd.price;
+                                ordObj.filled_quantity = 0;
+                                ordObj.average_price = 0;
+                                ordObj.fee = 0;
+                                ordObj.fee_asset = "";
+                                ordObj.is_trigger_order = true;
+                                ordObj.last_trade = "";
+                                ordObj.msg = sndOrd.msg;
+                                this.crypto_client.ordUpdateQueue.Enqueue(ordObj);
                                 break;
                             case 50026://Already Canceled
                             case 50027://Already filled
@@ -2701,13 +2755,13 @@ namespace Crypto_Trading
                     }
                 }
                 
-                js_list = await this.ord_client.coincheck_client.placeCanOrders(ord_ids);
+                js_list = await this.crypto_client.coincheck_client.placeCanOrders(ord_ids);
                 foreach (var elem in js_list)
                 {
                     if (elem.RootElement.GetProperty("success").GetBoolean())
                     {
                         var ord_obj = elem.RootElement;
-                        ordObj = this.ord_client.ordUpdateStack.pop();
+                        ordObj = this.crypto_client.ordUpdateStack.pop();
                         if (ordObj == null)
                         {
                             ordObj = new DataSpotOrderUpdate();
@@ -2725,7 +2779,7 @@ namespace Crypto_Trading
                         ordObj.filled_quantity = 0;
                         ordObj.status = orderStatus.WaitCancel;
                         output.Add(ordObj);
-                        this.ord_client.ordUpdateQueue.Enqueue(ordObj);
+                        this.crypto_client.ordUpdateQueue.Enqueue(ordObj);
                     }
                     else
                     {
@@ -2771,12 +2825,12 @@ namespace Crypto_Trading
                     }
                 }
                     
-                js_list = await this.ord_client.bittrade_client.placeCanOrders(ord_ids);
+                js_list = await this.crypto_client.bittrade_client.placeCanOrders(ord_ids);
                 foreach(var elem in js_list)
                 {
                     if (elem.RootElement.GetProperty("status").GetString() == "ok")
                     {
-                        ordObj = this.ord_client.ordUpdateStack.pop();
+                        ordObj = this.crypto_client.ordUpdateStack.pop();
                         if (ordObj == null)
                         {
                             ordObj = new DataSpotOrderUpdate();
@@ -2794,7 +2848,7 @@ namespace Crypto_Trading
                         ordObj.filled_quantity = 0;
                         ordObj.status = orderStatus.WaitCancel;
                         output.Add(ordObj);
-                        this.ord_client.ordUpdateQueue.Enqueue(ordObj);
+                        this.crypto_client.ordUpdateQueue.Enqueue(ordObj);
                     }
                 }
                 
@@ -2818,13 +2872,13 @@ namespace Crypto_Trading
                             continue;
                         }
                     }
-                    ordObj = await this.ord_client.placeCancelSpotOrder(sndOrd.ins.market, sndOrd.ins.baseCcy, sndOrd.ins.quoteCcy, ordid);
+                    ordObj = await this.crypto_client.placeCancelSpotOrder(sndOrd.ins.market, sndOrd.ins.baseCcy, sndOrd.ins.quoteCcy, ordid);
                     if (ordObj != null)
                     {
                         ordObj.symbol_market = sndOrd.ins.symbol_market;
                         ordObj.internal_order_id = order_id;
                         output.Add(ordObj);
-                        this.ord_client.ordUpdateQueue.Enqueue(ordObj);
+                        this.crypto_client.ordUpdateQueue.Enqueue(ordObj);
                     }
                 }
             }
@@ -2870,7 +2924,196 @@ namespace Crypto_Trading
                 }
             }
         }
+        public async Task refreshAndCancelAllorders(Enums.market market = market.NONE)
+        {
+            if (market == market.NONE)
+            {
+                this.addLog("Cancelling all the orders including unknown.", Enums.logType.WARNING);
+                //await this.oManager.cancelAllOrders();
+                //Thread.Sleep(1000);
+                this.addLog("Requesting order list....", Enums.logType.WARNING);
 
+                foreach (market mkt in this.connections.Keys)
+                {
+                    addLog("Order List of " + mkt, logType.WARNING);
+                    List<DataSpotOrderUpdate> ordList = await this.crypto_client.getActiveOrders(mkt);
+                    int i = 0;
+                    while (ordList == null)
+                    {
+                        ++i;
+                        addLog("Failed to get active orders. Retrying..." + i.ToString(), Enums.logType.WARNING);
+                        this.refreshHttpClient(mkt);
+                        Thread.Sleep(1000);
+                        ordList = await this.crypto_client.getActiveOrders(mkt);
+                        if (i >= 5)
+                        {
+                            addLog("Failed to get active orders.", Enums.logType.ERROR);
+                            break;
+                        }
+                    }
+
+                    this.addLog("The number of active orders:" + ordList.Count.ToString("N0"), Enums.logType.WARNING);
+                    Dictionary<Instrument, List<string>> id_list = new Dictionary<Instrument, List<string>>();
+                    using (var mlock = this.mapping_lock.getlock())
+                    {
+                        foreach (DataSpotOrderUpdate ord in ordList)
+                        {
+
+                            if (this.ordIdMapping.ContainsKey(ord.market + ord.order_id))
+                            {
+                                ord.internal_order_id = this.ordIdMapping[ord.market + ord.order_id];
+                            }
+                            else
+                            {
+                                ord.internal_order_id = ord.market + ord.order_id;
+                                this.ordIdMapping[ord.market + ord.order_id] = ord.market + ord.order_id;
+                            }
+
+                            if (this.instruments.ContainsKey(ord.symbol_market))
+                            {
+                                Instrument ins = this.instruments[ord.symbol_market];
+                                if (!id_list.ContainsKey(ins))
+                                {
+                                    id_list[ins] = new List<string>();
+                                }
+                                id_list[ins].Add(ord.internal_order_id);
+                            }
+                            using (var olock = this.order_lock.getlock())
+                            {
+                                this.orders[ord.internal_order_id] = ord;
+                            }
+                        }
+                    }
+
+                    if (id_list.Count > 0)
+                    {
+                        foreach (var keyValue in id_list)
+                        {
+                            Thread.Sleep(1000);//Make sure the cancel orders are executed
+                            this.addLog("Cancelling...", Enums.logType.WARNING);
+                            await this.placeCancelSpotOrders(keyValue.Key, keyValue.Value, true, true);
+                        }
+                        this.addLog("Order cancelled.", Enums.logType.WARNING);
+                        Thread.Sleep(1000);
+                        this.addLog("Double check the orders...", Enums.logType.WARNING);
+                        ordList = await this.crypto_client.getActiveOrders(mkt);
+                        if (ordList.Count > 0)
+                        {
+                            addLog("Failed to cancel all the orders. Remaining active orders:" + ordList.Count.ToString("N0"), Enums.logType.WARNING);
+
+                        }
+                        else
+                        {
+                            addLog("All orders cancelled.", Enums.logType.WARNING);
+                        }
+                    }
+                    else
+                    {
+                        addLog("Active order not found");
+                    }
+                }
+                Thread.Sleep(1000);
+                using (var olock = this.order_lock.getlock())
+                {
+                    this.live_orders.Clear();
+                    foreach (Instrument ins in this.instruments.Values)
+                    {
+                        ins.resetInusePosition();
+                    }
+                }
+            }
+            else
+            {
+                this.addLog("Cancelling all the orders of " + market + " including unknown.", Enums.logType.WARNING);
+                //await this.oManager.cancelAllOrders();
+                Thread.Sleep(1000);
+                this.addLog("Requesting order list....", Enums.logType.WARNING);
+                this.addLog("ordUpdateStack.Count:" + this.crypto_client.ordUpdateStack.Count.ToString("N0"));
+                this.addLog("order_pool.Count:" + this.order_pool.Count.ToString("N0"));
+                List<DataSpotOrderUpdate> ordList = await this.crypto_client.getActiveOrders(market);
+                int i = 0;
+                while (ordList == null)
+                {
+                    ++i;
+                    addLog("Failed to get active orders. Retrying..." + i.ToString(), Enums.logType.WARNING);
+
+                    ordList = await this.crypto_client.getActiveOrders(market);
+                    if (i >= 5)
+                    {
+                        addLog("Failed to get active orders.", Enums.logType.ERROR);
+                        break;
+                    }
+                }
+
+                this.addLog("The number of active orders:" + ordList.Count.ToString("N0"), Enums.logType.WARNING);
+                Dictionary<Instrument, List<string>> id_list = new Dictionary<Instrument, List<string>>();
+                using (var mlock = this.mapping_lock.getlock())
+                {
+                    foreach (DataSpotOrderUpdate ord in ordList)
+                    {
+                        if (this.ordIdMapping.ContainsKey(ord.market + ord.order_id))
+                        {
+                            ord.internal_order_id = this.ordIdMapping[ord.market + ord.order_id];
+                        }
+                        else
+                        {
+                            ord.internal_order_id = ord.market + ord.order_id;
+                            this.ordIdMapping[ord.market + ord.order_id] = ord.market + ord.order_id;
+                        }
+                        if (this.instruments.ContainsKey(ord.symbol_market))
+                        {
+                            Instrument ins = this.instruments[ord.symbol_market];
+                            if (!id_list.ContainsKey(ins))
+                            {
+                                id_list[ins] = new List<string>();
+                            }
+                            id_list[ins].Add(ord.internal_order_id);
+                        }
+                        using (var olock = this.order_lock.getlock())
+                        {
+                            this.orders[ord.internal_order_id] = ord;
+                        }
+                    }
+                }
+                if (id_list.Count > 0)
+                {
+                    foreach (var keyValue in id_list)
+                    {
+                        Thread.Sleep(1000);//Make sure the cancel orders are executed
+                        this.addLog("Cancelling...", Enums.logType.WARNING);
+                        await this.placeCancelSpotOrders(keyValue.Key, keyValue.Value, true, true);
+                    }
+                    this.addLog("Order cancelled.", Enums.logType.WARNING);
+                }
+                else
+                {
+                    addLog("Active order not found");
+                }
+                Thread.Sleep(1000);
+                using (var olock = this.order_lock.getlock())
+                {
+                    List<string> removing = new List<string>();
+                    foreach (var ord in this.live_orders)
+                    {
+                        if (ord.Value.market == market)
+                        {
+                            removing.Add(ord.Key);
+                        }
+                    }
+                    foreach (var id in removing)
+                    {
+                        this.live_orders.Remove(id);
+                    }
+                    foreach (Instrument ins in this.instruments.Values)
+                    {
+                        if (ins.market == market)
+                        {
+                            ins.resetInusePosition();
+                        }
+                    }
+                }
+            }
+        }
         public async Task cancelAllOrders()
         {
             this.addLog("Cancelling all orders...");
@@ -2880,9 +3123,9 @@ namespace Crypto_Trading
             {
                 foreach (var ord in this.live_orders.Values)
                 {
-                    if (this.Instruments.ContainsKey(ord.symbol_market))
+                    if (this.instruments.ContainsKey(ord.symbol_market))
                     {
-                        ins = this.Instruments[ord.symbol_market];
+                        ins = this.instruments[ord.symbol_market];
                         if (!order_list.ContainsKey(ins))
                         {
                             order_list[ins] = new List<string>();
@@ -2908,7 +3151,7 @@ namespace Crypto_Trading
         public void pushbackFill(DataFill fill)
         {
             fill.init();
-            this.ord_client.fillStack.push(fill);
+            this.crypto_client.fillStack.push(fill);
         }
        
         public async Task<bool> updateMarketImpact(Action start, Action end, CancellationToken ct, int spinningMax)
@@ -2957,7 +3200,7 @@ namespace Crypto_Trading
             {
                 while (true)
                 {
-                    fill = this.ord_client.fillQueue.Dequeue();
+                    fill = this.crypto_client.fillQueue.Dequeue();
                     while(fill != null)
                     {
                         bool idMapping = false;
@@ -2970,9 +3213,9 @@ namespace Crypto_Trading
                         {
                             start();
                             await this.processFill(fill,true);
-                            if (this.Instruments.ContainsKey(fill.symbol_market))
+                            if (this.instruments.ContainsKey(fill.symbol_market))
                             {
-                                ins = this.Instruments[fill.symbol_market];
+                                ins = this.instruments[fill.symbol_market];
                             }
                             spinner.Reset();
                             end();
@@ -2989,9 +3232,9 @@ namespace Crypto_Trading
                                     addLog("Handle the fill anyway", Enums.logType.WARNING);
                                     fill.msg += " The original order not found.";
                                     await this.processFill(fill,true);
-                                    if (this.Instruments.ContainsKey(fill.symbol_market))
+                                    if (this.instruments.ContainsKey(fill.symbol_market))
                                     {
-                                        ins = this.Instruments[fill.symbol_market];
+                                        ins = this.instruments[fill.symbol_market];
                                     }
                                     spinner.Reset();
                                     end();
@@ -3002,19 +3245,19 @@ namespace Crypto_Trading
                                     Task.Run(() =>
                                     {
                                         Thread.Sleep(10);
-                                        this.ord_client.fillQueue.Enqueue(localfill);
+                                        this.crypto_client.fillQueue.Enqueue(localfill);
                                         addLog("The order has been queued. count:" + localfill.queued_count.ToString("N0"), Enums.logType.WARNING);
                                     });
                                 }
                             }
                             else
                             {
-                                this.ord_client.fillQueue.Enqueue(fill);
+                                this.crypto_client.fillQueue.Enqueue(fill);
                             }
                             break;
                         }
                         
-                        fill = this.ord_client.fillQueue.Dequeue();
+                        fill = this.crypto_client.fillQueue.Dequeue();
 
                     }
                     if(ct.IsCancellationRequested)
@@ -3104,10 +3347,10 @@ namespace Crypto_Trading
                     addLog($"{ex.Key}");
                 }
             }
-            if (this.Instruments.ContainsKey(fill.symbol_market))
+            if (this.instruments.ContainsKey(fill.symbol_market))
             {
                 Instrument ins;
-                ins = this.Instruments[fill.symbol_market];
+                ins = this.instruments[fill.symbol_market];
                 ins.updateFills(fill);
                 if (ins.readyToTrade && fill.timestamp.HasValue && fill.filled_time.HasValue)
                 {
@@ -3120,9 +3363,9 @@ namespace Crypto_Trading
 
         public async void updateFillOnClosing()
         {
-            while (this.ord_client.fillQueue.Count > 0)
+            while (this.crypto_client.fillQueue.Count > 0)
             {
-                DataFill fill = this.ord_client.fillQueue.Dequeue();
+                DataFill fill = this.crypto_client.fillQueue.Dequeue();
                 if(fill != null)
                 {
                     await this.processFill(fill,true);
@@ -3142,19 +3385,19 @@ namespace Crypto_Trading
             {
                 while (true)
                 {
-                    ord = this.ord_client.ordUpdateQueue.Dequeue();
+                    ord = this.crypto_client.ordUpdateQueue.Dequeue();
                     //while (this.ord_client.ordUpdateQueue.TryDequeue(out ord))
                     while(ord != null)
                     {
                         start();
 
-                        if (this.Instruments.ContainsKey(ord.symbol_market))
+                        if (this.instruments.ContainsKey(ord.symbol_market))
                         {
-                            ins = this.Instruments[ord.symbol_market];
+                            ins = this.instruments[ord.symbol_market];
                         }
                         else
                         {
-                            ord = this.ord_client.ordUpdateQueue.Dequeue();
+                            ord = this.crypto_client.ordUpdateQueue.Dequeue();
                             continue;
                         }
 
@@ -3162,6 +3405,26 @@ namespace Crypto_Trading
                         {
                             case orderStatus.INVALID:
                                 this.handleINVALID(ord);
+                                break;
+                            case orderStatus.CancelFailed:
+                                Dictionary<string,bool> stg_state = new Dictionary<string,bool>();
+                                foreach(var stg in this.strategies)
+                                {
+                                    if(stg.Value.taker.market == ord.market || stg.Value.maker.market == ord.market)
+                                    {
+                                        stg_state[stg.Key] = stg.Value.enabled;
+                                        stg.Value.enabled = false;
+                                    }
+                                }
+                                Thread.Sleep(100);
+                                Task.Run(async () => { await this.refreshAndCancelAllorders(ord.market); });
+                                foreach(var stg in this.strategies)
+                                {
+                                    if(stg_state.ContainsKey(stg.Key))
+                                    {
+                                        stg.Value.enabled = stg_state[stg.Key];
+                                    }
+                                }
                                 break;
                             case orderStatus.WaitOpen:
                                 this.handleWaitOpen(ord);
@@ -3187,7 +3450,7 @@ namespace Crypto_Trading
                                 addLog(ord.ToString(), logType.WARNING);
                                 break;
                         }
-                        ord = this.ord_client.ordUpdateQueue.Dequeue();
+                        ord = this.crypto_client.ordUpdateQueue.Dequeue();
                         spinner.Reset();
                         end();
                     }
@@ -3268,7 +3531,7 @@ namespace Crypto_Trading
         public void handleWaitOpen(DataSpotOrderUpdate ord)
         {
             this.ordLogQueue.Enqueue(ord.ToString());
-            ord.update_time = DateTime.UtcNow;
+            //ord.update_time = DateTime.UtcNow;
             using (var olock = this.order_lock.getlock())
             {
                 if (this.orders.ContainsKey(ord.internal_order_id))
@@ -3286,7 +3549,7 @@ namespace Crypto_Trading
         public void handleWaitMod(DataSpotOrderUpdate ord)
         {
             this.ordLogQueue.Enqueue(ord.ToString());
-            ord.update_time = DateTime.UtcNow;
+            //ord.update_time = DateTime.UtcNow;
             this.order_pool.Enqueue(ord);
         }
         public void handleWaitCancel(DataSpotOrderUpdate ord)
@@ -3310,13 +3573,13 @@ namespace Crypto_Trading
                             this.live_orders[ord.internal_order_id] = ord;
                         }
 
-                        if (this.Instruments.ContainsKey(ord.symbol_market))
+                        if (this.instruments.ContainsKey(ord.symbol_market))
                         {
-                            using(var ilock = this.Instruments[ord.symbol_market].order_lock.getlock())
+                            using(var ilock = this.instruments[ord.symbol_market].order_lock.getlock())
                             {
-                                if(this.Instruments[ord.symbol_market].live_orders.ContainsKey(ord.internal_order_id))
+                                if(this.instruments[ord.symbol_market].live_orders.ContainsKey(ord.internal_order_id))
                                 {
-                                    this.Instruments[ord.symbol_market].live_orders[ord.internal_order_id] = ord;
+                                    this.instruments[ord.symbol_market].live_orders[ord.internal_order_id] = ord;
                                 }
                             }
                         }
@@ -3350,9 +3613,9 @@ namespace Crypto_Trading
                 ex = this.exchanges[ord.market];
             }
 
-            if (this.Instruments.ContainsKey(ord.symbol_market))
+            if (this.instruments.ContainsKey(ord.symbol_market))
             {
-                ins = this.Instruments[ord.symbol_market];
+                ins = this.instruments[ord.symbol_market];
             }
             bool idMapping = false;
             using (var mlock = this.mapping_lock.getlock())
@@ -3380,9 +3643,9 @@ namespace Crypto_Trading
                         }
                         if ((ord.status < prevord.status || ord.filled_quantity < prevord.filled_quantity) && !(prevord.status == orderStatus.WaitCancel && ord.status == orderStatus.Open))
                         {
+                            this.ordLogQueue.Enqueue(ord.ToString());
                             ord.update_time = DateTime.UtcNow;
                             this.order_pool.Enqueue(ord);
-                            this.ordLogQueue.Enqueue(ord.ToString());
                             return;
                         }
 
@@ -3479,10 +3742,10 @@ namespace Crypto_Trading
             }
             else
             {//If the mapping doesn't exist, which means the order from the exchange reaches here before the new order processing.
-                if (!this.Instruments.ContainsKey(ord.symbol_market))
+                if (!this.instruments.ContainsKey(ord.symbol_market))
                 {
                     ord.init();
-                    this.ord_client.ordUpdateStack.push(ord);
+                    this.crypto_client.ordUpdateStack.push(ord);
                 }
                 else if (ord.queued_count % 200001 == 200000)
                 {
@@ -3491,7 +3754,7 @@ namespace Crypto_Trading
                     if (ord.queued_count > 1_000_000)
                     {
                         addLog("Cancelling the order and removing from strategies...");
-                        ins = this.Instruments[ord.symbol_market];
+                        ins = this.instruments[ord.symbol_market];
                         ord.internal_order_id = ord.market + ord.order_id;
                         using (var mlock = this.mapping_lock.getlock())
                         {
@@ -3528,7 +3791,7 @@ namespace Crypto_Trading
                         this.placeCancelSpotOrder(ins, ord.market + ord.order_id, true, false);
 
                         ++(ord.queued_count);
-                        this.ord_client.ordUpdateQueue.Enqueue(ord);
+                        this.crypto_client.ordUpdateQueue.Enqueue(ord);
                     }
                     else
                     {
@@ -3537,14 +3800,14 @@ namespace Crypto_Trading
                         {
                             Thread.Sleep(10);
                             ++(localord.queued_count);
-                            this.ord_client.ordUpdateQueue.Enqueue(localord);
+                            this.crypto_client.ordUpdateQueue.Enqueue(localord);
                         });
                     }
                 }
                 else
                 {
                     ++(ord.queued_count);
-                    this.ord_client.ordUpdateQueue.Enqueue(ord);
+                    this.crypto_client.ordUpdateQueue.Enqueue(ord);
                 }
             }
         }
@@ -3558,9 +3821,9 @@ namespace Crypto_Trading
             {
                 ex = this.exchanges[ord.market];
             }
-            if (this.Instruments.ContainsKey(ord.symbol_market))
+            if (this.instruments.ContainsKey(ord.symbol_market))
             {
-                ins = this.Instruments[ord.symbol_market];
+                ins = this.instruments[ord.symbol_market];
             }
             bool idMapping = false;
             using (var mlock = this.mapping_lock.getlock())
@@ -3706,10 +3969,10 @@ namespace Crypto_Trading
             }
             else
             {//If the mapping doesn't exist, which means the order from the exchange reaches here before the new order processing.
-                if (!this.Instruments.ContainsKey(ord.symbol_market))
+                if (!this.instruments.ContainsKey(ord.symbol_market))
                 {
                     ord.init();
-                    this.ord_client.ordUpdateStack.push(ord);
+                    this.crypto_client.ordUpdateStack.push(ord);
                 }
                 else if (ord.queued_count % 200001 == 200000)
                 {
@@ -3744,7 +4007,7 @@ namespace Crypto_Trading
                             }
                         }
                         
-                        ins = this.Instruments[ord.symbol_market];
+                        ins = this.instruments[ord.symbol_market];
                         if (filled_quantity > 0 /*&& ord.order_type != orderType.Market*/)
                         {
                             if (ord.position_side == positionSide.Long)
@@ -3791,14 +4054,14 @@ namespace Crypto_Trading
                         {
                             Thread.Sleep(10);
                             ++(localord.queued_count);
-                            this.ord_client.ordUpdateQueue.Enqueue(localord);
+                            this.crypto_client.ordUpdateQueue.Enqueue(localord);
                         });
                     }
                 }
                 else
                 {
                     ++(ord.queued_count);
-                    this.ord_client.ordUpdateQueue.Enqueue(ord);
+                    this.crypto_client.ordUpdateQueue.Enqueue(ord);
                 }
             }
         }
@@ -3812,9 +4075,9 @@ namespace Crypto_Trading
                 ex = this.exchanges[ord.market];
             }
 
-            if (this.Instruments.ContainsKey(ord.symbol_market))
+            if (this.instruments.ContainsKey(ord.symbol_market))
             {
-                ins = this.Instruments[ord.symbol_market];
+                ins = this.instruments[ord.symbol_market];
             }
             bool idMapping = false;
             using (var mlock = this.mapping_lock.getlock())
@@ -3845,9 +4108,9 @@ namespace Crypto_Trading
 
                         if ((ord.status < prevord.status || ord.filled_quantity < prevord.filled_quantity) && !(prevord.status == orderStatus.WaitCancel && ord.status == orderStatus.Open))
                         {
+                            this.ordLogQueue.Enqueue(ord.ToString());
                             ord.update_time = DateTime.UtcNow;
                             this.order_pool.Enqueue(ord);
-                            this.ordLogQueue.Enqueue(ord.ToString());
                             return;
                         }
 
@@ -3952,10 +4215,10 @@ namespace Crypto_Trading
             }
             else
             {//If the mapping doesn't exist, which means the order from the exchange reaches here before the new order processing.
-                if (!this.Instruments.ContainsKey(ord.symbol_market))
+                if (!this.instruments.ContainsKey(ord.symbol_market))
                 {
                     ord.init();
-                    this.ord_client.ordUpdateStack.push(ord);
+                    this.crypto_client.ordUpdateStack.push(ord);
                 }
                 else if (ord.queued_count % 200001 == 200000)
                 {
@@ -3964,7 +4227,7 @@ namespace Crypto_Trading
                     if (ord.queued_count > 1_000_000)
                     {
                         decimal filled_quantity = 0;
-                        ins = this.Instruments[ord.symbol_market];
+                        ins = this.instruments[ord.symbol_market];
                         using (var olock = this.order_lock.getlock())
                         {
                             if (this.orders.ContainsKey(ord.market + ord.order_id))
@@ -4024,14 +4287,14 @@ namespace Crypto_Trading
                         {
                             Thread.Sleep(10);
                             ++(localord.queued_count);
-                            this.ord_client.ordUpdateQueue.Enqueue(localord);
+                            this.crypto_client.ordUpdateQueue.Enqueue(localord);
                         });
                     }
                 }
                 else
                 {
                     ++(ord.queued_count);
-                    this.ord_client.ordUpdateQueue.Enqueue(ord);
+                    this.crypto_client.ordUpdateQueue.Enqueue(ord);
                 }
             }
         }
@@ -4084,21 +4347,21 @@ namespace Crypto_Trading
                             List<int> id_check = this.virtual_order_queue.checkQueueSequence();
                             addLog($"Peek Enqueue Count:{peek_EnqueueCount} Peek Dequeue Count:{peek_DequeueCount} Dequeue Enqueue Count:{this.virtual_order_queue._Enqueues} Dequeue Dequeue Count:{this.virtual_order_queue._Dequeues}", logType.ERROR);
                         }
-                        if (this.Instruments.ContainsKey(output.symbol_market))
+                        if (this.instruments.ContainsKey(output.symbol_market))
                         {
-                            Instrument ins = this.Instruments[output.symbol_market];
+                            Instrument ins = this.instruments[output.symbol_market];
                             switch (output.status)
                             {
                                 case orderStatus.WaitOpen:
                                     if (output.order_type == orderType.Market || (output.side == orderSide.Buy && output.order_price > ins.bestask.Item1) || (output.side == orderSide.Sell && output.order_price < ins.bestbid.Item1))
                                     {
                                         DataFill fill;
-                                        fill = this.ord_client.fillStack.pop();
+                                        fill = this.crypto_client.fillStack.pop();
                                         if (fill == null)
                                         {
                                             fill = new DataFill();
                                         }
-                                        update = this.ord_client.ordUpdateStack.pop();
+                                        update = this.crypto_client.ordUpdateStack.pop();
                                         if (update == null)
                                         {
                                             update = new DataSpotOrderUpdate();
@@ -4150,12 +4413,12 @@ namespace Crypto_Trading
                                         fill.timestamp = update.timestamp;
                                         fill.filled_time = fill.timestamp;
                                         fill.order_type = update.order_type;
-                                        this.ord_client.ordUpdateQueue.Enqueue(update);
-                                        this.ord_client.fillQueue.Enqueue(fill);
+                                        this.crypto_client.ordUpdateQueue.Enqueue(update);
+                                        this.crypto_client.fillQueue.Enqueue(fill);
                                     }
                                     else
                                     {
-                                        update = this.ord_client.ordUpdateStack.pop();
+                                        update = this.crypto_client.ordUpdateStack.pop();
                                         if (update == null)
                                         {
                                             update = new DataSpotOrderUpdate();
@@ -4173,13 +4436,13 @@ namespace Crypto_Trading
 
                                             this.virtual_liveorders[update.internal_order_id] = update;
                                         }
-                                        this.ord_client.ordUpdateQueue.Enqueue(update);
+                                        this.crypto_client.ordUpdateQueue.Enqueue(update);
                                     }
                                     break;
                                 case orderStatus.WaitCancel:
                                     if (this.virtual_liveorders.ContainsKey(output.internal_order_id))
                                     {
-                                        update = this.ord_client.ordUpdateStack.pop();
+                                        update = this.crypto_client.ordUpdateStack.pop();
                                         if (update == null)
                                         {
                                             update = new DataSpotOrderUpdate();
@@ -4187,7 +4450,7 @@ namespace Crypto_Trading
                                         update.Copy(output);
                                         update.status = orderStatus.Canceled;
                                         this.virtual_liveorders.Remove(output.internal_order_id);
-                                        this.ord_client.ordUpdateQueue.Enqueue(update);
+                                        this.crypto_client.ordUpdateQueue.Enqueue(update);
                                     }
                                     else
                                     {
@@ -4249,7 +4512,7 @@ namespace Crypto_Trading
                                         {
                                             DataSpotOrderUpdate output;
 
-                                            output = this.ord_client.ordUpdateStack.pop();
+                                            output = this.crypto_client.ordUpdateStack.pop();
                                             if (output == null)
                                             {
                                                 output = new DataSpotOrderUpdate();
@@ -4262,7 +4525,7 @@ namespace Crypto_Trading
                                             output.fee_asset = ins.quoteCcy;
                                             output.update_time = DateTime.UtcNow;
                                             DataFill fill;
-                                            fill = this.ord_client.fillStack.pop();
+                                            fill = this.crypto_client.fillStack.pop();
                                             if (fill == null)
                                             {
                                                 fill = new DataFill();
@@ -4292,16 +4555,16 @@ namespace Crypto_Trading
                                             //{
                                             //    output.msg += " Last traded price:" + last_trade.price.ToString();
                                             //}
-                                            this.ord_client.ordUpdateQueue.Enqueue(output);
+                                            this.crypto_client.ordUpdateQueue.Enqueue(output);
                                             removing.Add(key);
-                                            this.ord_client.fillQueue.Enqueue(fill);
+                                            this.crypto_client.fillQueue.Enqueue(fill);
                                         }
                                         break;
                                     case orderSide.Sell:
                                         if (ins.bestbid.Item1 > ord.order_price || (last_trade != null && last_trade.symbol + "@" + last_trade.market.ToString() == ord.symbol_market && last_trade.price > ord.order_price))
                                         {
                                             DataSpotOrderUpdate output;
-                                            output = this.ord_client.ordUpdateStack.pop();
+                                            output = this.crypto_client.ordUpdateStack.pop();
                                             if (output == null)
                                             {
                                                 output = new DataSpotOrderUpdate();
@@ -4314,7 +4577,7 @@ namespace Crypto_Trading
                                             output.fee_asset = ins.quoteCcy;
                                             output.update_time = DateTime.UtcNow;
                                             DataFill fill;
-                                            fill = this.ord_client.fillStack.pop();
+                                            fill = this.crypto_client.fillStack.pop();
                                             if (fill == null)
                                             {
                                                 fill = new DataFill();
@@ -4344,9 +4607,9 @@ namespace Crypto_Trading
                                             //{
                                             //    output.msg += " Last traded price:" + last_trade.price.ToString();
                                             //}
-                                            this.ord_client.ordUpdateQueue.Enqueue(output);
+                                            this.crypto_client.ordUpdateQueue.Enqueue(output);
                                             removing.Add(key);
-                                            this.ord_client.fillQueue.Enqueue(fill);
+                                            this.crypto_client.fillQueue.Enqueue(fill);
                                         }
                                         break;
                                 }

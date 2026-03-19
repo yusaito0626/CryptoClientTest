@@ -62,7 +62,8 @@
         Filled = 5,
         Canceled = 6,
         Expired = 7,
-        WaitMod = 98,
+        WaitMod = 97,
+        CancelFailed = 98,
         INVALID = 99
     }
     public enum timeInForce
