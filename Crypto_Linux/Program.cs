@@ -2841,7 +2841,7 @@ namespace Crypto_Linux
             {
                 foreach(var ord in oManager.live_orders.Values)
                 {
-                    if((ord.status == orderStatus.WaitCancel || ord.status == orderStatus.WaitOpen || ord.status == orderStatus.WaitMod) && ord.update_time.HasValue && current - ord.timestamp > TimeSpan.FromSeconds(10))
+                    if((ord.status == orderStatus.WaitCancel || ord.status == orderStatus.WaitOpen || ord.status == orderStatus.WaitMod) && (ord.timestamp.HasValue == false || (ord.timestamp.HasValue && current - ord.timestamp > TimeSpan.FromSeconds(10))))
                     {
                         order_refresh = true;
                         break;
@@ -3021,6 +3021,12 @@ namespace Crypto_Linux
                 stginfo.tradingPnL = stg.tradingPnL;
                 stginfo.totalFee= stg.totalFee;
                 stginfo.totalPnL = stginfo.posPnL + stginfo.tradingPnL - stginfo.totalFee;
+
+                stginfo.markupPnL = stg.markupPnL;
+                stginfo.skewPnL = stg.skewPnL;
+                stginfo.priceAdjPnL = stg.priceAdjPnL;
+                stginfo.residualPnL = stg.residualPnL;
+                stginfo.tradingPnLB = stg.tradingPnLB;
 
                 stginfo.mi_volume = stg.mi_volume;
                 foreach (var mi in stg.market_impact_curve)

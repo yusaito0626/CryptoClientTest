@@ -2304,6 +2304,12 @@ namespace Utils
         public decimal tradingPnL { get; set; }
         public decimal totalFee { get; set; }
         public decimal totalPnL { get; set; }
+        public decimal markupPnL { get; set; }
+        public decimal skewPnL { get; set; }
+        public decimal priceAdjPnL { get; set; }
+        public decimal residualPnL { get; set; }
+        public decimal tradingPnLB { get; set; }
+
         public decimal mi_volume { get; set; }
         public Dictionary<double, decimal>? market_impact_curve { get; set; }
     }

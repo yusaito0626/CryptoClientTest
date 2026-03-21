@@ -1146,6 +1146,11 @@ namespace Crypto_GUI
                                                 stg.tradingPnL = s.Value.tradingPnL;
                                                 stg.totalFee = s.Value.totalFee;
                                                 stg.totalPnL = s.Value.totalPnL;
+                                                stg.markupPnL = s.Value.markupPnL;
+                                                stg.skewPnL = s.Value.skewPnL;
+                                                stg.priceAdjPnL = s.Value.priceAdjPnL;
+                                                stg.residualPnL = s.Value.residualPnL;
+                                                stg.tradingPnLB = s.Value.tradingPnLB;
                                                 stg.mi_volume = s.Value.mi_volume;
                                                 foreach (var mi in s.Value.market_impact_curve)
                                                 {
@@ -1179,6 +1184,11 @@ namespace Crypto_GUI
                                                 stg.tradingPnL = s.Value.tradingPnL;
                                                 stg.totalFee = s.Value.totalFee;
                                                 stg.totalPnL = s.Value.totalPnL;
+                                                stg.markupPnL = s.Value.markupPnL;
+                                                stg.skewPnL = s.Value.skewPnL;
+                                                stg.priceAdjPnL = s.Value.priceAdjPnL;
+                                                stg.residualPnL = s.Value.residualPnL;
+                                                stg.tradingPnLB = s.Value.tradingPnLB;
                                                 stg.mi_volume = s.Value.mi_volume;
                                                 foreach (var mi in s.Value.market_impact_curve)
                                                 {
@@ -2057,6 +2067,14 @@ namespace Crypto_GUI
                         }
                     }
                 }
+
+                this.gridView_PLBreakDown.Rows[0].Cells[0].Value = this.selected_stg.notionalVolume.ToString("N2");
+                this.gridView_PLBreakDown.Rows[0].Cells[1].Value = this.selected_stg.markupPnL.ToString("N2");
+                this.gridView_PLBreakDown.Rows[0].Cells[2].Value = this.selected_stg.skewPnL.ToString("N2");
+                this.gridView_PLBreakDown.Rows[0].Cells[3].Value = this.selected_stg.priceAdjPnL.ToString("N2");
+                this.gridView_PLBreakDown.Rows[0].Cells[4].Value = this.selected_stg.residualPnL.ToString("N2");
+                this.gridView_PLBreakDown.Rows[0].Cells[5].Value = this.selected_stg.tradingPnLB.ToString("N2");
+                this.gridView_PLBreakDown.Rows[0].Cells[6].Value = this.selected_stg.totalFee.ToString("N2");
 
                 foreach (DataGridViewRow row in this.gridView_orders.Rows)
                 {

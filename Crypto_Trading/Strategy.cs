@@ -147,6 +147,12 @@ namespace Crypto_Trading
         public decimal totalFee;
         public decimal totalPnL;
 
+        public decimal markupPnL;
+        public decimal skewPnL;
+        public decimal priceAdjPnL;
+        public decimal residualPnL;
+        public decimal tradingPnLB;
+
         public decimal mi_volume;
         public Dictionary<double, decimal> market_impact_curve;
 
@@ -248,6 +254,12 @@ namespace Crypto_Trading
             this.tradingPnL = 0;
             this.totalFee = 0;
             this.totalPnL = 0;
+
+            this.markupPnL = 0;
+            this.skewPnL = 0;
+            this.priceAdjPnL = 0;
+            this.residualPnL = 0;
+            this.tradingPnLB = 0;
 
             this.last_filled_time = DateTime.UtcNow;
 
@@ -3110,6 +3122,17 @@ namespace Crypto_Trading
                         {
                             tradeSummary ts = this.tradeSummaries[fill.internal_order_id];
                             ts.setMakerFill(fill, this.maker.getAdjustedTimeStamp(fill.filled_time.Value));
+                            ts.calcPnL();
+                            this.markupPnL += ts.markupPnL;
+                            this.skewPnL += ts.skewPnL;
+                            this.priceAdjPnL += ts.priceAdjPnL;
+                            this.residualPnL += ts.residualPnL;
+                            this.tradingPnLB += ts.totalPnL + ts.totalFee;
+                            if ((ts.maker_quantity > 0 && ts.maker_avgprice > 0) && (ts.residualPnL / (ts.maker_avgprice * ts.maker_quantity) * 1_000_000 < -500 || ts.avg_latency > 500))
+                            {
+                                addLog("Extraordinary PnL or Latency", logType.WARNING);
+                                addLog($"PnL[dpm]:{ts.residualPnL / (ts.maker_avgprice * ts.maker_quantity) * 1_000_000}   Latency:{ts.avg_latency}", logType.WARNING);
+                            }
                             this.tradeSummaries[ts.id] = ts;
                         }
                     }
@@ -3123,12 +3146,6 @@ namespace Crypto_Trading
                             tradeSummary ts = this.tempTradeSummaries[fill.msg];
                             this.tempTradeSummaries.Remove(fill.msg);
                             ts.setTakerFill(fill, this.taker.getAdjustedTimeStamp(fill.filled_time.Value));
-                            ts.calcPnL();
-                            if((ts.maker_quantity > 0 && ts.maker_avgprice >0) && (ts.residualPnL / (ts.maker_avgprice * ts.maker_quantity) * 1_000_000 < - 500 || ts.avg_latency > 500))
-                            {
-                                addLog("Extraordinary PnL or Latency",logType.WARNING);
-                                addLog($"PnL[dpm]:{(ts.maker_avgprice * ts.maker_quantity) * 1_000_000}   Latency:{ts.avg_latency}", logType.WARNING);
-                            }
                             this.tradeSummaries[ts.id] = ts;
                         }
                         else if (this.tradeSummaries.ContainsKey(fill.msg))
@@ -3136,10 +3153,15 @@ namespace Crypto_Trading
                             tradeSummary ts = this.tradeSummaries[fill.msg];
                             ts.setTakerFill(fill, this.taker.getAdjustedTimeStamp(fill.filled_time.Value));
                             ts.calcPnL();
-                            if ((ts.maker_quantity > 0 && ts.maker_avgprice > 0) && (ts.residualPnL / (ts.maker_avgprice * ts.maker_quantity) * 1_000_000 < -500 || ts.avg_latency > 500))
+                            this.markupPnL += ts.markupPnL;
+                            this.skewPnL += ts.skewPnL;
+                            this.priceAdjPnL += ts.priceAdjPnL;
+                            this.residualPnL += ts.residualPnL;
+                            this.tradingPnLB += ts.totalPnL + ts.totalFee;
+                            if ((ts.maker_quantity > 0 && ts.maker_avgprice > 0) && (ts.residualPnL / (ts.maker_avgprice * ts.maker_quantity) * 1_000_000 < - 500 || ts.avg_latency > 500))
                             {
                                 addLog("Extraordinary PnL or Latency", logType.WARNING);
-                                addLog($"PnL[dpm]:{(ts.maker_avgprice * ts.maker_quantity) * 1_000_000}   Latency:{ts.avg_latency}", logType.WARNING);
+                                addLog($"PnL[dpm]:{ts.residualPnL / (ts.maker_avgprice * ts.maker_quantity) * 1_000_000}   Latency:{ts.avg_latency}", logType.WARNING);
                             }
                             this.tradeSummaries[ts.id] = ts;
                         }
