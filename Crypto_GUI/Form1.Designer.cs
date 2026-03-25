@@ -539,6 +539,7 @@
             // 
             // gridView_PLBreakDown
             // 
+            gridView_PLBreakDown.BackgroundColor = SystemColors.Window;
             dataGridViewCellStyle4.Alignment = DataGridViewContentAlignment.MiddleCenter;
             dataGridViewCellStyle4.BackColor = SystemColors.Control;
             dataGridViewCellStyle4.Font = new Font("Calibri", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
@@ -548,6 +549,7 @@
             dataGridViewCellStyle4.WrapMode = DataGridViewTriState.True;
             gridView_PLBreakDown.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle4;
             gridView_PLBreakDown.ColumnHeadersHeight = 30;
+            gridView_PLBreakDown.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             gridView_PLBreakDown.Columns.AddRange(new DataGridViewColumn[] { dataGridViewTextBoxColumn24, dataGridViewTextBoxColumn25, dataGridViewTextBoxColumn26, dataGridViewTextBoxColumn27, dataGridViewTextBoxColumn28, Column2, Column3 });
             gridView_PLBreakDown.GridColor = SystemColors.Menu;
             gridView_PLBreakDown.Location = new Point(2, 562);

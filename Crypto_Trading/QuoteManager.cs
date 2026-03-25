@@ -361,7 +361,7 @@ namespace Crypto_Trading
                 return false;
             }
         }
-        public bool setBalance(DataBalance[] results)
+        public bool setBalance(DataBalance[] results,IEnumerable<market>? mkts = null)
         {
             bool output = true;
             string key;
@@ -369,6 +369,14 @@ namespace Crypto_Trading
             {
                 addLog("Failed to set balance", logType.WARNING);
                 return false;
+            }
+            foreach(var b in this.balances.Values)
+            {
+                if(mkts != null || mkts.Contains(b.market))
+                {
+                    b.total = 0;
+                    b.inuse = 0;
+                }
             }
             foreach(var item in results)
             {
@@ -466,13 +474,30 @@ namespace Crypto_Trading
             }
             return output;
         }
-        public bool setMarginPosition(DataMarginPos[] mar_pos)
+        public bool setMarginPosition(DataMarginPos[] mar_pos,IEnumerable<market> mkts = null)
         {
             bool output = true;
             if (mar_pos.Length == 0)
             {
                 addLog("Failed to set margin position", logType.WARNING);
                 return false;
+            }
+            foreach(var ex in this.exchanges.Values)
+            {
+                if(mkts == null || mkts.Contains(ex.market))
+                {
+                    foreach (var b in ex.marginLong.Values)
+                    {
+                        b.total = 0;
+                        b.inuse = 0;
+                    }
+                    foreach (var b in ex.marginShort.Values)
+                    {
+                        b.total = 0;
+                        b.inuse = 0;
+                    }
+                    ex.marginNotionalAmount = 0;
+                }
             }
             foreach (var item in mar_pos)
             {
@@ -958,11 +983,13 @@ namespace Crypto_Trading
                             t.Wait();
                             Thread.Sleep(1000);
                             addLog("Resetting positions...");
-                            foreach (var m in _markets)
-                            {
-                                setBalance(await crypto_client.getBalance([m.Key]));
-                                setMarginPosition(await crypto_client.getMarginPos([m.Key]));
-                            }
+                            setBalance(await crypto_client.getBalance(_markets.Keys), _markets.Keys);
+                            setMarginPosition(await crypto_client.getMarginPos(_markets.Keys), _markets.Keys);
+                            //foreach (var m in _markets)
+                            //{
+                            //    setBalance(await crypto_client.getBalance([m.Key]), [m.Key]);
+                            //    setMarginPosition(await crypto_client.getMarginPos([m.Key]));
+                            //}
                             foreach (var stg_obj in this.strategies.Values)
                             {
                                 stg_obj.adjustPosition();
@@ -1009,10 +1036,13 @@ namespace Crypto_Trading
                             t.Wait();
                             Thread.Sleep(1000);
                             addLog("Resetting positions...");
-                            foreach (var m in _markets)
-                            {
-                                setBalance(await crypto_client.getBalance([m.Key]));
-                            }
+                            setBalance(await crypto_client.getBalance(_markets.Keys), _markets.Keys);
+                            setMarginPosition(await crypto_client.getMarginPos(_markets.Keys), _markets.Keys);
+                            //foreach (var m in _markets)
+                            //{
+                            //    setBalance(await crypto_client.getBalance([m.Key]));
+                            //    setMarginPosition(await crypto_client.getMarginPos([m.Key]));
+                            //}
                             foreach (var stg_obj in this.strategies.Values)
                             {
                                 stg_obj.adjustPosition();
@@ -1062,10 +1092,12 @@ namespace Crypto_Trading
                             t.Wait();
                             addLog("Resetting positions...");
                             Thread.Sleep(1000);
-                            foreach (var m in _markets)
-                            {
-                                setBalance(await crypto_client.getBalance([m.Key]));
-                            }
+                            setBalance(await crypto_client.getBalance(_markets.Keys), _markets.Keys);
+                            setMarginPosition(await crypto_client.getMarginPos(_markets.Keys), _markets.Keys);
+                            //foreach (var m in _markets)
+                            //{
+                            //    setBalance(await crypto_client.getBalance([m.Key]));
+                            //}
                             foreach (var stg_obj in this.strategies.Values)
                             {
                                 stg.adjustPosition();

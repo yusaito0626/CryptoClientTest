@@ -147,6 +147,7 @@ namespace Crypto_Trading
         public decimal totalFee;
         public decimal totalPnL;
 
+        public decimal notionalVolumeB;
         public decimal markupPnL;
         public decimal skewPnL;
         public decimal priceAdjPnL;
@@ -255,6 +256,7 @@ namespace Crypto_Trading
             this.totalFee = 0;
             this.totalPnL = 0;
 
+            this.notionalVolumeB = 0;
             this.markupPnL = 0;
             this.skewPnL = 0;
             this.priceAdjPnL = 0;
@@ -2167,40 +2169,136 @@ namespace Crypto_Trading
             {
                 if (this.taker.marginTrade)
                 {
-                    if (side == orderSide.Buy)
+                    if (side == orderSide.Sell)
                     {
-                        if (this.taker.shortPosition.available >= diff_amount)
+                        if (this.taker.marginLong)
                         {
-                            this.oManager.placeNewSpotOrder(this.taker, side, orderType.Market, diff_amount, 0, positionSide.Short, null, true);
+                            if (this.taker.longPosition.available >= diff_amount)
+                            {
+                                await oManager.placeNewSpotOrder(this.taker, side, orderType.Market, diff_amount, 0, positionSide.Long, null, true, false);
+                            }
+                            else
+                            {
+                                decimal closing = this.taker.longPosition.available;
+                                decimal opening = diff_amount - closing;
+                                if(closing > 0)
+                                {
+                                    await oManager.placeNewSpotOrder(this.taker, side, orderType.Market, closing, 0, positionSide.Long, null, true, false);
+                                }
+                                if(opening > 0)
+                                {
+                                    await oManager.placeNewSpotOrder(this.taker, side, orderType.Market, opening, 0, positionSide.Short, null, true, false);
+                                }
+                            }
                         }
                         else
                         {
-                            this.oManager.placeNewSpotOrder(this.taker, side, orderType.Market, diff_amount, 0, positionSide.Long, null, true);
+                            if (this.taker.baseBalance.available >= diff_amount)
+                            {
+                                await oManager.placeNewSpotOrder(this.taker, side, orderType.Market, diff_amount, 0, positionSide.NONE, null, true, false);
+                            }
+                            else
+                            {
+                                decimal closing = this.taker.baseBalance.available;
+                                decimal opening = diff_amount - closing;
+                                if(closing > 0)
+                                {
+                                    await oManager.placeNewSpotOrder(this.taker, side, orderType.Market, closing, 0, positionSide.NONE, null, true, false);
+                                }
+                                if(opening > 0)
+                                {
+                                    await oManager.placeNewSpotOrder(this.taker, side, orderType.Market, opening, 0, positionSide.Short, null, true, false);
+                                }
+                            }
                         }
                     }
-                    else if(side == orderSide.Sell)
+                    else if (side == orderSide.Buy)
                     {
-                        if (this.taker.longPosition.available >= diff_amount)
+                        if (this.taker.marginLong)
                         {
-                            this.oManager.placeNewSpotOrder(this.taker, side, orderType.Market, diff_amount, 0, positionSide.Long, null, true);
+                            if (this.taker.shortPosition.available >= diff_amount)
+                            {
+                                await oManager.placeNewSpotOrder(this.taker, side, orderType.Market, diff_amount, 0, positionSide.Short, null, true, false);
+                            }
+                            else
+                            {
+                                decimal closing = this.taker.shortPosition.available;
+                                decimal opening = diff_amount - closing;
+                                if(closing > 0)
+                                {
+                                    await oManager.placeNewSpotOrder(this.taker, side, orderType.Market, closing, 0, positionSide.Short, null, true, false);
+                                }
+                                if(opening > 0)
+                                {
+                                    await oManager.placeNewSpotOrder(this.taker, side, orderType.Market, opening, 0, positionSide.Long, null, true, false);
+                                }
+                            }
                         }
                         else
                         {
-                            this.oManager.placeNewSpotOrder(this.taker, side, orderType.Market, diff_amount, 0, positionSide.Short, null, true);
+                            if (this.taker.shortPosition.available >= diff_amount)
+                            {
+                                await oManager.placeNewSpotOrder(this.taker, side, orderType.Market, diff_amount, 0, positionSide.Short, null, true, false);
+                            }
+                            else
+                            {
+                                decimal closing = this.taker.shortPosition.available;
+                                decimal opening = diff_amount - closing;
+                                if(closing > 0)
+                                {
+                                    await oManager.placeNewSpotOrder(this.taker, side, orderType.Market, closing, 0, positionSide.Short, null, true, false);
+                                }
+                                if(opening > 0)
+                                {
+                                    await oManager.placeNewSpotOrder(this.taker, side, orderType.Market, opening, 0, positionSide.NONE, null, true, false);
+                                }
+                            }
                         }
                     }
                 }
                 else
                 {
-                    if ((side == orderSide.Buy && this.taker.quoteBalance.available > diff_amount * this.taker.bestask.Item1 * (decimal)1.05) || (side == orderSide.Buy && this.taker.baseBalance.available > diff_amount))
-                    {
-                        this.oManager.placeNewSpotOrder(this.taker, side, orderType.Market, diff_amount, 0, positionSide.NONE, null, true);
-                    }
-                    else
-                    {
-                        addLog("Insufficient availability. Symbol:" + this.taker.symbol_market, logType.WARNING);
-                    }
+                    await oManager.placeNewSpotOrder(this.taker, side, orderType.Market, diff_amount, 0, positionSide.NONE, null, true, false);
                 }
+                //if (this.taker.marginTrade)
+                //{
+                //    if (side == orderSide.Buy)
+                //    {
+                //        if (this.taker.shortPosition.available >= diff_amount)
+                //        {
+                //            this.oManager.placeNewSpotOrder(this.taker, side, orderType.Market, diff_amount, 0, positionSide.Short, null, true);
+                //        }
+                //        else
+                //        {
+                //            decimal closing = this.taker.shortPosition.available;
+                //            decimal opening = diff_amount - closing;
+                //            this.oManager.placeNewSpotOrder(this.taker, side, orderType.Market, closing, 0, positionSide.Long, null, true);
+                //            this.oManager.placeNewSpotOrder(this.taker, side, orderType.Market, closing, 0, positionSide.Long, null, true);
+                //        }
+                //    }
+                //    else if(side == orderSide.Sell)
+                //    {
+                //        if (this.taker.longPosition.available >= diff_amount)
+                //        {
+                //            this.oManager.placeNewSpotOrder(this.taker, side, orderType.Market, diff_amount, 0, positionSide.Long, null, true);
+                //        }
+                //        else
+                //        {
+                //            this.oManager.placeNewSpotOrder(this.taker, side, orderType.Market, diff_amount, 0, positionSide.Short, null, true);
+                //        }
+                //    }
+                //}
+                //else
+                //{
+                //    if ((side == orderSide.Buy && this.taker.quoteBalance.available > diff_amount * this.taker.bestask.Item1 * (decimal)1.05) || (side == orderSide.Buy && this.taker.baseBalance.available > diff_amount))
+                //    {
+                //        this.oManager.placeNewSpotOrder(this.taker, side, orderType.Market, diff_amount, 0, positionSide.NONE, null, true);
+                //    }
+                //    else
+                //    {
+                //        addLog("Insufficient availability. Symbol:" + this.taker.symbol_market, logType.WARNING);
+                //    }
+                //}
             }
         }
 
@@ -3121,8 +3219,18 @@ namespace Crypto_Trading
                         else if (this.tradeSummaries.ContainsKey(fill.internal_order_id))
                         {
                             tradeSummary ts = this.tradeSummaries[fill.internal_order_id];
+                            if(ts.maker_orderid != "")
+                            {
+                                this.notionalVolumeB -= ts.maker_avgprice * ts.maker_quantity;
+                                this.markupPnL -= ts.markupPnL;
+                                this.skewPnL -= ts.skewPnL;
+                                this.priceAdjPnL -= ts.priceAdjPnL;
+                                this.residualPnL -= ts.residualPnL;
+                                this.tradingPnLB -= ts.totalPnL + ts.totalFee;
+                            }
                             ts.setMakerFill(fill, this.maker.getAdjustedTimeStamp(fill.filled_time.Value));
                             ts.calcPnL();
+                            this.notionalVolumeB += ts.maker_avgprice * ts.maker_quantity;
                             this.markupPnL += ts.markupPnL;
                             this.skewPnL += ts.skewPnL;
                             this.priceAdjPnL += ts.priceAdjPnL;
@@ -3130,8 +3238,9 @@ namespace Crypto_Trading
                             this.tradingPnLB += ts.totalPnL + ts.totalFee;
                             if ((ts.maker_quantity > 0 && ts.maker_avgprice > 0) && (ts.residualPnL / (ts.maker_avgprice * ts.maker_quantity) * 1_000_000 < -500 || ts.avg_latency > 500))
                             {
-                                addLog("Extraordinary PnL or Latency", logType.WARNING);
-                                addLog($"PnL[dpm]:{ts.residualPnL / (ts.maker_avgprice * ts.maker_quantity) * 1_000_000}   Latency:{ts.avg_latency}", logType.WARNING);
+                                addLog("Extraordinary PnL or Latency on " + this.name, logType.WARNING);
+                                addLog($"Residual PnL[dpm]:{ts.residualPnL / (ts.maker_avgprice * ts.maker_quantity) * 1_000_000}   Latency:{ts.avg_latency}", logType.WARNING);
+                                addLog("Maker order id:" + ts.maker_orderid + " taker order id:" + ts.taker_orderid);
                             }
                             this.tradeSummaries[ts.id] = ts;
                         }
@@ -3151,8 +3260,19 @@ namespace Crypto_Trading
                         else if (this.tradeSummaries.ContainsKey(fill.msg))
                         {
                             tradeSummary ts = this.tradeSummaries[fill.msg];
+
+                            if (ts.taker_orderid != "")
+                            {
+                                this.notionalVolumeB -= ts.maker_avgprice * ts.maker_quantity;
+                                this.markupPnL -= ts.markupPnL;
+                                this.skewPnL -= ts.skewPnL;
+                                this.priceAdjPnL -= ts.priceAdjPnL;
+                                this.residualPnL -= ts.residualPnL;
+                                this.tradingPnLB -= ts.totalPnL + ts.totalFee;
+                            }
                             ts.setTakerFill(fill, this.taker.getAdjustedTimeStamp(fill.filled_time.Value));
                             ts.calcPnL();
+                            this.notionalVolumeB += ts.maker_avgprice * ts.maker_quantity;
                             this.markupPnL += ts.markupPnL;
                             this.skewPnL += ts.skewPnL;
                             this.priceAdjPnL += ts.priceAdjPnL;
@@ -3160,8 +3280,9 @@ namespace Crypto_Trading
                             this.tradingPnLB += ts.totalPnL + ts.totalFee;
                             if ((ts.maker_quantity > 0 && ts.maker_avgprice > 0) && (ts.residualPnL / (ts.maker_avgprice * ts.maker_quantity) * 1_000_000 < - 500 || ts.avg_latency > 500))
                             {
-                                addLog("Extraordinary PnL or Latency", logType.WARNING);
-                                addLog($"PnL[dpm]:{ts.residualPnL / (ts.maker_avgprice * ts.maker_quantity) * 1_000_000}   Latency:{ts.avg_latency}", logType.WARNING);
+                                addLog("Extraordinary PnL or Latency on " + this.name, logType.WARNING);
+                                addLog($"Residual PnL[dpm]:{ts.residualPnL / (ts.maker_avgprice * ts.maker_quantity) * 1_000_000}   Latency:{ts.avg_latency}", logType.WARNING);
+                                addLog("Maker order id:" + ts.maker_orderid + " taker order id:" + ts.taker_orderid);
                             }
                             this.tradeSummaries[ts.id] = ts;
                         }

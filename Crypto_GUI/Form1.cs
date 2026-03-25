@@ -1147,6 +1147,7 @@ namespace Crypto_GUI
                                                 stg.totalFee = s.Value.totalFee;
                                                 stg.totalPnL = s.Value.totalPnL;
                                                 stg.markupPnL = s.Value.markupPnL;
+                                                stg.notionalVolumeB = s.Value.notionalVolumeB; 
                                                 stg.skewPnL = s.Value.skewPnL;
                                                 stg.priceAdjPnL = s.Value.priceAdjPnL;
                                                 stg.residualPnL = s.Value.residualPnL;
@@ -1184,6 +1185,7 @@ namespace Crypto_GUI
                                                 stg.tradingPnL = s.Value.tradingPnL;
                                                 stg.totalFee = s.Value.totalFee;
                                                 stg.totalPnL = s.Value.totalPnL;
+                                                stg.notionalVolumeB = s.Value.notionalVolumeB;
                                                 stg.markupPnL = s.Value.markupPnL;
                                                 stg.skewPnL = s.Value.skewPnL;
                                                 stg.priceAdjPnL = s.Value.priceAdjPnL;
@@ -2068,7 +2070,7 @@ namespace Crypto_GUI
                     }
                 }
 
-                this.gridView_PLBreakDown.Rows[0].Cells[0].Value = this.selected_stg.notionalVolume.ToString("N2");
+                this.gridView_PLBreakDown.Rows[0].Cells[0].Value = this.selected_stg.notionalVolumeB.ToString("N2");
                 this.gridView_PLBreakDown.Rows[0].Cells[1].Value = this.selected_stg.markupPnL.ToString("N2");
                 this.gridView_PLBreakDown.Rows[0].Cells[2].Value = this.selected_stg.skewPnL.ToString("N2");
                 this.gridView_PLBreakDown.Rows[0].Cells[3].Value = this.selected_stg.priceAdjPnL.ToString("N2");
@@ -2197,7 +2199,7 @@ namespace Crypto_GUI
                     }
                     else
                     {
-                        if (!this.qManager.setBalance(await this.crypto_client.getBalance(this.qManager._markets.Keys)))
+                        if (!this.qManager.setBalance(await this.crypto_client.getBalance(this.qManager._markets.Keys), this.qManager._markets.Keys))
                         {
                             return false;
                         }

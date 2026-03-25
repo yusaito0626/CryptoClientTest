@@ -2304,6 +2304,7 @@ namespace Utils
         public decimal tradingPnL { get; set; }
         public decimal totalFee { get; set; }
         public decimal totalPnL { get; set; }
+        public decimal notionalVolumeB { get; set; }
         public decimal markupPnL { get; set; }
         public decimal skewPnL { get; set; }
         public decimal priceAdjPnL { get; set; }
