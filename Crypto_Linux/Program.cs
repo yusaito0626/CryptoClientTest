@@ -1388,103 +1388,104 @@ namespace Crypto_Linux
                         baseBalance_diff = Math.Round(baseBalance_diff / stg.taker.quantity_unit) * stg.taker.quantity_unit;
                         stg.lastPosAdjustment = DateTime.UtcNow;
                         addLog("The current balance of " + stg.name + " BaseCcy:" + (stg.maker.net_pos + stg.taker.net_pos).ToString() + " QuoteCcy:" + (stg.maker.quoteBalance.total + stg.taker.quoteBalance.total).ToString());
-                        addLog("Adjustment at the start: " + side.ToString() + " " + baseBalance_diff.ToString());
-                        if(baseBalance_diff > 0)
-                        {
-                            if(stg.taker.marginTrade)
-                            {
-                                if(side == orderSide.Sell)
-                                {
-                                    if(stg.taker.marginLong)
-                                    {
-                                        if(stg.taker.longPosition.available >= baseBalance_diff)
-                                        {
-                                            await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, positionSide.Long, null, true, false);
-                                        }
-                                        else
-                                        {
-                                            decimal closing = stg.taker.longPosition.available;
-                                            decimal opening = baseBalance_diff - closing;
-                                            if(closing > 0)
-                                            {
-                                                await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, closing, 0, positionSide.Long, null, true, false);
-                                            }
-                                            if(opening > 0)
-                                            {
-                                                await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, opening, 0, positionSide.Short, null, true, false);
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        if (stg.taker.baseBalance.available >= baseBalance_diff)
-                                        {
-                                            await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, positionSide.NONE, null, true, false);
-                                        }
-                                        else
-                                        {
-                                            decimal closing = stg.taker.baseBalance.available;
-                                            decimal opening = baseBalance_diff - closing;
-                                            if(closing > 0)
-                                            {
-                                                await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, closing, 0, positionSide.NONE, null, true, false);
-                                            }
-                                            if (opening > 0)
-                                            {
-                                                await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, opening, 0, positionSide.Short, null, true, false);
-                                            }
-                                        }
-                                    }
-                                }
-                                else if(side == orderSide.Buy)
-                                {
-                                    if (stg.taker.marginLong)
-                                    {
-                                        if (stg.taker.shortPosition.available >= baseBalance_diff)
-                                        {
-                                            await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, positionSide.Short, null, true, false);
-                                        }
-                                        else
-                                        {
-                                            decimal closing = stg.taker.shortPosition.available;
-                                            decimal opening = baseBalance_diff - closing;
-                                            if(closing > 0)
-                                            {
-                                                await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, closing, 0, positionSide.Short, null, true, false);
-                                            }
-                                            if(opening > 0)
-                                            {
-                                                await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, opening, 0, positionSide.Long, null, true, false);
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        if (stg.taker.shortPosition.available >= baseBalance_diff)
-                                        {
-                                            await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, positionSide.Short, null, true, false);
-                                        }
-                                        else
-                                        {
-                                            decimal closing = stg.taker.shortPosition.available;
-                                            decimal opening = baseBalance_diff - closing;
-                                            if(closing > 0)
-                                            {
-                                                await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, closing, 0, positionSide.Short, null, true, false);
-                                            }
-                                            if(opening > 0)
-                                            {
-                                                await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, opening, 0, positionSide.NONE, null, true, false);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, positionSide.NONE, null, true, false);
-                            }
-                        }
+                        //addLog("Adjustment at the start: " + side.ToString() + " " + baseBalance_diff.ToString());
+                        await stg.adjustPosition();
+                        //if(baseBalance_diff > 0)
+                        //{
+                        //    if(stg.taker.marginTrade)
+                        //    {
+                        //        if(side == orderSide.Sell)
+                        //        {
+                        //            if(stg.taker.marginLong)
+                        //            {
+                        //                if(stg.taker.longPosition.available >= baseBalance_diff)
+                        //                {
+                        //                    await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, positionSide.Long, null, true, false);
+                        //                }
+                        //                else
+                        //                {
+                        //                    decimal closing = stg.taker.longPosition.available;
+                        //                    decimal opening = baseBalance_diff - closing;
+                        //                    if(closing > 0)
+                        //                    {
+                        //                        await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, closing, 0, positionSide.Long, null, true, false);
+                        //                    }
+                        //                    if(opening > 0)
+                        //                    {
+                        //                        await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, opening, 0, positionSide.Short, null, true, false);
+                        //                    }
+                        //                }
+                        //            }
+                        //            else
+                        //            {
+                        //                if (stg.taker.baseBalance.available >= baseBalance_diff)
+                        //                {
+                        //                    await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, positionSide.NONE, null, true, false);
+                        //                }
+                        //                else
+                        //                {
+                        //                    decimal closing = stg.taker.baseBalance.available;
+                        //                    decimal opening = baseBalance_diff - closing;
+                        //                    if(closing > 0)
+                        //                    {
+                        //                        await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, closing, 0, positionSide.NONE, null, true, false);
+                        //                    }
+                        //                    if (opening > 0)
+                        //                    {
+                        //                        await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, opening, 0, positionSide.Short, null, true, false);
+                        //                    }
+                        //                }
+                        //            }
+                        //        }
+                        //        else if(side == orderSide.Buy)
+                        //        {
+                        //            if (stg.taker.marginLong)
+                        //            {
+                        //                if (stg.taker.shortPosition.available >= baseBalance_diff)
+                        //                {
+                        //                    await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, positionSide.Short, null, true, false);
+                        //                }
+                        //                else
+                        //                {
+                        //                    decimal closing = stg.taker.shortPosition.available;
+                        //                    decimal opening = baseBalance_diff - closing;
+                        //                    if(closing > 0)
+                        //                    {
+                        //                        await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, closing, 0, positionSide.Short, null, true, false);
+                        //                    }
+                        //                    if(opening > 0)
+                        //                    {
+                        //                        await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, opening, 0, positionSide.Long, null, true, false);
+                        //                    }
+                        //                }
+                        //            }
+                        //            else
+                        //            {
+                        //                if (stg.taker.shortPosition.available >= baseBalance_diff)
+                        //                {
+                        //                    await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, positionSide.Short, null, true, false);
+                        //                }
+                        //                else
+                        //                {
+                        //                    decimal closing = stg.taker.shortPosition.available;
+                        //                    decimal opening = baseBalance_diff - closing;
+                        //                    if(closing > 0)
+                        //                    {
+                        //                        await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, closing, 0, positionSide.Short, null, true, false);
+                        //                    }
+                        //                    if(opening > 0)
+                        //                    {
+                        //                        await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, opening, 0, positionSide.NONE, null, true, false);
+                        //                    }
+                        //                }
+                        //            }
+                        //        }
+                        //    }
+                        //    else
+                        //    {
+                        //        await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, positionSide.NONE, null, true, false);
+                        //    }
+                        //}
 
                     }
                 }

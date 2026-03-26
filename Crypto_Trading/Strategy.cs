@@ -39,6 +39,9 @@ namespace Crypto_Trading
         public decimal rv_penalty_multiplier = 1;
         public double rv_base_param;
 
+        public decimal additional_markup = 0;
+        public DateTime? additional_markup_startTime = null;
+
         public decimal targetMakerPosition;//The position stays between target + max and target - max        
 
         public decimal intervalAfterFill;
@@ -697,8 +700,6 @@ namespace Crypto_Trading
                         {
                             temp_ordersize_bid = temp_bidSize;
                         }
-                        //this.ordersize_ask[i] = temp_ordersize_ask;
-                        //this.ordersize_bid[i] = temp_ordersize_bid;
                         this.ask_orders[i].quantity = temp_ordersize_ask;
                         this.bid_orders[i].quantity = temp_ordersize_bid;
                         if (this.maker.marginTrade)
@@ -760,8 +761,6 @@ namespace Crypto_Trading
                 {
                     for (i = 0; i < this.layers; ++i)
                     {
-                        //this.ordersize_ask[i] = this.order_size[i];
-                        //this.ordersize_bid[i] = this.order_size[i];
                         this.ask_orders[i].quantity = this.order_size[i];
                         this.bid_orders[i].quantity = this.order_size[i];
                         if (this.maker.marginTrade)
@@ -819,8 +818,6 @@ namespace Crypto_Trading
 
                 this.taker.getWeightedAvgPrice(orderSide.Buy, this.bid_orders);
                 this.taker.getWeightedAvgPrice(orderSide.Sell, this.ask_orders);
-                //this.taker.getWeightedAvgPrice(orderSide.Buy, this.ordersize_bid, this.bids);
-                //this.taker.getWeightedAvgPrice(orderSide.Sell, this.ordersize_ask, this.asks);
 
                 decimal maker_bid;
                 decimal maker_ask;
@@ -829,6 +826,11 @@ namespace Crypto_Trading
                     maker_bid = this.maker.bestbid.Item1;
                     maker_ask = this.maker.bestask.Item1;
                 }                
+
+                if(this.additional_markup_startTime != null && current - this.additional_markup_startTime.Value > TimeSpan.FromMinutes(this.taker.RV_minute))
+                {
+                    this.additional_markup = 0;
+                }
 
                 double taker_VR = this.taker.realized_volatility;
                 if (this.taker.prev_RV > 0)
@@ -3236,12 +3238,29 @@ namespace Crypto_Trading
                             this.priceAdjPnL += ts.priceAdjPnL;
                             this.residualPnL += ts.residualPnL;
                             this.tradingPnLB += ts.totalPnL + ts.totalFee;
-                            if ((ts.maker_quantity > 0 && ts.maker_avgprice > 0) && (ts.residualPnL / (ts.maker_avgprice * ts.maker_quantity) * 1_000_000 < -500 || ts.avg_latency > 500))
+                            if (ts.maker_quantity > 0 && ts.maker_avgprice > 0)
                             {
-                                addLog("Extraordinary PnL or Latency on " + this.name, logType.WARNING);
-                                addLog($"Residual PnL[dpm]:{ts.residualPnL / (ts.maker_avgprice * ts.maker_quantity) * 1_000_000}   Latency:{ts.avg_latency}", logType.WARNING);
-                                addLog("Maker order id:" + ts.maker_orderid + " taker order id:" + ts.taker_orderid);
+                                decimal residual_dpm = ts.residualPnL / (ts.maker_avgprice * ts.maker_quantity) * 1_000_000;
+                                if (residual_dpm < -500)
+                                {
+                                    this.additional_markup = -residual_dpm;
+                                    this.additional_markup_startTime = DateTime.UtcNow;
+                                    addLog("Extraordinary PnL" + this.name, logType.WARNING);
+                                    addLog($"Residual PnL[dpm]:{residual_dpm}   Latency:{ts.avg_latency}", logType.WARNING);
+                                    addLog(this.name + " Maker order id:" + ts.maker_orderid + " taker order id:" + ts.taker_orderid);
+                                    addLog("Addtional Markup:" + this.additional_markup.ToString());
+                                }
+                                else if(ts.avg_latency > 500)
+                                {
+                                    this.additional_markup = (decimal)(this.taker.realized_volatility / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000 * ts.avg_latency / 1000);
+                                    this.additional_markup_startTime = DateTime.UtcNow;
+                                    addLog("Extraordinary Latency" + this.name, logType.WARNING);
+                                    addLog($"Residual PnL[dpm]:{residual_dpm}   Latency:{ts.avg_latency}", logType.WARNING);
+                                    addLog(this.name + " Maker order id:" + ts.maker_orderid + " taker order id:" + ts.taker_orderid);
+                                    addLog("Addtional Markup:" + this.additional_markup.ToString());
+                                }
                             }
+                                
                             this.tradeSummaries[ts.id] = ts;
                         }
                     }
@@ -3278,11 +3297,27 @@ namespace Crypto_Trading
                             this.priceAdjPnL += ts.priceAdjPnL;
                             this.residualPnL += ts.residualPnL;
                             this.tradingPnLB += ts.totalPnL + ts.totalFee;
-                            if ((ts.maker_quantity > 0 && ts.maker_avgprice > 0) && (ts.residualPnL / (ts.maker_avgprice * ts.maker_quantity) * 1_000_000 < - 500 || ts.avg_latency > 500))
+                            if (ts.maker_quantity > 0 && ts.maker_avgprice > 0)
                             {
-                                addLog("Extraordinary PnL or Latency on " + this.name, logType.WARNING);
-                                addLog($"Residual PnL[dpm]:{ts.residualPnL / (ts.maker_avgprice * ts.maker_quantity) * 1_000_000}   Latency:{ts.avg_latency}", logType.WARNING);
-                                addLog("Maker order id:" + ts.maker_orderid + " taker order id:" + ts.taker_orderid);
+                                decimal residual_dpm = ts.residualPnL / (ts.maker_avgprice * ts.maker_quantity) * 1_000_000;
+                                if (residual_dpm < - 500)
+                                {
+                                    this.additional_markup = -residual_dpm;
+                                    this.additional_markup_startTime = DateTime.UtcNow;
+                                    addLog("Extraordinary PnL" + this.name, logType.WARNING);
+                                    addLog($"Residual PnL[dpm]:{residual_dpm}   Latency:{ts.avg_latency}", logType.WARNING);
+                                    addLog(this.name + " Maker order id:" + ts.maker_orderid + " taker order id:" + ts.taker_orderid);
+                                    addLog("Addtional Markup:" + this.additional_markup.ToString());
+                                }
+                                else if (ts.avg_latency > 500)
+                                {
+                                    this.additional_markup = (decimal)(this.taker.realized_volatility / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000 * ts.avg_latency / 1000);
+                                    this.additional_markup_startTime = DateTime.UtcNow;
+                                    addLog("Extraordinary Latency" + this.name, logType.WARNING);
+                                    addLog($"Residual PnL[dpm]:{residual_dpm}   Latency:{ts.avg_latency}", logType.WARNING);
+                                    addLog(this.name + " Maker order id:" + ts.maker_orderid + " taker order id:" + ts.taker_orderid);
+                                    addLog("Addtional Markup:" + this.additional_markup.ToString());
+                                }
                             }
                             this.tradeSummaries[ts.id] = ts;
                         }
