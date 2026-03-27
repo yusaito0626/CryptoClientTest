@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.14.36408.4
+# Visual Studio Version 18
+VisualStudioVersion = 18.3.11527.330 d18.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Crypto_Clients", "Crypto_Clients\Crypto_Clients.csproj", "{00FCF5EC-05C0-4D7C-B024-C7500849132D}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -29,6 +29,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Crypto_Linux", "Crypto_Linu
 		{2E0AEB34-EE0F-46D2-B7DA-6734640BC7CE} = {2E0AEB34-EE0F-46D2-B7DA-6734640BC7CE}
 		{54098A6F-3CAA-4A95-883F-3B34BCE59EFC} = {54098A6F-3CAA-4A95-883F-3B34BCE59EFC}
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Crypto_Recording", "Crypto_Recording\Crypto_Recording.csproj", "{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -210,6 +212,38 @@ Global
 		{14C89B92-2E82-480F-853F-EDD91A1EA4CE}.RelWithDebInfo|x64.Build.0 = Debug|Any CPU
 		{14C89B92-2E82-480F-853F-EDD91A1EA4CE}.RelWithDebInfo|x86.ActiveCfg = Debug|Any CPU
 		{14C89B92-2E82-480F-853F-EDD91A1EA4CE}.RelWithDebInfo|x86.Build.0 = Debug|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.Debug|x64.Build.0 = Debug|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.Debug|x86.Build.0 = Debug|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.MinSizeRel|Any CPU.ActiveCfg = Release|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.MinSizeRel|Any CPU.Build.0 = Release|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.MinSizeRel|ARM64.ActiveCfg = Release|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.MinSizeRel|ARM64.Build.0 = Release|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.MinSizeRel|x64.ActiveCfg = Release|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.MinSizeRel|x64.Build.0 = Release|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.MinSizeRel|x86.ActiveCfg = Release|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.MinSizeRel|x86.Build.0 = Release|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.Release|ARM64.Build.0 = Release|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.Release|x64.ActiveCfg = Release|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.Release|x64.Build.0 = Release|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.Release|x86.ActiveCfg = Release|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.Release|x86.Build.0 = Release|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.RelWithDebInfo|Any CPU.ActiveCfg = Debug|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.RelWithDebInfo|Any CPU.Build.0 = Debug|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.RelWithDebInfo|ARM64.ActiveCfg = Debug|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.RelWithDebInfo|ARM64.Build.0 = Debug|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.RelWithDebInfo|x64.ActiveCfg = Debug|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.RelWithDebInfo|x64.Build.0 = Debug|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.RelWithDebInfo|x86.ActiveCfg = Debug|Any CPU
+		{C63797B5-AE3C-490B-9DE8-A9F2231DA0BF}.RelWithDebInfo|x86.Build.0 = Debug|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

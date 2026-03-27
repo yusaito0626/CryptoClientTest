@@ -36,7 +36,9 @@ namespace Crypto_Clients
         public LockFreeStack<DataFill> fillStack;
 
         public MISOQueue<string> msgLogQueue;
+        public string currentMsg = "";
         string logPath;
+        string logFileName;
         public bool logging;
 
         ClientWebSocket websocket_client;
@@ -46,7 +48,7 @@ namespace Crypto_Clients
 
         WebSocketState pubnub_state;
 
-        public Action<string> onMessage;
+        public Action<string> onMessage = _ => {};
         public Action<string,Enums.logType> _addLog;
 
         byte[] ws_buffer = new byte[16384];
@@ -180,10 +182,11 @@ namespace Crypto_Clients
             this.fillStack = client.fillStack;
         }
 
-        public void setLogFile(string path)
+        public void setLogFile(string path, string filename = "")
         {
             this.logging = true;
             this.logPath = path;
+            this.logFileName = filename;
             //FileStream fspub = new FileStream(path + "/bitbank_msglog" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".txt", FileMode.Append, FileAccess.Write, FileShare.Read);
             //this.msgLog = new StreamWriter(fspub);
         }
@@ -191,7 +194,16 @@ namespace Crypto_Clients
         {
             var spinner = new SpinWait();
             this.logging = true;
-            FileStream fspub = new FileStream(this.logPath + "/bitbank_msglog" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".txt", FileMode.Append, FileAccess.Write, FileShare.Read);
+            string logFileFullPath;
+            if (this.logFileName == "")
+            {
+                logFileFullPath = this.logPath + "/bitbank_msglog" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".txt";
+            }
+            else
+            {
+                logFileFullPath = this.logPath + "/" + this.logFileName;
+            }
+            FileStream fspub = new FileStream(logFileFullPath, FileMode.Append, FileAccess.Write, FileShare.Read);
             StreamWriter msgLog = new StreamWriter(fspub);
             bool ret = true;
             int i = 0;
@@ -470,7 +482,9 @@ namespace Crypto_Clients
                 }
                 if(this.logging)
                 {
-                    this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + msg);
+                    msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + msg;
+                    this.currentMsg = msg;
+                    this.msgLogQueue.Enqueue(msg);
                 }
             }
 
@@ -567,8 +581,9 @@ namespace Crypto_Clients
                             }
                             if (this.logging)
                             {
-                                this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + msg);
-                                //this.logFilePublic.Flush();
+                                msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + msg;
+                                this.currentMsg = msg;
+                                this.msgLogQueue.Enqueue(msg);
                             }
                             this.ws_memory.SetLength(0);
                             this.ws_memory.Position = 0;
@@ -695,8 +710,9 @@ namespace Crypto_Clients
                     }
                     if(this.logging)
                     {
-                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + msg);
-                        //this.logFilePublic.Flush();
+                        msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + msg;
+                        this.currentMsg = msg;
+                        this.msgLogQueue.Enqueue(msg);
                     }
                     this.ws_memory.SetLength(0);
                     this.ws_memory.Position = 0;
@@ -770,8 +786,9 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   GET ack " + resString);
-                        //this.logFilePublic.Flush();
+                        string msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + " GET ack " + resString;
+                        this.currentMsg = msg;
+                        this.msgLogQueue.Enqueue(msg);
                     }
 
                     return resString;
@@ -822,8 +839,9 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   POST " + endpoint + " " + body);
-                        //this.logFilePublic.Flush();
+                        string msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   POST " + endpoint + " " + body;
+                        this.currentMsg = msg;
+                        this.msgLogQueue.Enqueue(msg);
                     }
 
                     var watchDog = Task.Delay(10000, watchDogCts.Token);
@@ -856,8 +874,9 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   POST ack " + resString);
-                        //this.logFilePublic.Flush();
+                        string msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   POST ack " + resString;
+                        this.currentMsg = msg;
+                        this.msgLogQueue.Enqueue(msg);
                     }
 
                     return resString;
@@ -1164,7 +1183,9 @@ namespace Crypto_Clients
                         }
                         if(this.logging)
                         {
-                            this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + messageResult.Message.ToString());
+                            string msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + messageResult.Message.ToString();
+                            this.currentMsg = msg;
+                            this.msgLogQueue.Enqueue(msg);
                         }
                     }
                 },
@@ -1173,7 +1194,9 @@ namespace Crypto_Clients
                     this.addLog("presence: " + presenceResult.Event);
                     if(this.logging)
                     {
-                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + presenceResult.Event);
+                        string msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + presenceResult.Event;
+                        this.currentMsg = msg;
+                        this.msgLogQueue.Enqueue(msg);
                     }
                 },
                 async (pubnubObj, status) =>
@@ -1216,7 +1239,9 @@ namespace Crypto_Clients
                     }
                     if(this.logging)
                     {
-                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + status.Category.ToString() + " " + status.ErrorData.ToString());
+                        string msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + status.Category.ToString() + " " + status.ErrorData.ToString();
+                        this.currentMsg = msg;
+                        this.msgLogQueue.Enqueue(msg);
                     }
                 }));
 

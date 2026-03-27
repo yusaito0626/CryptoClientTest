@@ -159,18 +159,29 @@ namespace Crypto_Clients
             }
         }
 
-        public Func<Action, Action, CancellationToken, int, Task<bool>>? setMsgLogging(Enums.market market, string outputPath)
+        public Func<Action, Action, CancellationToken, int, Task<bool>>? setMsgLogging(Enums.market market, string outputPath,bool recording = false)
         {
             this.megLogging = true;
+            string filename = "";
             Func<Action, Action, CancellationToken, int, Task<bool>>? ret = null;
             switch (market)
             {
                 case market.bitbank:
-                    this.bitbank_client.setLogFile(outputPath);
+                    if(recording)
+                    {
+                        DateTime today = DateTime.Today;
+                        filename = $"bitbank_API_{today.ToString("yyyy-MM-dd")}.log";
+                    }
+                    this.bitbank_client.setLogFile(outputPath,filename);
                     ret = this.bitbank_client.msgLogging;
                     break;
                 case market.gmocoin:
-                    this.gmocoin_client.setLogFile(outputPath);
+                    if (recording)
+                    {
+                        DateTime today = DateTime.Today;
+                        filename = $"gmocoin_API_{today.ToString("yyyy-MM-dd")}.log";
+                    }
+                    this.gmocoin_client.setLogFile(outputPath,filename);
                     ret = this.gmocoin_client.msgLogging;
                     break;
                 case market.coincheck:

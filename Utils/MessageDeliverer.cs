@@ -118,6 +118,24 @@ namespace Utils
                                 }
                             }
                             break;
+                        case msgType.LOGGING:
+                            if (this.discord_channel_test > 0)
+                            {
+                                var channel = this.discord_client.GetChannel(this.discord_channel_test) as IMessageChannel;
+                                if (channel != null)
+                                {
+                                    await channel.SendMessageAsync(body);
+                                }
+                            }
+                            else if (this.discord_channel > 0)
+                            {
+                                var channel = this.discord_client.GetChannel(this.discord_channel) as IMessageChannel;
+                                if (channel != null)
+                                {
+                                    await channel.SendMessageAsync(body);
+                                }
+                            }
+                            break;
                     }
                 }
             }

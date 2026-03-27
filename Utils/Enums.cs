@@ -100,6 +100,7 @@
         NONE = 0,
         NOTIFICATION = 1,
         ERROR = 2,
-        TEST = 3
+        TEST = 3,
+        LOGGING = 4
     }
 }

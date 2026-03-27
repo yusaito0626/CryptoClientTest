@@ -50,7 +50,9 @@ namespace Crypto_Clients
         private DateTime lastAccTokenObtained;
 
         public MISOQueue<string> msgLogQueue;
+        public string currentMsg = "";
         string logPath;
+        string logFileName;
         public bool logging;
 
         ClientWebSocket websocket_client;
@@ -59,8 +61,8 @@ namespace Crypto_Clients
 
         private SocketsHttpHandler _handler;
 
-        public Action<string> onMessage;
-        public Action<string> onPrivateMessage;
+        public Action<string> onMessage = _ => { };
+        public Action<string> onPrivateMessage = _ => { };
         public Action<string,Enums.logType> _addLog;
 
         byte[] ws_buffer = new byte[16384];
@@ -200,17 +202,28 @@ namespace Crypto_Clients
                 return false;
             }
         }
-        public void setLogFile(string path)
+        public void setLogFile(string path, string filename = "")
         {
             this.logging = true;
             this.logPath = path;
+            this.logFileName = filename;
         }
 
         public async Task<bool> msgLogging(Action start,Action end,CancellationToken ct,int spinningMax)
         {
             var spinner = new SpinWait();
             this.logging = true;
-            FileStream fspub = new FileStream(this.logPath + "/gmocoin_msglog" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".txt", FileMode.Append, FileAccess.Write, FileShare.Read);
+
+            string logFileFullPath;
+            if (this.logFileName == "")
+            {
+                logFileFullPath = this.logPath + "/gmocoin_msglog" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".txt";
+            }
+            else
+            {
+                logFileFullPath = this.logPath + "/" + this.logFileName;
+            }
+            FileStream fspub = new FileStream(logFileFullPath, FileMode.Append, FileAccess.Write, FileShare.Read);
             StreamWriter msgLog = new StreamWriter(fspub);
             bool ret = true;
             int i = 0;
@@ -506,7 +519,9 @@ namespace Crypto_Clients
                 }
                 if(this.logging)
                 {
-                    this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString() + "   " + msg);
+                    msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   " + msg;
+                    this.currentMsg = msg;
+                    this.msgLogQueue.Enqueue(msg);
                 }
             }
 
@@ -567,8 +582,9 @@ namespace Crypto_Clients
                             }
                             if (this.logging)
                             {
-                                this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString() + "   " + msg);
-                                //this.logFilePublic.Flush();
+                                msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   " + msg;
+                                this.currentMsg = msg;
+                                this.msgLogQueue.Enqueue(msg);
                             }
                             this.ws_memory.SetLength(0);
                             this.ws_memory.Position = 0;
@@ -735,7 +751,9 @@ namespace Crypto_Clients
                 }
                 if(this.logging)
                 {
-                    this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString() + "   " + msg);
+                    msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   " + msg;
+                    this.currentMsg = msg;
+                    this.msgLogQueue.Enqueue(msg);
                 }
             }
             this.pv_memory.SetLength(0);
@@ -798,8 +816,9 @@ namespace Crypto_Clients
                             }
                             if (this.logging)
                             {
-                                this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString() + "   " + msg);
-                                //this.logFilePrivate.Flush();
+                                msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   " + msg;
+                                this.currentMsg = msg;
+                                this.msgLogQueue.Enqueue(msg);
                             }
                             this.pv_memory.SetLength(0);
                             this.pv_memory.Position = 0;
@@ -889,8 +908,9 @@ namespace Crypto_Clients
                     }
                     if(this.logging)
                     {
-                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString() + "   " + msg);
-                        //this.logFilePrivate.Flush();
+                        msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   " + msg;
+                        this.currentMsg = msg;
+                        this.msgLogQueue.Enqueue(msg);
                     }
                     this.pv_memory.SetLength(0);
                     this.pv_memory.Position = 0;
@@ -943,8 +963,9 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   GET " + endpoint + " " + body);
-                        //this.logFilePublic.Flush();
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   GET " + endpoint + " " + body;
+                        this.currentMsg = msg;
+                        this.msgLogQueue.Enqueue(msg);
                     }
 
                     var watchDog = Task.Delay(10000, watchDogCts.Token);
@@ -968,7 +989,9 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   POST ack " + response);
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   POST ack " + response;
+                        this.currentMsg = msg;
+                        this.msgLogQueue.Enqueue(msg);
                     }
                     this.lastPublicGet = DateTime.UtcNow;
 
@@ -1024,8 +1047,9 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   GET " + endpoint + " " + body);
-                        //this.logFilePublic.Flush();
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   GET " + endpoint + " " + body;
+                        this.currentMsg = msg;
+                        this.msgLogQueue.Enqueue(msg);
                     }
 
                     var watchDog = Task.Delay(10000, watchDogCts.Token);
@@ -1052,7 +1076,9 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   GET ack " + resString);
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   GET ack " + resString;
+                        this.currentMsg = msg;
+                        this.msgLogQueue.Enqueue(msg);
                     }
 
                     return resString;
@@ -1102,8 +1128,9 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   POST " + endpoint + " " + body);
-                        //this.logFilePublic.Flush();
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   POST " + endpoint + " " + body;
+                        this.currentMsg = msg;
+                        this.msgLogQueue.Enqueue(msg);
                     }
 
                     var watchDog = Task.Delay(10000, watchDogCts.Token);
@@ -1136,8 +1163,9 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   POST ack " + resString);
-                        //this.logFilePublic.Flush();
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   POST ack " + resString;
+                        this.currentMsg = msg;
+                        this.msgLogQueue.Enqueue(msg);
                     }
 
                     return resString;
@@ -1186,8 +1214,9 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   PUT " + endpoint + " " + body);
-                        //this.logFilePublic.Flush();
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   PUT " + endpoint + " " + body;
+                        this.currentMsg = msg;
+                        this.msgLogQueue.Enqueue(msg);
                     }
 
                     var watchDog = Task.Delay(10000, watchDogCts.Token);
@@ -1209,7 +1238,9 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   PUT ack " + resString);
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   PUT ack " + resString;
+                        this.currentMsg = msg;
+                        this.msgLogQueue.Enqueue(msg);
                     }
 
                     return resString;
@@ -1258,8 +1289,9 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   DELETE " + endpoint + " " + body);
-                        //this.logFilePublic.Flush();
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   DELETE " + endpoint + " " + body;
+                        this.currentMsg = msg;
+                        this.msgLogQueue.Enqueue(msg);
                     }
 
                     var watchDog = Task.Delay(10000, watchDogCts.Token);
@@ -1281,7 +1313,9 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        this.msgLogQueue.Enqueue(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   DELETE ack " + resString);
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   DELETE ack " + resString;
+                        this.currentMsg = msg;
+                        this.msgLogQueue.Enqueue(msg);
                     }
 
                     return resString;
