@@ -827,9 +827,11 @@ namespace Crypto_Trading
                     maker_ask = this.maker.bestask.Item1;
                 }                
 
-                if(this.additional_markup_startTime != null && current - this.additional_markup_startTime.Value > TimeSpan.FromMinutes(this.taker.RV_minute))
+                if(this.additional_markup_startTime != null && this.additional_markup != 0 && current - this.additional_markup_startTime.Value > TimeSpan.FromMinutes(this.taker.RV_minute))
                 {
                     this.additional_markup = 0;
+                    this.additional_markup_startTime = null;
+                    addLog($"[{this.name}]Additional Markup Reset:" + this.additional_markup.ToString());
                 }
 
                 double taker_VR = this.taker.realized_volatility;
@@ -872,7 +874,7 @@ namespace Crypto_Trading
                 //    this.markup_decay = min_basemarkup - this.base_markup;
                 //}
 
-                this.base_markup += this.markup_decay;
+                this.base_markup += this.additional_markup + this.markup_decay;              
 
                 if(this.base_markup < this.min_markup)
                 {
@@ -3247,17 +3249,22 @@ namespace Crypto_Trading
                                     this.additional_markup_startTime = DateTime.UtcNow;
                                     addLog("Extraordinary PnL" + this.name, logType.WARNING);
                                     addLog($"Residual PnL[dpm]:{residual_dpm}   Latency:{ts.avg_latency}", logType.WARNING);
-                                    addLog(this.name + " Maker order id:" + ts.maker_orderid + " taker order id:" + ts.taker_orderid);
+                                    addLog($"[{this.name}] Maker order id:{ts.maker_orderid} taker order id:{ts.taker_orderid}");
                                     addLog("Addtional Markup:" + this.additional_markup.ToString());
                                 }
-                                else if(ts.avg_latency > 500)
+                                else if (ts.avg_latency > 500)
                                 {
                                     this.additional_markup = (decimal)(this.taker.realized_volatility / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000 * ts.avg_latency / 1000);
                                     this.additional_markup_startTime = DateTime.UtcNow;
                                     addLog("Extraordinary Latency" + this.name, logType.WARNING);
                                     addLog($"Residual PnL[dpm]:{residual_dpm}   Latency:{ts.avg_latency}", logType.WARNING);
-                                    addLog(this.name + " Maker order id:" + ts.maker_orderid + " taker order id:" + ts.taker_orderid);
+                                    addLog($"[{this.name}] Maker order id:{ts.maker_orderid} taker order id:{ts.taker_orderid}");
                                     addLog("Addtional Markup:" + this.additional_markup.ToString());
+                                }
+                                if(this.additional_markup < 0)
+                                {
+                                    addLog("The additional markup is smaller than 0. additional markup:" + this.additional_markup.ToString("N2"), logType.WARNING);
+                                    this.additional_markup = 0;
                                 }
                             }
                                 
@@ -3306,7 +3313,7 @@ namespace Crypto_Trading
                                     this.additional_markup_startTime = DateTime.UtcNow;
                                     addLog("Extraordinary PnL" + this.name, logType.WARNING);
                                     addLog($"Residual PnL[dpm]:{residual_dpm}   Latency:{ts.avg_latency}", logType.WARNING);
-                                    addLog(this.name + " Maker order id:" + ts.maker_orderid + " taker order id:" + ts.taker_orderid);
+                                    addLog($"[{this.name}] Maker order id:{ts.maker_orderid} taker order id:{ts.taker_orderid}");
                                     addLog("Addtional Markup:" + this.additional_markup.ToString());
                                 }
                                 else if (ts.avg_latency > 500)
@@ -3315,8 +3322,13 @@ namespace Crypto_Trading
                                     this.additional_markup_startTime = DateTime.UtcNow;
                                     addLog("Extraordinary Latency" + this.name, logType.WARNING);
                                     addLog($"Residual PnL[dpm]:{residual_dpm}   Latency:{ts.avg_latency}", logType.WARNING);
-                                    addLog(this.name + " Maker order id:" + ts.maker_orderid + " taker order id:" + ts.taker_orderid);
+                                    addLog($"[{this.name}] Maker order id:{ts.maker_orderid} taker order id:{ts.taker_orderid}");
                                     addLog("Addtional Markup:" + this.additional_markup.ToString());
+                                }
+                                if (this.additional_markup < 0)
+                                {
+                                    addLog("The additional markup is smaller than 0. additional markup:" + this.additional_markup.ToString("N2"), logType.WARNING);
+                                    this.additional_markup = 0;
                                 }
                             }
                             this.tradeSummaries[ts.id] = ts;
