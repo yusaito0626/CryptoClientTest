@@ -82,6 +82,7 @@ namespace Crypto_Linux
         static private bool live;
         static private bool test;
         static private bool privateConnect;
+        static private bool log_public = false;
         static private bool getSoDPos;
         static private bool msgLogging;
 
@@ -717,6 +718,14 @@ namespace Crypto_Linux
             {
                 msgLogging = false;
             }
+            if (root.TryGetProperty("logPublic", out elem))
+            {
+                log_public = elem.GetBoolean();
+            }
+            else
+            {
+                log_public = false;
+            }
             if (root.TryGetProperty("endTime", out elem))
             {
                 str_endTime = elem.GetString();
@@ -966,7 +975,7 @@ namespace Crypto_Linux
                 {
                     if (msgLogging)
                     {
-                        Func<Action, Action, CancellationToken, int, Task<bool>>?  func = crypto_client.setMsgLogging(mkt.Key, outputPath);
+                        Func<Action, Action, CancellationToken, int, Task<bool>>?  func = crypto_client.setMsgLogging(mkt.Key, outputPath,log_public);
                         if(func != null)
                         {
                             thManager.addThread(mkt.Key + "_msgLogging", func, null, null, 1);
@@ -1388,105 +1397,7 @@ namespace Crypto_Linux
                         baseBalance_diff = Math.Round(baseBalance_diff / stg.taker.quantity_unit) * stg.taker.quantity_unit;
                         stg.lastPosAdjustment = DateTime.UtcNow;
                         addLog("The current balance of " + stg.name + " BaseCcy:" + (stg.maker.net_pos + stg.taker.net_pos).ToString() + " QuoteCcy:" + (stg.maker.quoteBalance.total + stg.taker.quoteBalance.total).ToString());
-                        //addLog("Adjustment at the start: " + side.ToString() + " " + baseBalance_diff.ToString());
                         await stg.adjustPosition();
-                        //if(baseBalance_diff > 0)
-                        //{
-                        //    if(stg.taker.marginTrade)
-                        //    {
-                        //        if(side == orderSide.Sell)
-                        //        {
-                        //            if(stg.taker.marginLong)
-                        //            {
-                        //                if(stg.taker.longPosition.available >= baseBalance_diff)
-                        //                {
-                        //                    await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, positionSide.Long, null, true, false);
-                        //                }
-                        //                else
-                        //                {
-                        //                    decimal closing = stg.taker.longPosition.available;
-                        //                    decimal opening = baseBalance_diff - closing;
-                        //                    if(closing > 0)
-                        //                    {
-                        //                        await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, closing, 0, positionSide.Long, null, true, false);
-                        //                    }
-                        //                    if(opening > 0)
-                        //                    {
-                        //                        await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, opening, 0, positionSide.Short, null, true, false);
-                        //                    }
-                        //                }
-                        //            }
-                        //            else
-                        //            {
-                        //                if (stg.taker.baseBalance.available >= baseBalance_diff)
-                        //                {
-                        //                    await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, positionSide.NONE, null, true, false);
-                        //                }
-                        //                else
-                        //                {
-                        //                    decimal closing = stg.taker.baseBalance.available;
-                        //                    decimal opening = baseBalance_diff - closing;
-                        //                    if(closing > 0)
-                        //                    {
-                        //                        await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, closing, 0, positionSide.NONE, null, true, false);
-                        //                    }
-                        //                    if (opening > 0)
-                        //                    {
-                        //                        await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, opening, 0, positionSide.Short, null, true, false);
-                        //                    }
-                        //                }
-                        //            }
-                        //        }
-                        //        else if(side == orderSide.Buy)
-                        //        {
-                        //            if (stg.taker.marginLong)
-                        //            {
-                        //                if (stg.taker.shortPosition.available >= baseBalance_diff)
-                        //                {
-                        //                    await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, positionSide.Short, null, true, false);
-                        //                }
-                        //                else
-                        //                {
-                        //                    decimal closing = stg.taker.shortPosition.available;
-                        //                    decimal opening = baseBalance_diff - closing;
-                        //                    if(closing > 0)
-                        //                    {
-                        //                        await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, closing, 0, positionSide.Short, null, true, false);
-                        //                    }
-                        //                    if(opening > 0)
-                        //                    {
-                        //                        await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, opening, 0, positionSide.Long, null, true, false);
-                        //                    }
-                        //                }
-                        //            }
-                        //            else
-                        //            {
-                        //                if (stg.taker.shortPosition.available >= baseBalance_diff)
-                        //                {
-                        //                    await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, positionSide.Short, null, true, false);
-                        //                }
-                        //                else
-                        //                {
-                        //                    decimal closing = stg.taker.shortPosition.available;
-                        //                    decimal opening = baseBalance_diff - closing;
-                        //                    if(closing > 0)
-                        //                    {
-                        //                        await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, closing, 0, positionSide.Short, null, true, false);
-                        //                    }
-                        //                    if(opening > 0)
-                        //                    {
-                        //                        await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, opening, 0, positionSide.NONE, null, true, false);
-                        //                    }
-                        //                }
-                        //            }
-                        //        }
-                        //    }
-                        //    else
-                        //    {
-                        //        await oManager.placeNewSpotOrder(stg.taker, side, orderType.Market, baseBalance_diff, 0, positionSide.NONE, null, true, false);
-                        //    }
-                        //}
-
                     }
                 }
 
@@ -1531,7 +1442,6 @@ namespace Crypto_Linux
 
         static private async Task<bool> setRealPosition()
         {
-            //string SoDPosFile = outputPath + "/SoD_Position.csv";
             string NewSoDPosFile = outputPath + "/SoD_Position_new.csv";
             if (File.Exists(NewSoDPosFile))
             {
@@ -1614,147 +1524,6 @@ namespace Crypto_Linux
                     return false;
                 }
             }
-            //else if (File.Exists(SoDPosFile))
-            //{
-            //    addLog("SoD file found File:" + SoDPosFile);
-            //    StreamReader sr = new StreamReader(new FileStream(SoDPosFile, FileMode.Open, FileAccess.Read));
-            //    while (sr.ReadLine() is string line)
-            //    {
-            //        if (line.StartsWith("timestamp"))
-            //        {
-            //            continue;
-            //        }
-            //        string[] items = line.Split(',');
-            //        if (items.Length >= 8)
-            //        {
-            //            string symbol_market = items[3];
-            //            if (qManager.instruments.ContainsKey(symbol_market))
-            //            {
-            //                Instrument ins = qManager.instruments[symbol_market];
-            //                ins.SoD_baseBalance.ccy = ins.baseCcy;
-            //                ins.SoD_baseBalance.market = ins.market;
-            //                ins.SoD_baseBalance.total = decimal.Parse(items[6]);
-            //                ins.SoD_quoteBalance.ccy = ins.quoteCcy;
-            //                ins.SoD_quoteBalance.market = ins.market;
-            //                ins.SoD_quoteBalance.total = decimal.Parse(items[7]);
-            //                ins.SoD_longPosition.symbol = ins.symbol;
-            //                ins.SoD_longPosition.market = ins.market;
-            //                ins.SoD_longPosition.total = decimal.Parse(items[8]);
-            //                ins.SoD_longPosition.avg_price = decimal.Parse(items[9]);
-            //                ins.SoD_longPosition.unrealized_fee = decimal.Parse(items[10]);
-            //                ins.SoD_longPosition.unrealized_interest = decimal.Parse(items[11]);
-            //                ins.SoD_shortPosition.symbol = ins.symbol;
-            //                ins.SoD_shortPosition.market = ins.market;
-            //                ins.SoD_shortPosition.total = decimal.Parse(items[12]);
-            //                ins.SoD_shortPosition.avg_price = decimal.Parse(items[13]);
-            //                ins.SoD_shortPosition.unrealized_fee = decimal.Parse(items[14]);
-            //                ins.SoD_shortPosition.unrealized_interest = decimal.Parse(items[15]);
-            //                ins.open_mid = decimal.Parse(items[16]);
-
-            //                ins.baseBalance.total = ins.SoD_baseBalance.total;
-            //                ins.baseBalance.ccy = ins.SoD_baseBalance.ccy;
-            //                ins.baseBalance.market = ins.SoD_baseBalance.market;
-            //                ins.quoteBalance.total = ins.SoD_quoteBalance.total;
-            //                ins.quoteBalance.ccy = ins.SoD_quoteBalance.ccy;
-            //                ins.quoteBalance.market = ins.SoD_quoteBalance.market;
-
-            //                ins.longPosition.symbol = ins.symbol;
-            //                ins.longPosition.market = ins.market;
-            //                ins.longPosition.total = ins.SoD_longPosition.total;
-            //                ins.longPosition.avg_price = ins.SoD_longPosition.avg_price;
-            //                ins.longPosition.unrealized_fee = ins.SoD_longPosition.unrealized_fee;
-            //                ins.longPosition.unrealized_interest = ins.SoD_longPosition.unrealized_interest;
-            //                ins.longPosition.leverage = ins.leverage;
-            //                ins.shortPosition.symbol = ins.symbol;
-            //                ins.shortPosition.market = ins.market;
-            //                ins.shortPosition.total = ins.SoD_shortPosition.total;
-            //                ins.shortPosition.avg_price = ins.SoD_shortPosition.avg_price;
-            //                ins.shortPosition.unrealized_fee = ins.SoD_shortPosition.unrealized_fee;
-            //                ins.shortPosition.unrealized_interest = ins.SoD_shortPosition.unrealized_interest;
-            //                ins.shortPosition.leverage = ins.leverage;
-            //            }
-            //        }
-            //    }
-
-            //    foreach (var ex in qManager.exchanges.Values)
-            //    {
-            //        ex.setInstruments(qManager.instruments);
-            //    }
-            //    foreach (var ex in qManager.exchanges_SoD.Values)
-            //    {
-            //        ex.setInstruments(qManager.instruments);
-            //    }
-            //    SortedDictionary<DateTime, DataFill> histFill = new SortedDictionary<DateTime, DataFill>();
-            //    DateTime currentTime = DateTime.UtcNow;
-            //    foreach (var mkt in qManager._markets.Keys)
-            //    {
-            //        List<DataFill> temp_histFill;
-            //        if (mkt == market.gmocoin)
-            //        {
-            //            foreach (Instrument ins in qManager.instruments.Values)
-            //            {
-            //                if (ins.market == mkt)
-            //                {
-            //                    temp_histFill = await crypto_client.getTradeHistory(mkt, ins.symbol, DateTime.UtcNow.Date);
-            //                    foreach (var fill in temp_histFill)
-            //                    {
-            //                        if (fill.filled_time == null)
-            //                        {
-            //                            fill.filled_time = currentTime;
-            //                        }
-            //                        while (histFill.ContainsKey((DateTime)fill.filled_time))
-            //                        {
-            //                            fill.filled_time += TimeSpan.FromMilliseconds(1);
-            //                        }
-            //                        histFill[fill.filled_time ?? DateTime.UtcNow] = fill;
-            //                    }
-            //                }
-            //            }
-            //        }
-            //        else
-            //        {
-            //            temp_histFill = await crypto_client.getTradeHistory(mkt, "", DateTime.UtcNow.Date);
-            //            foreach (var fill in temp_histFill)
-            //            {
-            //                if (fill.filled_time == null)
-            //                {
-            //                    fill.filled_time = currentTime;
-            //                }
-            //                while (histFill.ContainsKey((DateTime)fill.filled_time))
-            //                {
-            //                    fill.filled_time += TimeSpan.FromMilliseconds(1);
-            //                }
-            //                histFill[fill.filled_time ?? DateTime.UtcNow] = fill;
-            //            }
-            //        }
-            //    }
-            //    foreach (var fill in histFill.Values)
-            //    {
-            //        string symbol_market = fill.symbol_market;
-            //        if (qManager.exchanges.ContainsKey(fill.market))
-            //        {
-            //            Crypto_Trading.Exchange ex = qManager.exchanges[fill.market];
-            //            ex.updateBalance(fill);
-            //        }
-            //        if (qManager.instruments.ContainsKey(symbol_market))
-            //        {
-            //            Instrument ins = qManager.instruments[symbol_market];
-            //            ins.updateFills(fill);
-            //            filledOrderQueue.Enqueue(fill);
-            //        }
-            //    }
-            //    //Just in case, update balance again
-            //    if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys)))
-            //    {
-            //        addLog("Failed to set balance", logType.WARNING);
-            //        return false;
-            //    }
-            //    if (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys)))
-            //    {
-            //        addLog("Failed to set margin position", logType.WARNING);
-            //        return false;
-            //    }
-            //}
             else
             {
                 if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys), qManager._markets.Keys))
@@ -1767,29 +1536,6 @@ namespace Crypto_Linux
                     addLog("Failed to set margin position", logType.WARNING);
                     return false;
                 }
-                //StreamWriter sw = new StreamWriter(new FileStream(SoDPosFile, FileMode.Create, FileAccess.Write));
-                //sw.WriteLine("timestamp,symbol,market,symbol_market,base_ccy,quote_ccy,baseccy_balance,quoteccy_balance,long_position,long_avgprice,long_unrealized_fee,long_unrealized_interest,short_position,short_avgprice,short_unrealized_fee,short_unrealized_interest,open_mid");
-                //string currentTime = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
-                //foreach (var ins in qManager.instruments.Values)
-                //{
-                //    decimal mid = await crypto_client.getCurrentMid(ins.market, ins.symbol);
-                //    string line = currentTime + "," + ins.symbol + "," + ins.market + "," + ins.symbol_market + "," + ins.baseCcy + "," + ins.quoteCcy + "," + ins.baseBalance.total.ToString() + "," + ins.quoteBalance.total.ToString()
-                //            + "," + ins.longPosition.total.ToString() + "," + ins.longPosition.avg_price.ToString() + "," + ins.longPosition.unrealized_fee.ToString() + "," + ins.longPosition.unrealized_interest.ToString()
-                //            + "," + ins.shortPosition.total.ToString() + "," + ins.shortPosition.avg_price.ToString() + "," + ins.shortPosition.unrealized_fee.ToString() + "," + ins.shortPosition.unrealized_interest.ToString() + "," + mid.ToString();
-                //    ins.SoD_baseBalance.total = ins.baseBalance.total;
-                //    ins.SoD_baseBalance.ccy = ins.baseBalance.ccy;
-                //    ins.SoD_baseBalance.market = ins.baseBalance.market;
-                //    ins.SoD_quoteBalance.total = ins.quoteBalance.total;
-                //    ins.SoD_quoteBalance.ccy = ins.quoteBalance.ccy;
-                //    ins.SoD_quoteBalance.market = ins.quoteBalance.market;
-                //    ins.SoD_longPosition.copy(ins.longPosition);
-                //    ins.SoD_shortPosition.copy(ins.shortPosition);
-                //    ins.open_mid = mid;
-                //    sw.WriteLine(line);
-                //    sw.Flush();
-                //}
-                //sw.Close();
-                //sw.Dispose();
 
                 using (StreamWriter sod = new StreamWriter(new FileStream(NewSoDPosFile, FileMode.Create, FileAccess.Write)))
                 {
@@ -2159,16 +1905,16 @@ namespace Crypto_Linux
                         addLog("[SetRealPosition]Exchange not found. Exchange:" + ins.market);
                     }
                 }
-                if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys), qManager._markets.Keys))
-                {
-                    addLog("Failed to set balance", logType.WARNING);
-                    return binfos;
-                }
-                if (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys), qManager._markets.Keys))
-                {
-                    addLog("Failed to set margin position", logType.WARNING);
-                    return binfos;
-                }
+                //if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys), qManager._markets.Keys))
+                //{
+                //    addLog("Failed to set balance", logType.WARNING);
+                //    return binfos;
+                //}
+                //if (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys), qManager._markets.Keys))
+                //{
+                //    addLog("Failed to set margin position", logType.WARNING);
+                //    return binfos;
+                //}
             }
             else
             {
@@ -2185,6 +1931,44 @@ namespace Crypto_Linux
                 }
             }
             return binfos;
+        }
+
+        static private bool readTradePerTrade(string filename)
+        {
+            bool res = false;
+
+            if(File.Exists(filename))
+            {
+                using (StreamReader tpt = new StreamReader(new FileStream(filename, FileMode.Open, FileAccess.Read)))
+                {
+                    int i = 0;
+                    while (tpt.ReadLine() is string line)
+                    {
+                        if (i == 0)
+                        {
+                            ++i;
+                        }
+                        else
+                        {
+                            string[] data = line.Split(",");
+                            if (strategies.ContainsKey(data[1]))
+                            {
+                                Strategy stg = strategies[data[1]];
+                                decimal notional = decimal.Parse(data[10]) * decimal.Parse(data[11]);
+                                stg.notionalVolumeB += notional;
+                                stg.markupPnL += decimal.Parse(data[23]);
+                                stg.skewPnL += decimal.Parse(data[24]);
+                                stg.priceAdjPnL += decimal.Parse(data[25]);
+                                stg.residualPnL += decimal.Parse(data[26]);
+                                stg.tradingPnLB += decimal.Parse(data[28]) + decimal.Parse(data[27]);
+                            }
+                        }
+                    }
+                }
+                res = true;
+            }
+
+            return res;
         }
 
         static private bool startTrading()

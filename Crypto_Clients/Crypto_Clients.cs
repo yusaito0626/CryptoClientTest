@@ -163,6 +163,7 @@ namespace Crypto_Clients
         {
             this.megLogging = true;
             string filename = "";
+            bool logPublic = false;
             Func<Action, Action, CancellationToken, int, Task<bool>>? ret = null;
             switch (market)
             {
@@ -171,8 +172,9 @@ namespace Crypto_Clients
                     {
                         DateTime today = DateTime.Today;
                         filename = $"bitbank_API_{today.ToString("yyyy-MM-dd")}.log";
+                        logPublic = true;
                     }
-                    this.bitbank_client.setLogFile(outputPath,filename);
+                    this.bitbank_client.setLogFile(outputPath,filename, logPublic);
                     ret = this.bitbank_client.msgLogging;
                     break;
                 case market.gmocoin:
@@ -180,8 +182,9 @@ namespace Crypto_Clients
                     {
                         DateTime today = DateTime.Today;
                         filename = $"gmocoin_API_{today.ToString("yyyy-MM-dd")}.log";
+                        logPublic = true;
                     }
-                    this.gmocoin_client.setLogFile(outputPath,filename);
+                    this.gmocoin_client.setLogFile(outputPath,filename, logPublic);
                     ret = this.gmocoin_client.msgLogging;
                     break;
                 case market.coincheck:
@@ -1059,7 +1062,7 @@ namespace Crypto_Clients
                         }
                         if (js_list.Count == 0)
                         {
-                            addLog("Failed to get trade history from gmocoin.", logType.WARNING);
+                            addLog("Failed to get trade history from gmocoin.  symbol:" + symbol, logType.WARNING);
                         }
                         Thread.Sleep(1000);
                     }

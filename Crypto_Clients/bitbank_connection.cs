@@ -40,6 +40,7 @@ namespace Crypto_Clients
         string logPath;
         string logFileName;
         public bool logging;
+        public bool log_public = false;
 
         ClientWebSocket websocket_client;
         HttpClient http_client;
@@ -182,9 +183,10 @@ namespace Crypto_Clients
             this.fillStack = client.fillStack;
         }
 
-        public void setLogFile(string path, string filename = "")
+        public void setLogFile(string path, string filename = "",bool logPublic = false)
         {
             this.logging = true;
+            this.log_public = logPublic;
             this.logPath = path;
             this.logFileName = filename;
             //FileStream fspub = new FileStream(path + "/bitbank_msglog" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".txt", FileMode.Append, FileAccess.Write, FileShare.Read);
@@ -480,7 +482,7 @@ namespace Crypto_Clients
                         msg = "";
                         break;
                 }
-                if(this.logging)
+                if(this.logging && this.log_public)
                 {
                     msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + msg;
                     this.currentMsg = msg;
@@ -579,7 +581,7 @@ namespace Crypto_Clients
                                     msg = "";
                                     break;
                             }
-                            if (this.logging)
+                            if (this.logging && this.log_public)
                             {
                                 msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + msg;
                                 this.currentMsg = msg;
@@ -708,7 +710,7 @@ namespace Crypto_Clients
                             msg = "";
                             break;
                     }
-                    if(this.logging)
+                    if(this.logging && this.log_public)
                     {
                         msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + msg;
                         this.currentMsg = msg;
@@ -765,6 +767,13 @@ namespace Crypto_Clients
 
                     request.Content = new StringContent(string.Empty, Encoding.UTF8, "application/json");
 
+                    if (this.logging)
+                    {
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   GET " + endpoint + " " + body;
+                        this.currentMsg = msg;
+                        this.msgLogQueue.Enqueue(msg);
+                    }
+
                     using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                     using var watchDogCts = new CancellationTokenSource();
 
@@ -786,7 +795,7 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        string msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + " GET ack " + resString;
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + " GET ack " + resString;
                         this.currentMsg = msg;
                         this.msgLogQueue.Enqueue(msg);
                     }

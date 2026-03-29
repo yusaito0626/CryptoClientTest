@@ -2062,7 +2062,7 @@ namespace Utils
         {
             this.init();   
         }
-        public bool setTakerFill(DataFill fill,DateTime? timestamp = null)
+        public bool setTakerFill(DataFill fill,DateTime? timestamp = null,decimal fee_rate = 0)
         {
             if(this.taker_symbolmarket == fill.symbol_market)
             {
@@ -2082,7 +2082,7 @@ namespace Utils
                 this.taker_avgExecutedTime = (this.taker_avgExecutedTime * (double)this.taker_quantity + timestamp.Value.Ticks * (double)fill.quantity) / (double)(this.taker_quantity + fill.quantity);
                 this.taker_avgprice = (this.taker_avgprice * this.taker_quantity + fill.price * fill.quantity) / (this.taker_quantity + fill.quantity);
                 this.taker_quantity += fill.quantity;
-                this.totalFee += fill.fee_quote + fill.fee_base * fill.price;
+                this.totalFee += fill.quantity * fill.price * fee_rate;
             }
             else
             {
@@ -2090,7 +2090,7 @@ namespace Utils
             }
             return true;
         }
-        public bool setMakerFill(DataFill fill, DateTime? timestamp = null)
+        public bool setMakerFill(DataFill fill, DateTime? timestamp = null, decimal fee_rate = 0)
         {
             if (this.maker_symbolmarket == fill.symbol_market)
             {
@@ -2111,7 +2111,8 @@ namespace Utils
                 this.maker_avgExecutedTime = (this.maker_avgExecutedTime * (double)this.maker_quantity + timestamp.Value.Ticks * (double)fill.quantity) / (double)(this.maker_quantity + fill.quantity);
                 this.maker_avgprice = (this.maker_avgprice * this.maker_quantity + fill.price * fill.quantity) / (this.maker_quantity + fill.quantity);
                 this.maker_quantity += fill.quantity;
-                this.totalFee += fill.fee_quote + fill.fee_base * fill.price; 
+                this.totalFee += fill.quantity * fill.price * fee_rate;
+                //this.totalFee += fill.fee_quote + fill.fee_base * fill.price; 
             }
             else
             {

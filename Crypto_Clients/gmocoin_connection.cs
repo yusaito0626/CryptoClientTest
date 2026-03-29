@@ -54,6 +54,7 @@ namespace Crypto_Clients
         string logPath;
         string logFileName;
         public bool logging;
+        public bool log_public = false;
 
         ClientWebSocket websocket_client;
         ClientWebSocket private_client;
@@ -202,9 +203,10 @@ namespace Crypto_Clients
                 return false;
             }
         }
-        public void setLogFile(string path, string filename = "")
+        public void setLogFile(string path, string filename = "",bool logPublic = false)
         {
             this.logging = true;
+            this.log_public = logPublic;
             this.logPath = path;
             this.logFileName = filename;
         }
@@ -517,7 +519,7 @@ namespace Crypto_Clients
                         msg = "Closing message[onClosing]:" + Encoding.UTF8.GetString(this.ws_memory.ToArray());
                         break;
                 }
-                if(this.logging)
+                if(this.logging && this.log_public)
                 {
                     msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   " + msg;
                     this.currentMsg = msg;
@@ -580,7 +582,7 @@ namespace Crypto_Clients
                                     msg = "";
                                     break;
                             }
-                            if (this.logging)
+                            if (this.logging && this.log_public)
                             {
                                 msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   " + msg;
                                 this.currentMsg = msg;
@@ -989,7 +991,7 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   POST ack " + response;
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   GET ack " + response;
                         this.currentMsg = msg;
                         this.msgLogQueue.Enqueue(msg);
                     }

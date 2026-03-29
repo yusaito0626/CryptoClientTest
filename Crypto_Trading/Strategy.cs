@@ -3047,58 +3047,6 @@ namespace Crypto_Trading
                                 switch (fill.side)
                                 {
                                     case orderSide.Buy:
-                                        //if (this.taker.marginTrade)
-                                        //{
-                                        //    if(this.taker.marginLong)
-                                        //    {
-                                        //        //if (this.taker.longPosition.available >= filled_quantity)
-                                        //        if (this.taker.longPosition.available > 0)
-                                        //        {
-                                        //            decimal closing = filled_quantity;
-                                        //            decimal opening = 0;
-                                        //            if(closing > this.taker.longPosition.available)
-                                        //            {
-                                        //                closing = this.taker.longPosition.available;
-                                        //                opening = filled_quantity - closing; 
-
-                                        //            }
-                                        //            await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, closing, 0, positionSide.Long, null, true, false, fill.internal_order_id);
-                                        //            await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, opening, 0, positionSide.Short, null, true, false, fill.internal_order_id);
-                                        //        }
-                                        //        else
-                                        //        {
-                                        //            await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, false, fill.internal_order_id);
-                                        //        }
-                                        //    }
-                                        //    else
-                                        //    {
-                                        //        //if (this.taker.baseBalance.available >= filled_quantity)
-                                        //        //{
-                                        //        //    await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, false, fill.internal_order_id);
-                                        //        //}
-                                        //        if (this.taker.baseBalance.available > 0)
-                                        //        {
-                                        //            decimal closing = filled_quantity;
-                                        //            decimal opening = 0;
-                                        //            if (closing > this.taker.baseBalance.available)
-                                        //            {
-                                        //                closing = this.taker.baseBalance.available;
-                                        //                opening = filled_quantity - closing;
-
-                                        //            }
-                                        //            await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, closing, 0, positionSide.NONE, null, true, false, fill.internal_order_id);
-                                        //            await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, opening, 0, positionSide.Short, null, true, false, fill.internal_order_id);
-                                        //        }
-                                        //        else
-                                        //        {
-                                        //            await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, false, fill.internal_order_id);
-                                        //        }
-                                        //    }
-                                        //}
-                                        //else
-                                        //{
-                                        //    await this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, false, fill.internal_order_id);
-                                        //}
                                         await this.placeHedgeOrder(this.taker, orderSide.Sell, filled_quantity, fill.internal_order_id);
                                         using (var olock = this.oManager.order_lock.getlock())
                                         {
@@ -3125,59 +3073,6 @@ namespace Crypto_Trading
 
                                         break;
                                     case orderSide.Sell:
-                                        //if (this.taker.marginTrade)
-                                        //{
-                                        //    if(this.taker.marginLong)
-                                        //    {
-                                        //        //if (this.taker.shortPosition.available >= filled_quantity)
-                                        //        //{
-                                        //        //    await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, false, fill.internal_order_id);
-                                        //        //}
-                                        //        if (this.taker.shortPosition.available > 0)
-                                        //        {
-                                        //            decimal closing = filled_quantity;
-                                        //            decimal opening = 0;
-                                        //            if (closing > this.taker.shortPosition.available)
-                                        //            {
-                                        //                closing = this.taker.shortPosition.available;
-                                        //                opening = filled_quantity - closing;
-
-                                        //            }
-                                        //            await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, closing, 0, positionSide.Short, null, true, false, fill.internal_order_id);
-                                        //            await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, opening, 0, positionSide.Long, null, true, false, fill.internal_order_id);
-                                        //        }
-                                        //        else
-                                        //        {
-                                        //            await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Long, null, true, false, fill.internal_order_id);
-                                        //        }
-                                        //    }
-                                        //    else
-                                        //    {
-                                        //        if (this.taker.shortPosition.available > 0)
-                                        //        {
-                                        //            decimal closing = filled_quantity;
-                                        //            decimal opening = 0;
-                                        //            if (closing > this.taker.shortPosition.available)
-                                        //            {
-                                        //                closing = this.taker.shortPosition.available;
-                                        //                opening = filled_quantity - closing;
-
-                                        //            }
-                                        //            await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, closing, 0, positionSide.Short, null, true, false, fill.internal_order_id);
-                                        //            await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, opening, 0, positionSide.NONE, null, true, false, fill.internal_order_id);
-                                        //        }
-                                        //        else
-                                        //        {
-                                        //            await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, false, fill.internal_order_id);
-                                        //        }
-                                        //    }
-
-                                        //}
-                                        //else
-                                        //{
-                                        //    await this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, false, fill.internal_order_id);
-                                        //}
-
                                         await this.placeHedgeOrder(this.taker, orderSide.Buy, filled_quantity, fill.internal_order_id);
                                         using (var olock = this.oManager.order_lock.getlock())
                                         {
@@ -3217,7 +3112,7 @@ namespace Crypto_Trading
                         {
                             tradeSummary ts = this.tempTradeSummaries[fill.internal_order_id];
                             this.tempTradeSummaries.Remove(fill.internal_order_id);
-                            ts.setMakerFill(fill, this.maker.getAdjustedTimeStamp(fill.filled_time.Value));
+                            ts.setMakerFill(fill, this.maker.getAdjustedTimeStamp(fill.filled_time.Value),this.maker.maker_fee);
                             this.tradeSummaries[ts.id] = ts;
                         }
                         else if (this.tradeSummaries.ContainsKey(fill.internal_order_id))
@@ -3232,7 +3127,7 @@ namespace Crypto_Trading
                                 this.residualPnL -= ts.residualPnL;
                                 this.tradingPnLB -= ts.totalPnL + ts.totalFee;
                             }
-                            ts.setMakerFill(fill, this.maker.getAdjustedTimeStamp(fill.filled_time.Value));
+                            ts.setMakerFill(fill, this.maker.getAdjustedTimeStamp(fill.filled_time.Value), this.maker.maker_fee);
                             ts.calcPnL();
                             this.notionalVolumeB += ts.maker_avgprice * ts.maker_quantity;
                             this.markupPnL += ts.markupPnL;
@@ -3247,7 +3142,7 @@ namespace Crypto_Trading
                                 {
                                     this.additional_markup = -residual_dpm;
                                     this.additional_markup_startTime = DateTime.UtcNow;
-                                    addLog("Extraordinary PnL" + this.name, logType.WARNING);
+                                    addLog("Extraordinary PnL   " + this.name, logType.WARNING);
                                     addLog($"Residual PnL[dpm]:{residual_dpm}   Latency:{ts.avg_latency}", logType.WARNING);
                                     addLog($"[{this.name}] Maker order id:{ts.maker_orderid} taker order id:{ts.taker_orderid}");
                                     addLog("Addtional Markup:" + this.additional_markup.ToString());
@@ -3256,7 +3151,7 @@ namespace Crypto_Trading
                                 {
                                     this.additional_markup = (decimal)(this.taker.realized_volatility / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000 * ts.avg_latency / 1000);
                                     this.additional_markup_startTime = DateTime.UtcNow;
-                                    addLog("Extraordinary Latency" + this.name, logType.WARNING);
+                                    addLog("Extraordinary Latency   " + this.name, logType.WARNING);
                                     addLog($"Residual PnL[dpm]:{residual_dpm}   Latency:{ts.avg_latency}", logType.WARNING);
                                     addLog($"[{this.name}] Maker order id:{ts.maker_orderid} taker order id:{ts.taker_orderid}");
                                     addLog("Addtional Markup:" + this.additional_markup.ToString());
@@ -3280,7 +3175,7 @@ namespace Crypto_Trading
                         {
                             tradeSummary ts = this.tempTradeSummaries[fill.msg];
                             this.tempTradeSummaries.Remove(fill.msg);
-                            ts.setTakerFill(fill, this.taker.getAdjustedTimeStamp(fill.filled_time.Value));
+                            ts.setTakerFill(fill, this.taker.getAdjustedTimeStamp(fill.filled_time.Value), this.taker.taker_fee);
                             this.tradeSummaries[ts.id] = ts;
                         }
                         else if (this.tradeSummaries.ContainsKey(fill.msg))
@@ -3296,7 +3191,7 @@ namespace Crypto_Trading
                                 this.residualPnL -= ts.residualPnL;
                                 this.tradingPnLB -= ts.totalPnL + ts.totalFee;
                             }
-                            ts.setTakerFill(fill, this.taker.getAdjustedTimeStamp(fill.filled_time.Value));
+                            ts.setTakerFill(fill, this.taker.getAdjustedTimeStamp(fill.filled_time.Value), this.taker.taker_fee);
                             ts.calcPnL();
                             this.notionalVolumeB += ts.maker_avgprice * ts.maker_quantity;
                             this.markupPnL += ts.markupPnL;
@@ -3311,7 +3206,7 @@ namespace Crypto_Trading
                                 {
                                     this.additional_markup = -residual_dpm;
                                     this.additional_markup_startTime = DateTime.UtcNow;
-                                    addLog("Extraordinary PnL" + this.name, logType.WARNING);
+                                    addLog("Extraordinary PnL   " + this.name, logType.WARNING);
                                     addLog($"Residual PnL[dpm]:{residual_dpm}   Latency:{ts.avg_latency}", logType.WARNING);
                                     addLog($"[{this.name}] Maker order id:{ts.maker_orderid} taker order id:{ts.taker_orderid}");
                                     addLog("Addtional Markup:" + this.additional_markup.ToString());
@@ -3320,7 +3215,7 @@ namespace Crypto_Trading
                                 {
                                     this.additional_markup = (decimal)(this.taker.realized_volatility / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000 * ts.avg_latency / 1000);
                                     this.additional_markup_startTime = DateTime.UtcNow;
-                                    addLog("Extraordinary Latency" + this.name, logType.WARNING);
+                                    addLog("Extraordinary Latency   " + this.name, logType.WARNING);
                                     addLog($"Residual PnL[dpm]:{residual_dpm}   Latency:{ts.avg_latency}", logType.WARNING);
                                     addLog($"[{this.name}] Maker order id:{ts.maker_orderid} taker order id:{ts.taker_orderid}");
                                     addLog("Addtional Markup:" + this.additional_markup.ToString());
