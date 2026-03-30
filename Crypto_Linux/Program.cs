@@ -3044,6 +3044,10 @@ namespace Crypto_Linux
                 insinfo.baseFee_total = ins.base_fee;
                 insinfo.mi_volume = ins.mi_volume;
 
+                insinfo.tradeImbalance = ins.tradeImbalance;
+                insinfo.quoteImbalance = ins.quoteImbalance;
+                insinfo.weightedMid = ins.weightedMid;
+
                 insinfo.marginAvailable = marginAvailable;
                 insinfo.marginInuse = marginUsed;
                 insinfo.leverage = ins.leverage;

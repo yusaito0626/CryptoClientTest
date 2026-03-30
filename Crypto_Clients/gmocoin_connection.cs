@@ -521,7 +521,7 @@ namespace Crypto_Clients
                 }
                 if(this.logging && this.log_public)
                 {
-                    msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   " + msg;
+                    msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + ",public," + msg;
                     this.currentMsg = msg;
                     this.msgLogQueue.Enqueue(msg);
                 }
@@ -584,7 +584,7 @@ namespace Crypto_Clients
                             }
                             if (this.logging && this.log_public)
                             {
-                                msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   " + msg;
+                                msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + ",public," + msg;
                                 this.currentMsg = msg;
                                 this.msgLogQueue.Enqueue(msg);
                             }
@@ -753,7 +753,7 @@ namespace Crypto_Clients
                 }
                 if(this.logging)
                 {
-                    msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   " + msg;
+                    msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + ",private," + msg;
                     this.currentMsg = msg;
                     this.msgLogQueue.Enqueue(msg);
                 }
@@ -818,7 +818,7 @@ namespace Crypto_Clients
                             }
                             if (this.logging)
                             {
-                                msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   " + msg;
+                                msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + ",private," + msg;
                                 this.currentMsg = msg;
                                 this.msgLogQueue.Enqueue(msg);
                             }
@@ -910,7 +910,7 @@ namespace Crypto_Clients
                     }
                     if(this.logging)
                     {
-                        msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   " + msg;
+                        msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + ",private," + msg;
                         this.currentMsg = msg;
                         this.msgLogQueue.Enqueue(msg);
                     }
@@ -965,7 +965,7 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   GET " + endpoint + " " + body;
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + ",REST,GET " + endpoint + " " + body;
                         this.currentMsg = msg;
                         this.msgLogQueue.Enqueue(msg);
                     }
@@ -991,7 +991,7 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   GET ack " + response;
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + ",REST,GET ack " + response;
                         this.currentMsg = msg;
                         this.msgLogQueue.Enqueue(msg);
                     }
@@ -1049,7 +1049,7 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   GET " + endpoint + " " + body;
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + ",REST,GET " + endpoint + " " + body;
                         this.currentMsg = msg;
                         this.msgLogQueue.Enqueue(msg);
                     }
@@ -1078,7 +1078,7 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   GET ack " + resString;
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + ",REST,GET ack " + resString;
                         this.currentMsg = msg;
                         this.msgLogQueue.Enqueue(msg);
                     }
@@ -1130,7 +1130,7 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   POST " + endpoint + " " + body;
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + ",REST,POST " + endpoint + " " + body;
                         this.currentMsg = msg;
                         this.msgLogQueue.Enqueue(msg);
                     }
@@ -1165,7 +1165,7 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   POST ack " + resString;
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + ",REST,POST ack " + resString;
                         this.currentMsg = msg;
                         this.msgLogQueue.Enqueue(msg);
                     }
@@ -1216,7 +1216,7 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   PUT " + endpoint + " " + body;
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + ",REST,PUT " + endpoint + " " + body;
                         this.currentMsg = msg;
                         this.msgLogQueue.Enqueue(msg);
                     }
@@ -1240,7 +1240,7 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   PUT ack " + resString;
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + ",REST,PUT ack " + resString;
                         this.currentMsg = msg;
                         this.msgLogQueue.Enqueue(msg);
                     }
@@ -1291,7 +1291,7 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   DELETE " + endpoint + " " + body;
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + ",REST,DELETE " + endpoint + " " + body;
                         this.currentMsg = msg;
                         this.msgLogQueue.Enqueue(msg);
                     }
@@ -1315,7 +1315,7 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   DELETE ack " + resString;
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + ",REST,DELETE ack " + resString;
                         this.currentMsg = msg;
                         this.msgLogQueue.Enqueue(msg);
                     }

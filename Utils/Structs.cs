@@ -2090,7 +2090,7 @@ namespace Utils
             }
             return true;
         }
-        public bool setMakerFill(DataFill fill, DateTime? timestamp = null, decimal fee_rate = 0)
+        public bool setMakerFill(DataFill fill, DateTime? _timestamp = null, decimal fee_rate = 0)
         {
             if (this.maker_symbolmarket == fill.symbol_market)
             {
@@ -2104,11 +2104,10 @@ namespace Utils
                 {
                     return false;
                 }
-                if (!timestamp.HasValue)
+                if (_timestamp.HasValue)
                 {
-                    timestamp = fill.timestamp;
+                    this.maker_avgExecutedTime = (this.maker_avgExecutedTime * (double)this.maker_quantity + _timestamp.Value.Ticks * (double)fill.quantity) / (double)(this.maker_quantity + fill.quantity);
                 }
-                this.maker_avgExecutedTime = (this.maker_avgExecutedTime * (double)this.maker_quantity + timestamp.Value.Ticks * (double)fill.quantity) / (double)(this.maker_quantity + fill.quantity);
                 this.maker_avgprice = (this.maker_avgprice * this.maker_quantity + fill.price * fill.quantity) / (this.maker_quantity + fill.quantity);
                 this.maker_quantity += fill.quantity;
                 this.totalFee += fill.quantity * fill.price * fee_rate;
@@ -2371,6 +2370,11 @@ namespace Utils
         public decimal baseFee_total { get; set; }
         public decimal mi_volume { get; set; }
         public Dictionary<double,decimal>? market_impact_curve { get; set; }
+
+        //Factors
+        public decimal tradeImbalance { get; set; }
+        public double quoteImbalance { get; set; }
+        public double weightedMid { get; set; }
     }
 
     public class connecitonStatus

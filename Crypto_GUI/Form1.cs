@@ -1242,6 +1242,9 @@ namespace Crypto_GUI
                                                 ins.quote_fee = i.Value.quoteFee_total;
                                                 ins.base_fee = i.Value.baseFee_total;
                                                 ins.mi_volume = i.Value.mi_volume;
+                                                ins.tradeImbalance = i.Value.tradeImbalance;
+                                                ins.quoteImbalance = i.Value.quoteImbalance;
+                                                ins.weightedMid = i.Value.weightedMid;
                                                 foreach (var mi in i.Value.market_impact_curve)
                                                 {
                                                     ins.market_impact_curve[mi.Key] = mi.Value;
@@ -1286,6 +1289,9 @@ namespace Crypto_GUI
                                                 ins.quote_fee = i.Value.quoteFee_total;
                                                 ins.base_fee = i.Value.baseFee_total;
                                                 ins.mi_volume = i.Value.mi_volume;
+                                                ins.tradeImbalance = i.Value.tradeImbalance;
+                                                ins.quoteImbalance = i.Value.quoteImbalance;
+                                                ins.weightedMid = i.Value.weightedMid;
                                                 foreach (var mi in i.Value.market_impact_curve)
                                                 {
                                                     ins.market_impact_curve[mi.Key] = mi.Value;
@@ -1780,6 +1786,9 @@ namespace Crypto_GUI
                 this.lbl_buyNotional.Text = this.selected_ins.my_buy_notional.ToString("N2");
                 this.lbl_RV.Text = this.selected_ins.realized_volatility_display.ToString("N5");
                 this.lbl_avgRV.Text = this.selected_ins.avg_RV_display.ToString("N5");
+                this.lbl_tradeImbalance.Text = this.selected_ins.tradeImbalance.ToString("N2");
+                this.lbl_quoteImbalance.Text = this.selected_ins.quoteImbalance.ToString("N2");
+                this.lbl_weightedMid.Text = this.selected_ins.weightedMid.ToString("N2");
                 if (this.selected_ins.my_sell_quantity > 0)
                 {
                     this.lbl_sellAvgPrice.Text = (this.selected_ins.my_sell_notional / this.selected_ins.my_sell_quantity).ToString("N" + this.selected_ins.price_scale);

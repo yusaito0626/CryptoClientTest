@@ -1266,6 +1266,7 @@ namespace Crypto_Trading
                                     {
                                         addLog("The order status is open but doesn't exist in liveorders", logType.WARNING);
                                         addLog(ord.ToString(), logType.WARNING);
+                                        ret = false;
                                     }
                                 }
                                 else if (current - this.live_buyorder_time > TimeSpan.FromSeconds(10))
@@ -1311,6 +1312,7 @@ namespace Crypto_Trading
                                     {
                                         addLog("The order status is open but doesn't exist in liveorders", logType.WARNING);
                                         addLog(ord.ToString(), logType.WARNING);
+                                        ret = false;
                                     }
                                 }
                                 else if (current - this.live_sellorder_time > TimeSpan.FromSeconds(10))
@@ -3112,7 +3114,12 @@ namespace Crypto_Trading
                         {
                             tradeSummary ts = this.tempTradeSummaries[fill.internal_order_id];
                             this.tempTradeSummaries.Remove(fill.internal_order_id);
-                            ts.setMakerFill(fill, this.maker.getAdjustedTimeStamp(fill.filled_time.Value),this.maker.maker_fee);
+                            DateTime? timestamp = null;
+                            if (filled_quantity > 0)
+                            {
+                                timestamp = this.maker.getAdjustedTimeStamp(fill.filled_time.Value);
+                            }
+                            ts.setMakerFill(fill, timestamp, this.maker.maker_fee);
                             this.tradeSummaries[ts.id] = ts;
                         }
                         else if (this.tradeSummaries.ContainsKey(fill.internal_order_id))
@@ -3127,7 +3134,12 @@ namespace Crypto_Trading
                                 this.residualPnL -= ts.residualPnL;
                                 this.tradingPnLB -= ts.totalPnL + ts.totalFee;
                             }
-                            ts.setMakerFill(fill, this.maker.getAdjustedTimeStamp(fill.filled_time.Value), this.maker.maker_fee);
+                            DateTime? timestamp = null;
+                            if (filled_quantity > 0)
+                            {
+                                timestamp = this.maker.getAdjustedTimeStamp(fill.filled_time.Value);
+                            }
+                            ts.setMakerFill(fill, timestamp, this.maker.maker_fee);
                             ts.calcPnL();
                             this.notionalVolumeB += ts.maker_avgprice * ts.maker_quantity;
                             this.markupPnL += ts.markupPnL;

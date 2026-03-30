@@ -1166,6 +1166,9 @@ namespace Crypto_Trading
             MarketImpact mi;
             string symbol_market;
             var spinner = new SpinWait();
+            SISOQueue<DataTrade> postTradeQueue = new SISOQueue<DataTrade>();
+            DataTrade msg_postTrade = null;
+            DateTime current;
             bool ret = true;
             try
             {
@@ -1207,13 +1210,39 @@ namespace Crypto_Trading
                                 }
                             }
                             this.oManager.checkVirtualOrders(ins, msg);
+                            postTradeQueue.Enqueue(msg);
                         }
                         else
                         {
                             this.addLog("The symbol doesn't exist. Instrument:" + symbol_market, Enums.logType.WARNING);
                         }
-                        msg.init();
-                        this.tradeStack.push(msg);
+                        msg_postTrade = postTradeQueue.Peek();
+                        current = DateTime.UtcNow;
+                        while (msg_postTrade != null)
+                        {
+                            if(msg_postTrade.filled_time.HasValue && (current - msg_postTrade.filled_time) > TimeSpan.FromSeconds(10))
+                            {
+                                Instrument temp_ins = this.instruments[msg_postTrade.symbol + "@" + msg_postTrade.market.ToString()];
+                                msg_postTrade = postTradeQueue.Dequeue();
+                                switch(msg_postTrade.side)
+                                {
+                                    case orderSide.Buy:
+                                        temp_ins.temp_buy_quantity -= msg_postTrade.quantity;
+                                        break;
+                                    case orderSide.Sell:
+                                        temp_ins.temp_sell_quantity -= msg_postTrade.quantity;
+                                        break;
+                                }
+                                msg_postTrade.init();
+                                this.tradeStack.push(msg_postTrade);
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
+                        //msg.init();
+                        //this.tradeStack.push(msg);
                         spinner.Reset();
                         msg = this.tradeQueue.Dequeue();
                         end();

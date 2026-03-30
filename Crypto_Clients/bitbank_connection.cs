@@ -484,7 +484,7 @@ namespace Crypto_Clients
                 }
                 if(this.logging && this.log_public)
                 {
-                    msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + msg;
+                    msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + ",public," + msg;
                     this.currentMsg = msg;
                     this.msgLogQueue.Enqueue(msg);
                 }
@@ -583,7 +583,7 @@ namespace Crypto_Clients
                             }
                             if (this.logging && this.log_public)
                             {
-                                msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + msg;
+                                msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + ",public," + msg;
                                 this.currentMsg = msg;
                                 this.msgLogQueue.Enqueue(msg);
                             }
@@ -712,7 +712,7 @@ namespace Crypto_Clients
                     }
                     if(this.logging && this.log_public)
                     {
-                        msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + msg;
+                        msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + ",public," + msg;
                         this.currentMsg = msg;
                         this.msgLogQueue.Enqueue(msg);
                     }
@@ -769,7 +769,7 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + "   GET " + endpoint + " " + body;
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + ",REST,GET " + endpoint + " " + body;
                         this.currentMsg = msg;
                         this.msgLogQueue.Enqueue(msg);
                     }
@@ -795,7 +795,7 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + " GET ack " + resString;
+                        string msg = DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat) + ",REST,GET ack " + resString;
                         this.currentMsg = msg;
                         this.msgLogQueue.Enqueue(msg);
                     }
@@ -848,7 +848,7 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        string msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   POST " + endpoint + " " + body;
+                        string msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + ",REST,POST " + endpoint + " " + body;
                         this.currentMsg = msg;
                         this.msgLogQueue.Enqueue(msg);
                     }
@@ -883,7 +883,7 @@ namespace Crypto_Clients
 
                     if (this.logging)
                     {
-                        string msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   POST ack " + resString;
+                        string msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + ",REST,POST ack " + resString;
                         this.currentMsg = msg;
                         this.msgLogQueue.Enqueue(msg);
                     }
@@ -1192,7 +1192,7 @@ namespace Crypto_Clients
                         }
                         if(this.logging)
                         {
-                            string msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + messageResult.Message.ToString();
+                            string msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + ",private," + messageResult.Message.ToString();
                             this.currentMsg = msg;
                             this.msgLogQueue.Enqueue(msg);
                         }
@@ -1203,7 +1203,7 @@ namespace Crypto_Clients
                     this.addLog("presence: " + presenceResult.Event);
                     if(this.logging)
                     {
-                        string msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + presenceResult.Event;
+                        string msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + ",private," + presenceResult.Event;
                         this.currentMsg = msg;
                         this.msgLogQueue.Enqueue(msg);
                     }
@@ -1248,7 +1248,7 @@ namespace Crypto_Clients
                     }
                     if(this.logging)
                     {
-                        string msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   " + status.Category.ToString() + " " + status.ErrorData.ToString();
+                        string msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + ",private,   " + status.Category.ToString() + " " + status.ErrorData.ToString();
                         this.currentMsg = msg;
                         this.msgLogQueue.Enqueue(msg);
                     }

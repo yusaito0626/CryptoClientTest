@@ -116,6 +116,14 @@ namespace Crypto_Trading
         DateTime? RV_startTime;
         DateTime? RV_currentPeriodStart;
 
+        public decimal temp_buy_quantity = 0;
+        public decimal temp_sell_quantity = 0;
+
+        //Factors
+        public decimal tradeImbalance;
+        public double quoteImbalance;
+        public double weightedMid;
+
 
         public double avg_RV_display;
         public double realized_volatility_display;
@@ -406,6 +414,45 @@ namespace Crypto_Trading
             }
         }
 
+        public void calcFactors()
+        {
+            double askQuantity = (double)this.quantity_unit;
+            double bidQuantity = (double)this.quantity_unit;
+
+            this.tradeImbalance = this.temp_buy_quantity - this.temp_sell_quantity;
+
+            using(var qlock = this.quotes_lock.getlock())
+            {
+                decimal distance = 2000;
+                int i = 0;
+                bool breakout = false;
+                foreach(var a in this.asks)
+                {
+                    if((a.Key - this.prev_mid) / this.prev_mid * 1_000_000 < distance)
+                    {
+                        askQuantity += (double)a.Value * (Math.Exp((double)(distance - (a.Key - this.prev_mid) / this.prev_mid * 1_000_000) / (double)distance) - 1);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                foreach (var b in this.bids)
+                {
+                    if ((this.prev_mid - b.Key) / this.prev_mid * 1_000_000 < distance)
+                    {
+                        bidQuantity += (double)b.Value * (Math.Exp((double)(distance - (this.prev_mid - b.Key) / this.prev_mid * 1_000_000) / (double)distance) - 1);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+            this.quoteImbalance = Math.Log((double)(bidQuantity / askQuantity));
+            this.weightedMid = (bidQuantity * (double)this.bestask.Item1 + askQuantity * (double)this.bestbid.Item1) / (bidQuantity + askQuantity);
+        }
+
         public void updateQuotes(DataOrderBook update)
         {
             this.last_quote_updated_time = update.timestamp;
@@ -413,95 +460,6 @@ namespace Crypto_Trading
             if(update.orderbookTime.HasValue)
             {
                 this.quoteTime = update.orderbookTime.Value;
-
-                //if(this.count < this.NofSample)
-                //{
-                //    if(this.count == 0)
-                //    {
-                //        if(this.currentSampling == 0)
-                //        {
-                //            this.sample_latency1 = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
-                //            this.sample1Time = this.last_quote_updated_time.Value;
-                //            ++(this.count);
-                //        }
-                //        else if(currentSampling == 1 && (this.last_quote_updated_time.Value - this.sample1Time).TotalSeconds > this.sample_gap)
-                //        {
-                //            this.intercept_latency1 = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
-                //            this.intercept_time1 = this.last_quote_updated_time.Value;
-                //            ++(this.count);
-                //        }
-                //        else if(currentSampling == 2 && (this.last_quote_updated_time.Value - this.sample1Time).TotalSeconds > this.sample_gap2)
-                //        {
-                //            this.intercept_latency2 = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
-                //            this.intercept_time2 = this.last_quote_updated_time.Value;
-                //            ++(this.count);
-                //        }
-                //    }
-                //    else
-                //    {
-                //        if(this.currentSampling == 0)
-                //        {
-                //            double currentValue = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
-                //            if(currentValue < this.sample_latency1)
-                //            {
-                //                this.sample_latency1 = currentValue;
-                //                this.sample1Time = this.last_quote_updated_time.Value;
-                //            }
-                //            ++(this.count);
-                //            if(count == this.NofSample)
-                //            {
-                //                count = 0;
-                //                ++(this.currentSampling);
-                //            }
-                //        }
-                //        else if(currentSampling == 1)
-                //        {
-                //            double currentValue = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
-                //            if (currentValue < this.intercept_latency1)
-                //            {
-                //                this.intercept_latency1 = currentValue;
-                //                this.intercept_time1 = this.last_quote_updated_time.Value;
-                //            }
-                //            ++(this.count);
-                //            if (count == this.NofSample)
-                //            {
-                //                this.coef = (this.intercept_latency1 - this.sample_latency1) / (this.intercept_time1 - this.sample1Time).TotalMilliseconds;
-                //                this.intercept = this.intercept_latency1;
-                //                this.intercept_time = this.intercept_time1;
-                //                this.readyToTrade = true;
-                //                count = 0;
-                //                ++(this.currentSampling);
-                //            }
-                //        }
-                //        else if (currentSampling == 2)
-                //        {
-                //            double currentValue = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
-                //            if (currentValue < this.intercept_latency2)
-                //            {
-                //                this.intercept_latency2 = currentValue;
-                //                this.intercept_time2 = this.last_quote_updated_time.Value;
-                //            }
-                //            ++(this.count);
-                //            if (count == this.NofSample)
-                //            {
-                //                this.coef = (this.intercept_latency2 - this.sample_latency1) / (this.intercept_time2 - this.sample1Time).TotalMilliseconds;
-                //                this.intercept = this.intercept_latency2;
-                //                this.intercept_time = this.intercept_time2;
-                //                ++(this.currentSampling);
-                //            }
-                //        }
-                //    }
-                //}
-                //else
-                //{
-                //    double currentValue = (this.last_quote_updated_time.Value - this.quoteTime).TotalMilliseconds;
-                //    if(currentValue < this.intercept)
-                //    {
-                //        this.coef = (currentValue - this.sample_latency1) / (this.last_quote_updated_time.Value - this.sample1Time).TotalMilliseconds;
-                //        this.intercept = currentValue;
-                //        this.intercept_time = this.last_quote_updated_time.Value;
-                //    }
-                //}
             }
 
             switch (update.updateType)
@@ -563,7 +521,7 @@ namespace Crypto_Trading
 
                     break;
             }
-
+            
             if (this.readyToTrade && update.timestamp.HasValue && update.orderbookTime.HasValue)
             {
                 ++(this.count_Allquotes);
@@ -577,6 +535,7 @@ namespace Crypto_Trading
                     ++(this.cum_Latentquotes);
                 }
             }
+            calcFactors();
         }
         public void updateTrade(DataTrade update)
         {
@@ -587,10 +546,12 @@ namespace Crypto_Trading
                 case orderSide.Buy:
                     this.buy_quantity += update.quantity;
                     this.buy_notional += update.quantity * update.price;
+                    this.temp_buy_quantity += update.quantity;
                     break;
                 case orderSide.Sell:
                     this.sell_quantity += update.quantity;
                     this.sell_notional += update.quantity * update.price;
+                    this.temp_sell_quantity += update.quantity;
                     break;
             }
 
@@ -607,6 +568,7 @@ namespace Crypto_Trading
                     ++(this.cum_LatentTrade);
                 }
             }
+            calcFactors();
         }
 
         private bool updateBeskAskBid(decimal quantity)
@@ -1242,113 +1204,6 @@ namespace Crypto_Trading
             }
             return ret;
         }
-        //public void updateFills(DataSpotOrderUpdate prev_ord,DataSpotOrderUpdate new_ord)
-        //{
-        //    decimal filledQuantity = 0;
-        //    decimal filledPrice = 0;
-        //    decimal fee = 0;
-
-        //    filledQuantity = new_ord.filled_quantity - prev_ord.filled_quantity;
-
-        //    if (!new_ord.isVirtual)
-        //    {
-        //        if(new_ord.market == market.bitbank)
-        //        {
-        //            filledQuantity = 0;
-        //            fee = 0;
-        //            filledPrice = 0;
-        //        }
-        //        else if(new_ord.market == market.bittrade)
-        //        {
-        //            if (new_ord.current_traded_quantity > 0)
-        //            {
-        //                filledQuantity = new_ord.current_traded_quantity;
-        //                filledPrice = new_ord.current_traded_price;
-        //                fee = 0;
-        //            }
-        //            else if(new_ord.fee > 0)//Fee can be retrived from only trade.clearing object 
-        //            {
-        //                fee = new_ord.fee;
-        //                filledPrice = 0;
-        //                filledQuantity = 0;
-        //            }
-        //            else
-        //            {
-        //                filledQuantity = 0;
-        //                fee = 0;
-        //                filledPrice = 0;
-
-        //            }
-        //        }
-        //        else if (new_ord.market == market.coincheck)
-        //        {
-        //            filledQuantity = 0;
-        //            fee = 0;
-        //            filledPrice = 0;
-        //        }
-        //        else
-        //        {
-        //            if(new_ord == prev_ord)
-        //            {
-        //                filledQuantity = new_ord.filled_quantity;
-        //                filledPrice = new_ord.average_price;
-        //                fee = new_ord.fee;
-        //            }
-        //            else
-        //            {
-        //                filledPrice = (new_ord.filled_quantity * new_ord.average_price - prev_ord.filled_quantity * prev_ord.average_price) / filledQuantity;
-        //                fee = new_ord.fee - prev_ord.fee;
-        //            }
-        //        }
-        //    }
-        //    else
-        //    {
-        //        filledQuantity = 0;
-        //        fee = 0;
-        //        filledPrice = 0;
-        //        //if (new_ord == prev_ord)
-        //        //{
-        //        //    filledQuantity = new_ord.filled_quantity;
-        //        //    filledPrice = new_ord.average_price;
-        //        //    fee = new_ord.fee;
-        //        //}
-        //        //else
-        //        //{
-        //        //    filledPrice = (new_ord.filled_quantity * new_ord.average_price - prev_ord.filled_quantity * prev_ord.average_price) / filledQuantity;
-        //        //    fee = new_ord.fee - prev_ord.fee;
-        //        //}
-        //    }
-
-
-        //    if (new_ord.side == orderSide.Sell)
-        //    {
-        //        this.my_sell_quantity += filledQuantity;
-        //        this.my_sell_notional += filledQuantity * filledPrice;
-        //        filledQuantity *= -1;
-        //    }
-        //    else
-        //    {
-        //        this.my_buy_quantity += filledQuantity;
-        //        this.my_buy_notional += filledQuantity * filledPrice;
-        //    }
-        //    this.baseBalance.AddBalance(filledQuantity,0);
-        //    this.quoteBalance.AddBalance(-filledQuantity * filledPrice,0);
-
-        //    if(new_ord.fee_asset.ToUpper() == this.baseCcy)
-        //    {
-        //        this.baseBalance.AddBalance(- fee, 0);
-        //        this.base_fee += fee;
-        //    }
-        //    else if(new_ord.fee_asset.ToUpper() == this.quoteCcy)
-        //    {
-        //        this.quoteBalance.AddBalance(- fee, 0);
-        //        this.quote_fee += fee;
-        //    }
-        //    else
-        //    {
-        //        this.unknown_fee += fee;
-        //    }
-        //}
 
         public void updateOrders(DataSpotOrderUpdate ord)
         {
