@@ -123,6 +123,7 @@ namespace Crypto_Trading
         public decimal tradeImbalance;
         public double quoteImbalance;
         public double weightedMid;
+        public double quoteLatency;
 
 
         public double avg_RV_display;

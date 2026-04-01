@@ -2058,6 +2058,16 @@ namespace Utils
         public decimal residualPnL;
         public double avg_latency;
 
+        //Factors
+        public double makerLatency;
+        public decimal makerTradeImbalance;
+        public double makerQuoteImbalance;
+        public double makerMidRatio;
+        public double takerLatency;
+        public decimal takerTradeImbalance;
+        public double takerQuoteImbalance;
+        public double takerMidRatio;
+
         public tradeSummary()
         {
             this.init();   
@@ -2134,6 +2144,18 @@ namespace Utils
             this.maker_priceAdjustment = makerPrAdj;
             this.taker_priceAdjustment = takerPrAdj;
         }
+
+        public void addFactors(double mLat, decimal mtImb, double mqImb, double mMid, double tLat, decimal ttImb, double tqImb, double tMid)
+        {
+            this.makerLatency = mLat;
+            this.makerTradeImbalance = mtImb;
+            this.makerQuoteImbalance = mqImb;
+            this.makerMidRatio = mMid;
+            this.takerLatency = tLat;
+            this.takerTradeImbalance = ttImb;
+            this.takerQuoteImbalance = tqImb;
+            this.takerMidRatio = tMid;
+        }
         public void calcPnL()
         {
             decimal quantity = Math.Min(this.taker_quantity,this.maker_quantity);
@@ -2202,6 +2224,15 @@ namespace Utils
             this.markupPnL = 0;
             this.residualPnL = 0;
             this.avg_latency = 0;
+
+            this.makerLatency = 0;
+            this.makerTradeImbalance = 0;
+            this.makerQuoteImbalance = 0;
+            this.makerMidRatio = 0;
+            this.takerLatency = 0;
+            this.takerTradeImbalance = 0;
+            this.takerQuoteImbalance = 0;
+            this.takerMidRatio = 0;
         }
         public string ToString()
         {
@@ -2215,7 +2246,7 @@ namespace Utils
                 strtime = "";
             }
             //timestamp,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,maker_side,maker_avgprice,maker_quantity,maker_avgExecutedTime,taker_side,taker_avgprice,taker_quantity,taker_avgExecutedTime,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency;
-            return $"{strtime},{strategy},{this.id},{this.BBook},{this.maker_symbolmarket},{this.taker_symbolmarket},{this.maker_orderid},{this.taker_orderid},{this.layer},{this.maker_side},{this.maker_avgprice},{this.maker_quantity},{this.maker_avgExecutedTime},{this.taker_side},{this.taker_avgprice},{this.taker_quantity},{this.taker_avgExecutedTime},{this.realized_volatility},{this.maker_markup},{this.taker_markup},{this.skew},{this.maker_priceAdjustment},{this.taker_priceAdjustment},{this.markupPnL},{this.skewPnL},{this.priceAdjPnL},{this.residualPnL},{this.totalFee},{this.totalPnL},{this.avg_latency}";
+            return $"{strtime},{strategy},{this.id},{this.BBook},{this.maker_symbolmarket},{this.taker_symbolmarket},{this.maker_orderid},{this.taker_orderid},{this.layer},{this.maker_side},{this.maker_avgprice},{this.maker_quantity},{this.maker_avgExecutedTime},{this.taker_side},{this.taker_avgprice},{this.taker_quantity},{this.taker_avgExecutedTime},{this.realized_volatility},{this.maker_markup},{this.taker_markup},{this.skew},{this.maker_priceAdjustment},{this.taker_priceAdjustment},{this.markupPnL},{this.skewPnL},{this.priceAdjPnL},{this.residualPnL},{this.totalFee},{this.totalPnL},{this.avg_latency},{this.makerLatency},{this.makerTradeImbalance},{this.makerQuoteImbalance},{this.makerMidRatio},{this.takerLatency},{this.takerTradeImbalance},{this.takerQuoteImbalance},{this.takerMidRatio}";
         }
 
     }

@@ -460,7 +460,7 @@ namespace Crypto_Trading
                             }
                             else
                             {
-                                exBalance.marginTotal += b.total / 2;
+                                exBalance.marginTotal += b.total * b.current_price / 2;
                             }
                             break;
                         case market.gmocoin:

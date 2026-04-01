@@ -261,14 +261,6 @@ namespace Crypto_Trading
                         ()=>
                         {
                             this.Latency.stop();
-                            //sw.Stop();
-                            //++this.count;
-                            //this.totalElapsedTime += sw.Elapsed.TotalNanoseconds / 1000;
-                            //if(sw.Elapsed.TotalNanoseconds > this.maxElapsedTime)
-                            //{
-                            //    this.maxElapsedTime = sw.Elapsed.TotalNanoseconds;
-                            //}
-                            //sw.Reset();
                         },
                         ct.Token,
                         this.spinnerMaxCount);

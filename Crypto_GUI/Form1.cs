@@ -729,7 +729,6 @@ namespace Crypto_GUI
             {
                 messageline = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + "   [" + logtype.ToString() + "]" + body + "\n";
             }
-
             this.logQueue.Enqueue(messageline);
             //switch (logtype)
             //{
@@ -753,8 +752,14 @@ namespace Crypto_GUI
             //while (this.logQueue.TryDequeue(out line))
             while (line != null)
             {
-
-                this.textBoxMainLog.Text += line;
+                if(line.Contains("[Trade Engine]"))
+                {
+                    this.textBoxMainLog.Text += line;
+                }
+                else if(line.Contains("[ERROR]"))
+                {
+                    this.textBoxMainLog.Text += line;
+                }
 
                 if (this.logFile != null)
                 {

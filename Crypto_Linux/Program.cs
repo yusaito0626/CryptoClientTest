@@ -1036,6 +1036,34 @@ namespace Crypto_Linux
                     else if(getSoDPos && File.Exists(sodpos_filename))
                     {
                         readSoDFile(sodpos_filename);
+                        foreach(var ex in qManager.exchanges.Values)
+                        {
+                            switch(ex.market)
+                            {
+                                case market.bitbank:
+                                    foreach (var pos in ex.balance)
+                                    {
+                                        if(pos.Key == "JPY")
+                                        {
+                                            ex.marginTotal += pos.Value.total;
+                                        }
+                                        else
+                                        {
+                                            ex.marginTotal += pos.Value.total * pos.Value.current_price / 2;
+                                        }
+                                    }
+                                    break;
+                                default:
+                                    foreach (var pos in ex.balance)
+                                    {
+                                        if (pos.Key == "JPY")
+                                        {
+                                            ex.marginTotal += pos.Value.total;
+                                        }
+                                    }
+                                    break;
+                            }
+                        }
                     }
                     else
                     {
@@ -1054,13 +1082,13 @@ namespace Crypto_Linux
                             {
                                 takerExchange = new Crypto_Trading.Exchange();
                                 takerExchange.market = takerins.market;
-                                qManager.exchanges[takerExchange.market] = takerExchange;
                                 Balance jpy_balance = new Balance();
                                 jpy_balance.market = takerExchange.market;
                                 jpy_balance.ccy = "JPY";
                                 jpy_balance.total = 3_000_000;
                                 takerExchange.balance["JPY"] = jpy_balance;
                                 takerExchange.marginTotal += jpy_balance.total;
+                                qManager.exchanges[takerExchange.market] = takerExchange;
                             }
                             else
                             {
@@ -1070,13 +1098,13 @@ namespace Crypto_Linux
                             {
                                 makerExchange = new Crypto_Trading.Exchange();
                                 makerExchange.market = makerins.market;
-                                qManager.exchanges[makerExchange.market] = makerExchange;
                                 Balance jpy_balance = new Balance();
                                 jpy_balance.market = makerExchange.market;
                                 jpy_balance.ccy = "JPY";
                                 jpy_balance.total = 3_000_000;
                                 makerExchange.balance["JPY"] = jpy_balance;
                                 makerExchange.marginTotal += jpy_balance.total;
+                                qManager.exchanges[makerExchange.market] = makerExchange;
                             }
                             else
                             {
@@ -1303,9 +1331,12 @@ namespace Crypto_Linux
                     {
                         addLog("Intraday PnL file not found");
                     }
-                    string mifile = outputPath + "/Market_Impact.csv";
-                    readMIFile(mifile);
                 }
+
+                string mifile = outputPath + "/Market_Impact.csv";
+                readMIFile(mifile);
+                string tptFile = outputPath + "/TradePerTrade.csv";
+                readTradePerTrade(tptFile);
 
                 if (liveTrading || privateConnect)
                 {
@@ -2408,7 +2439,7 @@ namespace Crypto_Linux
             {
                 using (StreamWriter tpt = new StreamWriter(new FileStream(filename, FileMode.Create, FileAccess.Write)))
                 {
-                    tpt.WriteLine("timestamp,strategy,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,layer,maker_side,maker_avgprice,maker_quantity,maker_avgExecutedTime,taker_side,taker_avgprice,taker_quantity,taker_avgExecutedTime,realized_volatility,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency");
+                    tpt.WriteLine("timestamp,strategy,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,layer,maker_side,maker_avgprice,maker_quantity,maker_avgExecutedTime,taker_side,taker_avgprice,taker_quantity,taker_avgExecutedTime,realized_volatility,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency,makerLatency,makerTradeImbalance,makerQuoteImbalance,makerMidRatio,takerLatency,takerTradeImbalance,takerQuoteImbalance,takerMidRatio");
                     foreach (var stg in strategies.Values)
                     {
                         foreach (var ts in stg.tradeSummaries.Values)
