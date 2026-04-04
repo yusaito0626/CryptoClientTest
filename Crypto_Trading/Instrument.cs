@@ -425,8 +425,6 @@ namespace Crypto_Trading
             using(var qlock = this.quotes_lock.getlock())
             {
                 decimal distance = 2000;
-                int i = 0;
-                bool breakout = false;
                 foreach(var a in this.asks)
                 {
                     if((a.Key - this.prev_mid) / this.prev_mid * 1_000_000 < distance)
@@ -438,7 +436,7 @@ namespace Crypto_Trading
                         break;
                     }
                 }
-                foreach (var b in this.bids)
+                foreach (var b in this.bids.Reverse())
                 {
                     if ((this.prev_mid - b.Key) / this.prev_mid * 1_000_000 < distance)
                     {
@@ -450,8 +448,11 @@ namespace Crypto_Trading
                     }
                 }
             }
-            this.quoteImbalance = Math.Log((double)(bidQuantity / askQuantity));
-            this.weightedMid = (bidQuantity * (double)this.bestask.Item1 + askQuantity * (double)this.bestbid.Item1) / (bidQuantity + askQuantity);
+            if(askQuantity > 0 && bidQuantity > 0)
+            {
+                this.quoteImbalance = Math.Log((bidQuantity / askQuantity));
+                this.weightedMid = (bidQuantity * (double)this.bestask.Item1 + askQuantity * (double)this.bestbid.Item1) / (bidQuantity + askQuantity);
+            }
         }
 
         public void updateQuotes(DataOrderBook update)
@@ -1227,8 +1228,10 @@ namespace Crypto_Trading
         }
         public void updateFills(DataFill fill)
         {
+            //Do not update Balance object in this function. It has to be updated in Exchange.updateFills
             //Fee is set 0 when its not realized.
             decimal filled_fee;
+            //decimal cashMovement = 0;
             if (fill.order_type == orderType.LimitMaker || fill.order_type == orderType.Limit)
             {
                 filled_fee = fill.quantity * fill.price * this.maker_fee;
@@ -1255,6 +1258,9 @@ namespace Crypto_Trading
                     //this.longPosition.unrealized_interest -= fill.interest;
                     this.realized_PnL += fill.profit_loss;
                     this.realized_Interest += fill.interest;
+                    //cashMovement += fill.profit_loss;
+                    //cashMovement -= fill.interest;
+                    //cashMovement -= fill.fee_quote;
                     //this.quoteBalance.total += fill.profit_loss - fill.fee_quote - fill.interest;
                     //this.longPosition.AddBalance(-fill.quantity, 0, fill.price);
                 }
@@ -1276,6 +1282,9 @@ namespace Crypto_Trading
                     //this.shortPosition.unrealized_interest -= fill.interest;
                     this.realized_PnL += fill.profit_loss;
                     this.realized_Interest += fill.interest;
+                    //cashMovement += fill.profit_loss;
+                    //cashMovement -= fill.interest;
+                    //cashMovement -= fill.fee_quote;
                     //this.quoteBalance.total += fill.profit_loss - fill.fee_quote - fill.interest;
                     //this.shortPosition.AddBalance(-fill.quantity, 0, fill.price);
                 }
@@ -1305,7 +1314,7 @@ namespace Crypto_Trading
                 this.my_sell_quantity += fill.quantity;
                 this.my_sell_notional += fill.quantity * fill.price;
             }
-            this.baseBalance.AddBalance(-fill.fee_base, 0);
+            //this.baseBalance.AddBalance(-fill.fee_base, 0);
 
             this.quote_fee += filled_fee;
             this.base_fee += fill.fee_base;
@@ -1324,6 +1333,7 @@ namespace Crypto_Trading
                     ++(this.cum_LatentFill);
                 }
             }
+            //return cashMovement;
         }
 
         public void update_micurve(MarketImpact mi)

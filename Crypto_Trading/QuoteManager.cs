@@ -1179,7 +1179,6 @@ namespace Crypto_Trading
                     while(msg != null)
                     {
                         start();
-                        this.sw_updateTrades.Start();
                         symbol_market = msg.symbol + "@" + msg.market.ToString();
                         foreach (var stg in this.strategies)
                         {

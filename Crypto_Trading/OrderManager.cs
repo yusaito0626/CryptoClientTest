@@ -675,36 +675,6 @@ namespace Crypto_Trading
                 return output;
             }
 
-            //if (sndOrd.price > sndOrd.ins.bestask.Item1 * (decimal)1.1 || sndOrd.price < sndOrd.ins.bestbid.Item1 * (decimal)0.9)
-            //{
-            //    addLog("[New Order]The price is too far away", logType.WARNING);
-            //    output = this.ord_client.ordUpdateStack.pop();
-            //    if (output == null)
-            //    {
-            //        output = new DataSpotOrderUpdate();
-            //    }
-            //    output.status = orderStatus.INVALID;
-            //    output.timestamp = current;
-            //    output.internal_order_id = sndOrd.internalOrdId;
-            //    output.side = sndOrd.side;
-            //    output.symbol = sndOrd.ins.symbol;
-            //    output.market = sndOrd.ins.market;
-            //    output.symbol_market = sndOrd.ins.symbol_market;
-            //    output.order_quantity = sndOrd.quantity;
-            //    output.order_price = sndOrd.price;
-            //    output.filled_quantity = 0;
-            //    output.average_price = 0;
-            //    output.fee = 0;
-            //    output.fee_asset = "";
-            //    output.is_trigger_order = true;
-            //    output.last_trade = "";
-            //    output.msg = sndOrd.msg;
-            //    output.err_code = (int)ordError.INVALID_PRICE;
-            //    addLog(output.ToString(), logType.WARNING);
-            //    this.ord_client.ordUpdateQueue.Enqueue(output);
-            //    return output;
-            //}
-
             //Availability Check
             decimal orderprice = sndOrd.price;
             List<decimal> pr = new List<decimal>();
@@ -885,7 +855,7 @@ namespace Crypto_Trading
                             return output;
                         }
                     }
-                    ex.updateMarginLocked(sndOrd.price * sndOrd.quantity);
+                    ex.updateMarginLocked(sndOrd.price * sndOrd.quantity / sndOrd.ins.leverage);
                 }
                 else//Close
                 {
@@ -1047,43 +1017,6 @@ namespace Crypto_Trading
                 {
                     this.ordIdMapping[output.market + output.order_id] = sndOrd.internalOrdId;
                 }
-                //if (output.order_type == orderType.Limit || output.order_type == orderType.LimitMaker)
-                //{
-                //    if (output.position_side == positionSide.Long)
-                //    {
-                //        if (output.side == orderSide.Sell)
-                //        {
-                //            sndOrd.ins.longPosition.AddBalance(0, output.order_quantity);
-                //        }
-                //        else
-                //        {
-                //            ex.updateMarginLocked(output.order_quantity * output.order_price);
-                //        }
-                //    }
-                //    else if (output.position_side == positionSide.Short)
-                //    {
-                //        if (output.side == orderSide.Buy)
-                //        {
-                //            sndOrd.ins.shortPosition.AddBalance(0, output.order_quantity);
-                //        }
-                //        else
-                //        {
-                //            ex.updateMarginLocked(output.order_quantity * output.order_price);
-                //        }
-                //    }
-                //    else
-                //    {
-                //        switch (output.side)
-                //        {
-                //            case orderSide.Buy:
-                //                sndOrd.ins.quoteBalance.AddBalance(0, output.order_price * output.order_quantity);
-                //                break;
-                //            case orderSide.Sell:
-                //                sndOrd.ins.baseBalance.AddBalance(0, output.order_quantity);
-                //                break;
-                //        }
-                //    }
-                //}
                 this.virtual_order_queue.Enqueue(output);
                 this.crypto_client.ordUpdateQueue.Enqueue(output);
             }
@@ -1194,7 +1127,7 @@ namespace Crypto_Trading
                         }
                         else
                         {
-                            ex.updateMarginLocked(-output.order_quantity * output.order_price);
+                            ex.updateMarginLocked(-output.order_quantity * output.order_price / sndOrd.ins.leverage);
                         }
                     }
                     else if (output.position_side == positionSide.Short)
@@ -1205,7 +1138,7 @@ namespace Crypto_Trading
                         }
                         else
                         {
-                            ex.updateMarginLocked(-output.order_quantity * output.order_price);
+                            ex.updateMarginLocked(-output.order_quantity * output.order_price / sndOrd.ins.leverage);
                         }
                     }
                     else
@@ -1429,7 +1362,7 @@ namespace Crypto_Trading
                         }
                         else
                         {
-                            ex.updateMarginLocked(- output.order_quantity * output.order_price);
+                            ex.updateMarginLocked(- output.order_quantity * output.order_price / sndOrd.ins.leverage);
                         }
                     }
                     else if (output.position_side == positionSide.Short)
@@ -1440,7 +1373,7 @@ namespace Crypto_Trading
                         }
                         else
                         {
-                            ex.updateMarginLocked(- output.order_quantity * output.order_price);
+                            ex.updateMarginLocked(- output.order_quantity * output.order_price / sndOrd.ins.leverage);
                         }
                     }
                     else
@@ -3704,7 +3637,7 @@ namespace Crypto_Trading
                             }
                             else if(ex != null)
                             {
-                                ex.updateMarginLocked(-filled_quantity * ord.order_price);
+                                ex.updateMarginLocked(-filled_quantity * ord.order_price / ins.leverage);
                             }
                         }
                         else if(ord.position_side == positionSide.Short)
@@ -3715,7 +3648,7 @@ namespace Crypto_Trading
                             }
                             else if (ex != null)
                             {
-                                ex.updateMarginLocked(-filled_quantity * ord.order_price);
+                                ex.updateMarginLocked(-filled_quantity * ord.order_price / ins.leverage);
                             }
                         }
                         else
@@ -3910,7 +3843,7 @@ namespace Crypto_Trading
                             }
                             else if (ex != null)
                             {
-                                ex.updateMarginLocked(-filled_quantity * ord.order_price);
+                                ex.updateMarginLocked(-filled_quantity * ord.order_price / ins.leverage);
                             }
                         }
                         else if (ord.position_side == positionSide.Short)
@@ -3921,7 +3854,7 @@ namespace Crypto_Trading
                             }
                             else if (ex != null)
                             {
-                                ex.updateMarginLocked(-filled_quantity * ord.order_price);
+                                ex.updateMarginLocked(-filled_quantity * ord.order_price / ins.leverage);
                             }
                         }
                         else
@@ -4018,7 +3951,7 @@ namespace Crypto_Trading
                                 }
                                 else if (ex != null)
                                 {
-                                    ex.updateMarginLocked(-filled_quantity * ord.order_price);
+                                    ex.updateMarginLocked(-filled_quantity * ord.order_price / ins.leverage);
                                 }
                             }
                             else if (ord.position_side == positionSide.Short)
@@ -4029,7 +3962,7 @@ namespace Crypto_Trading
                                 }
                                 else if (ex != null)
                                 {
-                                    ex.updateMarginLocked(-filled_quantity * ord.order_price);
+                                    ex.updateMarginLocked(-filled_quantity * ord.order_price / ins.leverage);
                                 }
                             }
                             else
@@ -4176,7 +4109,7 @@ namespace Crypto_Trading
                             }
                             else if (ex != null)
                             {
-                                ex.updateMarginLocked(-filled_quantity * ord.order_price);
+                                ex.updateMarginLocked(-filled_quantity * ord.order_price / ins.leverage);
                             }
                         }
                         else if (ord.position_side == positionSide.Short)
@@ -4187,7 +4120,7 @@ namespace Crypto_Trading
                             }
                             else if (ex != null)
                             {
-                                ex.updateMarginLocked(-filled_quantity * ord.order_price);
+                                ex.updateMarginLocked(-filled_quantity * ord.order_price / ins.leverage);
                             }
                         }
                         else
@@ -4251,7 +4184,7 @@ namespace Crypto_Trading
                                 }
                                 else if (ex != null)
                                 {
-                                    ex.updateMarginLocked(-filled_quantity * ord.order_price);
+                                    ex.updateMarginLocked(-filled_quantity * ord.order_price / ins.leverage);
                                 }
                             }
                             else if (ord.position_side == positionSide.Short)
@@ -4262,7 +4195,7 @@ namespace Crypto_Trading
                                 }
                                 else if (ex != null)
                                 {
-                                    ex.updateMarginLocked(-filled_quantity * ord.order_price);
+                                    ex.updateMarginLocked(-filled_quantity * ord.order_price / ins.leverage);
                                 }
                             }
                             else
@@ -4413,6 +4346,31 @@ namespace Crypto_Trading
                                         fill.timestamp = update.timestamp;
                                         fill.filled_time = fill.timestamp;
                                         fill.order_type = update.order_type;
+                                        switch(fill.side)
+                                        {
+                                            case orderSide.Buy:
+                                                if (fill.position_side == positionSide.Short && exchanges.ContainsKey(fill.market))
+                                                {
+                                                    Exchange ex = exchanges[fill.market];
+                                                    if (ex.marginShort.ContainsKey(fill.symbol_market))
+                                                    {
+                                                        BalanceMargin bm = ex.marginShort[fill.symbol_market];
+                                                        fill.profit_loss = (bm.avg_price - fill.price) * fill.quantity;
+                                                    }
+                                                }
+                                                break;
+                                            case orderSide.Sell:
+                                                if (fill.position_side == positionSide.Long && exchanges.ContainsKey(fill.market))
+                                                {
+                                                    Exchange ex = exchanges[fill.market];
+                                                    if (ex.marginLong.ContainsKey(fill.symbol_market))
+                                                    {
+                                                        BalanceMargin bm = ex.marginLong[fill.symbol_market];
+                                                        fill.profit_loss = (fill.price - bm.avg_price) * fill.quantity;
+                                                    }
+                                                }
+                                                break;
+                                        }
                                         this.crypto_client.ordUpdateQueue.Enqueue(update);
                                         this.crypto_client.fillQueue.Enqueue(fill);
                                     }
@@ -4545,6 +4503,16 @@ namespace Crypto_Trading
                                             fill.timestamp = output.timestamp;
                                             fill.filled_time = fill.timestamp;
                                             fill.order_type = ord.order_type;
+                                            //Add profit_loss if it's a closing order.
+                                            if(fill.position_side == positionSide.Short && exchanges.ContainsKey(fill.market))
+                                            {
+                                                Exchange ex = exchanges[fill.market];
+                                                if(ex.marginShort.ContainsKey(fill.symbol_market))
+                                                {
+                                                    BalanceMargin bm = ex.marginShort[fill.symbol_market];
+                                                    fill.profit_loss = (bm.avg_price - fill.price) * fill.quantity;
+                                                }
+                                            }
                                             //fill.msg += " Best Ask:" + ins.bestask.Item1.ToString();
                                             //if (last_trade != null)
                                             //{
@@ -4597,6 +4565,15 @@ namespace Crypto_Trading
                                             fill.timestamp = output.timestamp;
                                             fill.filled_time = fill.timestamp;
                                             fill.order_type = ord.order_type;
+                                            if (fill.position_side == positionSide.Long && exchanges.ContainsKey(fill.market))
+                                            {
+                                                Exchange ex = exchanges[fill.market];
+                                                if (ex.marginLong.ContainsKey(fill.symbol_market))
+                                                {
+                                                    BalanceMargin bm = ex.marginLong[fill.symbol_market];
+                                                    fill.profit_loss = (fill.price - bm.avg_price) * fill.quantity;
+                                                }
+                                            }
                                             //fill.msg += " Best Bid:" + ins.bestbid.Item1.ToString();
                                             //if (last_trade != null)
                                             //{

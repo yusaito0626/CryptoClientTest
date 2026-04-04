@@ -87,6 +87,8 @@ namespace Crypto_Trading
             }
 
             decimal filled_fee;
+            decimal realized_fee = 0;
+            decimal realized_interest = 0;
             if (fill.order_type == orderType.LimitMaker || fill.order_type == orderType.Limit)
             {
                 filled_fee = fill.quantity * fill.price * ins.maker_fee;
@@ -104,6 +106,7 @@ namespace Crypto_Trading
                     if (this.balance.ContainsKey(ins.baseCcy))
                     {
                         baseBalance = this.balance[ins.baseCcy];
+                        baseBalance.AddBalance(-fill.fee_base, 0);
                     }
                     else
                     {
@@ -113,6 +116,7 @@ namespace Crypto_Trading
                     if (this.balance.ContainsKey(ins.quoteCcy))
                     {
                         quoteBalance = this.balance[ins.quoteCcy];
+                        quoteBalance.AddBalance(-fill.fee_quote, 0);
                     }
                     else
                     {
@@ -211,10 +215,12 @@ namespace Crypto_Trading
                             //decimal realized_fee = fill.fee_quote;
                             //decimal realized_interest = fill.interest;//this.longPosition.unrealized_interest * (fill.quantity / this.longPosition.total);
                             //fill.msg += $" Realize PnL: {fill.profit_loss.ToString("N8")} avg_price: {this.longPosition.avg_price.ToString()}";
-                            longPosition.unrealized_fee -= fill.fee_quote - filled_fee;
-                            longPosition.unrealized_interest -= fill.interest;
-                            marginTotal_chg += fill.profit_loss - fill.fee_quote - fill.interest;
-                            quoteBalance.AddBalance(fill.profit_loss - fill.fee_quote - fill.interest, 0);
+                            realized_fee = longPosition.unrealized_fee * fill.quantity / longPosition.total;
+                            realized_interest = longPosition.unrealized_interest * fill.quantity / longPosition.total;
+                            longPosition.unrealized_fee -= realized_fee;
+                            longPosition.unrealized_interest -= realized_interest;
+                            marginTotal_chg += fill.profit_loss - fill.fee_quote - fill.interest - realized_fee - realized_interest;
+                            quoteBalance.AddBalance(fill.profit_loss - fill.fee_quote - fill.interest - realized_fee - realized_interest, 0);
                             //quoteBalance.total += fill.profit_loss - fill.fee_quote - fill.interest;
                             longPosition.AddBalance(-fill.quantity, 0, fill.price);
                         }
@@ -248,11 +254,13 @@ namespace Crypto_Trading
                             //decimal realized_fee = fill.fee_quote;
                             //decimal realized_interest = fill.interest;//this.shortPosition.unrealized_interest * (fill.quantity / this.shortPosition.total);
                             //fill.msg += $" Realize PnL: {fill.profit_loss.ToString("N8")} avg_price: {this.shortPosition.avg_price.ToString()}";
-                            shortPosition.unrealized_fee -= fill.fee_quote - filled_fee;
-                            shortPosition.unrealized_interest -= fill.interest;
+                            realized_fee = shortPosition.unrealized_fee * fill.quantity / shortPosition.total;
+                            realized_interest = shortPosition.unrealized_interest * fill.quantity / shortPosition.total;
+                            shortPosition.unrealized_fee -= realized_fee;
+                            shortPosition.unrealized_interest -= realized_interest;
                             //quoteBalance.total += fill.profit_loss - fill.fee_quote - fill.interest;
-                            marginTotal_chg += fill.profit_loss - fill.fee_quote - fill.interest;
-                            quoteBalance.AddBalance(fill.profit_loss - fill.fee_quote - fill.interest, 0);
+                            marginTotal_chg += fill.profit_loss - fill.fee_quote - fill.interest - realized_fee - realized_interest;
+                            quoteBalance.AddBalance(fill.profit_loss - fill.fee_quote - fill.interest - realized_fee - realized_interest, 0);
                             shortPosition.AddBalance(-fill.quantity, 0, fill.price);
                         }
                     }

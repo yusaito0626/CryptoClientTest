@@ -83,8 +83,10 @@ namespace Crypto_Linux
         static private bool test;
         static private bool privateConnect;
         static private bool log_public = false;
-        static private bool getSoDPos;
+        static private bool setRealPos;
         static private bool msgLogging;
+        static private DateTime? lastConnectedTime = null;
+        static private double reconnectionPeriod = 4;
 
         static string str_endTime;
         static DateTime endTime;
@@ -140,7 +142,7 @@ namespace Crypto_Linux
             live = false;
             test = false;
             privateConnect = true;
-            getSoDPos = true;
+            setRealPos = true;
             msgLogging = false;
 
             marketImpactQueue = new SISOQueue<MarketImpact>();
@@ -566,7 +568,7 @@ namespace Crypto_Linux
                 latency_msg += "Live Order Count:" + oManager.live_orders.Count.ToString() + "\n";
                 foreach (var o in oManager.live_orders.Values)
                 {
-                    latency_msg += o.internal_order_id + " " + o.position_side.ToString() + " " + o.side.ToString() + " " + o.order_quantity.ToString() + "@" + o.order_price.ToString() + "\n";
+                    latency_msg += o.internal_order_id + " " + o.symbol_market + " " + o.position_side.ToString() + " " + o.side.ToString() + " " + o.order_quantity.ToString() + "@" + o.order_price.ToString() + "\n";
                 }
             }
             
@@ -699,16 +701,24 @@ namespace Crypto_Linux
             {
                 privateConnect = true;
             }
-            if (root.TryGetProperty("getSoDPos", out elem))
+            if (root.TryGetProperty("reconnectionPeriod", out elem))
+            {
+                reconnectionPeriod = elem.GetDouble();
+            }
+            else
+            {
+                reconnectionPeriod = 4;
+            }
+            if (root.TryGetProperty("setRealPos", out elem))
             {
                 if (!live)
                 {
-                    getSoDPos = elem.GetBoolean();
+                    setRealPos = elem.GetBoolean();
                 }
             }
             else
             {
-                getSoDPos = true;
+                setRealPos = true;
             }
             if (root.TryGetProperty("msgLogging", out elem))
             {
@@ -996,6 +1006,7 @@ namespace Crypto_Linux
                     }
                     connectionStates[mkt.Key.ToString()] = new connecitonStatus() { market = mkt.Key.ToString(), publicState = WebSocketState.None.ToString(), privateState = WebSocketState.None.ToString(), avgRTT = 0.0 };
                 }
+                lastConnectedTime = DateTime.UtcNow;
 
                 updateLog();
 
@@ -1023,55 +1034,156 @@ namespace Crypto_Linux
                 if (oManager.getVirtualMode())
                 {
                     string sodpos_filename = outputPath + "/SoD_Position_new.csv";
-                    if (privateConnect)
+                    if (privateConnect || setRealPos)
                     {
-                        bool ret;
-                        ret = await setRealPosition();
-                        if (!ret)
+                        if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys), qManager._markets.Keys))
                         {
-                            addLog("Failed to set real position", logType.WARNING);
+                            addLog("Failed to set balance", logType.WARNING);
                             return false;
                         }
-                    }
-                    else if(getSoDPos && File.Exists(sodpos_filename))
-                    {
-                        readSoDFile(sodpos_filename);
+                        if (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys), qManager._markets.Keys))
+                        {
+                            addLog("Failed to set margion position", logType.WARNING);
+                            return false;
+                        }
                         foreach(var ex in qManager.exchanges.Values)
                         {
-                            switch(ex.market)
+                            foreach(var b in ex.balance.Values)
                             {
-                                case market.bitbank:
-                                    foreach (var pos in ex.balance)
-                                    {
-                                        if(pos.Key == "JPY")
-                                        {
-                                            ex.marginTotal += pos.Value.total;
-                                        }
-                                        else
-                                        {
-                                            ex.marginTotal += pos.Value.total * pos.Value.current_price / 2;
-                                        }
-                                    }
-                                    break;
-                                default:
-                                    foreach (var pos in ex.balance)
-                                    {
-                                        if (pos.Key == "JPY")
-                                        {
-                                            ex.marginTotal += pos.Value.total;
-                                        }
-                                    }
-                                    break;
+                                b.inuse = 0;
+                            }
+                            foreach(var mb in ex.marginLong.Values)
+                            {
+                                mb.inuse = 0;
+                            }
+                            foreach(var mb in ex.marginShort.Values)
+                            {
+                                mb.inuse = 0;
                             }
                         }
-                    }
-                    else
-                    {
-                        if (!qManager.setVirtualBalance(virtualBalanceFile))
+
+                        foreach(var ex in qManager.exchanges)
                         {
-                            return false;
+                            Crypto_Trading.Exchange e_sod;
+                            if (!qManager.exchanges_SoD.ContainsKey(ex.Key))
+                            {
+                                e_sod = new Crypto_Trading.Exchange();
+                                e_sod.market = ex.Key;
+                                qManager.exchanges_SoD[ex.Key] = e_sod;
+                            }
+                            else
+                            {
+                                e_sod = qManager.exchanges_SoD[ex.Key];
+                            }
+                            foreach(var b in ex.Value.balance)
+                            {
+                                Balance b_sod;
+                                if(!e_sod.balance.ContainsKey(b.Key))
+                                {
+                                    b_sod = new Balance();
+                                    e_sod.balance[b.Key] = b_sod;
+                                }
+                                else
+                                {
+                                    b_sod = e_sod.balance[b.Key];
+                                }
+                                b_sod.ccy = b.Value.ccy;
+                                b_sod.market = b.Value.market;
+                                b_sod.current_price = b.Value.current_price;
+                                b_sod.valuation_pair = b.Value.valuation_pair;
+                                b_sod.total = b.Value.total;
+                            }
+                            foreach(var l in ex.Value.marginLong)
+                            {
+                                BalanceMargin l_sod;
+                                if(!e_sod.marginLong.ContainsKey(l.Key))
+                                {
+                                    l_sod = new BalanceMargin();
+                                    e_sod.marginLong[l.Key] = l_sod;
+                                }
+                                else
+                                {
+                                    l_sod = e_sod.marginLong[l.Key];
+                                }
+                                l_sod.symbol = l.Value.symbol;
+                                l_sod.market = l.Value.market;
+                                l_sod.side = l.Value.side;
+                                l_sod.total = l.Value.total;
+                                l_sod.avg_price = l.Value.avg_price;
+                                l_sod.unrealized_fee = l.Value.unrealized_fee;
+                                l_sod.unrealized_interest = l.Value.unrealized_interest;
+                                l_sod.unrealized_pnl = l.Value.unrealized_pnl;
+                                l_sod.current_price = l.Value.current_price;
+                                l_sod.leverage = l.Value.leverage;
+                            }
+                            foreach (var s in ex.Value.marginShort)
+                            {
+                                BalanceMargin s_sod;
+                                if (!e_sod.marginShort.ContainsKey(s.Key))
+                                {
+                                    s_sod = new BalanceMargin();
+                                    e_sod.marginShort[s.Key] = s_sod;
+                                }
+                                else
+                                {
+                                    s_sod = e_sod.marginShort[s.Key];
+                                }
+                                s_sod.symbol = s.Value.symbol;
+                                s_sod.market = s.Value.market;
+                                s_sod.side = s.Value.side;
+                                s_sod.total = s.Value.total;
+                                s_sod.avg_price = s.Value.avg_price;
+                                s_sod.unrealized_fee = s.Value.unrealized_fee;
+                                s_sod.unrealized_interest = s.Value.unrealized_interest;
+                                s_sod.unrealized_pnl = s.Value.unrealized_pnl;
+                                s_sod.current_price = s.Value.current_price;
+                                s_sod.leverage = s.Value.leverage;
+                            }
                         }
 
+                        foreach (var ex in qManager.exchanges.Values)
+                        {
+                            ex.setInstruments(qManager.instruments);
+                        }
+                        foreach (var ex in qManager.exchanges_SoD.Values)
+                        {
+                            ex.setInstruments(qManager.instruments);
+                        }
+                    }
+                    //else if(File.Exists(sodpos_filename))
+                    //{
+                    //    readSoDFile(sodpos_filename);
+                    //    foreach(var ex in qManager.exchanges.Values)
+                    //    {
+                    //        switch(ex.market)
+                    //        {
+                    //            case market.bitbank:
+                    //                foreach (var pos in ex.balance)
+                    //                {
+                    //                    if(pos.Key == "JPY")
+                    //                    {
+                    //                        ex.marginTotal += pos.Value.total;
+                    //                    }
+                    //                    else
+                    //                    {
+                    //                        ex.marginTotal += pos.Value.total * pos.Value.current_price / 2;
+                    //                    }
+                    //                }
+                    //                break;
+                    //            default:
+                    //                foreach (var pos in ex.balance)
+                    //                {
+                    //                    if (pos.Key == "JPY")
+                    //                    {
+                    //                        ex.marginTotal += pos.Value.total;
+                    //                    }
+                    //                }
+                    //                break;
+                    //        }
+                    //    }
+                    //}
+                    else
+                    {
                         foreach (var stg in strategies)
                         {
                             Instrument takerins = stg.Value.taker;
@@ -2580,221 +2692,234 @@ namespace Crypto_Linux
 
             if(stoppedThreads.Count > 0)
             {
-                bool currentTradingState = enabled;
-
+                //bool currentTradingState = enabled;
+                bool reconnected = false;
                 foreach (var stoppedTh in stoppedThreads)
                 {
-                    if (stoppedTh.Contains("Public"))
+                    if(reconnected == false && (stoppedTh.Contains("Public") || stoppedTh.Contains("Private")))
                     {
-                        stopStrategies();
-                        await oManager.cancelAllOrders();
-                        string market = stoppedTh.Replace("Public", "");
-                        addLog("Public Connection to " + market + " lost reconnecting in 5 sec", Enums.logType.WARNING);
-                        thManager.disposeThread(stoppedTh);
-                        Thread.Sleep(5000);
-                        if(!await qManager.connectPublicChannel((market)Enum.Parse(typeof(market),market)))
-                        {
-                            addLog("Failed to reconnect public. market:" + market, logType.ERROR);
-                            return;
-                        }
-                        Thread.Sleep(5000);
-                        foreach (var ins in qManager.instruments.Values)
-                        {
-                            market[] markets = [ins.market];
-                            if (market == ins.market.ToString())
-                            {
-                                //if (ins.market == Exchange.Bybit)
-                                //{
-                                //    await crypto_client.subscribeBybitOrderBook(ins.baseCcy, ins.quoteCcy);
-                                //}
-                                //else if (ins.market == Exchange.Coinbase)
-                                //{
-                                //    await crypto_client.subscribeCoinbaseOrderBook(ins.baseCcy, ins.quoteCcy);
-                                //}
-                                //else
-                                //{
-                                //    await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
-                                //}
-                                await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
-                                await crypto_client.subscribeTrades(markets, ins.baseCcy, ins.quoteCcy);
-                            }
-                        }
-                        if (oManager.getVirtualMode())
-                        {
-                            //if (!qManager.setVirtualBalance(virtualBalanceFile))
-                            //{
-
-                            //}
-                        }
-                        else
-                        {
-                            Task t = Task.Run(async () =>
-                            {
-                                await qManager.refreshAndCancelAllorders();
-                            });
-                            foreach (var stg_obj in qManager.strategies.Values)
-                            {
-                                stg_obj.maker.resetInusePosition();
-                                stg_obj.taker.resetInusePosition();
-                                stg_obj.live_bidprice = 0;
-                                stg_obj.live_buyorder_id = "";
-                                stg_obj.live_askprice = 0;
-                                stg_obj.live_sellorder_id = "";
-                                for (int i = 0; i < stg_obj.live_buyorders.Count; ++i)
-                                {
-                                    stg_obj.live_buyorders[i] = "";
-                                }
-                                for (int i = 0; i < stg_obj.live_sellorders.Count; ++i)
-                                {
-                                    stg_obj.live_sellorders[i] = "";
-                                }
-                            }
-                            t.Wait();
-                            if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys), qManager._markets.Keys))
-                            {
-                                int i = 0;
-                                while (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys), qManager._markets.Keys))
-                                {
-                                    ++i;
-                                    if(i > 5)
-                                    {
-                                        addLog("Failed to get balance.", logType.ERROR);
-                                    }
-                                    else
-                                    {
-                                        addLog($"Trial {i}",logType.WARNING);
-                                    }
-                                    Thread.Sleep(i * 1000);
-                                }
-
-                            }
-                            if (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys), qManager._markets.Keys))
-                            {
-                                int i = 0;
-                                while (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys), qManager._markets.Keys))
-                                {
-                                    ++i;
-                                    if (i > 5)
-                                    {
-                                        addLog("Failed to get balance", logType.ERROR);
-                                    }
-                                    else
-                                    {
-                                        addLog($"Trial {i}", logType.WARNING);
-                                    }
-                                    Thread.Sleep(i * 1000);
-                                }
-
-                            }
-                            foreach (var stg_obj in qManager.strategies.Values)
-                            {
-                                stg_obj.adjustPosition();
-                            }
-                        }
-                        addLog("Reconnection completed.");
-                    }
-                    else if (stoppedTh.Contains("Private"))
-                    {
-                        stopStrategies();
-                        await oManager.cancelAllOrders();
-                        string market = stoppedTh.Replace("Private", "");
-                        addLog("Private Connection to " + market + " lost reconnecting in 5 sec", Enums.logType.WARNING);
-                        thManager.disposeThread(stoppedTh);
-                        Thread.Sleep(5000);
-                        if(!await oManager.connectPrivateChannel((market)Enum.Parse(typeof(market),market)))
-                        {
-                            addLog("Failed to reconnect private. market:" + market, logType.ERROR);
-                            return;
-                        }
-                        Thread.Sleep(5000);
-                        market[] markets = [(market)Enum.Parse(typeof(market), market)];
-                        if (live || privateConnect)
-                        {
-                            await crypto_client.subscribeSpotOrderUpdates(markets);
-                        }
-                        if (oManager.getVirtualMode())
-                        {
-                            //if (!qManager.setVirtualBalance(virtualBalanceFile))
-                            //{
-
-                            //}
-                        }
-                        else
-                        {
-                            Task t = Task.Run(async () =>
-                            {
-                                await qManager.refreshAndCancelAllorders();
-                            });
-                            foreach (var stg_obj in qManager.strategies.Values)
-                            {
-                                stg_obj.maker.resetInusePosition();
-                                stg_obj.taker.resetInusePosition();
-                                stg_obj.live_bidprice = 0;
-                                stg_obj.live_buyorder_id = "";
-                                stg_obj.live_askprice = 0;
-                                stg_obj.live_sellorder_id = "";
-                                for (int i = 0; i < stg_obj.live_buyorders.Count; ++i)
-                                {
-                                    stg_obj.live_buyorders[i] = "";
-                                }
-                                for (int i = 0; i < stg_obj.live_sellorders.Count; ++i)
-                                {
-                                    stg_obj.live_sellorders[i] = "";
-                                }
-                            }
-                            t.Wait();
-                            if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys), qManager._markets.Keys))
-                            {
-                                int i = 0;
-                                while (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys), qManager._markets.Keys))
-                                {
-                                    ++i;
-                                    if (i > 5)
-                                    {
-                                        addLog("Failed to get balance.", logType.ERROR);
-                                    }
-                                    else
-                                    {
-                                        addLog($"Trial {i}", logType.WARNING);
-                                    }
-                                    Thread.Sleep(i * 1000);
-                                }
-
-                            }
-                            if (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys), qManager._markets.Keys))
-                            {
-                                int i = 0;
-                                while (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys), qManager._markets.Keys))
-                                {
-                                    ++i;
-                                    if (i > 5)
-                                    {
-                                        addLog("Failed to get balance", logType.ERROR);
-                                    }
-                                    else
-                                    {
-                                        addLog($"Trial {i}", logType.WARNING);
-                                    }
-                                    Thread.Sleep(i * 1000);
-                                }
-
-                            }
-                            foreach (var stg_obj in qManager.strategies.Values)
-                            {
-                                stg_obj.adjustPosition();
-                            }
-                        }
-                        addLog("Reconnection completed.");
+                        addLog("Connection Lost. Reconnecting all the connection in 5 sec", logType.WARNING);
+                        await refreshConnection();
+                        reconnected = true;
                     }
                     else
                     {
                         addLog("Updating thread stopped. Stopping all the process", Enums.logType.ERROR);
                     }
+                    //if (stoppedTh.Contains("Public"))
+                    //{
+                    //    stopStrategies();
+                    //    await oManager.cancelAllOrders();
+                    //    string market = stoppedTh.Replace("Public", "");
+                    //    addLog("Public Connection to " + market + " lost reconnecting in 5 sec", Enums.logType.WARNING);
+                    //    thManager.disposeThread(stoppedTh);
+                    //    Thread.Sleep(5000);
+                    //    if(!await qManager.connectPublicChannel((market)Enum.Parse(typeof(market),market)))
+                    //    {
+                    //        addLog("Failed to reconnect public. market:" + market, logType.ERROR);
+                    //        return;
+                    //    }
+                    //    Thread.Sleep(5000);
+                    //    foreach (var ins in qManager.instruments.Values)
+                    //    {
+                    //        market[] markets = [ins.market];
+                    //        if (market == ins.market.ToString())
+                    //        {
+                    //            //if (ins.market == Exchange.Bybit)
+                    //            //{
+                    //            //    await crypto_client.subscribeBybitOrderBook(ins.baseCcy, ins.quoteCcy);
+                    //            //}
+                    //            //else if (ins.market == Exchange.Coinbase)
+                    //            //{
+                    //            //    await crypto_client.subscribeCoinbaseOrderBook(ins.baseCcy, ins.quoteCcy);
+                    //            //}
+                    //            //else
+                    //            //{
+                    //            //    await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
+                    //            //}
+                    //            await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
+                    //            await crypto_client.subscribeTrades(markets, ins.baseCcy, ins.quoteCcy);
+                    //        }
+                    //    }
+                    //    if (oManager.getVirtualMode())
+                    //    {
+                    //        //if (!qManager.setVirtualBalance(virtualBalanceFile))
+                    //        //{
+
+                    //        //}
+                    //    }
+                    //    else
+                    //    {
+                    //        Task t = Task.Run(async () =>
+                    //        {
+                    //            await qManager.refreshAndCancelAllorders();
+                    //        });
+                    //        foreach (var stg_obj in qManager.strategies.Values)
+                    //        {
+                    //            stg_obj.maker.resetInusePosition();
+                    //            stg_obj.taker.resetInusePosition();
+                    //            stg_obj.live_bidprice = 0;
+                    //            stg_obj.live_buyorder_id = "";
+                    //            stg_obj.live_askprice = 0;
+                    //            stg_obj.live_sellorder_id = "";
+                    //            for (int i = 0; i < stg_obj.live_buyorders.Count; ++i)
+                    //            {
+                    //                stg_obj.live_buyorders[i] = "";
+                    //            }
+                    //            for (int i = 0; i < stg_obj.live_sellorders.Count; ++i)
+                    //            {
+                    //                stg_obj.live_sellorders[i] = "";
+                    //            }
+                    //        }
+                    //        t.Wait();
+                    //        if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys), qManager._markets.Keys))
+                    //        {
+                    //            int i = 0;
+                    //            while (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys), qManager._markets.Keys))
+                    //            {
+                    //                ++i;
+                    //                if(i > 5)
+                    //                {
+                    //                    addLog("Failed to get balance.", logType.ERROR);
+                    //                }
+                    //                else
+                    //                {
+                    //                    addLog($"Trial {i}",logType.WARNING);
+                    //                }
+                    //                Thread.Sleep(i * 1000);
+                    //            }
+
+                    //        }
+                    //        if (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys), qManager._markets.Keys))
+                    //        {
+                    //            int i = 0;
+                    //            while (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys), qManager._markets.Keys))
+                    //            {
+                    //                ++i;
+                    //                if (i > 5)
+                    //                {
+                    //                    addLog("Failed to get balance", logType.ERROR);
+                    //                }
+                    //                else
+                    //                {
+                    //                    addLog($"Trial {i}", logType.WARNING);
+                    //                }
+                    //                Thread.Sleep(i * 1000);
+                    //            }
+
+                    //        }
+                    //        foreach (var stg_obj in qManager.strategies.Values)
+                    //        {
+                    //            stg_obj.adjustPosition();
+                    //        }
+                    //    }
+                    //    addLog("Reconnection completed.");
+                    //}
+                    //else if (stoppedTh.Contains("Private"))
+                    //{
+                    //    stopStrategies();
+                    //    await oManager.cancelAllOrders();
+                    //    string market = stoppedTh.Replace("Private", "");
+                    //    addLog("Private Connection to " + market + " lost reconnecting in 5 sec", Enums.logType.WARNING);
+                    //    thManager.disposeThread(stoppedTh);
+                    //    Thread.Sleep(5000);
+                    //    if(!await oManager.connectPrivateChannel((market)Enum.Parse(typeof(market),market)))
+                    //    {
+                    //        addLog("Failed to reconnect private. market:" + market, logType.ERROR);
+                    //        return;
+                    //    }
+                    //    Thread.Sleep(5000);
+                    //    market[] markets = [(market)Enum.Parse(typeof(market), market)];
+                    //    if (live || privateConnect)
+                    //    {
+                    //        await crypto_client.subscribeSpotOrderUpdates(markets);
+                    //    }
+                    //    if (oManager.getVirtualMode())
+                    //    {
+                    //        //if (!qManager.setVirtualBalance(virtualBalanceFile))
+                    //        //{
+
+                    //        //}
+                    //    }
+                    //    else
+                    //    {
+                    //        Task t = Task.Run(async () =>
+                    //        {
+                    //            await qManager.refreshAndCancelAllorders();
+                    //        });
+                    //        foreach (var stg_obj in qManager.strategies.Values)
+                    //        {
+                    //            stg_obj.maker.resetInusePosition();
+                    //            stg_obj.taker.resetInusePosition();
+                    //            stg_obj.live_bidprice = 0;
+                    //            stg_obj.live_buyorder_id = "";
+                    //            stg_obj.live_askprice = 0;
+                    //            stg_obj.live_sellorder_id = "";
+                    //            for (int i = 0; i < stg_obj.live_buyorders.Count; ++i)
+                    //            {
+                    //                stg_obj.live_buyorders[i] = "";
+                    //            }
+                    //            for (int i = 0; i < stg_obj.live_sellorders.Count; ++i)
+                    //            {
+                    //                stg_obj.live_sellorders[i] = "";
+                    //            }
+                    //        }
+                    //        t.Wait();
+                    //        if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys), qManager._markets.Keys))
+                    //        {
+                    //            int i = 0;
+                    //            while (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys), qManager._markets.Keys))
+                    //            {
+                    //                ++i;
+                    //                if (i > 5)
+                    //                {
+                    //                    addLog("Failed to get balance.", logType.ERROR);
+                    //                }
+                    //                else
+                    //                {
+                    //                    addLog($"Trial {i}", logType.WARNING);
+                    //                }
+                    //                Thread.Sleep(i * 1000);
+                    //            }
+
+                    //        }
+                    //        if (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys), qManager._markets.Keys))
+                    //        {
+                    //            int i = 0;
+                    //            while (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys), qManager._markets.Keys))
+                    //            {
+                    //                ++i;
+                    //                if (i > 5)
+                    //                {
+                    //                    addLog("Failed to get balance", logType.ERROR);
+                    //                }
+                    //                else
+                    //                {
+                    //                    addLog($"Trial {i}", logType.WARNING);
+                    //                }
+                    //                Thread.Sleep(i * 1000);
+                    //            }
+
+                    //        }
+                    //        foreach (var stg_obj in qManager.strategies.Values)
+                    //        {
+                    //            stg_obj.adjustPosition();
+                    //        }
+                    //    }
+                    //    addLog("Reconnection completed.");
+                    //}
+
                 }
-                if (currentTradingState)
-                {
-                    startTrading();
-                }
+                //if (currentTradingState)
+                //{
+                //    startTrading();
+                //}
+            }
+
+            if(current - lastConnectedTime > TimeSpan.FromHours(reconnectionPeriod))
+            {
+                addLog("Refreshing connection...");
+                await refreshConnection();
             }
 
             bool order_refresh = false;
@@ -2917,6 +3042,137 @@ namespace Crypto_Linux
 
         }
 
+        static async private Task refreshConnection()
+        {
+            bool currentTradingState = enabled;
+            stopStrategies();
+            await oManager.cancelAllOrders();
+            List<string> ConnectionThreads = new List<string>();
+            foreach (var th in thManager.threads.Keys)
+            {
+                if (th.Contains("Public") || th.Contains("Private"))
+                {
+                    ConnectionThreads.Add(th);
+                }
+            }
+            foreach (var th_name in ConnectionThreads)
+            {
+                thManager.disposeThread(th_name);
+            }
+            Thread.Sleep(5000);
+            foreach (var th_name in ConnectionThreads)
+            {
+                if(th_name.Contains("Public"))
+                {
+                    string market = th_name.Replace("Public", "");
+                    if (!await qManager.connectPublicChannel((market)Enum.Parse(typeof(market), market)))
+                    {
+                        addLog("Failed to reconnect public. market:" + market, logType.ERROR);
+                        return;
+                    }
+                    Thread.Sleep(5000);
+                    foreach (var ins in qManager.instruments.Values)
+                    {
+                        market[] markets = [ins.market];
+                        if (market == ins.market.ToString())
+                        {
+                            await crypto_client.subscribeOrderBook(markets, ins.baseCcy, ins.quoteCcy);
+                            await crypto_client.subscribeTrades(markets, ins.baseCcy, ins.quoteCcy);
+                        }
+                    }
+                }
+                else if(th_name.Contains("Private"))
+                {
+                    string market = th_name.Replace("Private", "");
+                    thManager.disposeThread(th_name);
+                    Thread.Sleep(5000);
+                    if (!await oManager.connectPrivateChannel((market)Enum.Parse(typeof(market), market)))
+                    {
+                        addLog("Failed to reconnect private. market:" + market, logType.ERROR);
+                        return;
+                    }
+                    Thread.Sleep(5000);
+                    market[] markets = [(market)Enum.Parse(typeof(market), market)];
+                    if (live || privateConnect)
+                    {
+                        await crypto_client.subscribeSpotOrderUpdates(markets);
+                    }
+                }
+            }
+            if (oManager.getVirtualMode())
+            {
+            }
+            else
+            {
+                Task t = Task.Run(async () =>
+                {
+                    await qManager.refreshAndCancelAllorders();
+                });
+                foreach (var stg_obj in qManager.strategies.Values)
+                {
+                    stg_obj.maker.resetInusePosition();
+                    stg_obj.taker.resetInusePosition();
+                    stg_obj.live_bidprice = 0;
+                    stg_obj.live_buyorder_id = "";
+                    stg_obj.live_askprice = 0;
+                    stg_obj.live_sellorder_id = "";
+                    for (int i = 0; i < stg_obj.live_buyorders.Count; ++i)
+                    {
+                        stg_obj.live_buyorders[i] = "";
+                    }
+                    for (int i = 0; i < stg_obj.live_sellorders.Count; ++i)
+                    {
+                        stg_obj.live_sellorders[i] = "";
+                    }
+                }
+                t.Wait();
+                if (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys), qManager._markets.Keys))
+                {
+                    int i = 0;
+                    while (!qManager.setBalance(await crypto_client.getBalance(qManager._markets.Keys), qManager._markets.Keys))
+                    {
+                        ++i;
+                        if (i > 5)
+                        {
+                            addLog("Failed to get balance.", logType.ERROR);
+                        }
+                        else
+                        {
+                            addLog($"Trial {i}", logType.WARNING);
+                        }
+                        Thread.Sleep(i * 1000);
+                    }
+
+                }
+                if (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys), qManager._markets.Keys))
+                {
+                    int i = 0;
+                    while (!qManager.setMarginPosition(await crypto_client.getMarginPos(qManager._markets.Keys), qManager._markets.Keys))
+                    {
+                        ++i;
+                        if (i > 5)
+                        {
+                            addLog("Failed to get balance", logType.ERROR);
+                        }
+                        else
+                        {
+                            addLog($"Trial {i}", logType.WARNING);
+                        }
+                        Thread.Sleep(i * 1000);
+                    }
+
+                }
+                foreach (var stg_obj in qManager.strategies.Values)
+                {
+                    stg_obj.adjustPosition();
+                }
+            }
+            lastConnectedTime = DateTime.UtcNow;
+            if(currentTradingState)
+            {
+                startTrading();
+            }
+        }
         static void setStrategyInfo()
         {
             foreach(var stg in strategies.Values)

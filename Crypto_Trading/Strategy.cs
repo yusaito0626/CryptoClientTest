@@ -707,7 +707,7 @@ namespace Crypto_Trading
                         {
                             if (this.maker.marginLong)
                             {
-                                if (this.maker.longPosition.available > temp_ordersize_ask + consumed_ask)
+                                if (this.maker.longPosition.available >= temp_ordersize_ask + consumed_ask)
                                 {
                                     this.ask_orders[i].pos_side = positionSide.Long;
                                 }
@@ -715,7 +715,7 @@ namespace Crypto_Trading
                                 {
                                     this.ask_orders[i].pos_side = positionSide.Short;
                                 }
-                                if (this.maker.shortPosition.available > temp_ordersize_bid + consumed_bid)
+                                if (this.maker.shortPosition.available >= temp_ordersize_bid + consumed_bid)
                                 {
                                     this.bid_orders[i].pos_side = positionSide.Short;
                                 }
@@ -726,7 +726,7 @@ namespace Crypto_Trading
                             }
                             else
                             {
-                                if (this.maker.baseBalance.available > temp_ordersize_ask + consumed_ask)
+                                if (this.maker.baseBalance.available >= temp_ordersize_ask + consumed_ask)
                                 {
                                     this.ask_orders[i].pos_side = positionSide.NONE;
                                 }
@@ -734,7 +734,7 @@ namespace Crypto_Trading
                                 {
                                     this.ask_orders[i].pos_side = positionSide.Short;
                                 }
-                                if (this.maker.shortPosition.available > temp_ordersize_bid + consumed_bid)
+                                if (this.maker.shortPosition.available >= temp_ordersize_bid + consumed_bid)
                                 {
                                     this.bid_orders[i].pos_side = positionSide.Short;
                                 }
@@ -1182,24 +1182,6 @@ namespace Crypto_Trading
                             }
                         }
                     }
-
-                    //if (this.taker.marginTrade == false && temp_ordersize_bid * (1 + this.taker.taker_fee) * 2 + cumBidSize > this.taker.baseBalance.available)
-                    //{
-                    //    bid_price = 0;
-                    //}
-                    //if (this.taker.marginTrade == false && this.asks[i] * temp_ordersize_ask * (1 + this.taker.taker_fee) * 2 + cumAskAmount > this.taker.quoteBalance.available)
-                    //{
-                    //    ask_price = 0;
-                    //}
-
-                    //if (this.maker.marginTrade && this.maker.shortPosition.total - this.maker.shortPosition.inuse < temp_ordersize_bid + cumBidSize)
-                    //{
-                    //    bid_price = 0;
-                    //}
-                    //if (this.maker.shortPosition.total * ask_price + temp_ordersize_ask * ask_price + cumAskAmount > this.maker.quoteBalance.total * max_maker_levarage)
-                    //{
-                    //    ask_price = 0;
-                    //}
 
                     cumAskSize += temp_ordersize_ask;
                     cumBidSize += temp_ordersize_bid;
@@ -3169,8 +3151,8 @@ namespace Crypto_Trading
                                     addLog("Extraordinary PnL   " + this.name, logType.WARNING);
                                     addLog($"Residual PnL[dpm]:{residual_dpm}   Latency:{ts.avg_latency}", logType.WARNING);
                                     addLog($"[{this.name}] Maker order id:{ts.maker_orderid} taker order id:{ts.taker_orderid}");
-                                    addLog($"Taker Factors -> tradeImbalance:{this.taker.tradeImbalance} quoteImbalance:{this.taker.quoteImbalance} weightedMid:{this.taker.weightedMid} / {this.taker.mid}");
-                                    addLog($"Maker Factors -> tradeImbalance:{this.maker.tradeImbalance} quoteImbalance:{this.maker.quoteImbalance} weightedMid:{this.maker.weightedMid} / {this.taker.mid}");
+                                    addLog($"Taker Factors -> Latency:{ts.takerLatency} tradeImbalance:{ts.takerTradeImbalance} quoteImbalance:{ts.takerQuoteImbalance} MidRatio:{ts.takerMidRatio}");
+                                    addLog($"Maker Factors -> Latency:{ts.makerLatency} tradeImbalance:{ts.makerTradeImbalance} quoteImbalance:{ts.makerQuoteImbalance} MidRatio:{ts.makerMidRatio}");
                                 }
                                 else if (ts.avg_latency > 500)
                                 {
@@ -3179,8 +3161,8 @@ namespace Crypto_Trading
                                     addLog("Extraordinary Latency   " + this.name, logType.WARNING);
                                     addLog($"Residual PnL[dpm]:{residual_dpm}   Latency:{ts.avg_latency}", logType.WARNING);
                                     addLog($"[{this.name}] Maker order id:{ts.maker_orderid} taker order id:{ts.taker_orderid}");
-                                    addLog($"Taker Factors -> tradeImbalance:{this.taker.tradeImbalance} quoteImbalance:{this.taker.quoteImbalance} weightedMid:{this.taker.weightedMid} / {this.taker.mid}");
-                                    addLog($"Maker Factors -> tradeImbalance:{this.maker.tradeImbalance} quoteImbalance:{this.maker.quoteImbalance} weightedMid:{this.maker.weightedMid} / {this.taker.mid}");
+                                    addLog($"Taker Factors -> Latency:{ts.takerLatency} tradeImbalance:{ts.takerTradeImbalance} quoteImbalance:{ts.takerQuoteImbalance} MidRatio:{ts.takerMidRatio}");
+                                    addLog($"Maker Factors -> Latency:{ts.makerLatency} tradeImbalance:{ts.makerTradeImbalance} quoteImbalance:{ts.makerQuoteImbalance} MidRatio:{ts.makerMidRatio}");
                                 }
                                 if(this.additional_markup < 0)
                                 {
@@ -3233,8 +3215,8 @@ namespace Crypto_Trading
                                     addLog("Extraordinary PnL   " + this.name, logType.WARNING);
                                     addLog($"Residual PnL[dpm]:{residual_dpm}   Latency:{ts.avg_latency}", logType.WARNING);
                                     addLog($"[{this.name}] Maker order id:{ts.maker_orderid} taker order id:{ts.taker_orderid}");
-                                    addLog($"Taker Factors -> tradeImbalance:{this.taker.tradeImbalance} quoteImbalance:{this.taker.quoteImbalance} weightedMid:{this.taker.weightedMid} / {this.taker.mid}");
-                                    addLog($"Maker Factors -> tradeImbalance:{this.maker.tradeImbalance} quoteImbalance:{this.maker.quoteImbalance} weightedMid:{this.maker.weightedMid} / {this.taker.mid}");
+                                    addLog($"Taker Factors -> Latency:{ts.takerLatency} tradeImbalance:{ts.takerTradeImbalance} quoteImbalance:{ts.takerQuoteImbalance} MidRatio:{ts.takerMidRatio}");
+                                    addLog($"Maker Factors -> Latency:{ts.makerLatency} tradeImbalance:{ts.makerTradeImbalance} quoteImbalance:{ts.makerQuoteImbalance} MidRatio:{ts.makerMidRatio}");
                                 }
                                 else if (ts.avg_latency > 500)
                                 {
@@ -3243,8 +3225,8 @@ namespace Crypto_Trading
                                     addLog("Extraordinary Latency   " + this.name, logType.WARNING);
                                     addLog($"Residual PnL[dpm]:{residual_dpm}   Latency:{ts.avg_latency}", logType.WARNING);
                                     addLog($"[{this.name}] Maker order id:{ts.maker_orderid} taker order id:{ts.taker_orderid}");
-                                    addLog($"Taker Factors -> tradeImbalance:{this.taker.tradeImbalance} quoteImbalance:{this.taker.quoteImbalance} weightedMid:{this.taker.weightedMid} / {this.taker.mid}");
-                                    addLog($"Maker Factors -> tradeImbalance:{this.maker.tradeImbalance} quoteImbalance:{this.maker.quoteImbalance} weightedMid:{this.maker.weightedMid} / {this.taker.mid}");
+                                    addLog($"Taker Factors -> Latency:{ts.takerLatency} tradeImbalance:{ts.takerTradeImbalance} quoteImbalance:{ts.takerQuoteImbalance} MidRatio:{ts.takerMidRatio}");
+                                    addLog($"Maker Factors -> Latency:{ts.makerLatency} tradeImbalance:{ts.makerTradeImbalance} quoteImbalance:{ts.makerQuoteImbalance} MidRatio:{ts.makerMidRatio}");
                                 }
                                 if (this.additional_markup < 0)
                                 {

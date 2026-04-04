@@ -782,7 +782,7 @@ namespace Utils
             {
                 line = "";
             }
-            line += "," + this.trade_id + "," + this.order_id + "," + this.position_id + "," + this.market + "," + this.symbol + "," + this.order_type.ToString() + "," + this.side.ToString() + "," + this.price.ToString() + "," + this.quantity.ToString() + "," + this.order_quantity.ToString() + "," + this.executed_quantity.ToString() + "," + this.maker_taker + "," + this.fee_base.ToString() + "," + this.fee_quote.ToString() + "," + this.profit_loss.ToString() + "," + this.interest + "," + this.internal_order_id + ",";
+            line += "," + this.trade_id + "," + this.order_id + "," + this.position_id + "," + this.market + "," + this.symbol + "," + this.order_type.ToString() + "," + this.position_side.ToString() + "," + this.side.ToString() + "," + this.price.ToString() + "," + this.quantity.ToString() + "," + this.order_quantity.ToString() + "," + this.executed_quantity.ToString() + "," + this.maker_taker + "," + this.fee_base.ToString() + "," + this.fee_quote.ToString() + "," + this.profit_loss.ToString() + "," + this.interest + "," + this.internal_order_id + ",";
             if (this.filled_time != null)
             {
                 line += ((DateTime)this.filled_time).ToString("yyyy-MM-dd HH:mm:ss.fff");
