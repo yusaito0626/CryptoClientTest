@@ -2059,6 +2059,7 @@ namespace Utils
         public double avg_latency;
 
         //Factors
+        public int action;
         public double makerLatency;
         public decimal makerTradeImbalance;
         public double makerQuoteImbalance;
@@ -2067,6 +2068,10 @@ namespace Utils
         public decimal takerTradeImbalance;
         public double takerQuoteImbalance;
         public double takerMidRatio;
+
+        public decimal maxAsk;
+        public decimal minBid;
+        public double measuringPeriod = 1000;
 
         public tradeSummary()
         {
@@ -2107,7 +2112,7 @@ namespace Utils
                 if (this.maker_orderid== "")
                 {
                     this.maker_orderid = fill.internal_order_id;
-                    this.timestamp = fill.filled_time;
+                    //this.timestamp = fill.filled_time;
                     this.maker_side = fill.side;
                 }
                 else if (this.maker_orderid != fill.internal_order_id || this.maker_side != fill.side)
@@ -2145,8 +2150,9 @@ namespace Utils
             this.taker_priceAdjustment = takerPrAdj;
         }
 
-        public void addFactors(double mLat, decimal mtImb, double mqImb, double mMid, double tLat, decimal ttImb, double tqImb, double tMid)
+        public void addFactors(double mLat, decimal mtImb, double mqImb, double mMid, double tLat, decimal ttImb, double tqImb, double tMid,int _action = 0)
         {
+            this.action = 0;
             this.makerLatency = mLat;
             this.makerTradeImbalance = mtImb;
             this.makerQuoteImbalance = mqImb;
@@ -2176,7 +2182,7 @@ namespace Utils
                     const_skew = 0;
                 }
             }
-            this.totalPnL = quantity * sign * (this.maker_avgprice - this.taker_avgprice) - this.totalFee;
+            this.totalPnL = quantity * sign * (this.maker_avgprice - this.taker_avgprice);
             if(sign > 0)
             {
                 this.markupPnL = quantity * (this.maker_avgprice * (1 - 1_000_000 / (1_000_000 + this.maker_markup)) + this.taker_avgprice * (1_000_000 / (1_000_000 - this.taker_markup) - 1));
@@ -2187,14 +2193,14 @@ namespace Utils
             }
             this.skewPnL = quantity * sign * ((const_skew + (1 + extra_skew) * this.skew) / 1_000_000 * this.taker_avgprice);
             this.priceAdjPnL = quantity * sign * (this.maker_avgprice * this.maker_priceAdjustment + this.taker_avgprice * - this.taker_priceAdjustment);
-            this.residualPnL = this.totalPnL + this.totalFee - this.markupPnL - this.skewPnL - this.priceAdjPnL;
+            this.residualPnL = this.totalPnL - this.markupPnL - this.skewPnL - this.priceAdjPnL;
             this.avg_latency = (this.taker_avgExecutedTime - this.maker_avgExecutedTime) / 10000.0;
         }
         public void init()
         {
             this.id = "";
             this.strategy = "";
-            this.timestamp = new DateTime(2000, 1, 1, 0, 0, 0);
+            this.timestamp = null;
             this.BBook = false;
             this.maker_symbolmarket = "";
             this.taker_symbolmarket = "";
@@ -2225,6 +2231,7 @@ namespace Utils
             this.residualPnL = 0;
             this.avg_latency = 0;
 
+            this.action = 0;
             this.makerLatency = 0;
             this.makerTradeImbalance = 0;
             this.makerQuoteImbalance = 0;
@@ -2233,6 +2240,9 @@ namespace Utils
             this.takerTradeImbalance = 0;
             this.takerQuoteImbalance = 0;
             this.takerMidRatio = 0;
+
+            this.maxAsk = 0;
+            this.minBid = 0;
         }
         public string ToString()
         {
@@ -2246,7 +2256,7 @@ namespace Utils
                 strtime = "";
             }
             //timestamp,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,maker_side,maker_avgprice,maker_quantity,maker_avgExecutedTime,taker_side,taker_avgprice,taker_quantity,taker_avgExecutedTime,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency;
-            return $"{strtime},{strategy},{this.id},{this.BBook},{this.maker_symbolmarket},{this.taker_symbolmarket},{this.maker_orderid},{this.taker_orderid},{this.layer},{this.maker_side},{this.maker_avgprice},{this.maker_quantity},{this.maker_avgExecutedTime},{this.taker_side},{this.taker_avgprice},{this.taker_quantity},{this.taker_avgExecutedTime},{this.realized_volatility},{this.maker_markup},{this.taker_markup},{this.skew},{this.maker_priceAdjustment},{this.taker_priceAdjustment},{this.markupPnL},{this.skewPnL},{this.priceAdjPnL},{this.residualPnL},{this.totalFee},{this.totalPnL},{this.avg_latency},{this.makerLatency},{this.makerTradeImbalance},{this.makerQuoteImbalance},{this.makerMidRatio},{this.takerLatency},{this.takerTradeImbalance},{this.takerQuoteImbalance},{this.takerMidRatio}";
+            return $"{strtime},{strategy},{this.id},{this.BBook},{this.maker_symbolmarket},{this.taker_symbolmarket},{this.maker_orderid},{this.taker_orderid},{this.layer},{this.maker_side},{this.maker_avgprice},{this.maker_quantity},{this.maker_avgExecutedTime},{this.taker_side},{this.taker_avgprice},{this.taker_quantity},{this.taker_avgExecutedTime},{this.realized_volatility},{this.maker_markup},{this.taker_markup},{this.skew},{this.maker_priceAdjustment},{this.taker_priceAdjustment},{this.markupPnL},{this.skewPnL},{this.priceAdjPnL},{this.residualPnL},{this.totalFee},{this.totalPnL},{this.avg_latency},{this.action},{this.makerLatency},{this.makerTradeImbalance},{this.makerQuoteImbalance},{this.makerMidRatio},{this.takerLatency},{this.takerTradeImbalance},{this.takerQuoteImbalance},{this.takerMidRatio},{this.maxAsk},{this.minBid}";
         }
 
     }

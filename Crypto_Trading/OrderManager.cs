@@ -113,6 +113,7 @@ namespace Crypto_Trading
         public SISOQueue<MarketImpact> MI_tempQueue;
         public SISOQueue<MarketImpact> MI_outputQueue;
         const int MI_STACK_SIZE = 100000;
+        const int TS_STACK_SIZE = 500000;
         public LockFreeStack<MarketImpact> MI_stack;
 
         public LockFreeStack<tradeSummary> TS_stack;
@@ -179,6 +180,11 @@ namespace Crypto_Trading
             while (i < MI_STACK_SIZE)
             {
                 this.MI_stack.push(new MarketImpact());
+                ++i;
+            }
+            i = 0;
+            while(i < TS_STACK_SIZE)
+            {
                 this.TS_stack.push(new tradeSummary());
                 ++i;
             }
@@ -3599,17 +3605,23 @@ namespace Crypto_Trading
                         this.live_orders[ord.internal_order_id] = ord;
                     }
                 }
-
-                //foreach (var stg in this.strategies)
-                //{
-                //    if (stg.Value.enabled)
-                //    {
-                //        if (ord.symbol_market == stg.Value.maker.symbol_market)
-                //        {
-                //            stg.Value.onOrdUpdate(ord, prevord);
-                //        }
-                //    }
-                //}
+                foreach (var stg in this.strategies)
+                {
+                    if (stg.Value.enabled)
+                    {
+                        if (ord.symbol_market == stg.Value.maker.symbol_market)
+                        {
+                            if (prevord == null)
+                            {
+                                stg.Value.onOrdUpdate(ord, ord);
+                            }
+                            else
+                            {
+                                stg.Value.onOrdUpdate(ord, prevord);
+                            }
+                        }
+                    }
+                }
 
                 if (ins != null)
                 {
@@ -4286,7 +4298,7 @@ namespace Crypto_Trading
                             switch (output.status)
                             {
                                 case orderStatus.WaitOpen:
-                                    if (output.order_type == orderType.Market || (output.side == orderSide.Buy && output.order_price > ins.bestask.Item1) || (output.side == orderSide.Sell && output.order_price < ins.bestbid.Item1))
+                                    if (output.order_type == orderType.Market)
                                     {
                                         DataFill fill;
                                         fill = this.crypto_client.fillStack.pop();
@@ -4374,6 +4386,17 @@ namespace Crypto_Trading
                                         this.crypto_client.ordUpdateQueue.Enqueue(update);
                                         this.crypto_client.fillQueue.Enqueue(fill);
                                     }
+                                    else if((output.side == orderSide.Buy && output.order_price > ins.bestask.Item1) || (output.side == orderSide.Sell && output.order_price < ins.bestbid.Item1))
+                                    {
+                                        update = this.crypto_client.ordUpdateStack.pop();
+                                        if (update == null)
+                                        {
+                                            update = new DataSpotOrderUpdate();
+                                        }
+                                        update.Copy(output);
+                                        update.status = orderStatus.Canceled;
+                                        this.crypto_client.ordUpdateQueue.Enqueue(update);
+                                    }
                                     else
                                     {
                                         update = this.crypto_client.ordUpdateStack.pop();
@@ -4459,6 +4482,12 @@ namespace Crypto_Trading
                                 }
                             }
                         }
+                        if(ord.status != orderStatus.Open && ord.status != orderStatus.WaitCancel && ord.status != orderStatus.WaitMod)
+                        {
+                            addLog("[checkVirtualOrder]Invalid order status.",logType.ERROR);
+                            addLog(ord.ToString(), logType.ERROR);
+                            return;
+                        }
                         if (ord.symbol_market == ins.symbol_market)
                         {
                             using (var qlock = ins.quotes_lock.getlock())
@@ -4466,7 +4495,7 @@ namespace Crypto_Trading
                                 switch (ord.side)
                                 {
                                     case orderSide.Buy:
-                                        if (ins.bestask.Item1 < ord.order_price || (last_trade != null && last_trade.symbol + "@" + last_trade.market.ToString() == ord.symbol_market && last_trade.price < ord.order_price))
+                                        if ((ins.bestask.Item1 < ord.order_price && ins.bestbid.Item1 < ord.order_price) || (last_trade != null && last_trade.symbol + "@" + last_trade.market.ToString() == ord.symbol_market && last_trade.price < ord.order_price))
                                         {
                                             DataSpotOrderUpdate output;
 
@@ -4513,23 +4542,13 @@ namespace Crypto_Trading
                                                     fill.profit_loss = (bm.avg_price - fill.price) * fill.quantity;
                                                 }
                                             }
-                                            //fill.msg += " Best Ask:" + ins.bestask.Item1.ToString();
-                                            //if (last_trade != null)
-                                            //{
-                                            //    fill.msg += " Last traded price:" + last_trade.price.ToString();
-                                            //}
-                                            //output.msg += " Best Ask:" + ins.bestask.Item1.ToString();
-                                            //if (last_trade != null)
-                                            //{
-                                            //    output.msg += " Last traded price:" + last_trade.price.ToString();
-                                            //}
                                             this.crypto_client.ordUpdateQueue.Enqueue(output);
                                             removing.Add(key);
                                             this.crypto_client.fillQueue.Enqueue(fill);
                                         }
                                         break;
                                     case orderSide.Sell:
-                                        if (ins.bestbid.Item1 > ord.order_price || (last_trade != null && last_trade.symbol + "@" + last_trade.market.ToString() == ord.symbol_market && last_trade.price > ord.order_price))
+                                        if ((ins.bestbid.Item1 > ord.order_price && ins.bestask.Item1 > ord.order_price) || (last_trade != null && last_trade.symbol + "@" + last_trade.market.ToString() == ord.symbol_market && last_trade.price > ord.order_price))
                                         {
                                             DataSpotOrderUpdate output;
                                             output = this.crypto_client.ordUpdateStack.pop();
@@ -4574,16 +4593,6 @@ namespace Crypto_Trading
                                                     fill.profit_loss = (fill.price - bm.avg_price) * fill.quantity;
                                                 }
                                             }
-                                            //fill.msg += " Best Bid:" + ins.bestbid.Item1.ToString();
-                                            //if (last_trade != null)
-                                            //{
-                                            //    fill.msg += " Last traded price:" + last_trade.price.ToString();
-                                            //}
-                                            //output.msg += " Best Bid:" + ins.bestbid.Item1.ToString();
-                                            //if (last_trade != null)
-                                            //{
-                                            //    output.msg += " Last traded price:" + last_trade.price.ToString();
-                                            //}
                                             this.crypto_client.ordUpdateQueue.Enqueue(output);
                                             removing.Add(key);
                                             this.crypto_client.fillQueue.Enqueue(fill);

@@ -1,6 +1,7 @@
 ﻿using Crypto_Clients;
 using CryptoExchange.Net;
 using CryptoExchange.Net.SharedApis;
+using Discord;
 using Enums;
 using LockFreeQueue;
 using LockFreeStack;
@@ -8,6 +9,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.Diagnostics.Metrics;
 using System.IO;
 using System.Linq;
@@ -425,25 +427,6 @@ namespace Crypto_Trading
                     this.exchanges[item.market] = exBalance;
                 }
                 exBalance.balance[item.asset.ToUpper()] = this.balances[key];
-                //switch(item.market)
-                //{
-                //    case market.bitbank:
-                //        if(item.asset.ToUpper() == "JPY")
-                //        {
-                //            exBalance.marginTotal += item.total;
-                //        }
-                //        else
-                //        {
-                //            exBalance.marginTotal += item.total / 2;
-                //        }
-                //        break;
-                //    case market.gmocoin:
-                //        if(item.asset.ToUpper() == "JPY")
-                //        {
-                //            exBalance.marginTotal += item.total;
-                //        }
-                //        break;
-                //}
             }
 
             foreach (var exBalance in this.exchanges.Values)
@@ -531,6 +514,22 @@ namespace Crypto_Trading
                         exBalance.marginNotionalAmount += ins.shortPosition.avg_price * ins.shortPosition.total;
                     }
                 }
+            }
+            foreach(var ins in this.instruments.Values)
+            {
+                Exchange exBalance;
+                if (this.exchanges.ContainsKey(ins.market))
+                {
+                    exBalance = this.exchanges[ins.market];
+                }
+                else
+                {
+                    exBalance = new Exchange();
+                    exBalance.market = ins.market;
+                    this.exchanges[ins.market] = exBalance;
+                }
+                exBalance.marginLong[ins.symbol_market] = ins.longPosition;
+                exBalance.marginShort[ins.symbol_market] = ins.shortPosition;
             }
             return output;
         }
@@ -1234,6 +1233,7 @@ namespace Crypto_Trading
                                 }
                                 msg_postTrade.init();
                                 this.tradeStack.push(msg_postTrade);
+                                msg_postTrade = postTradeQueue.Peek();
                             }
                             else
                             {

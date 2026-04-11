@@ -4,6 +4,7 @@ using DeepCoin.Net.Objects.Models;
 using Discord;
 using Discord.Audio.Streams;
 using Enums;
+using LockFreeQueue;
 using System.Diagnostics;
 using System.Net;
 using System.Runtime.CompilerServices;
@@ -175,6 +176,8 @@ namespace Crypto_Trading
         public string quantity_scale;
 
         public decimal ToBsize;
+
+        public SISOQueue<tradeSummary> tradeSummaryQueue = new SISOQueue<tradeSummary>();
 
         public bool readyToTrade = false;
 
@@ -407,7 +410,7 @@ namespace Crypto_Trading
             double diff = this.getTheoLatency(timestamp);
             if(diff > -60000)
             {
-                return timestamp + TimeSpan.FromMilliseconds(diff);
+                return timestamp + TimeSpan.FromMilliseconds(diff - this.base_latency);
             }
             else
             {
@@ -531,7 +534,7 @@ namespace Crypto_Trading
                 double theo = this.getTheoLatency(update.timestamp.Value);
                 double latency = (update.timestamp.Value - update.orderbookTime.Value).TotalMilliseconds;
 
-                if (latency - theo > this.latencyTh)
+                if (latency - theo + this.base_latency > this.latencyTh)
                 {
                     ++(this.count_Latentquotes);
                     ++(this.cum_Latentquotes);
@@ -564,7 +567,7 @@ namespace Crypto_Trading
                 double theo = this.getTheoLatency(update.timestamp.Value);
                 double latency = (update.timestamp.Value - update.filled_time.Value).TotalMilliseconds;
 
-                if (latency - theo > this.latencyTh)
+                if (latency - theo + this.base_latency > this.latencyTh)
                 {
                     ++(this.count_LatentTrade);
                     ++(this.cum_LatentTrade);
@@ -780,6 +783,42 @@ namespace Crypto_Trading
                 if (this.open_mid < 0)
                 {
                     this.open_mid = this.mid;
+                }
+            }
+            tradeSummary initial_data = this.tradeSummaryQueue.Dequeue();
+            tradeSummary ts = initial_data;
+            int i = 0;
+            while (ts != null)
+            {
+                if (ts.timestamp.HasValue)
+                {
+                    if (current - ts.timestamp > TimeSpan.FromMilliseconds(ts.measuringPeriod))
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        if (ts.minBid == 0 || ts.minBid > this.bestbid.Item1)
+                        {
+                            ts.minBid = this.bestbid.Item1;
+                        }
+                        if (ts.maxAsk == 0 || ts.maxAsk < this.bestask.Item1)
+                        {
+                            ts.maxAsk = this.bestask.Item1;
+                        }
+                        this.tradeSummaryQueue.Enqueue(ts);
+                    }
+                }
+                ++i;
+                ts = this.tradeSummaryQueue.Dequeue();
+                if (ts == null || ts == initial_data)
+                {
+                    break;
+                }
+                else if (i > 10000)
+                {
+                    ret = false;
+                    break;
                 }
             }
             return ret;
@@ -1219,7 +1258,7 @@ namespace Crypto_Trading
                 double theo = this.getTheoLatency(ord.timestamp.Value);
                 double latency = (ord.timestamp.Value - ord.update_time.Value).TotalMilliseconds;
 
-                if (latency - theo > this.latencyTh)
+                if (latency - theo + this.base_latency > this.latencyTh)
                 {
                     ++(this.count_LatentOrderUpdates);
                     ++(this.cum_LatentOrderUpdates);
@@ -1327,7 +1366,7 @@ namespace Crypto_Trading
                 double theo = this.getTheoLatency(fill.timestamp.Value);
                 double latency = (fill.timestamp.Value - fill.filled_time.Value).TotalMilliseconds;
 
-                if(latency - theo > this.latencyTh)
+                if(latency - theo + this.base_latency > this.latencyTh)
                 {
                     ++(this.count_LatentFill);
                     ++(this.cum_LatentFill);
