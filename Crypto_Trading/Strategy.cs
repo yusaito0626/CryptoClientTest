@@ -1324,16 +1324,32 @@ namespace Crypto_Trading
 
                     List<string> cancelling_ord = new List<string>();
 
-                    if (this.taker.tradeImbalance > 20000 || this.taker.tradeImbalance < -20000 || this.maker.tradeImbalance > 20000 || this.maker.tradeImbalance < -20000)
+                    if (this.taker.tradeImbalance * this.taker.mid > 5000000 || this.taker.tradeImbalance * this.taker.mid < -5000000 || this.maker.tradeImbalance * this.maker.mid > 5000000 || this.maker.tradeImbalance * this.maker.mid < -5000000)
                     {
                         if(!this.signalDetected)
                         {
                             addLog($"Signal Detected. Maker tradeImbalance:{this.maker.tradeImbalance}  Taker tradeImbalance:{this.taker.tradeImbalance}");
-                        }
-                        else
-                        {
                             this.signalDetected = true;
                         }
+                        //for (i = 0; i < this.layers; ++i)
+                        //{
+                        //    if (this.live_buyorders[i] != "")
+                        //    {
+                        //        cancelling_ord.Add(this.live_buyorders[i]);
+                        //        this.live_buyorders[i] = "";
+                        //        this.current_bids[i] = 0;
+                        //        this.bid_orders[i].price = 0;
+                        //    }
+                        //    if (this.live_sellorders[i] != "")
+                        //    {
+                        //        cancelling_ord.Add(this.live_sellorders[i]);
+                        //        this.live_sellorders[i] = "";
+                        //        this.current_asks[i] = 0;
+                        //        this.ask_orders[i].price = 0;
+                        //    }
+                        //}
+                        //this.oManager.placeCancelSpotOrders(this.maker, cancelling_ord);
+                        //return ret;
                     }
                     else
                     {
@@ -2971,9 +2987,9 @@ namespace Crypto_Trading
                         }
                     }
                 }
-                else if(ord.status == orderStatus.Open)
+                else if (ord.status == orderStatus.Open)
                 {
-                    if(ord.symbol_market == this.maker.symbol_market)
+                    if (ord.symbol_market == this.maker.symbol_market)
                     {
                         using (var tslock = this.tradeSummary_lock.getlock())
                         {

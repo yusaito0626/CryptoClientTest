@@ -53,6 +53,8 @@ namespace Crypto_GUI
         ThreadManager thManager = ThreadManager.GetInstance();
         MessageDeliverer MsgDeliverer = MessageDeliverer.GetInstance();
 
+        Dictionary<string, Instrument> instruments_server = new Dictionary<string, Instrument>();
+
         Strategy selected_stg;
         Dictionary<string, Strategy> strategies;
 
@@ -619,8 +621,27 @@ namespace Crypto_GUI
                 Strategy stg = new Strategy();
                 stg._addLog = this.addLog;
                 stg.setStrategy(setting.Value);
-                stg.maker = this.qManager.getInstrument(stg.baseCcy, stg.quoteCcy, stg.maker_market);
-                stg.taker = this.qManager.getInstrument(stg.baseCcy, stg.quoteCcy, stg.taker_market);
+                bool maker_found = false;
+                bool taker_found = false;
+                foreach(var ins in this.instruments_server.Values)
+                {
+                    if(ins.baseCcy == stg.baseCcy && ins.quoteCcy == stg.quoteCcy && ins.market == stg.maker_market)
+                    {
+                        stg.maker = ins;
+                        maker_found = true;
+                    }
+                    if (ins.baseCcy == stg.baseCcy && ins.quoteCcy == stg.quoteCcy && ins.market == stg.taker_market)
+                    {
+                        stg.taker = ins;
+                        taker_found = true;
+                    }
+                    if(maker_found && taker_found)
+                    {
+                        break;
+                    }
+                }
+                //stg.maker = this.qManager.getInstrument(stg.baseCcy, stg.quoteCcy, stg.maker_market);
+                //stg.taker = this.qManager.getInstrument(stg.baseCcy, stg.quoteCcy, stg.taker_market);
                 stg.maker.ToBsize = stg.ToBsize;
                 stg.taker.ToBsize = stg.ToBsize;
                 this.strategies[stg.name] = stg;
@@ -883,6 +904,13 @@ namespace Crypto_GUI
                                     case "master":
                                         var masters = JsonSerializer.Deserialize<Dictionary<string, masterInfo>>(content);
                                         this.qManager.initializeInstruments(masters);
+                                        Instrument ins_server;
+                                        foreach (var m in masters)
+                                        {
+                                            ins_server = new Instrument();
+                                            ins_server.initialize(m.Value);
+                                            instruments_server[ins_server.symbol_market] = ins_server;
+                                        }
                                         this.oManager.setInstruments(this.qManager.instruments);
                                         this.BeginInvoke(() =>
                                         {
@@ -999,7 +1027,7 @@ namespace Crypto_GUI
                                                     }
                                                 }
 
-                                                foreach (Instrument ins in qManager.instruments.Values)
+                                                foreach (Instrument ins in instruments_server.Values)
                                                 {
                                                     if(ccy_list.Contains(ins.quoteCcy) == false)
                                                     {
@@ -1173,13 +1201,13 @@ namespace Crypto_GUI
                                                 stg.taker_market = (market)Enum.Parse(typeof(market), s.Value.taker_market);
                                                 stg.maker_symbol_market = s.Value.maker_symbol_market;
                                                 stg.taker_symbol_market = s.Value.taker_symbol_market;
-                                                if (this.qManager.instruments.ContainsKey(stg.maker_symbol_market))
+                                                if (instruments_server.ContainsKey(stg.maker_symbol_market))
                                                 {
-                                                    stg.maker = this.qManager.instruments[stg.maker_symbol_market];
+                                                    stg.maker = instruments_server[stg.maker_symbol_market];
                                                 }
-                                                if (this.qManager.instruments.ContainsKey(stg.taker_symbol_market))
+                                                if (instruments_server.ContainsKey(stg.taker_symbol_market))
                                                 {
-                                                    stg.taker = this.qManager.instruments[stg.taker_symbol_market];
+                                                    stg.taker = instruments_server[stg.taker_symbol_market];
                                                 }
                                                 stg.skew_point = s.Value.skew;
                                                 stg.base_markup = s.Value.markup;
@@ -1211,9 +1239,9 @@ namespace Crypto_GUI
                                         var insinfos = JsonSerializer.Deserialize<Dictionary<string, instrumentInfo>>(content);
                                         foreach (var i in insinfos)
                                         {
-                                            if (this.qManager.instruments.ContainsKey(i.Key))
+                                            if (instruments_server.ContainsKey(i.Key))
                                             {
-                                                Instrument ins = this.qManager.instruments[i.Key];
+                                                Instrument ins = instruments_server[i.Key];
                                                 ins.last_price = i.Value.last_price;
                                                 ins.buy_notional = i.Value.notional_buy;
                                                 ins.sell_notional = i.Value.notional_sell;
@@ -1812,7 +1840,11 @@ namespace Crypto_GUI
                 }
                 this.lbl_baseFee.Text = this.selected_ins.base_fee.ToString("N" + this.selected_ins.quantity_scale);
                 this.lbl_quoteFee.Text = this.selected_ins.quote_fee.ToString("N" + this.selected_ins.quantity_scale);
-                this.updateQuotesView(this.gridView_Ins, this.selected_ins);
+                if (this.qManager.instruments.ContainsKey(this.selected_ins.symbol_market))
+                {
+                    Instrument ins_quotes = this.qManager.instruments[this.selected_ins.symbol_market];
+                    this.updateQuotesView(this.gridView_Ins, ins_quotes);
+                }
 
                 this.gridView_MI.Rows[0].Cells[0].Value = this.selected_ins.mi_volume.ToString("N" + this.selected_ins.quantity_scale);
                 
@@ -1884,16 +1916,16 @@ namespace Crypto_GUI
                             {
                                 row.Cells["col_" + b.ccy].Value = b.total.ToString("N5");
                             }
-                            if(qManager.instruments.ContainsKey(b.valuation_pair))
+                            if(instruments_server.ContainsKey(b.valuation_pair))
                             {
-                                Instrument ins = qManager.instruments[b.valuation_pair];
+                                Instrument ins = instruments_server[b.valuation_pair];
                                 if(ins.quoteCcy == "JPY")
                                 {
-                                    b.current_price = qManager.instruments[b.valuation_pair].mid;
+                                    b.current_price = instruments_server[b.valuation_pair].mid;
                                 }
                                 else if(ins.baseCcy == "JPY")
                                 {
-                                    b.current_price = 1 / qManager.instruments[b.valuation_pair].mid;
+                                    b.current_price = 1 / instruments_server[b.valuation_pair].mid;
                                 }
                             }
                             currentValue += b.total * b.current_price;
@@ -1903,9 +1935,9 @@ namespace Crypto_GUI
                             decimal unrealizePnL = 0;
                             foreach (var mb in exBalance.marginLong.Values)
                             {
-                                if (qManager.instruments.ContainsKey(mb.symbol_market) && qManager.instruments[mb.symbol_market].mid > 0)
+                                if (instruments_server.ContainsKey(mb.symbol_market) && instruments_server[mb.symbol_market].mid > 0)
                                 {
-                                    mb.current_price = qManager.instruments[mb.symbol_market].mid;
+                                    mb.current_price = instruments_server[mb.symbol_market].mid;
                                 }
                                 else
                                 {
@@ -1947,9 +1979,9 @@ namespace Crypto_GUI
                         {
                             this.gridView_balance.Rows[0].Cells["col_" + b.ccy].Value = b.total.ToString("N5");
                         }
-                        if (qManager.instruments.ContainsKey(b.valuation_pair) && qManager.instruments[b.valuation_pair].mid > 0)
+                        if (instruments_server.ContainsKey(b.valuation_pair) && instruments_server[b.valuation_pair].mid > 0)
                         {
-                            b.current_price = qManager.instruments[b.valuation_pair].mid;
+                            b.current_price = instruments_server[b.valuation_pair].mid;
                         }
                         currentValue += b.total * b.current_price;
                     }
@@ -1958,9 +1990,9 @@ namespace Crypto_GUI
                         decimal unrealizePnL = 0;
                         foreach (var mb in exBalance.marginLong.Values)
                         {
-                            if (qManager.instruments.ContainsKey(mb.symbol_market) && qManager.instruments[mb.symbol_market].mid > 0)
+                            if (instruments_server.ContainsKey(mb.symbol_market) && instruments_server[mb.symbol_market].mid > 0)
                             {
-                                mb.current_price = qManager.instruments[mb.symbol_market].mid;
+                                mb.current_price = instruments_server[mb.symbol_market].mid;
                             }
                             else
                             {
@@ -1970,9 +2002,9 @@ namespace Crypto_GUI
                         }
                         foreach (var mb in exBalance.marginShort.Values)
                         {
-                            if (qManager.instruments.ContainsKey(mb.symbol_market) && qManager.instruments[mb.symbol_market].mid > 0)
+                            if (instruments_server.ContainsKey(mb.symbol_market) && instruments_server[mb.symbol_market].mid > 0)
                             {
-                                mb.current_price = qManager.instruments[mb.symbol_market].mid;
+                                mb.current_price = instruments_server[mb.symbol_market].mid;
                             }
                             else
                             {
@@ -2001,9 +2033,9 @@ namespace Crypto_GUI
                 if (fill != null)
                 {
                     //ord = this.oManager.orders[ord_id];
-                    if (this.qManager.instruments.ContainsKey(fill.symbol_market))
+                    if (instruments_server.ContainsKey(fill.symbol_market))
                     {
-                        Instrument ins = this.qManager.instruments[fill.symbol_market];
+                        Instrument ins = instruments_server[fill.symbol_market];
                         this.gridView_orders.Rows.Insert(0);
                         this.gridView_orders.Rows[0].Cells[0].Value = ((DateTime)fill.timestamp).ToString("HH:mm:ss.fff");
                         this.gridView_orders.Rows[0].Cells[1].Value = fill.market;
@@ -2031,19 +2063,26 @@ namespace Crypto_GUI
                     this.lbl_quoteCcy_taker.Text = this.selected_stg.taker.quoteBalance.total.ToString("N2");
                     this.lbl_makerfee_taker.Text = this.selected_stg.taker.maker_fee.ToString("N5");
                     this.lbl_takerfee_taker.Text = this.selected_stg.taker.taker_fee.ToString("N5");
-                    this.updateQuotesView(this.gridView_Taker, this.selected_stg.taker);
+                    if(this.qManager.instruments.ContainsKey(this.selected_stg.taker.symbol_market))
+                    {
+                        Instrument ins_quotes = this.qManager.instruments[this.selected_stg.taker.symbol_market];
+                        this.updateQuotesView(this.gridView_Taker, ins_quotes);
+                    }
                     this.lbl_adjustedask.Text = this.selected_stg.taker.adjusted_bestask.Item1.ToString("N" + this.selected_stg.taker.price_scale);
                     this.lbl_adjustedbid.Text = this.selected_stg.taker.adjusted_bestbid.Item1.ToString("N" + this.selected_stg.taker.price_scale);
                 }
                 if (this.selected_stg.maker != null)
                 {
                     this.lbl_makerName.Text = this.selected_stg.maker.symbol_market;
-                    this.lbl_baseCcy_maker.Text = this.selected_stg.maker.baseBalance.total.ToString("N5");
                     this.lbl_baseCcy_maker.Text = this.selected_stg.maker.net_pos.ToString("N5");
                     this.lbl_quoteCcy_maker.Text = this.selected_stg.maker.quoteBalance.total.ToString("N2");
                     this.lbl_makerfee_maker.Text = this.selected_stg.maker.maker_fee.ToString("N5");
                     this.lbl_takerfee_maker.Text = this.selected_stg.maker.taker_fee.ToString("N5");
-                    this.updateQuotesView(this.gridView_Maker, this.selected_stg.maker);
+                    if (this.qManager.instruments.ContainsKey(this.selected_stg.maker.symbol_market))
+                    {
+                        Instrument ins_quotes = this.qManager.instruments[this.selected_stg.maker.symbol_market];
+                        this.updateQuotesView(this.gridView_Maker, ins_quotes);
+                    }
                     this.lbl_askprice.Text = this.selected_stg.live_askprice.ToString("N" + this.selected_stg.maker.price_scale);
                     this.lbl_bidprice.Text = this.selected_stg.live_bidprice.ToString("N" + this.selected_stg.maker.price_scale);
                     this.lbl_skewpoint.Text = this.selected_stg.skew_point.ToString("N2");
@@ -2154,9 +2193,9 @@ namespace Crypto_GUI
         }
         private void comboSymbols_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (this.qManager.instruments.ContainsKey(this.comboSymbols.Text))
+            if (instruments_server.ContainsKey(this.comboSymbols.Text))
             {
-                this.selected_ins = this.qManager.instruments[this.comboSymbols.Text];
+                this.selected_ins = instruments_server[this.comboSymbols.Text];
                 int firstRow = -1;
                 foreach (DataGridViewRow row in this.gridView_InsFills.Rows)
                 {

@@ -458,8 +458,9 @@ namespace Crypto_Trading
             }
         }
 
-        public void updateQuotes(DataOrderBook update)
+        public int updateQuotes(DataOrderBook update)
         {
+            int ret = 0;
             this.last_quote_updated_time = update.timestamp;
 
             if(update.orderbookTime.HasValue)
@@ -485,7 +486,7 @@ namespace Crypto_Trading
                         }
                     }
 
-                    this.updateBeskAskBid(this.ToBsize);
+                    ret = this.updateBeskAskBid(this.ToBsize);
                     break;
                 case CryptoExchange.Net.Objects.SocketUpdateType.Update:
                     using (var qlock = this.quotes_lock.getlock())
@@ -522,7 +523,7 @@ namespace Crypto_Trading
                         }
                     }
 
-                    this.updateBeskAskBid(this.ToBsize);
+                    ret = this.updateBeskAskBid(this.ToBsize);
 
                     break;
             }
@@ -541,6 +542,7 @@ namespace Crypto_Trading
                 }
             }
             calcFactors();
+            return ret;
         }
         public void updateTrade(DataTrade update)
         {
@@ -576,9 +578,9 @@ namespace Crypto_Trading
             calcFactors();
         }
 
-        private bool updateBeskAskBid(decimal quantity)
+        private int updateBeskAskBid(decimal quantity)
         {
-            bool ret = true;
+            int ret = 0;
             DateTime current = DateTime.UtcNow;
 
             using(var qlock = this.quotes_lock.getlock())
@@ -680,7 +682,7 @@ namespace Crypto_Trading
                 }
                 if (this.bestask.Item1 > 0 && this.bestbid.Item1 > 0 && this.bestbid.Item1 >= this.bestask.Item1)
                 {
-                    ret = false;
+                    ret = 1;
                     if (this.bestask_time > this.bestbid_time)
                     {
                         this.bids.Remove(this.bestbid.Item1);
@@ -785,8 +787,8 @@ namespace Crypto_Trading
                     this.open_mid = this.mid;
                 }
             }
-            tradeSummary initial_data = this.tradeSummaryQueue.Dequeue();
-            tradeSummary ts = initial_data;
+            tradeSummary ts = this.tradeSummaryQueue.Dequeue();
+            tradeSummary initial_data = null;
             int i = 0;
             while (ts != null)
             {
@@ -794,10 +796,13 @@ namespace Crypto_Trading
                 {
                     if (current - ts.timestamp > TimeSpan.FromMilliseconds(ts.measuringPeriod))
                     {
-                        continue;
                     }
                     else
                     {
+                        if(initial_data == null)
+                        {
+                            initial_data = ts;
+                        }
                         if (ts.minBid == 0 || ts.minBid > this.bestbid.Item1)
                         {
                             ts.minBid = this.bestbid.Item1;
@@ -817,7 +822,7 @@ namespace Crypto_Trading
                 }
                 else if (i > 10000)
                 {
-                    ret = false;
+                    ret = 2;
                     break;
                 }
             }

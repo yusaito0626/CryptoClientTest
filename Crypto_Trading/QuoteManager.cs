@@ -605,7 +605,11 @@ namespace Crypto_Trading
                         if (this.instruments.ContainsKey(symbol_market))
                         {
                             ins = instruments[symbol_market];
-                            ins.updateQuotes(msg);
+                            int err = ins.updateQuotes(msg);
+                            if(err > 0)
+                            {
+                                addLog($"Error:{err}");
+                            }
                             if(ins.mid > 0 && ins.prev_mid > 0 && Math.Pow(Math.Log((double)ins.mid / (double)ins.prev_mid),2) > 0.1)
                             {
                                 addLog($"Irregular mid found.   ins:{ins.symbol_market} mid:{ins.mid} prevmid:{ins.prev_mid} bestask:{ins.bestask.Item1} bestbid:{ins.bestbid.Item1}",logType.WARNING);
@@ -701,7 +705,11 @@ namespace Crypto_Trading
                     if (this.instruments.ContainsKey(symbol_market))
                     {
                         ins = instruments[symbol_market];
-                        ins.updateQuotes(msg);
+                        int err = ins.updateQuotes(msg);
+                        if (err > 0)
+                        {
+                            addLog($"Error:{err}");
+                        }
                         this.oManager.checkVirtualOrders(ins);
                     }
                     else
