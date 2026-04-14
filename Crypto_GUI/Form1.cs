@@ -1,6 +1,7 @@
 using Crypto_Clients;
 using Crypto_Trading;
 using CryptoClients.Net.Enums;
+using CryptoExchange.Net;
 using Discord;
 using Discord.WebSocket;
 using Enums;
@@ -1186,6 +1187,8 @@ namespace Crypto_GUI
                                                 stg.residualPnL = s.Value.residualPnL;
                                                 stg.tradingPnLB = s.Value.tradingPnLB;
                                                 stg.mi_volume = s.Value.mi_volume;
+                                                stg.taker.adjusted_bestask.Item1 = s.Value.liquidity_ask;
+                                                stg.taker.adjusted_bestbid.Item1 = s.Value.liquidity_bid;
                                                 foreach (var mi in s.Value.market_impact_curve)
                                                 {
                                                     stg.market_impact_curve[mi.Key] = mi.Value;
@@ -1916,16 +1919,16 @@ namespace Crypto_GUI
                             {
                                 row.Cells["col_" + b.ccy].Value = b.total.ToString("N5");
                             }
-                            if(instruments_server.ContainsKey(b.valuation_pair))
+                            if(this.qManager.instruments.ContainsKey(b.valuation_pair))
                             {
-                                Instrument ins = instruments_server[b.valuation_pair];
+                                Instrument ins = this.qManager.instruments[b.valuation_pair];
                                 if(ins.quoteCcy == "JPY")
                                 {
-                                    b.current_price = instruments_server[b.valuation_pair].mid;
+                                    b.current_price = ins.mid;
                                 }
                                 else if(ins.baseCcy == "JPY")
                                 {
-                                    b.current_price = 1 / instruments_server[b.valuation_pair].mid;
+                                    b.current_price = 1 / ins.mid;
                                 }
                             }
                             currentValue += b.total * b.current_price;
@@ -1935,9 +1938,9 @@ namespace Crypto_GUI
                             decimal unrealizePnL = 0;
                             foreach (var mb in exBalance.marginLong.Values)
                             {
-                                if (instruments_server.ContainsKey(mb.symbol_market) && instruments_server[mb.symbol_market].mid > 0)
+                                if (this.qManager.instruments.ContainsKey(mb.symbol_market) && this.qManager.instruments[mb.symbol_market].mid > 0)
                                 {
-                                    mb.current_price = instruments_server[mb.symbol_market].mid;
+                                    mb.current_price = this.qManager.instruments[mb.symbol_market].mid;
                                 }
                                 else
                                 {

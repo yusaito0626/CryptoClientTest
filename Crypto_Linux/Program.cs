@@ -3236,7 +3236,7 @@ namespace Crypto_Linux
                     }
                 }
                 stginfo.liquidity_ask = stg.taker.adjusted_bestask.Item1;
-                stginfo.liquidity_ask = stg.taker.adjusted_bestbid.Item1;
+                stginfo.liquidity_bid = stg.taker.adjusted_bestbid.Item1;
 
                 //stg.netExposure = stg.maker.baseBalance.total + stg.taker.baseBalance.total - stg.baseCcyQuantity;
                 stg.netExposure = stg.maker.net_pos + stg.taker.net_pos;
