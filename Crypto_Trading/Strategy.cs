@@ -1546,7 +1546,7 @@ namespace Crypto_Trading
                                         ts = new tradeSummary();
                                     }
                                     ts.id = this.live_buyorders[i];
-                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market,i + 1,this.bid_orders[i].price, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening,this.skewWidening_const, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market,i + 1,this.bid_orders[i].price, this.bid_orders[i].quantity, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening,this.skewWidening_const, this.maker.marginDiscount, this.taker.marginDiscount);
                                     ts.addFactors(this.maker.quoteLatency, this.maker.tradeImbalance, this.maker.quoteImbalance, this.maker.mid > 0 ? Math.Log(this.maker.weightedMid / (double)this.maker.mid) : 0, this.taker.quoteLatency, this.taker.tradeImbalance, this.taker.quoteImbalance, this.taker.mid > 0 ? Math.Log(this.taker.weightedMid / (double)this.taker.mid) : 0);
                                     this.tempTradeSummaries[ts.id] = ts;
                                 }
@@ -1691,7 +1691,7 @@ namespace Crypto_Trading
                                         ts = new tradeSummary();
                                     }
                                     ts.id = this.live_sellorders[i];
-                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.ask_orders[i].price, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.skewWidening_const, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.ask_orders[i].price, this.ask_orders[i].quantity, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.skewWidening_const, this.maker.marginDiscount, this.taker.marginDiscount);
                                     ts.addFactors(this.maker.quoteLatency, this.maker.tradeImbalance, this.maker.quoteImbalance, this.maker.mid > 0 ? Math.Log(this.maker.weightedMid / (double)this.maker.mid) : 0, this.taker.quoteLatency, this.taker.tradeImbalance, this.taker.quoteImbalance, this.taker.mid > 0 ? Math.Log(this.taker.weightedMid / (double)this.taker.mid) : 0);
                                     this.tempTradeSummaries[ts.id] = ts;
                                 }
@@ -1853,7 +1853,7 @@ namespace Crypto_Trading
                                         ts = new tradeSummary();
                                     }
                                     ts.id = this.live_sellorders[i];
-                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.ask_orders[i].price, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.skewWidening_const, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.ask_orders[i].price, this.ask_orders[i].quantity, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.skewWidening_const, this.maker.marginDiscount, this.taker.marginDiscount);
                                     ts.addFactors(this.maker.quoteLatency, this.maker.tradeImbalance, this.maker.quoteImbalance, this.maker.mid > 0 ? Math.Log(this.maker.weightedMid / (double)this.maker.mid) : 0, this.taker.quoteLatency, this.taker.tradeImbalance, this.taker.quoteImbalance, this.taker.mid > 0 ? Math.Log(this.taker.weightedMid / (double)this.taker.mid) : 0);
                                     this.tempTradeSummaries[ts.id] = ts;
                                 }
@@ -2007,7 +2007,7 @@ namespace Crypto_Trading
                                         ts = new tradeSummary();
                                     }
                                     ts.id = this.live_buyorders[i];
-                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.bid_orders[i].price, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.skewWidening_const, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.bid_orders[i].price, this.bid_orders[i].quantity, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.skewWidening_const, this.maker.marginDiscount, this.taker.marginDiscount);
                                     ts.addFactors(this.maker.quoteLatency, this.maker.tradeImbalance, this.maker.quoteImbalance, this.maker.mid > 0 ? Math.Log(this.maker.weightedMid / (double)this.maker.mid) : 0, this.taker.quoteLatency, this.taker.tradeImbalance, this.taker.quoteImbalance, this.taker.mid > 0 ? Math.Log(this.taker.weightedMid / (double)this.taker.mid) : 0);
                                     this.tempTradeSummaries[ts.id] = ts;
                                 }

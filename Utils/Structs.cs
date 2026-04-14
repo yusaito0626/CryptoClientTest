@@ -2069,7 +2069,8 @@ namespace Utils
         public double takerQuoteImbalance;
         public double takerMidRatio;
 
-        public decimal orderPrice;
+        public decimal order_price;
+        public decimal order_quantity;
         public decimal maxAsk;
         public decimal minBid;
         public double measuringPeriod = 1000;
@@ -2135,7 +2136,7 @@ namespace Utils
             }
             return true;
         }
-        public void setPricingInfo(string strategy_name,string m_symbolmarket,string t_symbolmarket, int layer = 0,decimal orderprice = 0,decimal makerMarkup = 0,decimal takerMarkup = 0,double rv = 0,decimal skew = 0,decimal skew_widening = 0,decimal const_skew = 0,decimal makerPrAdj = 0,decimal takerPrAdj = 0)
+        public void setPricingInfo(string strategy_name,string m_symbolmarket,string t_symbolmarket, int layer = 0,decimal orderprice = 0, decimal orderquantity = 0, decimal makerMarkup = 0,decimal takerMarkup = 0,double rv = 0,decimal skew = 0,decimal skew_widening = 0,decimal const_skew = 0,decimal makerPrAdj = 0,decimal takerPrAdj = 0)
         {
             this.strategy = strategy_name;
             this.layer = layer;
@@ -2149,7 +2150,8 @@ namespace Utils
             this.const_skew_widening = const_skew;
             this.maker_priceAdjustment = makerPrAdj;
             this.taker_priceAdjustment = takerPrAdj;
-            this.orderPrice = orderprice;
+            this.order_price = orderprice;
+            this.order_quantity = orderquantity;
         }
 
         public void addFactors(double mLat, decimal mtImb, double mqImb, double mMid, double tLat, decimal ttImb, double tqImb, double tMid,int _action = 0)
@@ -2243,7 +2245,8 @@ namespace Utils
             this.takerQuoteImbalance = 0;
             this.takerMidRatio = 0;
 
-            this.orderPrice = 0;
+            this.order_price = 0;
+            this.order_quantity = 0;
             this.maxAsk = 0;
             this.minBid = 0;
         }
@@ -2259,7 +2262,7 @@ namespace Utils
                 strtime = "";
             }
             //timestamp,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,maker_side,maker_avgprice,maker_quantity,maker_avgExecutedTime,taker_side,taker_avgprice,taker_quantity,taker_avgExecutedTime,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency;
-            return $"{strtime},{strategy},{this.id},{this.BBook},{this.maker_symbolmarket},{this.taker_symbolmarket},{this.maker_orderid},{this.taker_orderid},{this.layer},{this.maker_side},{this.orderPrice},{this.maker_avgprice},{this.maker_quantity},{this.maker_avgExecutedTime},{this.taker_side},{this.taker_avgprice},{this.taker_quantity},{this.taker_avgExecutedTime},{this.realized_volatility},{this.maker_markup},{this.taker_markup},{this.skew},{this.maker_priceAdjustment},{this.taker_priceAdjustment},{this.markupPnL},{this.skewPnL},{this.priceAdjPnL},{this.residualPnL},{this.totalFee},{this.totalPnL},{this.avg_latency},{this.action},{this.makerLatency},{this.makerTradeImbalance},{this.makerQuoteImbalance},{this.makerMidRatio},{this.takerLatency},{this.takerTradeImbalance},{this.takerQuoteImbalance},{this.takerMidRatio},{this.maxAsk},{this.minBid}";
+            return $"{strtime},{strategy},{this.id},{this.BBook},{this.maker_symbolmarket},{this.taker_symbolmarket},{this.maker_orderid},{this.taker_orderid},{this.layer},{this.maker_side},{this.order_price},{this.order_quantity},{this.maker_avgprice},{this.maker_quantity},{this.maker_avgExecutedTime},{this.taker_side},{this.taker_avgprice},{this.taker_quantity},{this.taker_avgExecutedTime},{this.realized_volatility},{this.maker_markup},{this.taker_markup},{this.skew},{this.maker_priceAdjustment},{this.taker_priceAdjustment},{this.markupPnL},{this.skewPnL},{this.priceAdjPnL},{this.residualPnL},{this.totalFee},{this.totalPnL},{this.avg_latency},{this.action},{this.makerLatency},{this.makerTradeImbalance},{this.makerQuoteImbalance},{this.makerMidRatio},{this.takerLatency},{this.takerTradeImbalance},{this.takerQuoteImbalance},{this.takerMidRatio},{this.maxAsk},{this.minBid}";
         }
 
     }
