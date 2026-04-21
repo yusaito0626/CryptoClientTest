@@ -807,6 +807,14 @@ namespace Crypto_Trading
                         {
                             ts.minBid = this.bestbid.Item1;
                         }
+                        if (ts.minAsk == 0 || ts.minAsk > this.bestask.Item1)
+                        {
+                            ts.minAsk = this.bestask.Item1;
+                        }
+                        if (ts.maxBid == 0 || ts.maxBid < this.bestbid.Item1)
+                        {
+                            ts.maxBid = this.bestbid.Item1;
+                        }
                         if (ts.maxAsk == 0 || ts.maxAsk < this.bestask.Item1)
                         {
                             ts.maxAsk = this.bestask.Item1;

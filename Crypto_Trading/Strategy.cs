@@ -18,6 +18,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Utils;
 
+
 namespace Crypto_Trading
 {
     public class Strategy
@@ -3000,6 +3001,8 @@ namespace Crypto_Trading
                                 {
                                     ts.timestamp = ord.create_time;
                                     ts.minBid = this.maker.bestbid.Item1;
+                                    ts.minAsk = this.maker.bestask.Item1;
+                                    ts.maxBid = this.maker.bestbid.Item1;
                                     ts.maxAsk = this.maker.bestask.Item1;
                                     this.maker.tradeSummaryQueue.Enqueue(ts);
                                 }
@@ -3016,6 +3019,8 @@ namespace Crypto_Trading
                                     //addLog("trade summary enquued");
                                     ts.timestamp = ord.create_time;
                                     ts.minBid = this.maker.bestbid.Item1;
+                                    ts.minAsk = this.maker.bestask.Item1;
+                                    ts.maxBid = this.maker.bestbid.Item1;
                                     ts.maxAsk = this.maker.bestask.Item1;
                                     this.maker.tradeSummaryQueue.Enqueue(ts);
                                 }
@@ -3169,6 +3174,15 @@ namespace Crypto_Trading
                         {
                             tradeSummary ts = this.tempTradeSummaries[fill.internal_order_id];
                             this.tempTradeSummaries.Remove(fill.internal_order_id);
+                            if (ts.timestamp.HasValue == false)
+                            {
+                                ts.timestamp = fill.filled_time;
+                                ts.minBid = this.maker.bestbid.Item1;
+                                ts.minAsk = this.maker.bestask.Item1;
+                                ts.maxBid = this.maker.bestbid.Item1;
+                                ts.maxAsk = this.maker.bestask.Item1;
+                                this.maker.tradeSummaryQueue.Enqueue(ts);
+                            }
                             DateTime? timestamp = null;
                             if (filled_quantity > 0)
                             {
@@ -3181,6 +3195,15 @@ namespace Crypto_Trading
                         else if (this.tradeSummaries.ContainsKey(fill.internal_order_id))
                         {
                             tradeSummary ts = this.tradeSummaries[fill.internal_order_id];
+                            if (ts.timestamp.HasValue == false)
+                            {
+                                ts.timestamp = fill.filled_time;
+                                ts.minBid = this.maker.bestbid.Item1;
+                                ts.minAsk = this.maker.bestask.Item1;
+                                ts.maxBid = this.maker.bestbid.Item1;
+                                ts.maxAsk = this.maker.bestask.Item1;
+                                this.maker.tradeSummaryQueue.Enqueue(ts);
+                            }
 
                             this.notionalVolumeB -= ts.maker_avgprice * ts.maker_quantity;
                             this.markupPnL -= ts.markupPnL;

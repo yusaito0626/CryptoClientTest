@@ -2097,13 +2097,13 @@ namespace Crypto_Linux
                             if (strategies.ContainsKey(data[1]))
                             {
                                 Strategy stg = strategies[data[1]];
-                                decimal notional = decimal.Parse(data[10]) * decimal.Parse(data[11]);
+                                decimal notional = decimal.Parse(data[12]) * decimal.Parse(data[13]);
                                 stg.notionalVolumeB += notional;
-                                stg.markupPnL += decimal.Parse(data[23]);
-                                stg.skewPnL += decimal.Parse(data[24]);
-                                stg.priceAdjPnL += decimal.Parse(data[25]);
-                                stg.residualPnL += decimal.Parse(data[26]);
-                                stg.tradingPnLB += decimal.Parse(data[28]);
+                                stg.markupPnL += decimal.Parse(data[26]);
+                                stg.skewPnL += decimal.Parse(data[27]);
+                                stg.priceAdjPnL += decimal.Parse(data[28]);
+                                stg.residualPnL += decimal.Parse(data[29]);
+                                stg.tradingPnLB += decimal.Parse(data[32]);
                             }
                         }
                     }
@@ -2565,7 +2565,7 @@ namespace Crypto_Linux
             {
                 using (StreamWriter tpt = new StreamWriter(new FileStream(filename, FileMode.Create, FileAccess.Write)))
                 {
-                    tpt.WriteLine("timestamp,strategy,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,layer,maker_side,maker_orderprice,maker_orderquantity,maker_avgprice,maker_quantity,maker_avgExecutedTime,taker_side,taker_avgprice,taker_quantity,taker_avgExecutedTime,realized_volatility,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency,action,makerLatency,makerTradeImbalance,makerQuoteImbalance,makerMidRatio,takerLatency,takerTradeImbalance,takerQuoteImbalance,takerMidRatio,maxAsk,minBid");
+                    tpt.WriteLine("timestamp,strategy,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,layer,maker_side,maker_orderprice,maker_orderquantity,maker_avgprice,maker_quantity,maker_avgExecutedTime,taker_side,taker_avgprice,taker_quantity,taker_avgExecutedTime,realized_volatility,maker_markup,taker_markup,skew,qln_skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,qlnPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency,action,makerLatency,makerTradeImbalance,makerQuoteImbalance,makerMidRatio,takerLatency,takerTradeImbalance,takerQuoteImbalance,takerMidRatio,maxAsk,minAsk,maxBid,minBid");
                     foreach (var stg in strategies.Values)
                     {
                         foreach (var ts in stg.tradeSummaries.Values)
@@ -2588,7 +2588,10 @@ namespace Crypto_Linux
                                     summary[ts.strategy].addData(ts);
                                 }
                             }
-                            tpt.WriteLine(ts.ToString());
+                            if(ts.timestamp.HasValue)
+                            {
+                                tpt.WriteLine(ts.ToString());
+                            }
                         }
                         stg.tradeSummaries.Clear();
                     }

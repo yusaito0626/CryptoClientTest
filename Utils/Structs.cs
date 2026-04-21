@@ -2043,6 +2043,7 @@ namespace Utils
         public decimal taker_markup;
         public decimal skew;
         public decimal skew_widening;
+        public decimal qln_skew;
         public decimal const_skew_widening;
         public decimal maker_priceAdjustment;
         public decimal taker_priceAdjustment;
@@ -2053,6 +2054,7 @@ namespace Utils
         public decimal totalPnL;
         public decimal totalFee;
         public decimal skewPnL;
+        public decimal qlnPnL;
         public decimal priceAdjPnL;
         public decimal markupPnL;
         public decimal residualPnL;
@@ -2071,8 +2073,10 @@ namespace Utils
 
         public decimal order_price;
         public decimal order_quantity;
-        public decimal maxAsk;
+        public decimal minAsk;
         public decimal minBid;
+        public decimal maxAsk;
+        public decimal maxBid;
         public double measuringPeriod = 1000;
 
         public tradeSummary()
@@ -2196,9 +2200,17 @@ namespace Utils
                 this.markupPnL = quantity * (this.maker_avgprice * (1_000_000 / (1_000_000 - this.maker_markup) - 1) + this.taker_avgprice * (1 - 1_000_000 / (1_000_000 + this.taker_markup)));
             }
             this.skewPnL = quantity * sign * ((const_skew + (1 + extra_skew) * this.skew) / 1_000_000 * this.taker_avgprice);
+            this.qlnPnL = quantity * sign * this.qln_skew / 1_000_000 * this.taker_avgprice;
             this.priceAdjPnL = quantity * sign * (this.maker_avgprice * this.maker_priceAdjustment + this.taker_avgprice * - this.taker_priceAdjustment);
-            this.residualPnL = this.totalPnL - this.markupPnL - this.skewPnL - this.priceAdjPnL;
-            this.avg_latency = (this.taker_avgExecutedTime - this.maker_avgExecutedTime) / 10000.0;
+            this.residualPnL = this.totalPnL - this.markupPnL - this.skewPnL - this.qlnPnL - this.priceAdjPnL;
+            if(this.taker_avgExecutedTime > 0 && this.maker_avgExecutedTime > 0)
+            {
+                this.avg_latency = (this.taker_avgExecutedTime - this.maker_avgExecutedTime) / 10000.0;
+            }
+            else
+            {
+                this.avg_latency = 0;
+            }
         }
         public void init()
         {
@@ -2224,12 +2236,14 @@ namespace Utils
             this.taker_avgExecutedTime = 0;
             this.skew = 0;
             this.skew_widening = 0;
+            this.qln_skew = 0;
             this.const_skew_widening = 0;
             this.maker_priceAdjustment = 0;
             this.taker_priceAdjustment = 0;
             this.totalPnL = 0;
             this.totalFee = 0;
             this.skewPnL = 0;
+            this.qlnPnL = 0;
             this.priceAdjPnL = 0;
             this.markupPnL = 0;
             this.residualPnL = 0;
@@ -2248,6 +2262,8 @@ namespace Utils
             this.order_price = 0;
             this.order_quantity = 0;
             this.maxAsk = 0;
+            this.maxBid = 0;
+            this.minAsk = 0;
             this.minBid = 0;
         }
         public string ToString()
@@ -2262,7 +2278,7 @@ namespace Utils
                 strtime = "";
             }
             //timestamp,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,maker_side,maker_avgprice,maker_quantity,maker_avgExecutedTime,taker_side,taker_avgprice,taker_quantity,taker_avgExecutedTime,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency;
-            return $"{strtime},{strategy},{this.id},{this.BBook},{this.maker_symbolmarket},{this.taker_symbolmarket},{this.maker_orderid},{this.taker_orderid},{this.layer},{this.maker_side},{this.order_price},{this.order_quantity},{this.maker_avgprice},{this.maker_quantity},{this.maker_avgExecutedTime},{this.taker_side},{this.taker_avgprice},{this.taker_quantity},{this.taker_avgExecutedTime},{this.realized_volatility},{this.maker_markup},{this.taker_markup},{this.skew},{this.maker_priceAdjustment},{this.taker_priceAdjustment},{this.markupPnL},{this.skewPnL},{this.priceAdjPnL},{this.residualPnL},{this.totalFee},{this.totalPnL},{this.avg_latency},{this.action},{this.makerLatency},{this.makerTradeImbalance},{this.makerQuoteImbalance},{this.makerMidRatio},{this.takerLatency},{this.takerTradeImbalance},{this.takerQuoteImbalance},{this.takerMidRatio},{this.maxAsk},{this.minBid}";
+            return $"{strtime},{strategy},{this.id},{this.BBook},{this.maker_symbolmarket},{this.taker_symbolmarket},{this.maker_orderid},{this.taker_orderid},{this.layer},{this.maker_side},{this.order_price},{this.order_quantity},{this.maker_avgprice},{this.maker_quantity},{this.maker_avgExecutedTime},{this.taker_side},{this.taker_avgprice},{this.taker_quantity},{this.taker_avgExecutedTime},{this.realized_volatility},{this.maker_markup},{this.taker_markup},{this.skew},{this.qln_skew},{this.maker_priceAdjustment},{this.taker_priceAdjustment},{this.markupPnL},{this.skewPnL},{this.qlnPnL},{this.priceAdjPnL},{this.residualPnL},{this.totalFee},{this.totalPnL},{this.avg_latency},{this.action},{this.makerLatency},{this.makerTradeImbalance},{this.makerQuoteImbalance},{this.makerMidRatio},{this.takerLatency},{this.takerTradeImbalance},{this.takerQuoteImbalance},{this.takerMidRatio},{this.maxAsk},{this.minAsk},{this.maxBid},{this.minBid}";
         }
 
     }
