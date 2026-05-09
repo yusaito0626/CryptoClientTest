@@ -1205,6 +1205,7 @@ namespace Crypto_Trading
                                 stg_obj.adjustPosition();
                             }
                             addLog("All the strategy orders have been reset.");
+                        }
                         stg = this.optQueue.Dequeue();
                     }
                     if (ct.IsCancellationRequested)
