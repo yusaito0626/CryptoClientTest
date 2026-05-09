@@ -990,13 +990,43 @@ namespace Crypto_Trading
                             t.Wait();
                             Thread.Sleep(1000);
                             addLog("Resetting positions...");
-                            setBalance(await crypto_client.getBalance(_markets.Keys), _markets.Keys);
-                            setMarginPosition(await crypto_client.getMarginPos(_markets.Keys), _markets.Keys);
-                            //foreach (var m in _markets)
-                            //{
-                            //    setBalance(await crypto_client.getBalance([m.Key]), [m.Key]);
-                            //    setMarginPosition(await crypto_client.getMarginPos([m.Key]));
-                            //}
+                            //setBalance(await crypto_client.getBalance(_markets.Keys), _markets.Keys);
+                            //setMarginPosition(await crypto_client.getMarginPos(_markets.Keys), _markets.Keys);
+                            if (!this.setBalance(await crypto_client.getBalance(this._markets.Keys), this._markets.Keys))
+                            {
+                                int j = 0;
+                                while (!this.setBalance(await crypto_client.getBalance(this._markets.Keys), this._markets.Keys))
+                                {
+                                    ++j;
+                                    if (j > 5)
+                                    {
+                                        addLog("Failed to get balance.", logType.ERROR);
+                                    }
+                                    else
+                                    {
+                                        addLog($"Trial {j}", logType.WARNING);
+                                    }
+                                    Thread.Sleep(j * 1000);
+                                }
+
+                            }
+                            if (!this.setMarginPosition(await crypto_client.getMarginPos(this._markets.Keys), this._markets.Keys))
+                            {
+                                int j = 0;
+                                while (!this.setMarginPosition(await crypto_client.getMarginPos(this._markets.Keys), this._markets.Keys))
+                                {
+                                    ++j;
+                                    if (j > 5)
+                                    {
+                                        addLog("Failed to get balance", logType.ERROR);
+                                    }
+                                    else
+                                    {
+                                        addLog($"Trial {j}", logType.WARNING);
+                                    }
+                                    Thread.Sleep(j * 1000);
+                                }
+                            }
                             foreach (var stg_obj in this.strategies.Values)
                             {
                                 stg_obj.adjustPosition();
@@ -1043,13 +1073,43 @@ namespace Crypto_Trading
                             t.Wait();
                             Thread.Sleep(1000);
                             addLog("Resetting positions...");
-                            setBalance(await crypto_client.getBalance(_markets.Keys), _markets.Keys);
-                            setMarginPosition(await crypto_client.getMarginPos(_markets.Keys), _markets.Keys);
-                            //foreach (var m in _markets)
-                            //{
-                            //    setBalance(await crypto_client.getBalance([m.Key]));
-                            //    setMarginPosition(await crypto_client.getMarginPos([m.Key]));
-                            //}
+                            //setBalance(await crypto_client.getBalance(_markets.Keys), _markets.Keys);
+                            //setMarginPosition(await crypto_client.getMarginPos(_markets.Keys), _markets.Keys);
+                            if (!this.setBalance(await crypto_client.getBalance(this._markets.Keys), this._markets.Keys))
+                            {
+                                int j = 0;
+                                while (!this.setBalance(await crypto_client.getBalance(this._markets.Keys), this._markets.Keys))
+                                {
+                                    ++j;
+                                    if (j > 5)
+                                    {
+                                        addLog("Failed to get balance.", logType.ERROR);
+                                    }
+                                    else
+                                    {
+                                        addLog($"Trial {j}", logType.WARNING);
+                                    }
+                                    Thread.Sleep(j * 1000);
+                                }
+
+                            }
+                            if (!this.setMarginPosition(await crypto_client.getMarginPos(this._markets.Keys), this._markets.Keys))
+                            {
+                                int j = 0;
+                                while (!this.setMarginPosition(await crypto_client.getMarginPos(this._markets.Keys), this._markets.Keys))
+                                {
+                                    ++j;
+                                    if (j > 5)
+                                    {
+                                        addLog("Failed to get balance", logType.ERROR);
+                                    }
+                                    else
+                                    {
+                                        addLog($"Trial {j}", logType.WARNING);
+                                    }
+                                    Thread.Sleep(j * 1000);
+                                }
+                            }
                             foreach (var stg_obj in this.strategies.Values)
                             {
                                 stg_obj.adjustPosition();
@@ -1099,18 +1159,52 @@ namespace Crypto_Trading
                             t.Wait();
                             addLog("Resetting positions...");
                             Thread.Sleep(1000);
-                            setBalance(await crypto_client.getBalance(_markets.Keys), _markets.Keys);
-                            setMarginPosition(await crypto_client.getMarginPos(_markets.Keys), _markets.Keys);
+                            //setBalance(await crypto_client.getBalance(_markets.Keys), _markets.Keys);
+                            //setMarginPosition(await crypto_client.getMarginPos(_markets.Keys), _markets.Keys);
+                            if (!this.setBalance(await crypto_client.getBalance(this._markets.Keys), this._markets.Keys))
+                            {
+                                int i = 0;
+                                while (!this.setBalance(await crypto_client.getBalance(this._markets.Keys), this._markets.Keys))
+                                {
+                                    ++i;
+                                    if (i > 5)
+                                    {
+                                        addLog("Failed to get balance.", logType.ERROR);
+                                    }
+                                    else
+                                    {
+                                        addLog($"Trial {i}", logType.WARNING);
+                                    }
+                                    Thread.Sleep(i * 1000);
+                                }
+
+                            }
+                            if (!this.setMarginPosition(await crypto_client.getMarginPos(this._markets.Keys), this._markets.Keys))
+                            {
+                                int i = 0;
+                                while (!this.setMarginPosition(await crypto_client.getMarginPos(this._markets.Keys), this._markets.Keys))
+                                {
+                                    ++i;
+                                    if (i > 5)
+                                    {
+                                        addLog("Failed to get balance", logType.ERROR);
+                                    }
+                                    else
+                                    {
+                                        addLog($"Trial {i}", logType.WARNING);
+                                    }
+                                    Thread.Sleep(i * 1000);
+                                }
+                            }
                             //foreach (var m in _markets)
                             //{
                             //    setBalance(await crypto_client.getBalance([m.Key]));
                             //}
                             foreach (var stg_obj in this.strategies.Values)
                             {
-                                stg.adjustPosition();
+                                stg_obj.adjustPosition();
                             }
                             addLog("All the strategy orders have been reset.");
-                        }
                         stg = this.optQueue.Dequeue();
                     }
                     if (ct.IsCancellationRequested)

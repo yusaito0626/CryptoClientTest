@@ -207,7 +207,7 @@ namespace Crypto_Trading
         {
             if(Interlocked.CompareExchange(ref this.refreshing_httpClient,1,0) == 0)
             {
-                addLog("Refreshing HTTP clients...");
+                addLog("Refreshing HTTP clients... market:" + market.ToString());
                 this.ready = false;
                 Thread.Sleep(1000);
                 switch (market)

@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using System.Globalization;
 using Binance.Net.Enums;
 using Discord.Rest;
+using System.Diagnostics.Metrics;
 
 namespace Utils
 {
@@ -2066,10 +2067,12 @@ namespace Utils
         public decimal makerTradeImbalance;
         public double makerQuoteImbalance;
         public double makerMidRatio;
+        public double makerRV;
         public double takerLatency;
         public decimal takerTradeImbalance;
         public double takerQuoteImbalance;
         public double takerMidRatio;
+        public double takerRV;
 
         public decimal order_price;
         public decimal order_quantity;
@@ -2158,18 +2161,21 @@ namespace Utils
             this.order_quantity = orderquantity;
         }
 
-        public void addFactors(double mLat, decimal mtImb, double mqImb, double mMid, double tLat, decimal ttImb, double tqImb, double tMid,int _action = 0)
+        public void addFactors(double mLat, decimal mtImb, double mqImb, double mMid, double mRV, double tLat, decimal ttImb, double tqImb, double tMid, double tRV, int _action = 0)
         {
             this.action = 0;
             this.makerLatency = mLat;
             this.makerTradeImbalance = mtImb;
             this.makerQuoteImbalance = mqImb;
             this.makerMidRatio = mMid;
+            this.makerRV = mRV;
             this.takerLatency = tLat;
             this.takerTradeImbalance = ttImb;
             this.takerQuoteImbalance = tqImb;
             this.takerMidRatio = tMid;
+            this.takerRV = tRV;
         }
+
         public void calcPnL()
         {
             decimal quantity = Math.Min(this.taker_quantity,this.maker_quantity);
@@ -2254,10 +2260,12 @@ namespace Utils
             this.makerTradeImbalance = 0;
             this.makerQuoteImbalance = 0;
             this.makerMidRatio = 0;
+            this.makerRV = 0;
             this.takerLatency = 0;
             this.takerTradeImbalance = 0;
             this.takerQuoteImbalance = 0;
             this.takerMidRatio = 0;
+            this.takerRV = 0;
 
             this.order_price = 0;
             this.order_quantity = 0;
@@ -2278,7 +2286,7 @@ namespace Utils
                 strtime = "";
             }
             //timestamp,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,maker_side,maker_avgprice,maker_quantity,maker_avgExecutedTime,taker_side,taker_avgprice,taker_quantity,taker_avgExecutedTime,maker_markup,taker_markup,skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency;
-            return $"{strtime},{strategy},{this.id},{this.BBook},{this.maker_symbolmarket},{this.taker_symbolmarket},{this.maker_orderid},{this.taker_orderid},{this.layer},{this.maker_side},{this.order_price},{this.order_quantity},{this.maker_avgprice},{this.maker_quantity},{this.maker_avgExecutedTime},{this.taker_side},{this.taker_avgprice},{this.taker_quantity},{this.taker_avgExecutedTime},{this.realized_volatility},{this.maker_markup},{this.taker_markup},{this.skew},{this.qln_skew},{this.maker_priceAdjustment},{this.taker_priceAdjustment},{this.markupPnL},{this.skewPnL},{this.qlnPnL},{this.priceAdjPnL},{this.residualPnL},{this.totalFee},{this.totalPnL},{this.avg_latency},{this.action},{this.makerLatency},{this.makerTradeImbalance},{this.makerQuoteImbalance},{this.makerMidRatio},{this.takerLatency},{this.takerTradeImbalance},{this.takerQuoteImbalance},{this.takerMidRatio},{this.maxAsk},{this.minAsk},{this.maxBid},{this.minBid}";
+            return $"{strtime},{strategy},{this.id},{this.BBook},{this.maker_symbolmarket},{this.taker_symbolmarket},{this.maker_orderid},{this.taker_orderid},{this.layer},{this.maker_side},{this.order_price},{this.order_quantity},{this.maker_avgprice},{this.maker_quantity},{this.maker_avgExecutedTime},{this.taker_side},{this.taker_avgprice},{this.taker_quantity},{this.taker_avgExecutedTime},{this.realized_volatility},{this.maker_markup},{this.taker_markup},{this.skew},{this.qln_skew},{this.maker_priceAdjustment},{this.taker_priceAdjustment},{this.markupPnL},{this.skewPnL},{this.qlnPnL},{this.priceAdjPnL},{this.residualPnL},{this.totalFee},{this.totalPnL},{this.avg_latency},{this.action},{this.makerLatency},{this.makerTradeImbalance},{this.makerQuoteImbalance},{this.makerMidRatio},{this.makerRV},{this.takerLatency},{this.takerTradeImbalance},{this.takerQuoteImbalance},{this.takerMidRatio},{this.takerRV},{this.maxAsk},{this.minAsk},{this.maxBid},{this.minBid}";
         }
 
     }
@@ -2580,16 +2588,16 @@ namespace Utils
             //12maker_avgExecutedTime,13taker_side,14taker_avgprice,15taker_quantity,16taker_avgExecutedTime,17realized_volatility,18maker_markup,19taker_markup,20skew,21maker_priceAdj,
             //22taker_priceAdj,23markupPnL,24skewPnL,25priceAdjPnL,26residualPnL,27totalFee,28totalPnL,29avg_Latency"
             ++this.count;
-            this.markupPnL += Decimal.Parse(str_data[23]);
-            this.skewPnL += Decimal.Parse(str_data[24]);
-            this.priceAdjPnL += Decimal.Parse(str_data[25]);
-            this.residualPnL += Decimal.Parse(str_data[26]);
-            this.totalFee += Decimal.Parse(str_data[27]);
-            this.totalPnL += Decimal.Parse(str_data[28]);
-            decimal min_quantity = Math.Min(Decimal.Parse(str_data[11]), Decimal.Parse(str_data[15]));
-            this.avg_Latency = (this.avg_Latency * (double)this.totalAmount + Double.Parse(str_data[29]) * (double)min_quantity) / (double)(this.totalAmount + min_quantity);
+            this.markupPnL += Decimal.Parse(str_data[26]);
+            this.skewPnL += Decimal.Parse(str_data[27]);
+            this.priceAdjPnL += Decimal.Parse(str_data[29]);
+            this.residualPnL += Decimal.Parse(str_data[30]);
+            this.totalFee += Decimal.Parse(str_data[31]);
+            this.totalPnL += Decimal.Parse(str_data[32]);
+            decimal min_quantity = Math.Min(Decimal.Parse(str_data[13]), Decimal.Parse(str_data[17]));
+            this.avg_Latency = (this.avg_Latency * (double)this.totalAmount + Double.Parse(str_data[33]) * (double)min_quantity) / (double)(this.totalAmount + min_quantity);
             this.totalAmount += min_quantity;
-            this.notionalVolume += Decimal.Parse(str_data[11]) * Decimal.Parse(str_data[10]);
+            this.notionalVolume += Decimal.Parse(str_data[12]) * Decimal.Parse(str_data[13]);
         }
         public void addData(tradeSummary tpt_data)
         {

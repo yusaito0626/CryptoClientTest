@@ -2565,7 +2565,7 @@ namespace Crypto_Linux
             {
                 using (StreamWriter tpt = new StreamWriter(new FileStream(filename, FileMode.Create, FileAccess.Write)))
                 {
-                    tpt.WriteLine("timestamp,strategy,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,layer,maker_side,maker_orderprice,maker_orderquantity,maker_avgprice,maker_quantity,maker_avgExecutedTime,taker_side,taker_avgprice,taker_quantity,taker_avgExecutedTime,realized_volatility,maker_markup,taker_markup,skew,qln_skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,qlnPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency,action,makerLatency,makerTradeImbalance,makerQuoteImbalance,makerMidRatio,takerLatency,takerTradeImbalance,takerQuoteImbalance,takerMidRatio,maxAsk,minAsk,maxBid,minBid");
+                    tpt.WriteLine("timestamp,strategy,id,BBook,maker_symbolmarket,taker_symbolmarket,maker_orderid,taker_orderid,layer,maker_side,maker_orderprice,maker_orderquantity,maker_avgprice,maker_quantity,maker_avgExecutedTime,taker_side,taker_avgprice,taker_quantity,taker_avgExecutedTime,realized_volatility,maker_markup,taker_markup,skew,qln_skew,maker_priceAdj,taker_priceAdj,markupPnL,skewPnL,qlnPnL,priceAdjPnL,residualPnL,totalFee,totalPnL,avg_Latency,action,makerLatency,makerTradeImbalance,makerQuoteImbalance,makerMidRatio,makerRV,takerLatency,takerTradeImbalance,takerQuoteImbalance,takerMidRatio,takerRV,maxAsk,minAsk,maxBid,minBid");
                     foreach (var stg in strategies.Values)
                     {
                         foreach (var ts in stg.tradeSummaries.Values)

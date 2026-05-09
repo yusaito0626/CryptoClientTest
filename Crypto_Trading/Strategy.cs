@@ -5,6 +5,8 @@ using Crypto_Clients;
 using CryptoExchange.Net;
 using Discord;
 using Enums;
+using Microsoft.ML.OnnxRuntime;
+using Microsoft.ML.OnnxRuntime.Tensors;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -65,9 +67,7 @@ namespace Crypto_Trading
         public bool signalDetected = false;
 
         public bool maker_margin_trade = true;
-        //public bool taker_margin_trade = false;
         public decimal max_maker_levarage = 2;
-        //public decimal max_taker_levarage = 2;
 
         public TimeSpan onTrade_timeBuf = TimeSpan.FromMilliseconds(100);
 
@@ -116,11 +116,6 @@ namespace Crypto_Trading
         public List<string> live_buyorders;
         public List<decimal> current_bids;
         public List<decimal> current_asks;
-        //public List<decimal> ordersize_ask;
-        //public List<decimal> ordersize_bid;
-        //public List<decimal> bids;
-        //public List<decimal> asks;
-
         
         private List<orderCondition> bid_orders;
         private List<orderCondition> ask_orders; 
@@ -177,6 +172,23 @@ namespace Crypto_Trading
         public int tradeid_num = 0;
         public Dictionary<string, tradeSummary> tempTradeSummaries;
         public Dictionary<string, tradeSummary> tradeSummaries;
+
+        //Cancel Detector
+        private bool canceldetection = false;
+        private InferenceSession? cancelDetector = null;
+        private Dictionary<string, int> factors;
+        private double[] factorValues;
+        private double[] _scalerMean;
+        private double[] _scalerScale;
+        private DenseTensor<double> _tensor;
+        private List<NamedOnnxValue> _inputs;
+        private float loss_threshold;
+        private float cancel_threshold;
+
+        private string modelPath = "";
+        private string scalerPath = "";
+        private string metaPath = "";
+
 
         public Action<string, Enums.logType> _addLog;
         public Strategy() 
@@ -286,6 +298,59 @@ namespace Crypto_Trading
             this.tradeSummaries = new Dictionary<string, tradeSummary>();
 
             this.Latency = new Dictionary<string, latency>();
+        }
+
+        public bool setCancelDetectorParams(string modelPath, string scalerPath, string metaPath)
+        {
+            bool res = true;
+            string[] _factorcols;
+            if (System.IO.File.Exists(modelPath))
+            {
+                this.cancelDetector = new InferenceSession(modelPath);
+            }
+            else
+            {
+                this.addLog("Model file does not exist", logType.ERROR);
+                return false;
+            }
+            if (System.IO.File.Exists(metaPath))
+            {
+                var metaJson = JsonDocument.Parse(File.ReadAllText(metaPath));
+                this.cancel_threshold = (float)metaJson.RootElement.GetProperty("cancel_threshold").GetDecimal();
+                this.loss_threshold = (float)metaJson.RootElement.GetProperty("loss_threshold").GetDecimal();
+                
+            }
+            else
+            {
+                this.addLog("Meta file does not exist", logType.ERROR);
+                return false;
+            }
+            if (System.IO.File.Exists(scalerPath))
+            {
+                var scalerJson = JsonDocument.Parse(File.ReadAllText(scalerPath));
+                _factorcols = scalerJson.RootElement.GetProperty("factor_cols").EnumerateArray().Select(e => e.GetString()).ToArray();
+                this.factors = new Dictionary<string, int>();
+                //Storing the index of each factor for later use in inference
+                for (int i = 0; i < _factorcols.Length; ++i)
+                {
+                    this.factors[_factorcols[i]] = i;
+                }
+                this.factorValues = new double[this.factors.Count];
+                this._tensor = new DenseTensor<double>(this.factorValues, new[] { 1, this.factors.Count });
+                this._inputs = new List<NamedOnnxValue>
+                {
+                    NamedOnnxValue.CreateFromTensor("input", this._tensor)
+                };
+                this._scalerMean = scalerJson.RootElement.GetProperty("mean").EnumerateArray().Select(e => e.GetDouble()).ToArray();
+                this._scalerScale = scalerJson.RootElement.GetProperty("scale").EnumerateArray().Select(e => e.GetDouble()).ToArray();
+            }
+            else
+            {
+                this.addLog("Scaler file does not exist", logType.ERROR);
+                return false;
+            }
+            this.canceldetection = res;
+            return res;
         }
 
         public void readStrategyFile(string jsonfilename)
@@ -618,6 +683,22 @@ namespace Crypto_Trading
             {
                 this.latencyTh = 1000.0;
             }
+            if (root.TryGetProperty("modelPath", out item))
+            {
+                this.modelPath = item.GetString();
+            }
+            if (root.TryGetProperty("scalerPath", out item))
+            {
+                this.scalerPath = item.GetString();
+            }
+            if (root.TryGetProperty("metaPath", out item))
+            {
+                this.metaPath = item.GetString();
+            }
+            if(this.modelPath != "" && this.scalerPath != "" && this.metaPath != "")
+            {
+                this.setCancelDetectorParams(this.modelPath, this.scalerPath, this.metaPath);
+            }
         }
         public void setStrategy(strategySetting setting)
         {
@@ -839,12 +920,12 @@ namespace Crypto_Trading
                     addLog($"[{this.name}]Additional Markup Reset:" + this.additional_markup.ToString());
                 }
 
-                double taker_VR = this.taker.realized_volatility;
+                double takerRV = this.taker.realized_volatility;
                 if (this.taker.prev_RV > 0)
                 {
-                    taker_VR = 0.7 * taker_VR + 0.3 * this.taker.prev_RV;
+                    takerRV = 0.7 * takerRV + 0.3 * this.taker.prev_RV;
                 }
-                decimal vr_markup = this.const_markup + this.rv_penalty_multiplier * ((decimal)Math.Exp(taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000 / this.rv_base_param) - 1);
+                decimal vr_markup = this.const_markup + this.rv_penalty_multiplier * ((decimal)Math.Exp(takerRV / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000 / this.rv_base_param) - 1);
 
                 if (vr_markup >= this.prev_markup)
                 {
@@ -1325,41 +1406,22 @@ namespace Crypto_Trading
 
                     List<string> cancelling_ord = new List<string>();
 
-                    if (this.taker.tradeImbalance * this.taker.mid > 5000000 || this.taker.tradeImbalance * this.taker.mid < -5000000 || this.maker.tradeImbalance * this.maker.mid > 5000000 || this.maker.tradeImbalance * this.maker.mid < -5000000)
-                    {
-                        if(!this.signalDetected)
-                        {
-                            addLog($"Signal Detected. Maker tradeImbalance:{this.maker.tradeImbalance}  Taker tradeImbalance:{this.taker.tradeImbalance}");
-                            this.signalDetected = true;
-                        }
-                        //for (i = 0; i < this.layers; ++i)
-                        //{
-                        //    if (this.live_buyorders[i] != "")
-                        //    {
-                        //        cancelling_ord.Add(this.live_buyorders[i]);
-                        //        this.live_buyorders[i] = "";
-                        //        this.current_bids[i] = 0;
-                        //        this.bid_orders[i].price = 0;
-                        //    }
-                        //    if (this.live_sellorders[i] != "")
-                        //    {
-                        //        cancelling_ord.Add(this.live_sellorders[i]);
-                        //        this.live_sellorders[i] = "";
-                        //        this.current_asks[i] = 0;
-                        //        this.ask_orders[i].price = 0;
-                        //    }
-                        //}
-                        //this.oManager.placeCancelSpotOrders(this.maker, cancelling_ord);
-                        //return ret;
-                    }
-                    else
-                    {
-                        if(this.signalDetected)
-                        {
-                            addLog($"Signal gone. Maker tradeImbalance:{this.maker.tradeImbalance}  Taker tradeImbalance:{this.taker.tradeImbalance}");
-                            this.signalDetected = false;
-                        }
-                    }
+                    //if (this.taker.tradeImbalance * this.taker.mid > 5000000 || this.taker.tradeImbalance * this.taker.mid < -5000000 || this.maker.tradeImbalance * this.maker.mid > 5000000 || this.maker.tradeImbalance * this.maker.mid < -5000000)
+                    //{
+                    //    if(!this.signalDetected)
+                    //    {
+                    //        addLog($"Signal Detected. Maker tradeImbalance:{this.maker.tradeImbalance}  Taker tradeImbalance:{this.taker.tradeImbalance}");
+                    //        this.signalDetected = true;
+                    //    }
+                    //}
+                    //else
+                    //{
+                    //    if(this.signalDetected)
+                    //    {
+                    //        addLog($"Signal gone. Maker tradeImbalance:{this.maker.tradeImbalance}  Taker tradeImbalance:{this.taker.tradeImbalance}");
+                    //        this.signalDetected = false;
+                    //    }
+                    //}
 
                     double latency = this.checkLatency(this.taker, this.latencyTh);
                     if (latency > this.latencyTh)
@@ -1384,7 +1446,7 @@ namespace Crypto_Trading
                         this.oManager.placeCancelSpotOrders(this.maker, cancelling_ord);
                         if (!this.latencyObserved)
                         {
-                            addLog("Observing large latency on " + this.taker.symbol_market + ".   SeqNo:" + this.taker.quoteSeqNo.ToString() + " Latency:" + latency.ToString("N3"), logType.WARNING);
+                            //addLog("Observing large latency on " + this.taker.symbol_market + ".   SeqNo:" + this.taker.quoteSeqNo.ToString() + " Latency:" + latency.ToString("N3"), logType.WARNING);
                             this.latencyObserved = true;
                         }
                         return ret;
@@ -1398,13 +1460,40 @@ namespace Crypto_Trading
                     {
                         if(!this.makerLatencyObserved)
                         {
-                            addLog("Observing large latency on " + this.maker.symbol_market + ".   SeqNo:" + this.maker.quoteSeqNo.ToString() + " Latency:" + makerLatency.ToString("N3"), logType.WARNING);
+                            //addLog("Observing large latency on " + this.maker.symbol_market + ".   SeqNo:" + this.maker.quoteSeqNo.ToString() + " Latency:" + makerLatency.ToString("N3"), logType.WARNING);
                             this.makerLatencyObserved = true;
                         }
                     }
                     else if(this.makerLatencyObserved)
                     {
                         this.makerLatencyObserved = false;
+                    }
+
+                    bool canceling = false;
+                    double prob = 0.0;
+
+                    (canceling, prob) = this.cancelDetect();
+
+                    if(canceling)
+                    {
+                        addLog($"Canceling recommended. Probability:{prob}");
+                        for (i = 0; i < this.layers; ++i)
+                        {
+                            if (this.live_buyorders[i] != "")
+                            {
+                                cancelling_ord.Add(this.live_buyorders[i]);
+                                this.live_buyorders[i] = "";
+                                this.current_bids[i] = 0;
+                                this.bid_orders[i].price = 0;
+                            }
+                            if (this.live_sellorders[i] != "")
+                            {
+                                cancelling_ord.Add(this.live_sellorders[i]);
+                                this.live_sellorders[i] = "";
+                                this.current_asks[i] = 0;
+                                this.ask_orders[i].price = 0;
+                            }
+                        }
                     }
 
 
@@ -1547,8 +1636,8 @@ namespace Crypto_Trading
                                         ts = new tradeSummary();
                                     }
                                     ts.id = this.live_buyorders[i];
-                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market,i + 1,this.bid_orders[i].price, this.bid_orders[i].quantity, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening,this.skewWidening_const, this.maker.marginDiscount, this.taker.marginDiscount);
-                                    ts.addFactors(this.maker.quoteLatency, this.maker.tradeImbalance, this.maker.quoteImbalance, this.maker.mid > 0 ? Math.Log(this.maker.weightedMid / (double)this.maker.mid) : 0, this.taker.quoteLatency, this.taker.tradeImbalance, this.taker.quoteImbalance, this.taker.mid > 0 ? Math.Log(this.taker.weightedMid / (double)this.taker.mid) : 0);
+                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market,i + 1,this.bid_orders[i].price, this.bid_orders[i].quantity, this.markups[i] + vr_markup, 0, takerRV / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening,this.skewWidening_const, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    ts.addFactors(this.maker.quoteLatency, this.maker.tradeImbalance, this.maker.quoteImbalance, this.maker.mid > 0 ? Math.Log(this.maker.weightedMid / (double)this.maker.mid) : 0,this.maker.realized_volatility / Math.Sqrt(this.maker.RV_minute * 60) * 1_000_000, this.taker.quoteLatency, this.taker.tradeImbalance, this.taker.quoteImbalance, this.taker.mid > 0 ? Math.Log(this.taker.weightedMid / (double)this.taker.mid) : 0, this.taker.realized_volatility / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000);
                                     this.tempTradeSummaries[ts.id] = ts;
                                 }
                                 //if (this.maker.marginTrade)
@@ -1692,8 +1781,8 @@ namespace Crypto_Trading
                                         ts = new tradeSummary();
                                     }
                                     ts.id = this.live_sellorders[i];
-                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.ask_orders[i].price, this.ask_orders[i].quantity, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.skewWidening_const, this.maker.marginDiscount, this.taker.marginDiscount);
-                                    ts.addFactors(this.maker.quoteLatency, this.maker.tradeImbalance, this.maker.quoteImbalance, this.maker.mid > 0 ? Math.Log(this.maker.weightedMid / (double)this.maker.mid) : 0, this.taker.quoteLatency, this.taker.tradeImbalance, this.taker.quoteImbalance, this.taker.mid > 0 ? Math.Log(this.taker.weightedMid / (double)this.taker.mid) : 0);
+                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.ask_orders[i].price, this.ask_orders[i].quantity, this.markups[i] + vr_markup, 0, takerRV / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.skewWidening_const, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    ts.addFactors(this.maker.quoteLatency, this.maker.tradeImbalance, this.maker.quoteImbalance, this.maker.mid > 0 ? Math.Log(this.maker.weightedMid / (double)this.maker.mid) : 0, this.maker.realized_volatility / Math.Sqrt(this.maker.RV_minute * 60) * 1_000_000, this.taker.quoteLatency, this.taker.tradeImbalance, this.taker.quoteImbalance, this.taker.mid > 0 ? Math.Log(this.taker.weightedMid / (double)this.taker.mid) : 0,this.taker.realized_volatility / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000);
                                     this.tempTradeSummaries[ts.id] = ts;
                                 }
                                 //if (this.maker.marginTrade)
@@ -1854,8 +1943,8 @@ namespace Crypto_Trading
                                         ts = new tradeSummary();
                                     }
                                     ts.id = this.live_sellorders[i];
-                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.ask_orders[i].price, this.ask_orders[i].quantity, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.skewWidening_const, this.maker.marginDiscount, this.taker.marginDiscount);
-                                    ts.addFactors(this.maker.quoteLatency, this.maker.tradeImbalance, this.maker.quoteImbalance, this.maker.mid > 0 ? Math.Log(this.maker.weightedMid / (double)this.maker.mid) : 0, this.taker.quoteLatency, this.taker.tradeImbalance, this.taker.quoteImbalance, this.taker.mid > 0 ? Math.Log(this.taker.weightedMid / (double)this.taker.mid) : 0);
+                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.ask_orders[i].price, this.ask_orders[i].quantity, this.markups[i] + vr_markup, 0, takerRV / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.skewWidening_const, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    ts.addFactors(this.maker.quoteLatency, this.maker.tradeImbalance, this.maker.quoteImbalance, this.maker.mid > 0 ? Math.Log(this.maker.weightedMid / (double)this.maker.mid) : 0, this.maker.realized_volatility / Math.Sqrt(this.maker.RV_minute * 60) * 1_000_000, this.taker.quoteLatency, this.taker.tradeImbalance, this.taker.quoteImbalance, this.taker.mid > 0 ? Math.Log(this.taker.weightedMid / (double)this.taker.mid) : 0, this.taker.realized_volatility / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000);
                                     this.tempTradeSummaries[ts.id] = ts;
                                 }
                                 //if (this.maker.marginTrade)
@@ -2008,8 +2097,8 @@ namespace Crypto_Trading
                                         ts = new tradeSummary();
                                     }
                                     ts.id = this.live_buyorders[i];
-                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.bid_orders[i].price, this.bid_orders[i].quantity, this.markups[i] + vr_markup, 0, taker_VR / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.skewWidening_const, this.maker.marginDiscount, this.taker.marginDiscount);
-                                    ts.addFactors(this.maker.quoteLatency, this.maker.tradeImbalance, this.maker.quoteImbalance, this.maker.mid > 0 ? Math.Log(this.maker.weightedMid / (double)this.maker.mid) : 0, this.taker.quoteLatency, this.taker.tradeImbalance, this.taker.quoteImbalance, this.taker.mid > 0 ? Math.Log(this.taker.weightedMid / (double)this.taker.mid) : 0);
+                                    ts.setPricingInfo(this.name, this.maker.symbol_market, this.taker.symbol_market, i + 1, this.bid_orders[i].price, this.bid_orders[i].quantity, this.markups[i] + vr_markup, 0, takerRV / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000, this.skew_point, this.skewWidening, this.skewWidening_const, this.maker.marginDiscount, this.taker.marginDiscount);
+                                    ts.addFactors(this.maker.quoteLatency, this.maker.tradeImbalance, this.maker.quoteImbalance, this.maker.mid > 0 ? Math.Log(this.maker.weightedMid / (double)this.maker.mid) : 0, this.maker.realized_volatility / Math.Sqrt(this.maker.RV_minute * 60) * 1_000_000, this.taker.quoteLatency, this.taker.tradeImbalance, this.taker.quoteImbalance, this.taker.mid > 0 ? Math.Log(this.taker.weightedMid / (double)this.taker.mid) : 0, this.taker.realized_volatility / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000);
                                     this.tempTradeSummaries[ts.id] = ts;
                                 }
                                 //if (this.maker.marginTrade)
@@ -3661,6 +3750,111 @@ namespace Crypto_Trading
                 this.market_impact_curve[item.Key] = (this.market_impact_curve[item.Key] * this.mi_volume + sign * (item.Value - mi.filled_price) / mi.filled_price * 1_000_000 * mi.filled_quantity) / (this.mi_volume + mi.filled_quantity);
             }
             this.mi_volume += mi.filled_quantity;
+        }
+
+        private (bool shouldCancel, double probability) cancelDetect()
+        {
+            if(this.canceldetection)
+            {
+                foreach(var f in this.factors)
+                {
+                    switch(f.Key)
+                    {
+                        case "skew":
+                            this.factorValues[f.Value] = ((double)this.skew_point - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            break;
+                        case "makerLatency":
+                            this.factorValues[f.Value] = (this.maker.quoteLatency - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            break;
+                        case "makerTradeImbalance":
+                            this.factorValues[f.Value] = ((double)this.maker.tradeImbalance - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            break;
+                        case "makerQuoteImbalance":
+                            this.factorValues[f.Value] = (this.maker.quoteImbalance - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            break;
+                        case "makerMidRatio":
+                            this.factorValues[f.Value] = ((this.maker.mid > 0 ? Math.Log(this.maker.weightedMid / (double)this.maker.mid) : 0) - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            break;
+                        case "takerLatency":
+                            this.factorValues[f.Value] = (this.taker.quoteLatency - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            break;
+                        case "takerTradeImbalance":
+                            this.factorValues[f.Value] = ((double)this.taker.tradeImbalance - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            break;
+                        case "takerQuoteImbalance":
+                            this.factorValues[f.Value] = (this.taker.quoteImbalance - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            break;
+                        case "takerMidRatio":
+                            this.factorValues[f.Value] = ((this.maker.mid > 0 ? Math.Log(this.maker.weightedMid / (double)this.maker.mid) : 0) - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            break;
+                        case "realized_volatility":
+                            this.factorValues[f.Value] = (this.taker.realized_volatility / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000 - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            break;
+                    }
+                }
+                
+                //foreach (var input in _inputs)
+                //{
+                //    addLog($"input name: {input.Name}");
+                //    addLog($"input value null: {input.Value == null}");
+                //}
+                using var resultsDisposable = this.cancelDetector.Run(_inputs);
+                if(resultsDisposable != null)
+                {
+                    var results = resultsDisposable.ToList();
+                    if (results != null)
+                    {
+                        var probResult = results.FirstOrDefault(r => r.Name == "output_probability");
+
+                        if (probResult != null)
+                        {
+                            var sequence = probResult.AsEnumerable<DisposableNamedOnnxValue>();
+
+                            if (sequence != null)
+                            {
+                                var firstMap = sequence.FirstOrDefault();
+
+                                if (firstMap != null)
+                                {
+                                    var probDictLF = firstMap.AsDictionary<long, float>();
+
+                                    if (probDictLF != null && probDictLF.ContainsKey(1L))
+                                    {
+                                        double pLargeLoss = probDictLF[1L];
+                                        //addLog($"pLargeLoss: {pLargeLoss}");
+                                        return (pLargeLoss > this.cancel_threshold, pLargeLoss);
+                                    }
+                                    else
+                                    {
+                                        addLog("probDict is null.", logType.WARNING);
+                                    }
+                                }
+                                else
+                                {
+                                    addLog("firstMap is null.", logType.WARNING);
+                                }
+                            }
+                            else
+                            {
+                                addLog("sequence is null.", logType.WARNING);
+                            }
+                        }
+                        else
+                        {
+                            addLog("probResult is null.", logType.WARNING);
+                        }
+                    }
+                    else
+                    {
+                        addLog("results is null");
+                    }
+                }
+                else
+                {
+                    addLog("resultsDisposable is null");
+                }
+            }
+            return (false, 0.0);
         }
 
         public void addLog(string line, Enums.logType logtype = Enums.logType.INFO)
