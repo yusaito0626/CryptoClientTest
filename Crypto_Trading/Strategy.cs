@@ -298,6 +298,7 @@ namespace Crypto_Trading
             this.tradeSummaries = new Dictionary<string, tradeSummary>();
 
             this.Latency = new Dictionary<string, latency>();
+            this.Latency["onnxRuntime"] = new latency();
         }
 
         public bool setCancelDetectorParams(string modelPath, string scalerPath, string metaPath)
@@ -1469,24 +1470,26 @@ namespace Crypto_Trading
                         this.makerLatencyObserved = false;
                     }
 
-                    bool canceling = false;
+                    bool canceling_sell = false;
+                    bool canceling_buy = false;
                     double prob = 0.0;
 
-                    (canceling, prob) = this.cancelDetect();
+                    (canceling_buy, prob) = this.cancelDetect(orderSide.Buy);
+                    (canceling_sell, prob) = this.cancelDetect(orderSide.Sell);
 
-                    if(canceling)
+                    if (canceling_buy || canceling_sell)
                     {
                         addLog($"Canceling recommended. Probability:{prob}");
                         for (i = 0; i < this.layers; ++i)
                         {
-                            if (this.live_buyorders[i] != "")
+                            if (canceling_buy && this.live_buyorders[i] != "")
                             {
                                 cancelling_ord.Add(this.live_buyorders[i]);
                                 this.live_buyorders[i] = "";
                                 this.current_bids[i] = 0;
                                 this.bid_orders[i].price = 0;
                             }
-                            if (this.live_sellorders[i] != "")
+                            if (canceling_sell && this.live_sellorders[i] != "")
                             {
                                 cancelling_ord.Add(this.live_sellorders[i]);
                                 this.live_sellorders[i] = "";
@@ -3752,14 +3755,23 @@ namespace Crypto_Trading
             this.mi_volume += mi.filled_quantity;
         }
 
-        private (bool shouldCancel, double probability) cancelDetect()
+        private (bool shouldCancel, double probability) cancelDetect(orderSide side)
         {
-            if(this.canceldetection)
+            using var l = new funcContainer(this.Latency["onnxRuntime"].MeasureLatency);
+            double is_bid = 0.0;
+            if(side == orderSide.Buy)
+            {
+                is_bid = 1.0;
+            }
+            if (this.canceldetection)
             {
                 foreach(var f in this.factors)
                 {
                     switch(f.Key)
                     {
+                        case "is_bid":
+                            this.factorValues[f.Value] = (is_bid - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            break;
                         case "skew":
                             this.factorValues[f.Value] = ((double)this.skew_point - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
                             break;
@@ -3788,11 +3800,42 @@ namespace Crypto_Trading
                             this.factorValues[f.Value] = ((this.maker.mid > 0 ? Math.Log(this.maker.weightedMid / (double)this.maker.mid) : 0) - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
                             break;
                         case "realized_volatility":
+                            double RV = this.taker.realized_volatility;
+                            if (this.taker.prev_RV > 0)
+                            {
+                                RV = 0.7 * RV + 0.3 * this.taker.prev_RV;
+                            }
+                            this.factorValues[f.Value] = (RV / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000 - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            break;
+                        case "makerRV":
+                            this.factorValues[f.Value] = (this.maker.realized_volatility / Math.Sqrt(this.maker.RV_minute * 60) * 1_000_000 - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            break;
+                        case "takerRV":
                             this.factorValues[f.Value] = (this.taker.realized_volatility / Math.Sqrt(this.taker.RV_minute * 60) * 1_000_000 - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            break;
+
+                        //cross factors
+                        case "makerTradeImbalance_bid":
+                            this.factorValues[f.Value] = ((double)this.maker.tradeImbalance * is_bid - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            break;
+                        case "makerQuoteImbalance_bid":
+                            this.factorValues[f.Value] = (this.maker.quoteImbalance * is_bid - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            break;
+                        case "makerMidRatio_bid":
+                            this.factorValues[f.Value] = ((this.maker.mid > 0 ? Math.Log(this.maker.weightedMid / (double)this.maker.mid) * is_bid : 0) - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            break;
+                        case "takerTradeImbalance_bid":
+                            this.factorValues[f.Value] = ((double)this.taker.tradeImbalance * is_bid - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            break;
+                        case "takerQuoteImbalance_bid":
+                            this.factorValues[f.Value] = (this.taker.quoteImbalance * is_bid - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            break;
+                        case "takerMidRatio_bid":
+                            this.factorValues[f.Value] = ((this.maker.mid > 0 ? Math.Log(this.maker.weightedMid / (double)this.maker.mid) *is_bid : 0) - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
                             break;
                     }
                 }
-                
+
                 //foreach (var input in _inputs)
                 //{
                 //    addLog($"input name: {input.Name}");
@@ -3808,36 +3851,45 @@ namespace Crypto_Trading
 
                         if (probResult != null)
                         {
-                            var sequence = probResult.AsEnumerable<DisposableNamedOnnxValue>();
-
-                            if (sequence != null)
+                            var probs = probResult.AsEnumerable<double>()?.ToArray();
+                            if (probs == null || probs.Length < 2)
                             {
-                                var firstMap = sequence.FirstOrDefault();
-
-                                if (firstMap != null)
-                                {
-                                    var probDictLF = firstMap.AsDictionary<long, float>();
-
-                                    if (probDictLF != null && probDictLF.ContainsKey(1L))
-                                    {
-                                        double pLargeLoss = probDictLF[1L];
-                                        //addLog($"pLargeLoss: {pLargeLoss}");
-                                        return (pLargeLoss > this.cancel_threshold, pLargeLoss);
-                                    }
-                                    else
-                                    {
-                                        addLog("probDict is null.", logType.WARNING);
-                                    }
-                                }
-                                else
-                                {
-                                    addLog("firstMap is null.", logType.WARNING);
-                                }
+                                addLog("probs is null or insufficient length", logType.WARNING);
+                                return (false, 0.0);
                             }
-                            else
-                            {
-                                addLog("sequence is null.", logType.WARNING);
-                            }
+
+                            double pLargeLoss = probs[1];
+                            return (pLargeLoss > this.cancel_threshold, pLargeLoss);
+                            //var sequence = probResult.AsEnumerable<DisposableNamedOnnxValue>();
+
+                            //if (sequence != null)
+                            //{
+                            //    var firstMap = sequence.FirstOrDefault();
+
+                            //    if (firstMap != null)
+                            //    {
+                            //        var probDictLF = firstMap.AsDictionary<long, float>();
+
+                            //        if (probDictLF != null && probDictLF.ContainsKey(1L))
+                            //        {
+                            //            double pLargeLoss = probDictLF[1L];
+                            //            //addLog($"pLargeLoss: {pLargeLoss}");
+                            //            return (pLargeLoss > this.cancel_threshold, pLargeLoss);
+                            //        }
+                            //        else
+                            //        {
+                            //            addLog("probDict is null.", logType.WARNING);
+                            //        }
+                            //    }
+                            //    else
+                            //    {
+                            //        addLog("firstMap is null.", logType.WARNING);
+                            //    }
+                            //}
+                            //else
+                            //{
+                            //    addLog("sequence is null.", logType.WARNING);
+                            //}
                         }
                         else
                         {
