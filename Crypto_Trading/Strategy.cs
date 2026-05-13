@@ -184,6 +184,8 @@ namespace Crypto_Trading
         private List<NamedOnnxValue> _inputs;
         private float loss_threshold;
         private float cancel_threshold;
+        private int cancel_count = 0;
+        private int all_count = 0;
 
         private string modelPath = "";
         private string scalerPath = "";
@@ -298,7 +300,6 @@ namespace Crypto_Trading
             this.tradeSummaries = new Dictionary<string, tradeSummary>();
 
             this.Latency = new Dictionary<string, latency>();
-            this.Latency["onnxRuntime"] = new latency();
         }
 
         public bool setCancelDetectorParams(string modelPath, string scalerPath, string metaPath)
@@ -351,6 +352,7 @@ namespace Crypto_Trading
                 return false;
             }
             this.canceldetection = res;
+            this.Latency[$"onnxRuntime_{this.name}"] = new latency($"onnxRuntime_{this.name}");
             return res;
         }
 
@@ -1472,14 +1474,15 @@ namespace Crypto_Trading
 
                     bool canceling_sell = false;
                     bool canceling_buy = false;
-                    double prob = 0.0;
+                    float prob_sell = 0.0f;
+                    float prob_buy = 0.0f;
 
-                    (canceling_buy, prob) = this.cancelDetect(orderSide.Buy);
-                    (canceling_sell, prob) = this.cancelDetect(orderSide.Sell);
+                    (canceling_buy, prob_buy) = this.cancelDetect(orderSide.Buy);
+                    (canceling_sell, prob_sell) = this.cancelDetect(orderSide.Sell);
 
                     if (canceling_buy || canceling_sell)
                     {
-                        addLog($"Canceling recommended. Probability:{prob}");
+                        addLog($"Cancel recommended. Probability:{(prob_buy > prob_sell ? prob_buy : prob_sell)}   Count:{this.cancel_count} / {this.all_count}   Buy:{canceling_buy} Sell:{canceling_sell}");
                         for (i = 0; i < this.layers; ++i)
                         {
                             if (canceling_buy && this.live_buyorders[i] != "")
@@ -2522,7 +2525,8 @@ namespace Crypto_Trading
                         }
                     }
                 }
-                using(var ulock = this.updating.getlock())
+                decimal diff_amount = this.maker.net_pos + this.taker.net_pos;
+                using (var ulock = this.updating.getlock())
                 {
                     string ord_id;
                     DataSpotOrderUpdate ord = null;
@@ -2564,8 +2568,6 @@ namespace Crypto_Trading
                                                     filled_quantity = this.stg_orders_dict[ord_id];
                                                     this.stg_orders_dict[ord_id] = 0;
                                                 }
-                                                //decimal diff_amount = this.maker.baseBalance.total + this.taker.baseBalance.total - this.baseCcyQuantity;
-                                                decimal diff_amount = this.maker.net_pos + this.taker.net_pos;
                                                 if (DateTime.UtcNow - this.lastPosAdjustment > TimeSpan.FromSeconds(10))
                                                 {
                                                     this.lastPosAdjustment = DateTime.UtcNow;
@@ -2574,42 +2576,11 @@ namespace Crypto_Trading
 
                                                 if (filled_quantity > 0)
                                                 {
-                                                    //if (this.taker.marginTrade)
-                                                    //{
-                                                    //    if(this.taker.marginLong)
-                                                    //    {
-                                                    //        if (this.taker.shortPosition.available >= filled_quantity)
-                                                    //        {
-                                                    //            this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, true, ord.internal_order_id);
-                                                    //        }
-                                                    //        else
-                                                    //        {
-                                                    //            this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Long, null, true, true, ord.internal_order_id);
-                                                    //        }
-                                                    //    }
-                                                    //    else
-                                                    //    {
-                                                    //        if (this.taker.shortPosition.available >= filled_quantity)
-                                                    //        {
-                                                    //            this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, true, ord.internal_order_id);
-                                                    //        }
-                                                    //        else
-                                                    //        {
-                                                    //            this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, true, ord.internal_order_id);
-                                                    //        }
-                                                    //    }
-                                                    //}
-                                                    //else
-                                                    //{
-                                                    //    this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, true, ord.internal_order_id);
-                                                    //}
                                                     this.placeHedgeOrder(this.taker, orderSide.Buy, filled_quantity, ord.internal_order_id);
                                                 }
                                                 this.last_filled_time_sell = DateTime.UtcNow;
                                                 this.last_filled_time = this.last_filled_time_sell;
-                                                //this.executed_Orders_old[ord.internal_order_id] = ord;
                                                 this.executed_OrderIds[ord.internal_order_id] = fillType.onTrade;
-                                                //ord.msg += "  onTrades at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
                                                 addLog(ord.ToString() + "  onTrades at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat));
                                             }
                                         }
@@ -2638,7 +2609,6 @@ namespace Crypto_Trading
                                     {
                                         if (ord.order_price > trade.price && ord.update_time + this.onTrade_timeBuf < trade.filled_time)//Assuming those 2 times are from same clock. If the sell trade price is lower than our bid
                                         {
-                                            //if (this.executed_Orders_old.ContainsKey(ord.internal_order_id))
                                             if (this.executed_OrderIds.ContainsKey(ord.internal_order_id))
                                             {
                                                 //Do nothing
@@ -2652,8 +2622,6 @@ namespace Crypto_Trading
                                                     filled_quantity = this.stg_orders_dict[ord_id];
                                                     this.stg_orders_dict[ord_id] = 0;
                                                 }
-                                                //decimal diff_amount = this.maker.baseBalance.total + this.taker.baseBalance.total - this.baseCcyQuantity;
-                                                decimal diff_amount = this.maker.net_pos + this.taker.net_pos;
                                                 if (DateTime.UtcNow - this.lastPosAdjustment > TimeSpan.FromSeconds(10))
                                                 {
                                                     this.lastPosAdjustment = DateTime.UtcNow;
@@ -2661,42 +2629,11 @@ namespace Crypto_Trading
                                                 }
                                                 if (filled_quantity > 0)
                                                 {
-                                                    //if (this.taker.marginTrade)
-                                                    //{
-                                                    //    if(this.taker.marginLong)
-                                                    //    {
-                                                    //        if (this.taker.longPosition.available >= filled_quantity)
-                                                    //        {
-                                                    //            this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Long, null, true, true, ord.internal_order_id);
-                                                    //        }
-                                                    //        else
-                                                    //        {
-                                                    //            this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, true, ord.internal_order_id);
-                                                    //        }
-                                                    //    }
-                                                    //    else
-                                                    //    {
-                                                    //        if (this.taker.baseBalance.available >= filled_quantity)
-                                                    //        {
-                                                    //            this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, true, ord.internal_order_id);
-                                                    //        }
-                                                    //        else
-                                                    //        {
-                                                    //            this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true, true, ord.internal_order_id);
-                                                    //        }
-                                                    //    }
-                                                    //}
-                                                    //else
-                                                    //{
-                                                    //    this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true, true, ord.internal_order_id);
-                                                    //}
                                                     this.placeHedgeOrder(this.taker, orderSide.Sell, filled_quantity, ord.internal_order_id);
                                                 }
                                                 this.last_filled_time_buy = DateTime.UtcNow;
                                                 this.last_filled_time = this.last_filled_time_buy;
-                                                //this.executed_Orders_old[ord.internal_order_id] = ord;
                                                 this.executed_OrderIds[ord.internal_order_id] = fillType.onTrade;
-                                                //ord.msg += "  onTrades at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
                                                 addLog(ord.ToString() + "  onTrades at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat));
                                             }
                                         }
@@ -2726,183 +2663,132 @@ namespace Crypto_Trading
                         }
                     }
                 }
-                //decimal diff_amount = this.maker.baseBalance.total + this.taker.baseBalance.total - this.baseCcyQuantity;
                 decimal diff_amount = this.maker.net_pos + this.taker.net_pos;
                 using (var ulock = this.updating.getlock())
                 {
                     string ord_id;
                     DataSpotOrderUpdate ord;
+                    bool buy_check = true;
+                    bool sell_check = true;
                     for (int i = 0; i < this.layers; ++i)
                     {
-                        bool exit = true;
-                        ord_id = this.live_sellorders[i];
-                        using (var olock = this.oManager.order_lock.getlock())
+                        if(sell_check)
                         {
-                            if (this.oManager.orders.ContainsKey(ord_id))
+                            ord_id = this.live_sellorders[i];
+                            using (var olock = this.oManager.order_lock.getlock())
                             {
-                                ord = this.oManager.orders[ord_id];
+                                if (this.oManager.orders.ContainsKey(ord_id))
+                                {
+                                    ord = this.oManager.orders[ord_id];
+                                }
+                                else
+                                {
+                                    ord = null;
+                                }
                             }
-                            else
+
+
+                            if (ord != null && ord.status == orderStatus.Open)
                             {
-                                ord = null;
+                                if (ord.update_time < quote.orderbookTime && quote.asks.ContainsKey(ord.order_price) && quote.asks[ord.order_price] == 0)
+                                {
+                                    using (var flock = this.fill_lock.getlock())
+                                    {
+                                        if (this.executed_OrderIds.ContainsKey(ord.internal_order_id))
+                                        {
+                                            //Do nothing
+                                        }
+                                        else
+                                        {
+                                            decimal filled_quantity = ord.order_quantity - ord.filled_quantity;
+                                            if (this.stg_orders_dict.ContainsKey(ord_id))
+                                            {
+                                                filled_quantity = this.stg_orders_dict[ord_id];
+                                                this.stg_orders_dict[ord_id] = 0;
+                                            }
+                                            if (DateTime.UtcNow - this.lastPosAdjustment > TimeSpan.FromSeconds(10))
+                                            {
+                                                this.lastPosAdjustment = DateTime.UtcNow;
+                                                filled_quantity -= diff_amount;
+                                            }
+
+                                            if (filled_quantity > 0)
+                                            {
+                                                this.placeHedgeOrder(this.taker, orderSide.Buy, filled_quantity, ord.internal_order_id);
+
+                                            }
+                                            this.live_sellorders[i] = "";
+                                            this.last_filled_time_sell = DateTime.UtcNow;
+                                            this.last_filled_time = this.last_filled_time_sell;
+                                            this.executed_OrderIds[ord.internal_order_id] = fillType.onQuotes;
+                                            addLog(ord.ToString() + "  onMakerQuotes at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat));
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    sell_check = false;
+                                }
                             }
                         }
-
                         
-                        if (ord != null && ord.status == orderStatus.Open)
+                        if(buy_check)
                         {
-                            if (ord.update_time < quote.orderbookTime && quote.asks.ContainsKey(ord.order_price) && quote.asks[ord.order_price] == 0)
+                            ord_id = this.live_buyorders[i];
+                            using (var olock = this.oManager.order_lock.getlock())
                             {
-                                using(var flock = this.fill_lock.getlock())
+                                if (this.oManager.orders.ContainsKey(ord_id))
                                 {
-                                    //if (this.executed_Orders_old.ContainsKey(ord.internal_order_id))
-                                    if (this.executed_OrderIds.ContainsKey(ord.internal_order_id))
+                                    ord = this.oManager.orders[ord_id];
+                                }
+                                else
+                                {
+                                    ord = null;
+                                }
+                            }
+                            if (ord != null && ord.status == orderStatus.Open)
+                            {
+                                if (ord.update_time < quote.orderbookTime && quote.bids.ContainsKey(ord.order_price) && quote.bids[ord.order_price] == 0)
+                                {
+                                    using (var flock = this.fill_lock.getlock())
                                     {
-                                        //Do nothing
-                                    }
-                                    else
-                                    {
-                                        decimal filled_quantity = ord.order_quantity - ord.filled_quantity;
-                                        if (this.stg_orders_dict.ContainsKey(ord_id))
+                                        if (this.executed_OrderIds.ContainsKey(ord.internal_order_id))
                                         {
-                                            filled_quantity = this.stg_orders_dict[ord_id];
-                                            this.stg_orders_dict[ord_id] = 0;
+                                            //Do nothing
                                         }
-                                        if (DateTime.UtcNow - this.lastPosAdjustment > TimeSpan.FromSeconds(10))
+                                        else
                                         {
-                                            this.lastPosAdjustment = DateTime.UtcNow;
-                                            filled_quantity -= diff_amount;
+                                            decimal filled_quantity = ord.order_quantity - ord.filled_quantity;
+                                            if (this.stg_orders_dict.ContainsKey(ord_id))
+                                            {
+                                                filled_quantity = this.stg_orders_dict[ord_id];
+                                                this.stg_orders_dict[ord_id] = 0;
+                                            }
+                                            if (DateTime.UtcNow - this.lastPosAdjustment > TimeSpan.FromSeconds(10))
+                                            {
+                                                this.lastPosAdjustment = DateTime.UtcNow;
+                                                filled_quantity += diff_amount;
+                                            }
+                                            if (filled_quantity > 0)
+                                            {
+                                                this.placeHedgeOrder(this.taker, orderSide.Sell, filled_quantity, ord.internal_order_id);
+                                            }
+                                            this.live_buyorders[i] = "";
+                                            this.last_filled_time_buy = DateTime.UtcNow;
+                                            this.last_filled_time = this.last_filled_time_buy;
+                                            this.executed_OrderIds[ord.internal_order_id] = fillType.onQuotes;
+                                            addLog(ord.ToString() + "  onMakerQuotes at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat));
                                         }
-
-                                        if (filled_quantity > 0)
-                                        {
-                                            //if (this.taker.marginTrade)
-                                            //{
-                                            //    if(this.taker.marginLong)
-                                            //    {
-                                            //        if (this.taker.shortPosition.available >= filled_quantity)
-                                            //        {
-                                            //            this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true);
-                                            //        }
-                                            //        else
-                                            //        {
-                                            //            this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Long, null, true);
-                                            //        }
-                                            //    }
-                                            //    else
-                                            //    {
-                                            //        if (this.taker.shortPosition.available >= filled_quantity)
-                                            //        {
-                                            //            this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.Short, null, true);
-                                            //        }
-                                            //        else
-                                            //        {
-                                            //            this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
-                                            //        }
-                                            //    }
-                                            //}
-                                            //else
-                                            //{
-                                            //    this.oManager.placeNewSpotOrder(this.taker, orderSide.Buy, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
-                                            //}
-                                            this.placeHedgeOrder(this.taker, orderSide.Buy, filled_quantity, ord.internal_order_id);
-
-                                        }
-                                        this.live_sellorders[i] = "";
-                                        this.last_filled_time_sell = DateTime.UtcNow;
-                                        this.last_filled_time = this.last_filled_time_sell;
-                                        //this.executed_Orders_old[ord.internal_order_id] = ord;
-                                        this.executed_OrderIds[ord.internal_order_id] = fillType.onQuotes;
-                                        //ord.msg += "  onMakerQuotes at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
-                                        addLog(ord.ToString() + "  onMakerQuotes at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat));
                                     }
                                 }
-                                
-                                exit = false;
-                            }
-                        }
-                        ord_id = this.live_buyorders[i];
-                        using (var olock = this.oManager.order_lock.getlock())
-                        {
-                            if (this.oManager.orders.ContainsKey(ord_id))
-                            {
-                                ord = this.oManager.orders[ord_id];
-                            }
-                            else
-                            {
-                                ord = null;
-                            }
-                        }
-                        if (ord != null && ord.status == orderStatus.Open)
-                        {
-                            if (ord.update_time < quote.orderbookTime && quote.bids.ContainsKey(ord.order_price) && quote.bids[ord.order_price] == 0)
-                            {
-                                using(var flock = this.fill_lock.getlock())
+                                else
                                 {
-                                    //if (this.executed_Orders_old.ContainsKey(ord.internal_order_id))
-                                    if (this.executed_OrderIds.ContainsKey(ord.internal_order_id))
-                                    {
-                                        //Do nothing
-                                    }
-                                    else
-                                    {
-                                        decimal filled_quantity = ord.order_quantity - ord.filled_quantity;
-                                        if (this.stg_orders_dict.ContainsKey(ord_id))
-                                        {
-                                            filled_quantity = this.stg_orders_dict[ord_id];
-                                            this.stg_orders_dict[ord_id] = 0;
-                                        }
-                                        if (DateTime.UtcNow - this.lastPosAdjustment > TimeSpan.FromSeconds(10))
-                                        {
-                                            this.lastPosAdjustment = DateTime.UtcNow;
-                                            filled_quantity += diff_amount;
-                                        }
-                                        if (filled_quantity > 0)
-                                        {
-                                            //if (this.taker.marginTrade)
-                                            //{
-                                            //    if(this.taker.marginLong)
-                                            //    {
-                                            //        if (this.taker.longPosition.available >= filled_quantity)
-                                            //        {
-                                            //            this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Long, null, true);
-                                            //        }
-                                            //        else
-                                            //        {
-                                            //            this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true);
-                                            //        }
-                                            //    }
-                                            //    else
-                                            //    {
-                                            //        if (this.taker.baseBalance.available >= filled_quantity)
-                                            //        {
-                                            //            this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
-                                            //        }
-                                            //        else
-                                            //        {
-                                            //            this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.Short, null, true);
-                                            //        }
-                                            //    }
-                                            //}
-                                            //else
-                                            //{
-                                            //    this.oManager.placeNewSpotOrder(this.taker, orderSide.Sell, orderType.Market, filled_quantity, 0, positionSide.NONE, null, true);
-                                            //}
-                                            this.placeHedgeOrder(this.taker, orderSide.Sell, filled_quantity, ord.internal_order_id);
-                                        }
-                                        this.live_buyorders[i] = "";
-                                        this.last_filled_time_buy = DateTime.UtcNow;
-                                        this.last_filled_time = this.last_filled_time_buy;
-                                        //this.executed_Orders_old[ord.internal_order_id] = ord;
-                                        this.executed_OrderIds[ord.internal_order_id] = fillType.onQuotes;
-                                        //ord.msg += "  onMakerQuotes at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat);
-                                        addLog(ord.ToString() + "  onMakerQuotes at " + DateTime.UtcNow.ToString(GlobalVariables.tmMsecFormat));
-                                    }
+                                    buy_check = false;
                                 }
-                                exit = false;
                             }
                         }
-                        if(exit)
+                        
+                        if(sell_check == false && buy_check == false)
                         {
                             break;
                         }
@@ -3844,8 +3730,8 @@ namespace Crypto_Trading
                 //    addLog($"input name: {input.Name}");
                 //    addLog($"input value null: {input.Value == null}");
                 //}
-
-                using(var l = new funcContainer(this.Latency["onnxRuntime"].MeasureLatency))
+                ++this.all_count;
+                using(var l = new funcContainer(this.Latency["onnxRuntime_" + this.name].MeasureLatency))
                 {
                     using var resultsDisposable = this.cancelDetector.Run(_inputs);
                     if (resultsDisposable != null)
@@ -3871,6 +3757,10 @@ namespace Crypto_Trading
                                         {
                                             float pLargeLoss = probDictLF[1L];
                                             //addLog($"pLargeLoss: {pLargeLoss}");
+                                            if(pLargeLoss > this.cancel_threshold)
+                                            {
+                                                ++this.cancel_count;
+                                            }
                                             return (pLargeLoss > this.cancel_threshold, pLargeLoss);
                                         }
                                         else

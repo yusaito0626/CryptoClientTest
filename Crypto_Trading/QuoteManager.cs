@@ -632,7 +632,7 @@ namespace Crypto_Trading
                                     }
                                     else if (symbol_market == stg.Value.maker.symbol_market && !this.oManager.getVirtualMode())
                                     {
-                                        //stg.Value.onMakerQuotes(msg);
+                                        stg.Value.onMakerQuotes(msg);
                                         if (Interlocked.CompareExchange(ref stg.Value.queued, 1, 0) == 0)
                                         {
                                             this.optQueue.Enqueue(stg.Value);
@@ -641,10 +641,6 @@ namespace Crypto_Trading
                                 }
 
                             }
-                            //if(this.monitoring == false && ins.mid != ins.prev_mid)
-                            //{
-                            //    oManager.checkMIRecorder(DateTime.UtcNow);
-                            //}
                             this.oManager.checkVirtualOrders(ins);
                         }
                         else
