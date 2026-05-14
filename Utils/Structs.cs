@@ -2479,6 +2479,14 @@ namespace Utils
         public double OADatetime { get; set; }
         public double PnL { get; set; }
         public double notionalVolume { get; set; }
+        //public double markupPnL { get; set; }
+        //public double skewPnL { get; set; }
+        //public double priceAdjPnL { get; set; }
+        //public double residualPnL { get; set; }
+        //public double qlnPnL { get; set; }
+        //public double totalFee { get; set; }
+        //public double tradingPnL { get; set; }
+
     }
     public class latency
     {

@@ -2101,8 +2101,8 @@ namespace Crypto_Linux
                                 stg.notionalVolumeB += notional;
                                 stg.markupPnL += decimal.Parse(data[26]);
                                 stg.skewPnL += decimal.Parse(data[27]);
-                                stg.priceAdjPnL += decimal.Parse(data[28]);
-                                stg.residualPnL += decimal.Parse(data[29]);
+                                stg.priceAdjPnL += decimal.Parse(data[29]);
+                                stg.residualPnL += decimal.Parse(data[30]);
                                 stg.tradingPnLB += decimal.Parse(data[32]);
                             }
                         }

@@ -605,6 +605,41 @@ namespace Crypto_Trading
                         if (this.instruments.ContainsKey(symbol_market))
                         {
                             ins = instruments[symbol_market];
+
+                            //Temporary Check
+                            //if(ins.market == market.bitbank && msg.updateType == CryptoExchange.Net.Objects.SocketUpdateType.Update)
+                            //{
+                            //    using (var qlock = ins.quotes_lock.getlock())
+                            //    {
+                            //        foreach (var item in msg.asks)
+                            //        {
+                            //            if (item.Value == 0 && ins.asks.Count > 0 && ins.asks.ContainsKey(item.Key) == false)
+                            //            {
+                            //                addLog($"Duplicate ask found.   ins:{ins.symbol_market} price:{item.Key} amount:{item.Value}", logType.WARNING);
+                            //                addLog(msg.ToString());
+                            //            }
+                            //            else if(ins.asks.ContainsKey(item.Key) && item.Value == ins.asks[item.Key])
+                            //            {
+                            //                addLog($"Duplicate ask found.   ins:{ins.symbol_market} price:{item.Key} amount:{item.Value}", logType.WARNING);
+                            //                addLog(msg.ToString());
+                            //            }
+                            //        }
+                            //        foreach (var item in msg.bids)
+                            //        {
+                            //            if (item.Value == 0 && ins.bids.Count > 0 && ins.bids.ContainsKey(item.Key) == false)
+                            //            {
+                            //                addLog($"Duplicate bid found.   ins:{ins.symbol_market} price:{item.Key} amount:{item.Value}", logType.WARNING);
+                            //                addLog(msg.ToString());
+                            //            }
+                            //            else if (ins.bids.ContainsKey(item.Key) && item.Value == ins.bids[item.Key])
+                            //            {
+                            //                addLog($"Duplicate bid found.   ins:{ins.symbol_market} price:{item.Key} amount:{item.Value}", logType.WARNING);
+                            //                addLog(msg.ToString());
+                            //            }
+                            //        }
+                            //    }
+                            //}
+                            
                             int err = ins.updateQuotes(msg);
                             if(err > 0)
                             {
@@ -632,7 +667,7 @@ namespace Crypto_Trading
                                     }
                                     else if (symbol_market == stg.Value.maker.symbol_market && !this.oManager.getVirtualMode())
                                     {
-                                        stg.Value.onMakerQuotes(msg);
+                                        //stg.Value.onMakerQuotes(msg);
                                         if (Interlocked.CompareExchange(ref stg.Value.queued, 1, 0) == 0)
                                         {
                                             this.optQueue.Enqueue(stg.Value);

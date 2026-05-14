@@ -184,8 +184,10 @@ namespace Crypto_Trading
         private List<NamedOnnxValue> _inputs;
         private float loss_threshold;
         private float cancel_threshold;
-        private int cancel_count = 0;
-        private int all_count = 0;
+        private int cancel_sell = 0;
+        private int cancel_buy = 0;
+        private int all_sell = 0;
+        private int all_buy = 0;
 
         private string modelPath = "";
         private string scalerPath = "";
@@ -1482,7 +1484,7 @@ namespace Crypto_Trading
 
                     if (canceling_buy || canceling_sell)
                     {
-                        addLog($"Cancel recommended. Probability:{(prob_buy > prob_sell ? prob_buy : prob_sell)}   Count:{this.cancel_count} / {this.all_count}   Buy:{canceling_buy} Sell:{canceling_sell}");
+                        //addLog($"Cancel recommended. Probability:{(prob_buy > prob_sell ? prob_buy : prob_sell)}   Buy:{canceling_buy}  {this.cancel_buy} / {this.all_buy}   Sell:{canceling_sell}   {this.cancel_sell} / {this.all_sell}");
                         for (i = 0; i < this.layers; ++i)
                         {
                             if (canceling_buy && this.live_buyorders[i] != "")
@@ -3686,7 +3688,7 @@ namespace Crypto_Trading
                             this.factorValues[f.Value] = ((float)this.taker.quoteImbalance - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
                             break;
                         case "takerMidRatio":
-                            this.factorValues[f.Value] = ((this.maker.mid > 0 ? (float)Math.Log(this.maker.weightedMid / (double)this.maker.mid) : 0) - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            this.factorValues[f.Value] = ((this.taker.mid > 0 ? (float)Math.Log(this.taker.weightedMid / (double)this.taker.mid) : 0) - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
                             break;
                         case "realized_volatility":
                             float RV = (float)this.taker.realized_volatility;
@@ -3720,7 +3722,7 @@ namespace Crypto_Trading
                             this.factorValues[f.Value] = ((float)this.taker.quoteImbalance * is_bid - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
                             break;
                         case "takerMidRatio_bid":
-                            this.factorValues[f.Value] = ((this.maker.mid > 0 ? (float)Math.Log(this.maker.weightedMid / (double)this.maker.mid) *is_bid : 0) - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
+                            this.factorValues[f.Value] = ((this.taker.mid > 0 ? (float)Math.Log(this.taker.weightedMid / (double)this.taker.mid) *is_bid : 0) - this._scalerMean[f.Value]) / this._scalerScale[f.Value];
                             break;
                     }
                 }
@@ -3730,7 +3732,15 @@ namespace Crypto_Trading
                 //    addLog($"input name: {input.Name}");
                 //    addLog($"input value null: {input.Value == null}");
                 //}
-                ++this.all_count;
+                switch(side)
+                {
+                    case orderSide.Buy:
+                        ++this.all_buy;
+                        break;
+                    case orderSide.Sell:
+                        ++this.all_sell;
+                        break;
+                }
                 using(var l = new funcContainer(this.Latency["onnxRuntime_" + this.name].MeasureLatency))
                 {
                     using var resultsDisposable = this.cancelDetector.Run(_inputs);
@@ -3759,7 +3769,15 @@ namespace Crypto_Trading
                                             //addLog($"pLargeLoss: {pLargeLoss}");
                                             if(pLargeLoss > this.cancel_threshold)
                                             {
-                                                ++this.cancel_count;
+                                                switch (side)
+                                                {
+                                                    case orderSide.Buy:
+                                                        ++this.cancel_buy;
+                                                        break;
+                                                    case orderSide.Sell:
+                                                        ++this.cancel_sell;
+                                                        break;
+                                                }
                                             }
                                             return (pLargeLoss > this.cancel_threshold, pLargeLoss);
                                         }
